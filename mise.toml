@@ -1,0 +1,5 @@
+# Language runtimes only (per Nix-first / mise-for-runtimes split).
+# System tools (golangci-lint, goose, postgres/postgis) come from the nix flake.
+[tools]
+go = "1.26"
+bun = "1.3"

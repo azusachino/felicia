@@ -1,0 +1,14 @@
+# Starting linter config — reconciled with the installed golangci-lint version
+# when implementation begins. Conservative, widely-supported linters.
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - misspell
+    - revive
