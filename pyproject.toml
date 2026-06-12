@@ -1,0 +1,17 @@
+# Docs tooling only — felicia is a Go project. uv manages this isolated env so the
+# MkDocs preview never touches the Go/bun toolchain. Run: `make docs`.
+[project]
+name = "felicia-docs"
+version = "0"
+description = "MkDocs preview tooling for felicia docs."
+requires-python = ">=3.11"
+
+[dependency-groups]
+docs = [
+  # Pin to the 9.5.x line: 9.6.0 added a build-time MkDocs-2.0 promo banner.
+  "mkdocs-material>=9.5,<9.6",
+  "pymdown-extensions>=10",
+]
+
+[tool.uv]
+package = false

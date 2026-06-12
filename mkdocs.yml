@@ -1,0 +1,48 @@
+site_name: felicia
+site_description: A map-based travel journal — research-stage docs.
+docs_dir: docs
+use_directory_urls: false
+
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: deep orange
+    accent: deep orange
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - toc.follow
+
+# Mermaid is rendered by Material's built-in integration, which loads the
+# minified Mermaid build from the jsDelivr CDN at runtime.
+markdown_extensions:
+  - admonition
+  - tables
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - toc:
+      permalink: true
+
+nav:
+  - Direction: direction.md
+  - Setup: setup.md
+  - Research:
+      - Ingestion workflows: research/ingestion-workflows.md
+      - liuaaron teardown: research/liuaaron-teardown.md
+      - Product vs personal: research/product-vs-personal.md
+      - SaaS dataflow: research/saas-dataflow.md
+  - Archive:
+      - Overview: archive/README.md
+      - Design: archive/design.md
+      - Importer spec: archive/importer-spec.md
+      - Spec gaps: archive/spec-gaps.md
+      - Device walkthroughs: archive/device-walkthroughs.md
+      - Architecture: archive/architecture.md
+      - Plan: archive/plan.md
+      - Todo: archive/todo.md

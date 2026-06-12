@@ -16,6 +16,10 @@ coverage.*
 *.sqlite
 *.sqlite-journal
 
+# Docs (mkdocs build output + uv env; uv.lock is committed)
+/site/
+.venv/
+
 # OS / editor
 .DS_Store
 *.swp

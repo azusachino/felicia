@@ -9,7 +9,7 @@ GO      ?= go
 # phase, so Go targets no-op cleanly until the first package is written.
 GO_FILES := $(shell find . -name '*.go' -not -path './vendor/*' -not -path './.git/*' -print -quit 2>/dev/null)
 
-.PHONY: help fmt vet lint test check build validate tidy migrate web-install web-check
+.PHONY: help fmt vet lint test check build validate tidy migrate web-install web-check docs docs-build
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -47,3 +47,11 @@ web-install: ## Install frontend deps (bun, from mise)
 
 web-check: ## Frontend typecheck + lint + format check
 	cd web && bun run check
+
+# Docs preview (uv-managed env, isolated from Go/bun). Binds 0.0.0.0 so it is
+# reachable over SSH — forward with `ssh -L 8000:localhost:8000 <host>`.
+docs: ## Live-preview docs in the browser (uv + mkdocs-material)
+	uv run --group docs mkdocs serve -a 0.0.0.0:8000
+
+docs-build: ## Build the static docs site into ./site
+	uv run --group docs mkdocs build
