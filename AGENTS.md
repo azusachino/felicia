@@ -10,9 +10,10 @@ along it sit **ticket stubs** (receipts, transit passes, admission tickets). Cli
 animates it open into an **essay** and a **photo gallery**. The map is the index; the tickets
 are the stories.
 
-Full design: [`docs/design.md`](docs/design.md). Importer spec:
-[`docs/importer-spec.md`](docs/importer-spec.md). Status: **design/spec phase** — flow is
-design → spec → TDD → implementation, unhurried (~6-month horizon).
+North star: [`docs/direction.md`](docs/direction.md) (direction: *personal now,
+product-ready*). Earlier design/spec drafts are parked in [`docs/archive/`](docs/archive/).
+Status: **research stage** — flow is research → spec → TDD → implementation, unhurried
+(~6-month horizon).
 
 ## Tech Stack & Architecture
 
@@ -65,9 +66,9 @@ All daily operations go through `make <target>`. **Tools:** runtimes (go, bun) f
 
 ## Key Files & Entry Points
 
-- `docs/design.md` — current design (data model, ingestion loop, source-of-truth rule).
-- `docs/importer-spec.md` — `waypoints` CLI contract + first failing-test plan.
-- `docs/research/` — exploration trail (workflow comparison, reference screenshots).
+- `docs/direction.md` — research-stage north star: the idea + *personal-now / product-ready* direction.
+- `docs/research/` — exploration trail (workflows, liuaaron teardown, product-vs-personal).
+- `docs/archive/` — parked design/spec/plan drafts (premature lock-in); detail, not binding.
 - rosemary graph `felicia:*` — decisions (ADRs), session state. Run `/rosemary start`.
 
 ## Quality Standards
