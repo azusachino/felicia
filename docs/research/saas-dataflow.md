@@ -7,6 +7,11 @@
 > downstream of [`product-vs-personal.md`](product-vs-personal.md) and the
 > [direction](../direction.md).
 
+> **Updated 2026-06-14:** the "ticket" here generalizes to **memento** (`kind`-tagged) —
+> see [`mementos-not-tickets.md`](mementos-not-tickets.md). The flow below is unchanged in
+> shape; the stub-creation step (3) just accepts more sources (Wallet `.pkpass`, email,
+> goods-photo + vision-LLM) behind the *same seam*, and `TICKET` below is now `MEMENTO`.
+
 ## The reframe in one line
 
 Make the **GPX a manual per-trip upload** and let the user **attach photos to tickets by
@@ -67,9 +72,9 @@ flowchart TB
 
 ```mermaid
 erDiagram
-  USER   ||--o{ TRIP : owns
-  TRIP   ||--o{ TICKET : collects
-  TICKET ||--o{ TICKET_PHOTO : "extra photos"
+  USER    ||--o{ TRIP : owns
+  TRIP    ||--o{ MEMENTO : collects
+  MEMENTO ||--o{ MEMENTO_PHOTO : "extra photos"
 
   USER { uuid id  string email }
   TRIP {
@@ -82,22 +87,22 @@ erDiagram
     date date_end
     geometry route "MultiLineString — from uploaded GPX"
   }
-  TICKET {
+  MEMENTO {
     uuid id
     uuid trip_id
-    string stub_image "object-store key"
-    enum type "receipt | transit | admission"
-    string vendor "OCR draft"
-    money price "OCR draft"
-    timestamptz occurred_at "OCR draft"
+    string stub_image "object-store key (photographed stub OR generated card)"
+    enum kind "ticket | goods | receipt | souvenir | stamp | …"
+    string vendor "draft (OCR / Wallet / email / vision-LLM)"
+    money price "draft"
+    timestamptz occurred_at "draft — back-fillable"
     geometry location "Point — GPX-snap or manual"
     markdown description "authored"
     enum animation "open style"
     int seq
   }
-  TICKET_PHOTO {
+  MEMENTO_PHOTO {
     uuid id
-    uuid ticket_id
+    uuid memento_id
     string image "object-store key"
     string caption
     int seq

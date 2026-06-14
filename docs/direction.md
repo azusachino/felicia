@@ -9,9 +9,17 @@
 
 A map-based travel journal, modeled on [liuaaron.com](https://liuaaron.com/) ("Aaron's
 Waypoints"). Each **journey** is an orange route line on a dark world map; along it sit a
-few **ticket stubs** — receipts, transit passes, admission tickets you actually collected.
-The stub is the hero: click it and it animates open into a written **essay** and a photo
-gallery. The map is the index; the tickets are the stories.
+few **mementos** — the objects that anchor a memory: an admission ticket, but equally a
+souvenir, a goods (the fuwamiku you bought), a receipt, a stamp. Each renders as a
+collectible **stub**; click it and it animates open into a written **essay** and a photo
+gallery. The map is the index; the mementos are the stories.
+
+> **Memento, not ticket.** Physical tickets are dying and the anchor often isn't a ticket
+> anyway, so the click-target generalizes: `Ticket → Memento` with a `kind`
+> (ticket · goods · receipt · souvenir · stamp · …), and the stub is *rendered from data*,
+> template-first, not scanned. Full reasoning:
+> [`research/mementos-not-tickets.md`](research/mementos-not-tickets.md)
+> (ADR `felicia:decision:memento-not-ticket`).
 
 ## Direction: personal now, product-ready
 
@@ -60,8 +68,9 @@ them. Detail in [`archive/design.md`](archive/design.md).
 - **Engine:** a pure importer core (join photos + GPS on timestamp, cluster waypoints,
   simplify route, OCR ticket metadata) behind I/O seams. This is the durable heart and the
   natural TDD target whichever direction we go.
-- **Model:** Journey → Ticket → {essay, extra photos, open-animation}; the ticket is the
-  click target.
+- **Model:** Journey → Memento → {essay, extra photos, open-animation}; the memento is the
+  click target. `kind` (ticket · goods · receipt · souvenir · stamp · …) selects the stub
+  form. (Was "Ticket"; generalized 2026-06-14 — see mementos-not-tickets.)
 - **Stack leaning:** Go (CLI importer + API), Postgres + PostGIS, S3-compatible storage,
   Vite + Mapbox SPA — but the data *sources* are the open question, not the stack.
 
@@ -71,7 +80,9 @@ them. Detail in [`archive/design.md`](archive/design.md).
   side-steps it with a per-trip **GPX upload**. Open: is manual upload good enough, or is
   "no track" common enough to need the photo-trail fallback? (see saas-dataflow,
   product-vs-personal)
-- **Stub rendering** — type-templates vs. photographed-stub fallback; how much is worth it.
+- **Stub rendering** — *resolved* to **template-first** (rendered from data; photographed
+  stub is the bonus), per mementos-not-tickets. Still open: *which* `kind` forms ship first
+  and how much design each earns.
 - **Ticket-open animation** — flip vs. shared-element morph vs. tear/unfold; prototype later.
 
 ## How we move
@@ -79,3 +90,9 @@ them. Detail in [`archive/design.md`](archive/design.md).
 Research → (when ready) spec → TDD → build. We are in **research**. No application code,
 no spec freeze, no failing-test plan yet — those were archived as premature. When the open
 questions above settle, we promote a spec out of `archive/` and tighten it.
+
+Current research tactic: **prototype the data model in a Notion template** (Trips / Mementos
+/ Photos, 1:1 with the saas-dataflow ER) to settle "does the `Memento` model hold?" and start
+real content now — back-of-house only; the map / stub-render / animation stay for the real
+stack. See [`research/notion-prototype.md`](research/notion-prototype.md) (ADR
+`felicia:decision:notion-schema-sandbox`).

@@ -27,8 +27,16 @@ This product **already exists and nailed the consumer UX: Polarsteps.** Passive 
 *their own app*, automatic photo import, a beautiful map, monetized with printed photo
 books. Also in the space: Journi, Wanderlog, plus Strava / Google Timeline adjacent.
 
-To sell against that you must out-execute on *something*: design taste (the ticket-stub →
-essay format is genuinely differentiated and not what Polarsteps does), or a niche.
+To sell against that you must out-execute on *something*: design taste (the memento → essay
+format is genuinely differentiated and not what Polarsteps does), or a niche.
+
+> **Sharpened 2026-06-14** ([`mementos-not-tickets.md`](mementos-not-tickets.md)): the
+> differentiation is *object-first authored scrapbook* vs. *log*. Polarsteps, Dawarich, and
+> Immich are all exhaustive automatic logs (every photo/GPS point, capture-timestamp-bound).
+> felicia is selective, narrated (the essay), designed-rendered, and **back-fillable** —
+> indexed by the few **mementos** you chose, not by everything captured. The niche is the
+> **collector mindset** (*eki* stamps, *goshuin*, character goods, *omiyage*) — a taste-niche
+> no log occupies.
 
 ## The crux: the GPS track
 
@@ -63,5 +71,6 @@ surface. See [`../direction.md`](../direction.md) for the concrete hedges and no
 ## If we ever do pivot — open questions to revisit
 
 - Companion app vs. import-from-Timeline for the track (coverage vs. effort).
-- Differentiation thesis vs. Polarsteps (is "ticket-stub essays" enough?).
+- Differentiation thesis vs. Polarsteps — sharpened to *object-first scrapbook vs. log*
+  (see mementos-not-tickets); open: is the collector-niche framing enough to sell on?
 - Location-data compliance (GDPR) as a first-class design constraint.

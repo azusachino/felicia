@@ -6,9 +6,11 @@ Single source of truth for humans and agents working in this repo.
 
 **felicia** is a map-based travel journal (modeled on [liuaaron.com](https://liuaaron.com/),
 "Aaron's Waypoints"). Each **journey** is drawn on a dark world map as an orange route line;
-along it sit **ticket stubs** (receipts, transit passes, admission tickets). Clicking a ticket
-animates it open into an **essay** and a **photo gallery**. The map is the index; the tickets
-are the stories.
+along it sit **mementos** — the objects that anchor a memory (an admission ticket, but equally
+a souvenir, a goods, a receipt, a stamp), each rendered as a collectible **stub**. Clicking a
+memento animates it open into an **essay** and a **photo gallery**. The map is the index; the
+mementos are the stories. (`kind`-tagged; physical tickets are dying, so stubs are rendered
+from data — see `docs/research/mementos-not-tickets.md`.)
 
 North star: [`docs/direction.md`](docs/direction.md) (direction: *personal now,
 product-ready*). Earlier design/spec drafts are parked in [`docs/archive/`](docs/archive/).
@@ -67,7 +69,8 @@ All daily operations go through `make <target>`. **Tools:** runtimes (go, bun) f
 ## Key Files & Entry Points
 
 - `docs/direction.md` — research-stage north star: the idea + *personal-now / product-ready* direction.
-- `docs/research/` — exploration trail (workflows, liuaaron teardown, product-vs-personal).
+- `docs/research/` — exploration trail (workflows, liuaaron teardown, product-vs-personal,
+  mementos-not-tickets, notion-prototype, notion-to-stack).
 - `docs/archive/` — parked design/spec/plan drafts (premature lock-in); detail, not binding.
 - rosemary graph `felicia:*` — decisions (ADRs), session state. Run `/rosemary start`.
 
