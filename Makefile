@@ -45,6 +45,12 @@ migrate: ## Apply DB migrations (goose, from nix) — needs DATABASE_DSN
 web-install: ## Install frontend deps (bun, from mise)
 	cd web && bun install
 
+web-dev: ## Run frontend dev server (bun + vite)
+	cd web && bun run dev
+
+web-build: ## Build frontend for production (bun + vite)
+	cd web && bun run build
+
 web-check: ## Frontend typecheck + lint + format check
 	cd web && bun run check
 

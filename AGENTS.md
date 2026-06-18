@@ -72,7 +72,7 @@ All daily operations go through `make <target>`. **Tools:** runtimes (go, bun) f
 - `docs/research/` — exploration trail (workflows, liuaaron teardown, product-vs-personal,
   mementos-not-tickets, notion-prototype, notion-to-stack).
 - `docs/archive/` — parked design/spec/plan drafts (premature lock-in); detail, not binding.
-- rosemary graph `felicia:*` — decisions (ADRs), session state. Run `/rosemary start`.
+- asobi graph `felicia:*` — decisions (ADRs), session state. Run `asobi` commands.
 
 ## Quality Standards
 

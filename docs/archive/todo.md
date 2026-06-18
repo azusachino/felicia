@@ -1,6 +1,6 @@
 # TODO — felicia
 
-Durable task state lives in rosemary (`/rosemary tasks`). This is a lightweight mirror.
+Durable task state lives in asobi (`asobi` tasks). This is a lightweight mirror.
 
 ## In progress
 

@@ -7,9 +7,8 @@ Hard DO/DON'T for all agents. Loaded every session.
 - Use `make <target>` for all task execution (`make check`, `make test`, `make build`).
 - Get runtimes from **mise** (`mise install`); system tools from the **nix flake**
   (`nix develop`, or let the Makefile's `NIX_RUN` wrap them). Never install tools globally.
-- At session start, load rosemary context (`/rosemary start`); fall back to `.agents/`
-  files only if rosemary is unavailable.
-- At session end, save state to rosemary (`/rosemary end`); record non-obvious decisions as
+- At session start, load asobi context (`asobi show`).
+- At session end, save state to asobi (`asobi` session truths and obs); record non-obvious decisions as
   `felicia:decision:*` ADRs.
 - Stay in the current phase: design → spec → TDD → implementation. Don't write application
   code while in research/design.

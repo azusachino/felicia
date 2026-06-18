@@ -233,7 +233,7 @@ providers (manual files → Immich → Dawarich) never forces a rewrite.
 
 ## 8. Decision log
 
-Locked (see rosemary `felicia:decision:*` for full ADRs):
+Locked (see asobi `felicia:decision:*` for full ADRs):
 
 - **architecture** — Go API + SPA; **A+E hybrid** (auto ingest + admin UI); DB canonical.
 - **hosting** — Raspberry Pi + Cloudflare Tunnel; self-hosted.
