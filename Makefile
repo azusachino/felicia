@@ -7,7 +7,7 @@ GO      ?= go
 
 # Whether any Go sources exist yet. The skeleton has none during the research
 # phase, so Go targets no-op cleanly until the first package is written.
-GO_FILES := $(shell find . -name '*.go' -not -path './vendor/*' -not -path './.git/*' -print -quit 2>/dev/null)
+GO_FILES := $(shell find . -name '*.go' -not -path './vendor/*' -not -path './.git/*' -not -path '*/node_modules/*' -print -quit 2>/dev/null)
 
 .PHONY: help fmt vet lint test check build validate tidy migrate web-install web-check docs docs-build
 

@@ -23,7 +23,7 @@
             golangci-lint
             goose
             postgresql_16
-            postgis
+            postgresqlPackages.postgis
             gnumake
           ];
         };
