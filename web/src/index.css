@@ -476,6 +476,193 @@ body {
   background-color: #eab308;
   color: #1c1917;
 }
+.stub-badge.kind-transit {
+  background-color: #06b6d4;
+  color: #042f3a;
+}
+
+/* ───────── Realistic JR / Metro magnetic ticket (きっぷ) ───────── */
+.jr-ticket {
+  position: relative;
+  width: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  padding: 16px 20px 0;
+  color: #2b1c08;
+  font-family: var(--font-mono);
+  /* warm orange thermal-printed JR ticket stock */
+  background:
+    linear-gradient(135deg, #f6e7c4 0%, #efd49a 55%, #e9bf80 100%);
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1px rgba(120, 70, 20, 0.25);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+}
+
+.jr-ticket:hover {
+  transform: translateY(-3px) rotate(-0.4deg);
+  box-shadow: 0 18px 40px rgba(255, 106, 0, 0.18), 0 8px 20px rgba(0, 0, 0, 0.45);
+}
+
+.jr-ticket--metro {
+  background: linear-gradient(135deg, #eef1f4 0%, #d9e2ea 55%, #c4d2dd 100%);
+  color: #16242e;
+}
+
+/* fine printed-paper grain / guilloché lines */
+.jr-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background:
+    repeating-linear-gradient(0deg, rgba(90, 50, 10, 0.06) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg, rgba(90, 50, 10, 0.04) 0 1px, transparent 1px 6px);
+}
+.jr-ticket--metro .jr-grain {
+  background:
+    repeating-linear-gradient(0deg, rgba(20, 50, 70, 0.06) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg, rgba(20, 50, 70, 0.04) 0 1px, transparent 1px 6px);
+}
+
+.jr-head {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.jr-type {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  border: 1.5px solid rgba(90, 50, 10, 0.55);
+  border-radius: 3px;
+}
+.jr-ticket--metro .jr-type {
+  border-color: #0090d2;
+  color: #0a5b86;
+}
+
+.jr-date {
+  font-size: 13px;
+  letter-spacing: 1px;
+  opacity: 0.8;
+}
+
+.jr-route {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 18px 0 14px;
+}
+
+.jr-stn {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.jr-stn--to {
+  text-align: right;
+}
+
+.jr-stn-jp {
+  font-family: var(--font-heading);
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 1px;
+}
+
+.jr-stn-en {
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.jr-wave {
+  font-size: 24px;
+  font-weight: 700;
+  opacity: 0.55;
+}
+
+.jr-via {
+  position: relative;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  padding: 6px 0;
+  border-top: 1px dashed rgba(90, 50, 10, 0.35);
+  opacity: 0.85;
+}
+.jr-ticket--metro .jr-via {
+  border-top-color: rgba(20, 50, 70, 0.3);
+}
+
+.jr-foot {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 6px 0 16px;
+}
+
+.jr-fare-block {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.jr-yen {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.jr-fare {
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 1px;
+}
+
+.jr-fineprint {
+  font-size: 11px;
+  letter-spacing: 1px;
+  opacity: 0.6;
+  padding-bottom: 4px;
+}
+
+/* The black magnetic stripe along the bottom edge */
+.jr-magstripe {
+  position: relative;
+  margin: 0 -20px;
+  padding: 7px 20px;
+  background: linear-gradient(180deg, #2a241a 0%, #15110a 100%);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.jr-magstripe::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 5px);
+  pointer-events: none;
+}
+
+.jr-mag-issue,
+.jr-mag-code {
+  position: relative;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: rgba(220, 210, 195, 0.65);
+}
+.jr-mag-code {
+  color: rgba(255, 138, 61, 0.85);
+}
 
 .stub-body {
   padding: 20px;
@@ -690,6 +877,201 @@ body {
   to {
     stroke-dashoffset: -1000;
   }
+}
+
+/* Transit legs are SOLID (authored rail backbone), not the dashed passive track */
+.transit-leg {
+  stroke-dasharray: none !important;
+  animation: none !important;
+  filter: drop-shadow(0 0 6px rgba(255, 138, 61, 0.7));
+}
+
+.station-dot {
+  stroke-dasharray: none !important;
+  animation: none !important;
+  filter: drop-shadow(0 0 4px rgba(255, 138, 61, 0.6));
+}
+
+/* Add Ticket — floating action button */
+.fab-add-ticket {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--accent-orange);
+  color: #1a0a00;
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 700;
+  border: none;
+  padding: 12px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px var(--accent-orange-glow);
+  transition: all 0.2s ease;
+}
+
+.fab-add-ticket:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px var(--accent-orange-glow);
+}
+
+/* Transit ticket creator modal */
+.creator-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.creator-modal {
+  width: 100%;
+  max-width: 460px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  border-top: 3px solid var(--accent-orange);
+  border-radius: 14px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  animation: creator-pop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes creator-pop {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.creator-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.creator-header h3 {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.creator-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  transition: color 0.2s ease;
+}
+
+.creator-close:hover {
+  color: var(--accent-orange);
+}
+
+.creator-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.creator-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.creator-field label {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.creator-field .optional {
+  color: var(--text-muted);
+  opacity: 0.6;
+  text-transform: none;
+}
+
+.creator-field input,
+.creator-field select {
+  background: var(--bg-primary);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.creator-field input:focus,
+.creator-field select:focus {
+  outline: none;
+  border-color: var(--accent-orange);
+}
+
+.creator-warning {
+  font-size: 12px;
+  color: #f87171;
+  margin-top: -6px;
+}
+
+.creator-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.btn-secondary,
+.btn-primary {
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+}
+
+.btn-secondary:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+.btn-primary {
+  background: var(--accent-orange);
+  border: 1px solid var(--accent-orange);
+  color: #1a0a00;
+}
+
+.btn-primary:hover {
+  box-shadow: 0 6px 18px var(--accent-orange-glow);
+}
+
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 /* Scrollbar Style */
