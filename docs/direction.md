@@ -34,15 +34,15 @@ path:
 - The reasoning (and the competitive reality — Polarsteps already owns this space) is in
   [`research/product-vs-personal.md`](research/product-vs-personal.md).
 
-### Leading candidate for what ships first: the SaaS-manual model
+### Leading candidate for what ships first: the web moat MVP
 
-Exploring the SaaS angle produced a surprise: a **manual web-upload** product is *simpler*
-than the personal passive-ingest pipeline, not harder. User creates a trip, uploads a GPX,
-uploads ticket images (OCR prefills, they edit), attaches photos. No Immich, no Dawarich,
-no timestamp-join — **the user is the joiner**, and OCR is the only automation worth
-keeping. The passive self-hosted pipeline becomes a *later power feature* behind the same
-Ticket-creation seam. Full sketch: [`research/saas-dataflow.md`](research/saas-dataflow.md).
-Leading candidate for the first thing built — still research, not locked.
+Exploring the SaaS angle produced a useful simplification, but the lowest-regret MVP is now
+a **web moat spike**: Svelte + TypeScript + Tailwind, with Mapbox GL for the dark route map.
+The app reads one real trip, renders one designed memento stub, and opens it into an essay +
+gallery. No passive Immich/Dawarich pipeline. The user is still the joiner: trip content can
+come from the Notion sandbox, one GPX/GeoJSON route, and local/R2-backed images. Full sketch:
+[`research/notion-to-stack.md`](research/notion-to-stack.md). Leading candidate for the first
+thing built — still research, not locked.
 
 ### What "clean seams" means (cheap hedges, do these)
 
@@ -71,13 +71,14 @@ them. Detail in [`archive/design.md`](archive/design.md).
 - **Model:** Journey → Memento → {essay, extra photos, open-animation}; the memento is the
   click target. `kind` (ticket · goods · receipt · souvenir · stamp · …) selects the stub
   form. (Was "Ticket"; generalized 2026-06-14 — see mementos-not-tickets.)
-- **Stack leaning:** Go (CLI importer + API), Postgres + PostGIS, S3-compatible storage,
-  Vite + Mapbox SPA — but the data *sources* are the open question, not the stack.
+- **Stack leaning:** MVP UI in Svelte + TypeScript + Tailwind, Mapbox GL for the map, and Go
+  (CLI importer + API), Postgres + PostGIS, S3-compatible storage when the data layer
+  graduates past the spike.
 
 ## Open research questions
 
-- **The GPS track.** For a passive product it's the hard part; the SaaS-manual model
-  side-steps it with a per-trip **GPX upload**. Open: is manual upload good enough, or is
+- **The GPS track.** For a passive product it's the hard part; the web MVP side-steps it
+  with a per-trip **GPX/GeoJSON file**. Open: is manual route input good enough, or is
   "no track" common enough to need the photo-trail fallback? (see saas-dataflow,
   product-vs-personal)
 - **Stub rendering** — *resolved* to **template-first** (rendered from data; photographed
@@ -93,6 +94,7 @@ questions above settle, we promote a spec out of `archive/` and tighten it.
 
 Current research tactic: **prototype the data model in a Notion template** (Trips / Mementos
 / Photos, 1:1 with the saas-dataflow ER) to settle "does the `Memento` model hold?" and start
-real content now — back-of-house only; the map / stub-render / animation stay for the real
-stack. See [`research/notion-prototype.md`](research/notion-prototype.md) (ADR
+real content now, then pull one trip into a Svelte/TypeScript/Tailwind web moat spike. The
+map / stub-render / animation stay out of Notion and belong to the real MVP. See
+[`research/notion-prototype.md`](research/notion-prototype.md) (ADR
 `felicia:decision:notion-schema-sandbox`).

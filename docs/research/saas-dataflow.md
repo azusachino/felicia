@@ -1,9 +1,9 @@
-# Research — SaaS-manual dataflow
+# Research — manual-input dataflow
 
 > 2026-06-12. A SaaS-first reframe of how data gets into felicia. Where the archived
 > design assumed a **passive, self-hosted ingest** pipeline (Immich + Dawarich joined on
-> timestamp), this models the simplest thing that works for *any* user: **they upload
-> everything through a web app.** Research-stage sketch — a candidate, not a spec. Sits
+> timestamp), this models the simplest thing that works without passive ingest: **manual
+> route and memento input.** Research-stage sketch — a candidate, not a spec. Sits
 > downstream of [`product-vs-personal.md`](product-vs-personal.md) and the
 > [direction](../direction.md).
 
@@ -12,63 +12,65 @@
 > shape; the stub-creation step (3) just accepts more sources (Wallet `.pkpass`, email,
 > goods-photo + vision-LLM) behind the *same seam*, and `TICKET` below is now `MEMENTO`.
 
+> **Updated 2026-06-23:** the active MVP UI stack is **Svelte + TypeScript + Tailwind** with
+> Mapbox GL. There is no desktop plan yet.
+
 ## The reframe in one line
 
-Make the **GPX a manual per-trip upload** and let the user **attach photos to tickets by
-hand**, and the hardest parts of the old design evaporate — no Immich, no Dawarich, no
-passive logging, no timestamp-join, no waypoint clustering. **The user is the joiner.**
-What survives is the one automation actually worth its weight: **OCR prefill.**
+Make the **GPX/GeoJSON a manual per-trip input** and let the user **attach photos to
+mementos by hand**, and the hardest parts of the old design evaporate — no Immich, no
+Dawarich, no passive logging, no timestamp-join, no waypoint clustering. **The user is the
+joiner.** What survives is the one automation actually worth its weight: **OCR prefill.**
 
 ## The flow
 
 ```mermaid
 flowchart TB
-  subgraph client["Browser — authoring SPA"]
+  subgraph client["Web app\nSvelte + TypeScript + Tailwind"]
     u["user"]
   end
 
-  subgraph api["Go API (multi-tenant)"]
-    trip["Trip handler"]
-    tkt["Ticket handler"]
+  subgraph app["MVP app layer"]
+    trip["Trip loader"]
+    tkt["Memento editor"]
     ocr["OCR — Claude vision"]
-    gpx["GPX parse + simplify"]
+    gpx["GPX/GeoJSON parse + simplify"]
   end
 
-  pg[("Postgres + PostGIS")]
-  obj[["Object storage (R2)\nresized · EXIF-stripped\nkey: user/trip/…"]]
+  pg[("Postgres + PostGIS\nlater persistence")]
+  obj[["local or R2-backed images\nresized · EXIF-stripped"]]
 
   u -->|"1 · create trip (title, dates)"| trip --> pg
-  u -->|"2 · upload trip.gpx"| gpx -->|"route → MultiLineString"| pg
+  u -->|"2 · choose trip.gpx / route.geojson"| gpx -->|"route → MultiLineString"| pg
 
-  u -->|"3 · upload ticket image"| tkt
+  u -->|"3 · add memento image or draft"| tkt
   tkt -->|"store image"| obj
   tkt -->|"prefill type/vendor/price/datetime"| ocr --> tkt
-  tkt -->|"ticket + OCR draft"| pg
+  tkt -->|"memento + OCR draft"| pg
   u -->|"4 · edit description, fields, pick animation"| tkt
 
-  u -->|"5 · attach photos + captions to ticket"| tkt -->|"photos"| obj
+  u -->|"5 · attach photos + captions to memento"| tkt -->|"photos"| obj
 
-  subgraph public["Public SPA"]
-    map["dark map · orange route\nclick ticket → animate open\n→ essay + gallery"]
+  subgraph view["Moat view"]
+    map["dark map · orange route\nclick memento → animate open\n→ essay + gallery"]
   end
   pg --> map
   obj --> map
 ```
 
-1. **Create trip** — title, dates. Owned by the user (multi-tenant from day one — the
-   "most SaaS" part).
-2. **Upload GPX** — server parses + simplifies (Douglas–Peucker) → route line on the map.
-   One file per trip.
-3. **Add a ticket** — upload the stub image → stored (resized, EXIF-stripped) → **Claude
-   vision OCR** prefills `type / vendor / price / occurred_at`. The ticket renders as an
+1. **Create/load trip** — title, dates, and one real content record. Accounts are not part
+   of the MVP.
+2. **Choose GPX/GeoJSON** — parse + simplify (Douglas–Peucker) → route line on the map. One
+   file per trip.
+3. **Add a memento** — add an image or draft → stored (resized, EXIF-stripped) → **Claude
+   vision OCR** prefills `type / vendor / price / occurred_at`. The memento renders as an
    animatable stub.
 4. **Edit** — user fixes the OCR draft and writes the **description (essay)**, picks the
    open-animation.
-5. **Attach photos** — a few more images per ticket, each with its own caption.
-6. **Publish** — public map: orange route + ticket stubs; click → animate open → essay +
-   gallery.
+5. **Attach photos** — a few more images per memento, each with its own caption.
+6. **View** — map: orange route + memento stubs; click → animate open → essay + gallery.
 
-## Data model (multi-tenant)
+## Data model (product-ready)
 
 ```mermaid
 erDiagram
@@ -114,21 +116,21 @@ Everything hangs off `USER` — that's the single account root from
 
 ## The insight worth keeping
 
-**Manual web-upload and passive auto-ingest are two source implementations behind the same
-Ticket-creation seam.** Both end at the same place: an image in object storage + an OCR'd
-draft + a route on the trip. So the simple SaaS path *is* the core; the old Immich/Dawarich
-passive pipeline becomes a **power feature bolted on later** as a second source. We're not
+**Manual input and passive auto-ingest are two source implementations behind the same
+Memento-creation seam.** Both end at the same place: an image in storage + an OCR'd draft +
+a route on the trip. So the simple local path *is* the core; the old Immich/Dawarich passive
+pipeline becomes a **power feature bolted on later** as a second source. We're not
 discarding the archived design — we're inverting which half ships first, and the
 swappable-seam bet from `direction.md` is exactly what makes that cheap.
 
 ```mermaid
 flowchart LR
-  manual["manual web upload\n(MVP)"] --> seam{{"Ticket-creation seam\nimage + OCR draft + route"}}
+  manual["manual web input\n(MVP)"] --> seam{{"Memento-creation seam\nimage + OCR draft + route"}}
   passive["passive ingest\nImmich + Dawarich\n(later power feature)"] -.-> seam
-  seam --> core["same Ticket / Trip core"]
+  seam --> core["same Memento / Trip core"]
 ```
 
-## The one real design choice: where does a ticket sit on the map?
+## The one real design choice: where does a memento sit on the map?
 
 - **OCR time → snap to GPX** at `occurred_at` → auto-place the point. Magic when both exist.
 - **Manual map-drag** override / fallback when there's no GPX or no usable time.
@@ -137,11 +139,11 @@ flowchart LR
 
 ## MVP scope (the "keep it simple" cut)
 
-- **In:** basic auth (email or one OAuth), trips, GPX upload, ticket image + OCR + edit,
-  ticket photos, public view.
-- **Defer:** billing (free beta), passive auto-ingest, printed books, teams/sharing, an
-  animation library (ship *one* animation, add more later).
-- **Watch:** OCR cost per ticket (Claude vision calls) — fine at MVP volume; revisit if it
+- **In:** Svelte + TypeScript + Tailwind UI, trips, GPX/GeoJSON route file, memento image +
+  OCR + edit, memento photos, public view, one designed stub, one open animation.
+- **Defer:** billing, passive auto-ingest, printed books, teams/sharing, and a full
+  animation library.
+- **Watch:** OCR cost per memento (Claude vision calls) — fine at MVP volume; revisit if it
   scales.
 
 ## Open questions
@@ -149,5 +151,5 @@ flowchart LR
 - Auth provider — roll-your-own email vs. a hosted identity (cost vs. control).
 - Object-storage key scheme + per-tenant isolation (cheap to get right now, painful later).
 - OCR confidence + the edit UX — how much to trust the draft vs. force review.
-- Does manual GPX upload feel good enough, or is "no track" the common case (then the
+- Does manual route input feel good enough, or is "no track" the common case (then the
   photo-trail fallback from the archived design earns its place)?

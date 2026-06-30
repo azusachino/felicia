@@ -18,8 +18,9 @@ map-indexed, stub-rendered, animated scrapbook — stays unproven.
 
 ## Step 1 — the moat spike (the real first build)
 
-The smallest thing that tests what Notion *can't*, exactly the liuaaron shape (a static SPA,
-per the [teardown](liuaaron-teardown.md)):
+The smallest thing that tests what Notion *can't*, now as a web MVP: Svelte + TypeScript UI,
+Tailwind styling, and Mapbox GL for the map. This keeps the liuaaron-shaped front-of-house
+from the [teardown](liuaaron-teardown.md):
 
 - **One trip**, real content, pulled from Notion (export JSON or the API — see below).
 - **Dark map + one orange route** (hand-drawn GeoJSON or one GPX is fine — the route source
@@ -27,7 +28,6 @@ per the [teardown](liuaaron-teardown.md)):
 - **One memento** rendered **template-first** as a designed stub (pick the `goods` kind — the
   fuwamiku — since it's the furthest from a "ticket" and the best taste test).
 - **One open-animation** on click → essay + gallery.
-
 If that one screen feels like the artifact, the moat is real and the model survives contact.
 If it doesn't, we learned it for the price of one page, not a product.
 
@@ -65,9 +65,9 @@ a feature, not debt — Notion is a perfectly good admin UI for an author-of-one
 - Tests the **differentiator first**, on real content, for the price of one page.
 - The `notion` source is **throwaway-friendly**: it's one impl behind the seam, so deleting
   it later (when authoring moves in-stack) costs nothing structural — the seam stays.
-- Keeps us honest about the stack leaning (Go core + Postgres/PostGIS + R2 + Mapbox SPA)
-  without committing to the CRUD/auth/multi-tenant surface that's still deferred in
-  [`direction.md`](../direction.md).
+- Keeps us honest about the stack leaning (Svelte + TypeScript + Tailwind for the MVP UI;
+  Go core + Postgres/PostGIS + R2 when persistence graduates) without committing to the
+  CRUD/auth/multi-tenant surface that's still deferred in [`direction.md`](../direction.md).
 
 ## Open
 
