@@ -22,7 +22,9 @@ Status: **research stage** — flow is research → spec → TDD → implementat
 - **Backend:** Go 1.26 — a `waypoints` ingestion CLI + an HTTP API server.
 - **DB:** Postgres + PostGIS (relational + geo; canonical source of truth).
 - **Object storage:** S3-compatible interface; **R2** backend (MinIO/B2 swappable by config).
-- **Frontend:** Vite + Mapbox GL SPAs — public site + admin authoring app (bun workspace).
+- **Frontend:** Vite + MapLibre GL SPAs — public site + admin authoring app (bun workspace).
+- **I18n:** support at least Japanese, English, and Chinese; Japanese is the primary/default
+  near-term language while the author is in Japan.
 - **Host:** Raspberry Pi (docker-compose) behind a **Cloudflare Tunnel** (no open ports).
 - **Ingestion sources (self-hosted):** Immich (photos/ticket stubs, via API) + Dawarich
   (passive iPhone GPS track, via API); joined on timestamp. Vision-LLM (Claude) pre-fills

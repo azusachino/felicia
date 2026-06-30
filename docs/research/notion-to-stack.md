@@ -19,7 +19,7 @@ map-indexed, stub-rendered, animated scrapbook — stays unproven.
 ## Step 1 — the moat spike (the real first build)
 
 The smallest thing that tests what Notion *can't*, now as a web MVP: Svelte + TypeScript UI,
-Tailwind styling, and Mapbox GL for the map. This keeps the liuaaron-shaped front-of-house
+Tailwind styling, and MapLibre GL for the map. This keeps the liuaaron-shaped front-of-house
 from the [teardown](liuaaron-teardown.md):
 
 - **One trip**, real content, pulled from Notion (export JSON or the API — see below).

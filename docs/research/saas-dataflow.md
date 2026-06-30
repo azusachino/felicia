@@ -12,8 +12,9 @@
 > shape; the stub-creation step (3) just accepts more sources (Wallet `.pkpass`, email,
 > goods-photo + vision-LLM) behind the *same seam*, and `TICKET` below is now `MEMENTO`.
 
-> **Updated 2026-06-23:** the active MVP UI stack is **Svelte + TypeScript + Tailwind** with
-> Mapbox GL. There is no desktop plan yet.
+> **Updated 2026-06-23:** the active MVP UI stack is **Svelte + TypeScript + Tailwind**.
+> **Updated 2026-07-01:** the map renderer is **MapLibre GL** for token-free OSS local demos.
+> There is no desktop plan yet.
 
 ## The reframe in one line
 

@@ -37,7 +37,7 @@ path:
 ### Leading candidate for what ships first: the web moat MVP
 
 Exploring the SaaS angle produced a useful simplification, but the lowest-regret MVP is now
-a **web moat spike**: Svelte + TypeScript + Tailwind, with Mapbox GL for the dark route map.
+a **web moat spike**: Svelte + TypeScript + Tailwind, with MapLibre GL for the dark route map.
 The app reads one real trip, renders one designed memento stub, and opens it into an essay +
 gallery. No passive Immich/Dawarich pipeline. The user is still the joiner: trip content can
 come from the Notion sandbox, one GPX/GeoJSON route, and local/R2-backed images. Full sketch:
@@ -71,9 +71,11 @@ them. Detail in [`archive/design.md`](archive/design.md).
 - **Model:** Journey → Memento → {essay, extra photos, open-animation}; the memento is the
   click target. `kind` (ticket · goods · receipt · souvenir · stamp · …) selects the stub
   form. (Was "Ticket"; generalized 2026-06-14 — see mementos-not-tickets.)
-- **Stack leaning:** MVP UI in Svelte + TypeScript + Tailwind, Mapbox GL for the map, and Go
+- **Stack leaning:** MVP UI in Svelte + TypeScript + Tailwind, MapLibre GL for the map, and Go
   (CLI importer + API), Postgres + PostGIS, S3-compatible storage when the data layer
   graduates past the spike.
+- **Language leaning:** i18n is part of the product shape from the MVP: Japanese, English,
+  and Chinese at minimum, with Japanese as the primary/default near-term language.
 
 ## Open research questions
 
@@ -85,6 +87,8 @@ them. Detail in [`archive/design.md`](archive/design.md).
   stub is the bonus), per mementos-not-tickets. Still open: *which* `kind` forms ship first
   and how much design each earns.
 - **Ticket-open animation** — flip vs. shared-element morph vs. tear/unfold; prototype later.
+- **I18n shape** — how much of the first demo/spec is translated vs. just architected for
+  Japanese/English/Chinese; Japanese should be the primary review path.
 
 ## How we move
 

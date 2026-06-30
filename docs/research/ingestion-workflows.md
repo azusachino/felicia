@@ -9,7 +9,7 @@
 > five concrete end-to-end workflows so you can feel the trade-offs before we commit.
 
 Reference look we're rebuilding: [`liuaaron-desktop.png`](./liuaaron-desktop.png) — dark
-Mapbox map, orange route line, ticket-stub cards.
+map, orange route line, ticket-stub cards.
 
 ---
 
@@ -31,7 +31,7 @@ flowchart LR
   end
 
   API["Go API\nwhen persistence graduates"]
-  SPA["Svelte map view\nMapbox"]
+  SPA["Svelte map view\nMapLibre"]
 
   PHOTOS --> IMP
   TRACK --> IMP
