@@ -32,18 +32,221 @@ button {
   cursor: pointer;
 }
 
+/* Theme tokens: dark is default; .theme-light overrides. The warm paper stubs
+   (ticket / stamp / goods faces) are physical objects and stay warm in both. */
+.app-shell {
+  --bg: #09090b;
+  --text: #fafafa;
+  --text-soft: #d4d4d8;
+  --muted: #a1a1aa;
+  --faint: #71717a;
+  --border: rgba(255, 255, 255, 0.1);
+  --hover: rgba(255, 255, 255, 0.04);
+  --card: rgba(255, 255, 255, 0.04);
+  --chip-bg: #18181b;
+  --chip-border: #52525b;
+  --accent-ink: #fdba74;
+  --ctrl-bg: rgba(15, 23, 42, 0.82);
+  --ctrl-invert: 1;
+}
+
+.app-shell.theme-light {
+  --bg: #f7f5f0;
+  --text: #1c1917;
+  --text-soft: #292524;
+  --muted: #57534e;
+  --faint: #78716c;
+  --border: rgba(0, 0, 0, 0.1);
+  --hover: rgba(0, 0, 0, 0.035);
+  --card: rgba(0, 0, 0, 0.03);
+  --chip-bg: #ffffff;
+  --chip-border: #d6d3d1;
+  --accent-ink: #ea580c;
+  --ctrl-bg: rgba(255, 255, 255, 0.92);
+  --ctrl-invert: 0;
+}
+
 .maplibregl-ctrl-group {
-  background: rgba(15, 23, 42, 0.82) !important;
-  border: 1px solid rgba(148, 163, 184, 0.2) !important;
+  background: var(--ctrl-bg) !important;
+  border: 1px solid var(--border) !important;
 }
 
 .maplibregl-ctrl button {
-  filter: invert(1);
+  filter: invert(var(--ctrl-invert));
 }
 
 .app-shell {
-  @apply grid h-full grid-cols-[minmax(0,1fr)_420px] bg-zinc-950 text-zinc-50;
+  @apply grid h-full grid-cols-[320px_minmax(0,1fr)_420px];
+  background: var(--bg);
+  color: var(--text);
 }
+
+/* Index rail --------------------------------------------------------------- */
+
+.index-rail {
+  @apply flex flex-col gap-4 overflow-y-auto px-5 py-6;
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+}
+
+.rail-toolbar {
+  @apply flex items-center justify-between gap-2;
+}
+
+.lang-switch {
+  @apply flex rounded-md p-0.5;
+  border: 1px solid var(--border);
+}
+
+.lang-switch button {
+  @apply rounded px-2.5 py-1 text-xs font-semibold;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+}
+
+.lang-switch button.active {
+  @apply bg-orange-400 text-zinc-950;
+}
+
+.theme-toggle {
+  @apply flex h-8 w-8 items-center justify-center rounded-md text-sm;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border);
+}
+
+.theme-toggle:hover {
+  background: var(--hover);
+}
+
+.eyebrow {
+  @apply m-0 text-[0.68rem] font-semibold uppercase tracking-[0.18em];
+  color: var(--accent-ink);
+}
+
+.rail-head {
+  @apply flex flex-col gap-2 pb-4;
+  border-bottom: 1px solid var(--border);
+}
+
+.rail-head-row {
+  @apply flex items-center justify-between gap-2;
+}
+
+.rail-head h1 {
+  @apply m-0 text-lg font-semibold leading-tight;
+  color: var(--text);
+}
+
+.all-btn {
+  @apply rounded-md px-2.5 py-1 text-xs font-semibold;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--border);
+}
+
+.all-btn:hover {
+  background: var(--hover);
+}
+
+.journey-list {
+  @apply m-0 flex list-none flex-col gap-2 p-0;
+}
+
+.journey-item {
+  @apply flex w-full flex-col gap-0.5 rounded-lg p-3 text-left transition;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.journey-item:hover {
+  background: var(--hover);
+  border-color: var(--border);
+}
+
+.journey-item.active {
+  @apply bg-orange-400/10;
+  border-color: rgba(253, 186, 116, 0.6);
+}
+
+.journey-item-title {
+  @apply text-sm font-semibold;
+  color: var(--text);
+}
+
+.journey-item-meta {
+  @apply text-xs;
+  color: var(--muted);
+}
+
+.journey-item-count {
+  @apply mt-0.5 text-[0.68rem] font-bold uppercase tracking-[0.16em];
+  color: var(--faint);
+}
+
+.timeline {
+  @apply m-0 mt-2 mb-1 flex list-none flex-col gap-2 p-0 pl-3;
+  margin-left: 1.1rem;
+  border-left: 1px solid var(--border);
+}
+
+.timeline-item {
+  @apply flex w-full items-start gap-3 rounded-lg p-3 text-left transition;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.timeline-item:hover {
+  background: var(--hover);
+  border-color: var(--border);
+}
+
+.timeline-item.active {
+  @apply bg-orange-400/10;
+  border-color: rgba(253, 186, 116, 0.6);
+}
+
+.timeline-glyph {
+  @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sm font-black;
+  background: var(--chip-bg);
+  border: 2px solid var(--chip-border);
+  color: var(--text);
+}
+
+.timeline-glyph--transit {
+  @apply rounded-full;
+}
+
+.timeline-glyph--stamp {
+  border-color: rgba(248, 113, 113, 0.7);
+  color: #ef4444;
+}
+
+.timeline-item.active .timeline-glyph {
+  @apply border-orange-300 bg-orange-400 text-zinc-950;
+}
+
+.timeline-body {
+  @apply flex min-w-0 flex-col gap-0.5;
+}
+
+.timeline-date {
+  @apply text-xs font-semibold tracking-wide;
+  color: var(--accent-ink);
+}
+
+.timeline-body strong {
+  @apply truncate text-sm font-semibold;
+  color: var(--text);
+}
+
+.timeline-place {
+  @apply truncate text-xs;
+  color: var(--faint);
+}
+
+/* Map --------------------------------------------------------------------- */
 
 .map-stage {
   @apply relative overflow-hidden;
@@ -53,65 +256,15 @@ button {
   @apply absolute inset-0;
 }
 
-.topbar {
-  @apply absolute left-5 top-5 z-10 flex max-w-[calc(100%-2.5rem)] items-start gap-6 rounded-lg border border-white/10 bg-zinc-950/80 px-5 py-4 shadow-2xl backdrop-blur;
+/* Detail panel ------------------------------------------------------------ */
+
+.detail-panel {
+  @apply relative z-20 overflow-y-auto px-6 py-6 shadow-2xl;
+  background: var(--bg);
+  border-left: 1px solid var(--border);
 }
 
-.eyebrow {
-  @apply m-0 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-orange-300;
-}
-
-.topbar h1,
-.section-head h2 {
-  @apply m-0 text-2xl font-semibold tracking-normal text-white;
-}
-
-.trip-stat {
-  @apply ml-auto flex min-w-40 flex-col items-end gap-1 text-sm text-zinc-400;
-}
-
-.trip-stat strong {
-  @apply text-white;
-}
-
-.mode-switch {
-  @apply absolute left-5 top-28 z-10 flex rounded-lg border border-white/10 bg-zinc-950/80 p-1 shadow-xl backdrop-blur;
-}
-
-.mode-switch button {
-  @apply rounded-md border-0 bg-transparent px-3 py-2 text-sm font-semibold text-zinc-400 transition;
-}
-
-.mode-switch button.active,
-.mode-switch button:hover {
-  @apply bg-orange-400 text-zinc-950;
-}
-
-.priority-strip {
-  @apply absolute bottom-5 left-5 right-5 z-10 grid grid-cols-3 gap-3;
-}
-
-.priority-strip article {
-  @apply flex min-h-24 gap-3 rounded-lg border border-white/10 bg-zinc-950/82 p-4 shadow-2xl backdrop-blur;
-}
-
-.priority-strip span {
-  @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-400 text-sm font-bold text-zinc-950;
-}
-
-.priority-strip strong {
-  @apply block text-sm text-white;
-}
-
-.priority-strip p {
-  @apply m-0 mt-1 text-sm leading-5 text-zinc-400;
-}
-
-.decision-panel {
-  @apply relative z-20 overflow-y-auto border-l border-white/10 bg-zinc-950 px-6 py-6 shadow-2xl;
-}
-
-.panel-section {
+.detail-inner {
   @apply flex min-h-full flex-col gap-5;
 }
 
@@ -119,8 +272,16 @@ button {
   @apply flex flex-col gap-2;
 }
 
+.section-head h2 {
+  @apply m-0 text-2xl font-semibold tracking-normal;
+  color: var(--text);
+}
+
+/* Paper stubs (warm in both themes) --------------------------------------- */
+
 .stub-card {
-  @apply relative w-full overflow-hidden rounded-lg border-0 p-0 text-left shadow-2xl transition;
+  @apply relative w-full overflow-hidden rounded-lg p-0 text-left shadow-2xl transition;
+  border: 0;
 }
 
 .stub-card:hover {
@@ -147,7 +308,26 @@ button {
 }
 
 .station-pair {
-  @apply my-7 flex items-center justify-between gap-3 text-4xl font-black;
+  @apply my-7 flex items-center gap-2 text-3xl font-black leading-tight;
+}
+
+/* Stations share the row evenly and wrap rather than overflow the ticket —
+   English names (Kumamoto, Sapporo) are far longer than the JP kanji. */
+.station-pair span {
+  @apply min-w-0 flex-1;
+  overflow-wrap: anywhere;
+}
+
+.station-pair span:first-child {
+  @apply text-left;
+}
+
+.station-pair span:last-child {
+  @apply text-right;
+}
+
+.station-pair b {
+  @apply flex-none;
 }
 
 .ticket-meta {
@@ -156,6 +336,7 @@ button {
 
 .goods-face {
   background: linear-gradient(135deg, #fef3c7, #fb7185 48%, #7c3aed);
+  color: #241203;
 }
 
 .goods-face span,
@@ -182,20 +363,28 @@ button {
   @apply border-y-4 border-red-700 py-5 text-center text-red-800;
 }
 
+/* Essay + gallery --------------------------------------------------------- */
+
 .essay {
-  @apply rounded-lg border border-white/10 bg-white/[0.04] p-5;
+  @apply rounded-lg p-5;
+  background: var(--card);
+  border: 1px solid var(--border);
 }
 
 .essay span {
-  @apply text-xs font-bold uppercase tracking-[0.18em] text-zinc-500;
+  @apply text-xs font-bold uppercase tracking-[0.18em];
+  color: var(--faint);
 }
 
 .essay p {
-  @apply m-0 mt-3 text-base leading-7 text-zinc-300;
+  @apply m-0 mt-3 text-base leading-7;
+  color: var(--text-soft);
 }
 
 .gallery figure {
-  @apply m-0 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04];
+  @apply m-0 overflow-hidden rounded-lg;
+  background: var(--card);
+  border: 1px solid var(--border);
 }
 
 .gallery img {
@@ -203,86 +392,11 @@ button {
 }
 
 .gallery figcaption {
-  @apply px-4 py-3 text-sm text-zinc-400;
+  @apply px-4 py-3 text-sm;
+  color: var(--muted);
 }
 
-.memento-list,
-.queue-list {
-  @apply flex flex-col gap-3;
-}
-
-.memento-list button,
-.queue-item {
-  @apply rounded-lg border border-white/10 bg-white/[0.04] p-4 text-left transition;
-}
-
-.memento-list button.active,
-.memento-list button:hover {
-  @apply border-orange-300 bg-orange-400/10;
-}
-
-.memento-list span,
-.queue-item span {
-  @apply text-xs font-bold uppercase tracking-[0.16em] text-orange-300;
-}
-
-.memento-list strong,
-.queue-item strong {
-  @apply mt-1 block text-white;
-}
-
-.queue-item {
-  @apply flex flex-col gap-3;
-}
-
-.queue-item p {
-  @apply m-0 text-sm text-zinc-500;
-}
-
-.queue-item meter {
-  @apply h-2 w-full;
-}
-
-.queue-actions {
-  @apply grid grid-cols-3 gap-2;
-}
-
-.queue-actions button {
-  @apply rounded-md border border-white/10 bg-transparent px-3 py-2 text-sm font-semibold text-zinc-400;
-}
-
-.queue-actions button.selected {
-  @apply border-orange-300 bg-orange-400 text-zinc-950;
-}
-
-.creator-card {
-  @apply flex flex-col gap-4 rounded-lg border border-white/10 bg-white/[0.04] p-5;
-}
-
-.creator-card label {
-  @apply flex flex-col gap-2 text-sm font-semibold text-zinc-400;
-}
-
-.creator-card input,
-.creator-card select {
-  @apply rounded-md border border-white/10 bg-zinc-900 px-3 py-3 text-white outline-none;
-}
-
-.creator-grid {
-  @apply grid grid-cols-2 gap-3;
-}
-
-.creator-card button {
-  @apply rounded-md border-0 bg-orange-400 px-4 py-3 font-bold text-zinc-950;
-}
-
-.roadmap-note {
-  @apply rounded-lg border border-orange-300/30 bg-orange-400/10 p-5 text-zinc-300;
-}
-
-.roadmap-note p {
-  @apply mb-0 leading-6;
-}
+/* Map markers (read on both dark + light tiles) --------------------------- */
 
 .map-marker {
   @apply flex h-10 w-10 items-center justify-center rounded-md border-2 border-zinc-400 bg-zinc-950/90 text-sm font-black text-zinc-200 shadow-xl transition;
@@ -302,7 +416,7 @@ button {
   @apply border-red-300;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   body {
     overflow: auto;
   }
@@ -311,24 +425,17 @@ button {
     @apply block h-auto min-h-full;
   }
 
+  .index-rail {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
   .map-stage {
     @apply h-[62vh] min-h-[520px];
   }
 
-  .decision-panel {
-    @apply border-l-0 border-t;
-  }
-
-  .priority-strip {
-    @apply grid-cols-1;
-  }
-
-  .topbar,
-  .mode-switch {
-    @apply left-3 right-3;
-  }
-
-  .mode-switch {
-    @apply top-24;
+  .detail-panel {
+    border-left: 0;
+    border-top: 1px solid var(--border);
   }
 }
