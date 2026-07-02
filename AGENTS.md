@@ -73,7 +73,7 @@ All daily operations go through `make <target>`. **Tools:** runtimes (go, bun) f
 - `docs/direction.md` — research-stage north star: the idea + *personal-now / product-ready* direction.
 - `docs/research/` — exploration trail (workflows, liuaaron teardown, product-vs-personal,
   mementos-not-tickets, notion-prototype, notion-to-stack, source-connectors, transit-tickets,
-  authoring-publish-flow).
+  authoring-publish-flow, ux-restyle).
 - `docs/archive/` — parked design/spec/plan drafts (premature lock-in); detail, not binding.
 - asobi graph `felicia:*` — decisions (ADRs), session state. Run `asobi` commands.
 
