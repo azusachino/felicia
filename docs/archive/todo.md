@@ -1,10 +1,11 @@
 # TODO — felicia
 
-Durable task state lives in rosemary (`/rosemary tasks`). This is a lightweight mirror.
+Durable task state lives in asobi (`asobi` tasks). This is a lightweight mirror.
 
 ## In progress
 
-- (research/spec phase wrapping up)
+- **M0 spec freeze** (plan.md): review PROPOSED items in `spec-gaps.md` → execute
+  fold-in checklist → module re-init + package skeleton.
 
 ## Blocked
 
@@ -22,5 +23,6 @@ Durable task state lives in rosemary (`/rosemary tasks`). This is a lightweight 
 
 ## Next (when TDD phase begins)
 
-- First failing tests per `importer-spec.md` §11 (gpx/simplify → EXIF → cluster → OCR map →
-  no-clobber upsert → Immich client → sync golden).
+- First failing tests per `plan.md` M1 order (gpx → simplify → gap-split → EXIF → tz →
+  cluster → snap-to-track → anchoring → OCR map → photo-trail → three-class no-clobber →
+  zero-diff idempotency).

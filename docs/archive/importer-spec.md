@@ -5,6 +5,9 @@
 > (no-clobber rule) there. Go signatures below are *sketches to pin shapes*, not final code.
 >
 > Status: **spec** — review before we write the first failing tests.
+> **Amendments pending fold-in:** [`spec-gaps.md`](spec-gaps.md) resolves every known
+> underspecified point (field classes, tz, snapping, OCR contract, YAML schema, …) and
+> wins over this file where they disagree, until spec freeze merges them.
 
 ---
 
@@ -124,7 +127,7 @@ type Journey struct {
     Region    string
     DateStart civil.Date
     DateEnd   civil.Date
-    Route     geo.LineString // INGESTED (orange line)
+    Route     geo.MultiLineString // INGESTED — segments split on time/distance gaps (spec-gaps B2)
 }
 
 type Waypoint struct {
@@ -144,8 +147,8 @@ type Ticket struct {
     StubImage  ImageRef       // INGESTED
     Vendor     string         // INGESTED (OCR)
     Price      *Money         // INGESTED (OCR)
-    OccurredAt time.Time      // INGESTED (EXIF)
-    Location   geo.Point      // INGESTED (EXIF)
+    OccurredAt time.Time      // INGESTED (OCR datetime > EXIF — §9)
+    Location   geo.Point      // INGESTED (route-snap at OccurredAt > EXIF — §9)
     Title      string         // AUTHORED
     Essay      string         // AUTHORED (markdown)
     Animation  Animation      // AUTHORED
@@ -241,20 +244,32 @@ flowchart TD
 
 Match existing rows by **`SourceRef`** (ingested) or `Slug` (journey).
 
-- **Insert** (no match): write all fields; authored fields take their defaults (empty
-  essay/title, default animation).
-- **Update** (match): write **only INGESTED fields** (§4 tags). **Never** write
-  `Title`, `Essay`, `Animation`, `Summary`, photo `Caption`/`Seq`/selection.
+Fields come in **three classes** (not two — see [`spec-gaps.md`](spec-gaps.md) B1; the
+old ingested/authored split couldn't express "OCR pre-fill that a human may correct"):
+
+| Class | Importer | Admin UI | Examples |
+| --- | --- | --- | --- |
+| **INGESTED** | always writes | read-only | route, stub_image, source_ref, taken_at, location |
+| **OVERRIDABLE** | writes until human edits | editable | ticket type/vendor/price/occurred_at, waypoint name, ticket seq, journey country/region/dates |
+| **AUTHORED** | never writes | owns | title, essay, summary, animation, captions, photo selection/order |
+
+- **Insert** (no match): write all INGESTED + OVERRIDABLE fields; AUTHORED fields take
+  defaults (empty essay/title, default animation).
+- **Update** (match): write INGESTED fields; write an OVERRIDABLE field only if its name
+  is **not** in the row's `authored_fields text[]` (appended by the admin API whenever a
+  human edits that field). **Never** write AUTHORED fields.
 - **Deletion policy (v1):** assets removed from the source are **not** deleted from the DB
   (conservative — avoids nuking an authored entry behind a since-deleted Immich asset).
-  Flag as `orphaned` for admin review instead. *(revisit later)*
+  Set `orphaned_at` for admin review; clear it if the asset reappears. *(revisit later)*
 
-The `Patch` types encode this structurally: a `TicketPatch` simply **has no** `Essay`/
-`Title`/`Animation` fields, so the upsert *cannot* touch them. The invariant is enforced by
-the type, not by discipline.
+The `Patch` types encode the AUTHORED ban structurally: a `TicketPatch` simply **has no**
+`Essay`/`Title`/`Animation` fields, so the upsert *cannot* touch them. The OVERRIDABLE
+filter is enforced in the repository against `authored_fields` — one code path, both impls
+(`pg`, `memrepo`).
 
-**Canonical test:** import → set an essay (simulated admin write) → re-import → essay
-unchanged, ingested fields refreshed.
+**Canonical test:** import → set an essay AND correct an OCR'd `vendor` (simulated admin
+writes) → re-import with changed source data → essay and vendor unchanged, untouched
+ingested fields refreshed.
 
 ---
 
@@ -279,6 +294,11 @@ unchanged, ingested fields refreshed.
 - **Waypoints:** cluster ticket+photo points within `cluster_radius_m`; a cluster is a stop
   only if dwell ≥ `cluster_min_dwell_min`. Name via reverse-geocode (Immich-provided
   city/country first; geocoder fallback later).
+- **Ticket time/place precedence (design §8):** stub photos may be captured long after the
+  event (hotel/home batch), so photo EXIF can lie about both. `occurred_at` = OCR-extracted
+  datetime when parseable, else EXIF. `location` = nearest route point at `occurred_at`
+  (snap-to-route) when a track covers that time, else EXIF. Both pure functions — test
+  targets alongside §11.
 
 ---
 

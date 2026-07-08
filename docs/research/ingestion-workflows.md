@@ -3,13 +3,13 @@
 > The question this doc helps you answer: **"After a trip, what do *I* actually do to
 > get it onto the map — and what does the system do for me?"**
 >
-> Everything downstream (the Go API, Postgres/PostGIS, the SPA map) is the same in every
-> approach. What differs is the **ingestion path**: where the route comes from, where
-> photos/tickets come from, and how much typing you do. This doc lays out five concrete
-> end-to-end workflows so you can feel the trade-offs before we commit.
+> Everything downstream (the web app, map renderer, and eventual Go/Postgres persistence)
+> is the same in every approach. What differs is the **ingestion path**: where the route
+> comes from, where photos/mementos come from, and how much typing you do. This doc lays out
+> five concrete end-to-end workflows so you can feel the trade-offs before we commit.
 
 Reference look we're rebuilding: [`liuaaron-desktop.png`](./liuaaron-desktop.png) — dark
-Mapbox map, orange route line, ticket-stub cards.
+map, orange route line, ticket-stub cards.
 
 ---
 
@@ -18,7 +18,7 @@ Mapbox map, orange route line, ticket-stub cards.
 ```mermaid
 flowchart LR
   subgraph SOURCES["sources (vary by approach)"]
-    PHOTOS["photos + ticket stubs"]
+    PHOTOS["photos + memento stubs"]
     TRACK["GPS route"]
     META["trip metadata\nname / dates / notes"]
   end
@@ -30,8 +30,8 @@ flowchart LR
     OBJ[["object storage\nresized, EXIF-stripped images"]]
   end
 
-  API["Go API"]
-  SPA["SPA map\n(Vite + Mapbox)"]
+  API["Go API\nwhen persistence graduates"]
+  SPA["Svelte map view\nMapLibre"]
 
   PHOTOS --> IMP
   TRACK --> IMP
@@ -87,7 +87,7 @@ sequenceDiagram
   Note over You,Phone: during the trip — passive, no effort
   Phone->>Dawarich: stream GPS points (significant-change)
   Phone->>Immich: auto-upload photos (geotagged)
-  You->>Immich: make album + ⭐ ticket photos
+  You->>Immich: make album + ⭐ memento photos
   Note over You,Store: after the trip — two commands
   You->>CLI: sync --immich-album "Jeju 2026"
   CLI->>Immich: GET album assets + EXIF
@@ -197,26 +197,26 @@ flowchart TD
 
 ---
 
-## Approach E — Admin web UI (no files, DB-first)
+## Approach E — Web authoring UI (no files, DB-first)
 
-**Bundle:** A browser admin app: log in, create a trip, drag-drop GPX + ticket images,
+**Bundle:** a Svelte authoring app: log in, create a trip, drag-drop GPX + memento images,
 fill metadata in forms. The DB is the source of truth; no content repo.
 
 ### What *you* do per trip
 
-1. Open the admin site, log in.
+1. Open the web app and log in.
 2. Create trip; drag-drop GPX and images; type metadata in forms; save.
 
 ```mermaid
 sequenceDiagram
   actor You
-  participant UI as Admin SPA
+  participant UI as Web UI
   participant API as Go API
   participant Store as Postgres + object store
   You->>UI: log in
-  You->>UI: create trip, drag-drop GPX + ticket images
+  You->>UI: create trip, drag-drop GPX + memento images
   You->>UI: fill type/vendor/price forms
-  UI->>API: POST trip / upload images / create tickets
+  UI->>API: POST trip / upload images / create mementos
   API->>Store: persist
 ```
 

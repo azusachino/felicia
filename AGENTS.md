@@ -6,20 +6,25 @@ Single source of truth for humans and agents working in this repo.
 
 **felicia** is a map-based travel journal (modeled on [liuaaron.com](https://liuaaron.com/),
 "Aaron's Waypoints"). Each **journey** is drawn on a dark world map as an orange route line;
-along it sit **ticket stubs** (receipts, transit passes, admission tickets). Clicking a ticket
-animates it open into an **essay** and a **photo gallery**. The map is the index; the tickets
-are the stories.
+along it sit **mementos** — the objects that anchor a memory (an admission ticket, but equally
+a souvenir, a goods, a receipt, a stamp), each rendered as a collectible **stub**. Clicking a
+memento animates it open into an **essay** and a **photo gallery**. The map is the index; the
+mementos are the stories. (`kind`-tagged; physical tickets are dying, so stubs are rendered
+from data — see `docs/research/mementos-not-tickets.md`.)
 
-Full design: [`docs/design.md`](docs/design.md). Importer spec:
-[`docs/importer-spec.md`](docs/importer-spec.md). Status: **design/spec phase** — flow is
-design → spec → TDD → implementation, unhurried (~6-month horizon).
+North star: [`docs/direction.md`](docs/direction.md) (direction: *personal now,
+product-ready*). Earlier design/spec drafts are parked in [`docs/archive/`](docs/archive/).
+Status: **research stage** — flow is research → spec → TDD → implementation, unhurried
+(~6-month horizon).
 
 ## Tech Stack & Architecture
 
 - **Backend:** Go 1.26 — a `waypoints` ingestion CLI + an HTTP API server.
 - **DB:** Postgres + PostGIS (relational + geo; canonical source of truth).
 - **Object storage:** S3-compatible interface; **R2** backend (MinIO/B2 swappable by config).
-- **Frontend:** Vite + Mapbox GL SPAs — public site + admin authoring app (bun workspace).
+- **Frontend:** Vite + MapLibre GL SPAs — public site + admin authoring app (bun workspace).
+- **I18n:** support at least Japanese, English, and Chinese; Japanese is the primary/default
+  near-term language while the author is in Japan.
 - **Host:** Raspberry Pi (docker-compose) behind a **Cloudflare Tunnel** (no open ports).
 - **Ingestion sources (self-hosted):** Immich (photos/ticket stubs, via API) + Dawarich
   (passive iPhone GPS track, via API); joined on timestamp. Vision-LLM (Claude) pre-fills
@@ -65,10 +70,13 @@ All daily operations go through `make <target>`. **Tools:** runtimes (go, bun) f
 
 ## Key Files & Entry Points
 
-- `docs/design.md` — current design (data model, ingestion loop, source-of-truth rule).
-- `docs/importer-spec.md` — `waypoints` CLI contract + first failing-test plan.
-- `docs/research/` — exploration trail (workflow comparison, reference screenshots).
-- rosemary graph `felicia:*` — decisions (ADRs), session state. Run `/rosemary start`.
+- `docs/direction.md` — research-stage north star: the idea + *personal-now / product-ready* direction.
+- `docs/research/` — exploration trail (workflows, liuaaron teardown, product-vs-personal,
+  mementos-not-tickets, notion-prototype, notion-to-stack, source-connectors, transit-tickets,
+  authoring-publish-flow, ux-restyle, memento-arrangement, reader-admin-surfaces,
+  adventurelog teardown).
+- `docs/archive/` — parked design/spec/plan drafts (premature lock-in); detail, not binding.
+- asobi graph `felicia:*` — decisions (ADRs), session state. Run `asobi` commands.
 
 ## Quality Standards
 

@@ -1,33 +1,60 @@
 # Setup — felicia
 
-> Design/spec phase: there is no application code yet. This describes the toolchain so the
-> skeleton builds and is ready for the TDD phase.
+> For collaborators. **Stage: research** — there's no application code yet, so this is the
+> toolchain you need to build docs, run the (skipped-until-it-exists) gate, and be ready
+> when the first Go package lands. North star: [`direction.md`](direction.md).
 
 ## Prerequisites
 
-- **mise** — provides runtimes. `mise install` (reads `mise.toml`: go 1.26, bun 1.3).
-- **nix** (flakes enabled) — provides system tools. `nix develop` enters a shell with
-  golangci-lint, goose, postgresql/postgis. Or rely on `make`, which wraps nix tools via
-  `NIX_RUN` automatically.
+- **mise** — language runtimes. `mise install` reads `mise.toml` (go 1.26, bun 1.3) and
+  shims them onto `PATH`. Use mise for runtimes *only*.
+- **nix** (flakes enabled) — system tools. `nix develop` enters a shell with
+  golangci-lint, goose, and **Postgres 18 + PostGIS**. You usually don't need to enter it
+  manually: `make` wraps nix tools via `NIX_RUN` automatically.
+- **uv** — used only for the docs preview (isolated Python env; never touches Go/bun).
 
 ## Common commands
 
 ```bash
-mise install        # runtimes
+mise install        # runtimes (go, bun)
 nix develop         # optional: enter the system-tool shell
 make help           # list targets
-make check          # fmt + vet + lint + test   (before commit)
-make validate       # check + build             (before PR)
+make docs           # live-preview the docs (see below)
+make check          # fmt + vet + lint + test   — before commit (no-ops until Go exists)
+make validate       # check + build             — before PR
 ```
 
-## Configuration (when implementation starts)
+`make check` / `make validate` skip all Go targets cleanly while the tree has no `.go`
+files, so the gate is green during the research stage.
 
-- Copy `.env.example` → `.env` (gitignored). Secrets via env only:
-  `DATABASE_DSN`, `WAYPOINTS_IMMICH_API_KEY`, `WAYPOINTS_DAWARICH_API_KEY`,
-  `ANTHROPIC_API_KEY`, storage credentials.
-- Non-secret settings in `waypoints.toml` (see `docs/importer-spec.md` §3).
+## Preview the docs
+
+```bash
+make docs           # serves on 0.0.0.0:8000 (MkDocs Material, live-reload)
+```
+
+Working over SSH? Forward the port from your machine, then open `http://localhost:8000`:
+
+```bash
+ssh -L 8000:localhost:8000 <host>
+```
+
+`make docs-build` writes the static site to `./site` (gitignored).
 
 ## Database (when implementation starts)
 
-- Postgres + PostGIS (local via the nix shell, or a container from `deploy/`).
+- **Postgres 18 + PostGIS** — locally via the nix shell, or a container from `deploy/`.
 - `make migrate` applies `migrations/` with goose (needs `DATABASE_DSN`).
+
+## Configuration (when implementation starts)
+
+- Copy `.env.example` → `.env` (gitignored). **Secrets via env only**: `DATABASE_DSN`,
+  `WAYPOINTS_IMMICH_API_KEY`, `WAYPOINTS_DAWARICH_API_KEY`, `ANTHROPIC_API_KEY`, storage
+  credentials.
+- Non-secret settings live in `waypoints.toml`.
+
+## Conventions
+
+Conventional commits (`feat:`/`fix:`/`chore:`/`deploy:`, no emojis); 2-space indent for
+config files. `make check` before commits, `make validate` before PRs — both hook-enforced,
+no `--no-verify`. Full rules: [`AGENTS.md`](https://github.com/) and `.claude/rules/`.

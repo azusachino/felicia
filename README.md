@@ -1,21 +1,173 @@
-# felicia
+<div align="center">
 
-Felicia（フェリシア）— 琉璃雏菊（蓝费莉菊）
+# 🌼 felicia
 
-A map-based travel journal — a personal site where each journey is drawn on a dark world map
-as an orange route line, with collected **ticket stubs** as the stories along the way. Click
-a ticket and it animates open into an essay and a gallery of photos.
+**フェリシア** — 琉璃雏菊（蓝费莉菊）
 
-Modeled on [liuaaron.com](https://liuaaron.com/) ("Aaron's Waypoints").
+*A map-based travel journal. The map is the index; the mementos are the stories.*
 
-## Design
+Each **journey** is drawn on a world map as an orange route line. Along it sit **mementos** —
+the little things that anchor a memory (a train ticket, a temple stamp, a plush, a receipt) —
+each a collectible **stub** that animates open into an essay and a photo gallery.
 
-See [`docs/design.md`](docs/design.md) for the current design (architecture, data model,
-ingestion loop) and [`docs/importer-spec.md`](docs/importer-spec.md) for the `waypoints`
-importer spec. Exploration notes: [`docs/research/`](docs/research/).
+Modeled on [liuaaron.com](https://liuaaron.com/) · *"Aaron's Waypoints."*
 
-**Stack:** Go API + Postgres/PostGIS, Vite + Mapbox SPA, S3-compatible object storage (R2),
-self-hosted on a Raspberry Pi behind a Cloudflare Tunnel. Ingestion pulls from self-hosted
-Immich (photos) + Dawarich (GPS track).
+<br/>
 
-Status: **design/spec phase** — implementation follows a design → spec → TDD flow.
+![status](https://img.shields.io/badge/status-research%20stage-e8a33d)
+![web](https://img.shields.io/badge/web-Svelte%205%20%C2%B7%20Vite%20%C2%B7%20MapLibre-ff3e00)
+![backend](https://img.shields.io/badge/backend-Go%20%C2%B7%20Postgres%2FPostGIS%20(designed)-00add8)
+![i18n](https://img.shields.io/badge/i18n-日本語%20%C2%B7%20EN%20%C2%B7%20中文-6b8e23)
+[![license](https://img.shields.io/badge/license-AGPL--3.0-3da639)](LICENSE)
+
+</div>
+
+---
+
+## ✨ The idea
+
+- 🗺️ **The map is the index.** One glance says *everywhere I've been* and *which trip to revisit*. You navigate spatially, not through a feed.
+- 🎫 **Mementos, not tickets.** Physical stubs are dying, so a memento is `kind`-tagged (`ticket · transit · goods · stamp · receipt · souvenir`) and rendered from **data**, template-first — not scanned.
+- 📍 **A place is a *visit*.** Following how [Dawarich](https://github.com/Freika/dawarich) and Google Timeline model location (`points → tracks → visits @ places → trips`), a *place* is a dwell-time **visit** derived from your track. Several memories can stack at one place.
+- ✍️ **Auto-ingest, then author.** A pipeline seeds *ingested* fields (track, photos, stubs); you author the *essay, curation, and animation*. Re-import is field-scoped and **never clobbers** what you wrote.
+- 🌏 **Japanese-first**, with English and Chinese alongside.
+
+## 🚪 Three front doors, one contract
+
+The web demo renders the **same** `{ journey, visit, memento }` fixtures three ways — proof the data contract is presentation-agnostic. Flip between them with the on-screen switcher (deep-linkable).
+
+| | Front door | Route | What it is |
+|---|---|---|---|
+| 🗺️ | **v1 — Map reader** | `/` | liuaaron-aligned: journey rail → dark MapLibre map → paper detail. *The default.* |
+| 🗄️ | **v2 — Collection** | `#collection` | Memento-first shelf; a "greatest-hits" browse across every trip. |
+| 📓 | **v3 — Techo (手帳)** | `#techo` | Warm paper notebook: a journal-index spread, then the trip on a real map with mementos clustered by **place/visit** — open a place to read its memories. |
+
+> These are **fixture-only** demos (no backend yet) that de-risk the front door and the data model before implementation.
+
+## 🏗️ Architecture
+
+```mermaid
+flowchart LR
+  subgraph S["Sources (self-hosted)"]
+    daw["Dawarich\ntrack + visits"]
+    imm["Immich\nphotos"]
+  end
+  daw & imm --> imp["waypoints importer\n(Go)"]
+  imp --> db[("Postgres + PostGIS\njourneys · mementos · translations")]
+  imp --> r2[["R2 / S3\nEXIF-stripped photos"]]
+  db --> api["HTTP API (Go, chi)\n/api/v1 · GeoJSON"]
+  r2 --> api
+  api --> web["Web SPAs\nv1 · v2 · v3 (MapLibre)"]
+```
+
+- **Ingest** — `waypoints` pulls the **track + visits** from Dawarich and **photos** from Immich, joins on timestamp, EXIF-strips + resizes to R2, and seeds stub mementos. Raw GPS never lands in a public file.
+- **Serve** — a small Go API composes the display route (`gps_route ∪ transit`) and serves path-versioned `/api/v1` JSON + GeoJSON, with a lightweight `places[]` projection for landing maps.
+- **Read** — any number of frontends project the same contract. Adding a design is one registry entry, not a schema change.
+
+## 🧱 Built with
+
+Standing on a lot of excellent open source. 🙏
+
+**🖥️ Web**
+[Svelte 5](https://github.com/sveltejs/svelte) ·
+[TypeScript](https://github.com/microsoft/TypeScript) ·
+[Vite](https://github.com/vitejs/vite) ·
+[MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js) ·
+[Tailwind CSS](https://github.com/tailwindlabs/tailwindcss) ·
+[Bun](https://github.com/oven-sh/bun) ·
+basemaps by [CARTO](https://carto.com/basemaps/) + [OpenStreetMap](https://www.openstreetmap.org/)
+
+**⚙️ Backend (designed)**
+[Go](https://go.dev) ·
+[chi](https://github.com/go-chi/chi) ·
+[pgx](https://github.com/jackc/pgx) ·
+[sqlc](https://github.com/sqlc-dev/sqlc) ·
+[orb](https://github.com/paulmach/orb) ·
+[goose](https://github.com/pressly/goose) ·
+[minio-go](https://github.com/minio/minio-go) ·
+[imaging](https://github.com/disintegration/imaging) ·
+[gpxgo](https://github.com/tkrajina/gpxgo) ·
+[tzf](https://github.com/ringsaturn/tzf) ·
+[koanf](https://github.com/knadh/koanf) ·
+[go-toml](https://github.com/pelletier/go-toml) ·
+[anthropic-sdk-go](https://github.com/anthropics/anthropic-sdk-go)
+
+**🗃️ Data & storage**
+[PostgreSQL](https://www.postgresql.org/) ·
+[PostGIS](https://github.com/postgis/postgis) ·
+Cloudflare [R2](https://developers.cloudflare.com/r2/) (S3-compatible; MinIO/B2 swappable)
+
+**📥 Ingestion sources (self-hosted)**
+[Dawarich](https://github.com/Freika/dawarich) (GPS track + visits) ·
+[Immich](https://github.com/immich-app/immich) (photos)
+
+**🧰 Tooling**
+[mise](https://github.com/jdx/mise) ·
+[Nix](https://nixos.org/) ·
+[golangci-lint](https://github.com/golangci/golangci-lint) ·
+[Docker Compose](https://docs.docker.com/compose/) ·
+[Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) ·
+[MkDocs Material](https://github.com/squidfunk/mkdocs-material) ·
+[uv](https://github.com/astral-sh/uv)
+
+## 🚀 Quick start
+
+The web demo runs on fixtures — no database, no keys.
+
+```bash
+make web-dev          # Vite dev server → http://localhost:5173
+```
+
+Then use the switcher at the bottom (`地図 / コレクション / 手帳`), or jump straight in:
+`/` (map) · `#collection` · `#techo`. Toggle language (日本語 / EN / 中文) and light/dark in each design's header.
+
+```bash
+make web-check        # svelte-check + eslint
+make check            # fmt + vet + lint + test (Go, when it lands)
+```
+
+> Runtimes come from **mise** (`mise install`); system tools from the **Nix** flake (`nix develop`). Everything routes through `make <target>`.
+
+## 🧭 Data model in one breath
+
+`journal → journeys → mementos`, with a derived **visit/place** layer and an i18n sidecar:
+
+- **`memento`** — one uniform table, `kind`-tagged, kind-specifics in a `kind_data` jsonb. New kinds = a new enum value, not a new table.
+- **`place = visit`** — a derived dwell-time cluster (consumed from Dawarich, or clustered from a GPX fallback); mementos anchor to the nearest visit.
+- **Provenance is load-bearing** — every field is `INGESTED / OVERRIDABLE / AUTHORED`; the importer is field-scoped and re-import is always safe.
+- **i18n** — Japanese lives inline; `en/zh` sit in a `translations` sidecar with their own provenance.
+
+Full detail: [`docs/research/data-model.md`](docs/research/data-model.md) · [`docs/research/backend-stack.md`](docs/research/backend-stack.md).
+
+## 🛣️ Status & roadmap
+
+**Research stage** — flow is research → spec → TDD → implementation, unhurried.
+
+- [x] Direction + memento model
+- [x] Backend stack + stable data model (reconciled with Dawarich)
+- [x] Fixture web demos — v1 / v2 / v3 + design switcher
+- [ ] Backend spec → goose migrations
+- [ ] `waypoints` importer (Dawarich ⋈ Immich)
+- [ ] Go API (`/api/v1`) + wire the frontends to it
+- [ ] Admin authoring app
+
+## 📚 Docs
+
+- 🧭 North star — [`docs/direction.md`](docs/direction.md)
+- 🔬 Research trail — [`docs/research/`](docs/research/)
+- 🗄️ Parked drafts — [`docs/archive/`](docs/archive/)
+
+Preview locally: `make docs` (uv-backed MkDocs Material).
+
+## 🙏 Acknowledgements
+
+- [liuaaron.com](https://liuaaron.com/) — the "Aaron's Waypoints" reference that started it all.
+- [Dawarich](https://github.com/Freika/dawarich) & [Immich](https://github.com/immich-app/immich) — the self-hosted sources felicia is built to sit on.
+- [CARTO](https://carto.com/) & [OpenStreetMap](https://www.openstreetmap.org/) contributors — the basemaps.
+
+## 📄 License
+
+[GNU AGPL-3.0](LICENSE) — network copyleft, matching the self-hosted sources felicia builds on
+([Dawarich](https://github.com/Freika/dawarich) and [Immich](https://github.com/immich-app/immich)
+are both AGPL-3.0). If you run a modified felicia as a network service, you must offer your users
+its source.

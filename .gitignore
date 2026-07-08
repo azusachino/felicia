@@ -16,11 +16,19 @@ coverage.*
 *.sqlite
 *.sqlite-journal
 
+# Docs (mkdocs build output + uv env; uv.lock is committed)
+/site/
+.venv/
+
 # OS / editor
 .DS_Store
 *.swp
 
-# Agent session scratch (rosemary is canonical; these are fallback only)
+# Agent session scratch (asobi is canonical; these are fallback only)
 .agents/CONTEXT.md
 .agents/CURRENT_TASK.md
 .agents/MEMORY.md
+
+# Asobi project-local database
+/.asobi/
+

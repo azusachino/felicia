@@ -3,13 +3,13 @@
 > A map-based travel journal, modeled on [liuaaron.com](https://liuaaron.com/)
 > ("Aaron's Waypoints — a travel journal in ticket stubs"). This doc is the **current
 > source of truth** for the design. Exploration notes that led here live in
-> [`research/ingestion-workflows.md`](./research/ingestion-workflows.md); you don't need
+> [`research/ingestion-workflows.md`](../research/ingestion-workflows.md); you don't need
 > them to read this.
 >
 > Status: **design phase** — no implementation yet. Methodology: design → spec → TDD →
 > build, deliberately unhurried (~6-month horizon).
 
-Reference look: [`research/liuaaron-desktop.png`](./research/liuaaron-desktop.png) — dark
+Reference look: [`research/liuaaron-desktop.png`](../research/liuaaron-desktop.png) — dark
 Mapbox basemap, an **orange route line** tracing the trip, and **ticket-stub cards**.
 
 ---
@@ -130,7 +130,7 @@ erDiagram
     string region
     date date_start
     date date_end
-    geometry route "LineString — the orange line"
+    geometry route "MultiLineString — orange segments, gap-split"
   }
   WAYPOINT {
     uuid id
@@ -200,6 +200,12 @@ sequenceDiagram
 - **Admin SPA** — authenticated (you only). Journey/ticket CRUD, essay editor, photo
   curation via drag-drop upload **or** an Immich picker, animation picker, map preview.
 
+**Stub rendering (decided 2026-06-12, after the [liuaaron teardown](../research/liuaaron-teardown.md)):**
+the card face is a **type-template** — a few HTML/CSS ticket templates (receipt / transit /
+admission) filled from the ticket's structured fields (OCR'd vendor/price/datetime) — with
+the photographed stub as **fallback** when no template fits. Crisp and animatable like the
+reference, zero per-ticket coding.
+
 **Ticket-open animation** is per-ticket (`animation` enum), built animation-agnostic.
 Candidates to prototype in the frontend milestone: **flip** (stub front / essay back),
 **shared-element morph** (card grows into panel), **tear/unfold** (perforated stub).
@@ -227,7 +233,7 @@ providers (manual files → Immich → Dawarich) never forces a rewrite.
 
 ## 8. Decision log
 
-Locked (see rosemary `felicia:decision:*` for full ADRs):
+Locked (see asobi `felicia:decision:*` for full ADRs):
 
 - **architecture** — Go API + SPA; **A+E hybrid** (auto ingest + admin UI); DB canonical.
 - **hosting** — Raspberry Pi + Cloudflare Tunnel; self-hosted.
@@ -235,10 +241,20 @@ Locked (see rosemary `felicia:decision:*` for full ADRs):
 - **source-of-truth** — Postgres canonical; field-scoped importer; `export` → git backup.
 - **content-model** — Journey → Ticket → {essay, extra photos, open-animation}; ticket is the click target.
 - **storage** — code to an `ObjectStore` (S3-compatible) interface; **R2** is the current backend; MinIO/B2 swappable by config.
+- **stub-rendering** *(2026-06-12)* — type-templates (HTML/CSS per ticket type) filled from structured fields; photographed stub as fallback. (liuaaron renders all tickets as components — see [teardown](../research/liuaaron-teardown.md).)
+- **track-ingest** *(2026-06-12)* — **live**: Overland (iOS) / OwnTracks (Android) post to Dawarich mid-trip through an authenticated Cloudflare Tunnel hostname (Access service token + API key). Not buffer-at-home.
+- **ticket-time-place** *(2026-06-12)* — stub capture is mixed (in-the-moment or hotel/home batch), so: `occurred_at` = OCR datetime > photo EXIF; `location` = route-snap at `occurred_at` > photo EXIF (importer-spec §9).
+- **route-geometry** *(2026-06-12)* — `MultiLineString`, segments split on time gap > 60 min or jump > 50 km (nights, flights stay honest gaps). ([spec-gaps](spec-gaps.md) B2)
+- **immich-marker** *(2026-06-12)* — ticket stubs marked with Immich **tag `ticket`**, not favorite. (spec-gaps A1)
+- **admin-auth** *(2026-06-12)* — **Cloudflare Access** on the admin hostname; API verifies the Access JWT on `/api/admin/*`; no app-level auth. (spec-gaps D4)
+- **field-classes** *(2026-06-12)* — provenance is **three** classes: INGESTED / OVERRIDABLE (importer writes until human edits, tracked per-row in `authored_fields`) / AUTHORED. Replaces the two-class table above where they conflict. (spec-gaps B1, importer-spec §7)
 
 **Open:**
 
 - **Ticket-open animation:** flip vs morph vs tear — prototype in frontend milestone.
+
+Every remaining underspecified point is resolved (LOCKED or PROPOSED) in
+[`spec-gaps.md`](spec-gaps.md) — the pre-TDD spec-freeze checklist lives there.
 
 ---
 
