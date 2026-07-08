@@ -7,7 +7,15 @@
 > selections for the Go backend, and **(2)** rewritten recommended decisions + todos.
 > Research-stage **leanings**, not locks — they graduate to a spec when ratified.
 > Related ADRs: `felicia:decision:{map-first-landing, presentation-agnostic-contract,
-> memento-not-ticket, transit-ticket-creator, jp-first-i18n}`.
+> memento-not-ticket, memento-template-registry, transit-ticket-creator,
+> place-as-derived-visit, source-connectors, jp-first-i18n}`.
+>
+> **2026-07-09 revision.** D2/D4 and the todos below are reconciled with Dawarich's
+> **semantic layer** (`points → tracks → visits @ places → trips`), per
+> [`data-model.md §Places`](data-model.md) and [`source-connectors.md`](source-connectors.md)
+> (`felicia:decision:place-as-derived-visit`); Dawarich is consumed for **tracks + visits**,
+> not drained as a raw-point hose. New **D9** records the declarative
+> memento-template registry (`felicia:decision:memento-template-registry`).
 
 ## Framing
 
@@ -79,12 +87,18 @@ typed columns (sparse).
 ### D2 ★ — Geometry is mixed; the route is derived
 
 `mementos.geom geometry(Geometry, 4326)` — a **Point** for goods/stamp/ticket, a
-**LineString** for a transit leg (edge-anchored, per `transit-tickets.md`). A journey's
+**LineString** for a transit leg (edge-anchored, per `transit-tickets.md`). A point memento
+snaps to the nearest **Dawarich visit** (not merely the nearest track vertex), so its
+`place`/coord inherits a stable visit identity (`place-as-derived-visit`). A journey's
 route is **not** one stored raw column: it is the **derived union of authored transit
-legs ∪ passive GPS track**, assembled `ST_Collect` into `MultiLineString`.
+legs ∪ the passive Dawarich track**, assembled `ST_Collect` into `MultiLineString`.
 **Proposed resolution of the open sub-question** (route composition order): interleave
-by start-time — each leg/track-segment ordered by its first-point timestamp. Raw GPS is
-still simplified (Douglas–Peucker) + gap-split (archive B2) before union.
+by start-time — each leg/track-segment ordered by its first-point timestamp. The Dawarich
+track is consumed already as tracks/segments; a raw GPX dev-fallback is simplified
+(Douglas–Peucker) + gap-split (archive B2) before union. Note the **two route
+projections** kept distinct (data-model §Places): the organic **display route** (this
+union) vs. the stylized **places skeleton** (ordered visit centroids) — Dawarich's
+visit-vs-activity split.
 
 ### D3 ★ — i18n via a sidecar `translations` table, JP canonical
 
@@ -103,6 +117,10 @@ Transit needs station→coords. Ship a **bundled JSON catalog** (JR + Tokyo Metr
 `{name_en, name_ja, operator, line, lat, lon}`, from ekidata/OSM, committed as fixture) —
 no live geocoding. **Denormalize** `from/to` name+coords into the transit memento's
 `kind_data` so the DB renders without a `stations` FK, keeping it a rebuildable projection.
+The catalog is the resolver behind the template's `station` **field type** (D9): the transit
+creator's autocomplete queries it, and the picked station is written denormalized into
+`kind_data`. It is **not** a `places` table — places are derived Dawarich visits (D2/§Places),
+a distinct concept from a static station gazetteer.
 
 ### D5 — Add the flat cross-journey memento endpoint
 
@@ -133,7 +151,51 @@ map view wants them, not a first-class nav level. (Push back if stops should sta
 
 `ticket | transit | goods | stamp | receipt | souvenir`, with **`transit` top-level**
 (its edge-anchoring changes rendering and route assembly). Extensible by migration, but
-enum'd because `kind` drives the stub templates.
+enum'd because `kind` drives the stub templates. The **set** of valid kinds is the set of
+registered templates (D9); the DB `kind` column is a soft enum (`text` + a check or a
+lookup table), not a hard Postgres `enum` type, so a new template doesn't force a type
+migration.
+
+### D9 ★ — Kinds are declarative templates, not hardcoded per-kind code
+
+`felicia:decision:memento-template-registry`. A memento **kind is a template declared as
+data** — one entry per kind describing everything the three surfaces need:
+
+```
+template
+  kind         "transit"
+  anchor       point | edge          # edge => LineString geom (from→to); point => single coord
+  fields[]     { name; type; required; widget?; translatable? }
+  stub         template ref (frontend component id)
+```
+
+The same declaration drives all three consumers, so they can never drift:
+
+1. **Admin authoring form** — the field list + `type`/`widget` generate the creator form
+   (the transit creator, `transit-tickets.md`, becomes *one instance* of this).
+2. **`kind_data` validation** — a pure `internal/domain` validator checks a submitted
+   `kind_data` blob against its template (required present, types match, `anchor` ↔ geom
+   consistent). `kind_data` stays `jsonb`; the template is its schema.
+3. **Stub render + i18n** — the `stub` ref picks the frontend form; `translatable` fields
+   feed the `translations` sidecar keys (D3).
+
+**Field `type` catalog** (small, closed, extend by rule-of-three): `text`, `money`
+(→ `price_*` / a `kind_data` money pair), `date`/`datetime`, `station` (resolves via the D4
+catalog, writes name+coords), `venue` (a named place + coord — for `live`), `url`, `enum`.
+A `type` may imply a resolver (`station`, `venue`) or a widget.
+
+**Two worked kinds** settle the shape: **`transit`** (`anchor: edge`; `from`/`to` = `station`,
+`operator`/`line` = `text` translatable, `fare` = `money`) and **`live`** (`anchor: point`;
+`artist` = `text`, `venue` = `venue`, `date` = `datetime`, `seat` = `text`) — a concert/event
+ticket, the "live ticket" case. Design + examples in
+[`memento-templates.md`](memento-templates.md).
+
+**Guardrail (anti-DSL).** The template describes *fields, an anchor, and refs* — nothing
+more. It must **not** grow into a query/mapping/ETL language; that trap is already rejected
+for source connectors (`source-connectors.md` §"Why the generic version bites"). Assembly
+logic stays Go. Justified over hardcoded per-kind structs because kinds genuinely
+proliferate (transit, live, goods, stamp, goshuin, omiyage…) and the form/validation/stub
+triplet is real triplicated work.
 
 ## 3. Todos (rewritten)
 
@@ -141,11 +203,14 @@ Replaces the ticket-era `archive/todo.md` M0 "spec freeze." Flow stays research 
 TDD → build; we are finishing **research**.
 
 **R — ratify (finish research)**
-- [ ] Ratify D1–D8 (or amend) and the §1 stack picks.
+- [x] Ratify D1–D9 (or amend) and the §1 stack picks. *(D9 declarative registry ratified
+      2026-07-09; D1–D8 still standing.)*
 - [ ] Settle the two open sub-questions: route-composition order (D2 timestamp-interleave)
       and translation provenance mechanics (D3 language-axis no-clobber).
 - [ ] Decide which `kind` **stub templates** ship first (taste test: `goods`, then the
-      JR-style `transit` mag-stripe) — carries over from `mementos-not-tickets.md`.
+      JR-style `transit` mag-stripe, then `live`) — carries over from `mementos-not-tickets.md`.
+- [ ] Freeze the D9 **field `type` catalog** (the closed set: text/money/date/datetime/
+      station/venue/url/enum) — the template validator (T) encodes it.
 
 **S — spec (when promoted out of `archive/`)**
 - [ ] `docs/spec/data-model.md` — memento-era schema + goose migration sketch (D1–D4, D7,
@@ -154,10 +219,19 @@ TDD → build; we are finishing **research**.
       source_ref)`.
 - [ ] `docs/spec/api-contract.md` — public read (D5, D6) incl. flat `/api/v1/mementos`; admin
       surface behind Access-JWT (archive D4); chi subrouter map.
+- [ ] `docs/spec/memento-templates.md` — promote the D9 registry: template file format,
+      frozen field-`type` catalog, the `Validate(template, kind_data)` contract, and how the
+      admin form + stub + i18n derive from one declaration. (Design draft:
+      [`memento-templates.md`](memento-templates.md).)
 - [ ] Refresh the importer spec — field-scoped upsert **× i18n provenance** (D3), route
-      union/compose (D2). (OCR/vision pre-fill deferred — §1 note.)
+      union/compose (D2), Dawarich track+visits ingest and visit-snap (place-as-derived-visit).
+      (OCR/vision pre-fill deferred — §1 note.)
 
 **T — TDD (first failing tests, memento order)**
+- [ ] **Template registry + `kind_data` validation (D9).** `internal/domain`: load a template,
+      validate a `kind_data` blob against it — required-missing, unknown-field, per-`type`
+      mismatch, `anchor`↔geom consistency. Table-driven with `transit.yaml` + `live.yaml`
+      fixtures. **This is the first pure-core code** (correctness-critical, zero I/O). Pure.
 - [ ] WKB↔GeoJSON round-trip + 4dp coordinate rounding (orb). Pure.
 - [ ] Douglas–Peucker simplify + gap-split → `MultiLineString` (archive B2). Pure.
 - [ ] EXIF extract (lat/lng/time) from a sample preview JPEG. Pure.
