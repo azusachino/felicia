@@ -41,6 +41,35 @@ PhotoSource  { Assets(Query)   -> []PhotoAsset  }     // Immich impls this
 interfaces. A power user with a different photo library writes a ~100-line `PhotoSource`; the
 assembly logic never moves.
 
+## Update (2026-07-09): Dawarich has a semantic layer — take it, don't just drain points
+
+The shapes above (`TrackPoint {At,Lat,Lon}`) treat Dawarich as a raw-point hose. But Dawarich's
+data model has grown the full pipeline **`points → tracks → visits @ places → trips`** — and its
+`visits`/`places` are exactly the *place* concept felicia was missing
+(`felicia:decision:place-as-derived-visit`, data-model §Places). So the `TrackSource` role yields
+more than points:
+
+```
+TrackSource {
+  Track(from, to)  -> []TrackPoint    // the polyline → journeys.gps_route
+  Visits(from, to) -> []Visit         // stays: {coord, label, arrive, depart} → derived places
+}
+```
+
+- **Consume Dawarich's visits** as the derived-place layer instead of re-clustering; a memento
+  snaps to the nearest *visit*, not the nearest track vertex. For a plain GPX import (no Dawarich)
+  a dwell-time clustering fallback produces the same `Visit` shape **at the edge** — the core
+  stays generic over the normalized shape, exactly per the strategy above.
+- **Google Maps Timeline is not a first-class connector — it enters through Dawarich.** Google's
+  export (`placeVisit`/`activitySegment` Takeout, or the on-device `Timeline.json`
+  `semanticSegments`) is a shifting target, and post-2024 Google keeps only ~90 days on-device.
+  Dawarich already imports these formats; point a friend's export at Dawarich and felicia reads one
+  stable API. We do **not** hand-write a Google parser.
+- **Dawarich + Immich are foundational**, not "sources among many" — a pre-history decision. The
+  rule-of-three extensibility (a new `TrackSource`/`PhotoSource` impl) still stands for the
+  *unusual* user, but the assumed path is **Dawarich (track + visits) ⋈ Immich (photos)** joined on
+  timestamp.
+
 ## OpenAPI: yes — for client *generation*, not runtime config
 
 The right use of Immich's spec is **build-time codegen** (`oapi-codegen` over its

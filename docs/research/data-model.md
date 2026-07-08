@@ -86,7 +86,7 @@ Product-ready seam: `owner_id`, `title` etc. arrive here later; nothing else res
 | `region` | `text null` | OVERRIDABLE | |
 | `date_start` | `date` | OVERRIDABLE | min asset capture date at first import |
 | `date_end` | `date` | OVERRIDABLE | max asset capture date |
-| `gps_route` | `geometry(MultiLineString,4326) null` | INGESTED | simplified passive track (D–P, gap-split, archive B2). NULL if no track source. **Not** the raw points. |
+| `gps_route` | `geometry(MultiLineString,4326) null` | INGESTED | simplified passive track from **Dawarich** (D–P, gap-split, archive B2; GPX import is the dev fallback). NULL if no track source. **Not** the raw points — those stay in Dawarich. |
 | `authored_fields` | `text[] not null '{}'` | — | no-clobber tracker |
 | `created_at` / `updated_at` | `timestamptz` | — | |
 
@@ -105,7 +105,7 @@ Product-ready seam: `owner_id`, `title` etc. arrive here later; nothing else res
 | `seq` | `int` | OVERRIDABLE | chronological default; admin may reorder |
 | `occurred_at` | `timestamptz` | OVERRIDABLE | resolved instant (OCR>EXIF>snap, archive A4) |
 | `occurred_tz` | `text` | OVERRIDABLE | IANA tz id, so the client renders local wall-clock |
-| `geom` | `geometry(Geometry,4326)` | INGESTED¹ | **Point** (goods/stamp/ticket, route-snap) or **LineString** (transit leg). ¹transit-leg geom is AUTHORED (created in the transit form). |
+| `geom` | `geometry(Geometry,4326)` | INGESTED¹ | **Point** (goods/stamp/ticket — snapped to the nearest **visit**, see Places) or **LineString** (transit leg). ¹transit-leg geom is AUTHORED (created in the transit form). |
 | `title` | `text` | AUTHORED | primary-lang (ja) |
 | `place` | `text` | OVERRIDABLE | primary-lang |
 | `vendor` | `text null` | OVERRIDABLE | primary-lang |
@@ -151,6 +151,37 @@ to the inline `ja` value.
 | `source_ref` | `text null` | INGESTED | immich asset id |
 | `created_at` | `timestamptz` | — | |
 
+## Places — a *derived visit* layer (not a stored table)
+
+> Added 2026-07-09, after studying Dawarich's data model (the model below was drawn *before*
+> that — this reconciles it). felicia's foundational sources are **Dawarich** (track) +
+> **Immich** (photos); the design must fit what they actually emit.
+
+Two frontends already group mementos by **place** — the techo landing's city dots and the
+detail's "several memories at one place" — yet there is deliberately **no `places` table**. A
+place is a **derived visit**, computed the way Dawarich and Google Timeline both do it: a *stay*,
+detected by dwell-time + spatial clustering over the track, reverse-geocoded to a name.
+(`felicia:decision:place-as-derived-visit`)
+
+- **Source of truth.** Dawarich already runs this pipeline (`points → tracks → visits @ places →
+  trips`). When the track is Dawarich's, **consume its `visits`/`places`** rather than
+  re-deriving. For a raw GPX import, fall back to our own dwell-time coordinate-cluster pass —
+  identical output shape. (Google Timeline data enters the same way: import it into Dawarich, read
+  Dawarich — don't chase Google's shifting `placeVisit`/`semanticSegments` format ourselves.)
+- **A memento anchors to a visit, not a bare point.** Its point `geom` snaps to the nearest
+  **visit** (not merely the nearest track vertex), so its `place` gains a stable identity, dwell
+  window, and canonical coord/label for free.
+- **A projection, not schema.** Per journey the API serves an ordered
+  `places[] = { key, label (i18n), coord, seq, memento_count }`, keyed by **snapped coordinate**
+  (language-invariant, unlike grouping on the `place` string). Consumed by both `GET /journeys`
+  (landing dots) and `/journeys/{slug}` (detail clusters). Derive it; materialize it — or promote
+  to a real `place_id` with authorable merge/rename — only if perf or authoring demands it
+  (rule of three).
+- **Two route projections — don't conflate them.** The **display route** (`gps_route ∪ transit`,
+  the organic path = Dawarich *tracks* + *trips*) vs the **places skeleton** (ordered visit
+  centroids joined by connectors — what a stylized map draws). This is exactly Dawarich's /
+  Google's **visit-vs-activity** (`placeVisit` / `activitySegment`) split.
+
 ## Provenance map (three classes × language)
 
 | Class | Importer | Admin | Fields |
@@ -187,12 +218,13 @@ safe because the importer is field-scoped.
 
 ```mermaid
 flowchart LR
-  subgraph A["A — ingest (auto, when a source is configured)"]
-    route["route file (GPX/GeoJSON)\nDawarich later"] --> imp["waypoints import"]
-    photos["photos (local dir)\nImmich later"] --> imp
+  subgraph A["A — ingest (auto, from the configured sources)"]
+    daw["Dawarich API\ntrack + visits\n(GPX = dev fallback)"] --> imp["waypoints import"]
+    photos["Immich API\nphotos\n(local dir = dev fallback)"] --> imp
     imp -->|"simplify + gap-split"| gr[("journeys.gps_route\nINGESTED")]
+    imp -->|"visits → dwell clusters"| pl["places\n(derived, not stored)"]
     imp -->|"EXIF read → resize → strip → R2"| ph[("memento_photos\nINGESTED")]
-    imp -->|"seed stub fields"| mo[("mementos\nINGESTED/OVERRIDABLE")]
+    imp -->|"seed stubs; snap geom to nearest visit"| mo[("mementos\nINGESTED/OVERRIDABLE")]
   end
   subgraph E["E — author (admin app)"]
     tc["transit creator\n(station catalog)"] -->|"leg = LineString (AUTHORED geom)"| mo
@@ -206,12 +238,15 @@ flowchart LR
   obj --> pub
 ```
 
-**A — ingest (no toil).** `waypoints import` pulls a **route** (a per-trip GPX/GeoJSON file
-now; Dawarich API later) → Douglas–Peucker + gap-split → `journeys.gps_route`; and **photos**
-(a local dir now; Immich later) → EXIF lat/lng/time → resize + EXIF-strip → R2 →
-`memento_photos`, seeding stub mementos. **No OCR** — memento structured fields are authored,
-not vision-prefilled (deferred, §backend-stack). Point mementos route-snap their `geom` to
-the track at `occurred_at`.
+**A — ingest (no toil).** felicia's two foundational sources are **Dawarich** (track) and
+**Immich** (photos) — assumed, not swappable-maybe. `waypoints import` pulls the **track +
+visits** from the Dawarich API (a per-trip GPX/GeoJSON file is the dev fallback) → Douglas–Peucker
++ gap-split → `journeys.gps_route`, and its **visits** seed the derived place layer (see Places);
+and **photos** from Immich (a local dir is the dev fallback) → EXIF lat/lng/time → resize +
+EXIF-strip → R2 → `memento_photos`, seeding stub mementos. **No OCR** — memento structured fields
+are authored, not vision-prefilled (deferred, §backend-stack). Point mementos snap their `geom` to
+the nearest **visit** at `occurred_at` (Dawarich already knows the visit; GPX falls back to
+nearest-track-vertex + a dwell-cluster pass).
 
 **E — author (the real work).** In the admin app you: run the **transit creator**
 (from→to via the bundled station catalog → a transit memento + a LineString leg, the
@@ -227,10 +262,9 @@ the **display route** (`gps_route` ∪ transit legs, `ST_Collect`) and serves
 `GET /api/v1/journeys`, `/api/v1/journeys/{slug}`, and the flat `GET /api/v1/mementos` —
 geometry rounded to 4dp, `ETag`/`Cache-Control` off `updated_at`. The **list** projection
 `GET /api/v1/journeys` is lightweight but self-sufficient for an index/landing view: per
-journey it carries `memento_count` (aggregate) and a few **representative place dots** (coord +
-label, derived from `mementos.geom`/`mementos.place`) so a landing map + card grid renders in
-one call — no per-journey N+1 to `/{slug}`. A journey with no point mementos simply yields no
-dot.
+journey it carries `memento_count` (aggregate) and its ordered **places** (the derived-visit
+projection: `{ key, label, coord, seq, memento_count }`) so a landing map + card grid renders in
+one call — no per-journey N+1 to `/{slug}`. A journey with no visits simply yields no dot.
 **Admin auth is deferred** (single-author MVP; no auth surface now) — it returns behind the
 same publish/visibility seam when felicia becomes a product, additive not reshaping.
 
@@ -246,8 +280,9 @@ puts.
   + date range + mementos — a journey is one *contiguous trip*, so repeat visits never collapse
   into one. Map overlap is resolved by interaction (one active journey brightens), not schema.
   "All my Osaka memories across trips" is a **spatial projection** (mementos within radius),
-  not a first-class `places` table — a "Places" browse tier, if ever wanted, is an additive
-  derived view. `place` stays denormalized text + coords (trip-first, not gazetteer-first).
+  not a first-class `places` table — a cross-journey "Places" browse tier, if ever wanted, is an
+  additive derived view over the same per-journey **derived-visit** projection (see Places).
+  `place` stays denormalized text + coords (trip-first, not gazetteer-first).
 - **No journey-level detail page.** A journey's "page" *is* its mementos + rail; **the map is
   one *optional* per-frontend framing**, not a required element. v1 (map reader) puts the map on
   the journey page; the techo/paper front door (v3, `felicia:decision:techo-paper-v3`) swaps it
@@ -258,7 +293,9 @@ puts.
 
 ## What this schema deliberately does *not* have
 
-Waypoints as a table (D7 — derived overlay, not stored); a `stations` table (D4 — bundled
-fixture, denormalized into `kind_data`); `owner_id`/multi-tenant columns (deferred, seam is
-the `journal` root); an `animation` column is **AUTHORED** and can be added to `mementos` once
-the open-animation direction settles (flip vs morph vs tear) — additive, no reshape.
+Waypoints as a table (D7 — derived overlay, not stored); a `places` table (a place is a
+**derived visit**, projected — Dawarich owns visit detection; promote to a stored `place_id`
+only under the rule of three, see Places); a `stations` table (D4 — bundled fixture,
+denormalized into `kind_data`); `owner_id`/multi-tenant columns (deferred, seam is the
+`journal` root); an `animation` column is **AUTHORED** and can be added to `mementos` once the
+open-animation direction settles (flip vs morph vs tear) — additive, no reshape.
