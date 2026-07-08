@@ -1,5 +1,6 @@
 // Shared fixture data + types for the front-of-house demos (v1 map reader, v2
-// memento-first). No I/O — this mirrors the eventual Journey -> Memento model.
+// memento-first, v3 techo). No I/O — this mirrors the eventual
+// Journey -> Visit (derived place) -> Memento model (Dawarich-shaped).
 
 export type Coordinates = [number, number];
 export type MementoKind = 'goods' | 'transit' | 'stamp';
@@ -22,6 +23,10 @@ export interface Station {
 export interface Memento {
   id: string;
   kind: MementoKind;
+  // The visit (derived place/stay) this memento anchors to. Point mementos sit
+  // AT the visit; a transit memento anchors to the endpoint visit it connects
+  // (its own movement lives in `transit`). felicia:decision:place-as-derived-visit.
+  visitId: string;
   title: L;
   date: L;
   place: L;
@@ -39,12 +44,23 @@ export interface Memento {
   };
 }
 
+// A place is a DERIVED VISIT — a dwell-time stay detected on the track, the way
+// Dawarich / Google Timeline compute them (points -> tracks -> visits @ places ->
+// trips). Not stored per se; the demo lists them explicitly so the shape isn't
+// misleading. Mementos anchor to a visit; the map clusters by visit.
+export interface Visit {
+  id: string; // stable place key (a coordinate-cluster id in the real system)
+  label: L; // reverse-geocoded place name
+  coords: Coordinates; // visit centroid
+}
+
 export interface Journey {
   id: string;
   title: L;
   dates: L;
   place: L;
-  route: Coordinates[];
+  route: Coordinates[]; // the track (Dawarich); display route = track ∪ transit legs
+  visits: Visit[]; // derived stays in travel order; mementos anchor here
   mementos: Memento[];
 }
 
@@ -77,9 +93,15 @@ export const journeys: Journey[] = [
       [135.7588, 34.9858],
       [135.5013, 34.6687]
     ],
+    visits: [
+      { id: 'gr-tokyo', label: { ja: '東京', en: 'Tokyo', zh: '东京' }, coords: [139.7671, 35.6812] },
+      { id: 'gr-kyoto', label: { ja: '京都 金閣寺', en: 'Kinkaku-ji, Kyoto', zh: '京都 金阁寺' }, coords: [135.7292, 35.0394] },
+      { id: 'gr-dotonbori', label: { ja: '大阪 道頓堀', en: 'Dotonbori, Osaka', zh: '大阪 道顿堀' }, coords: [135.5013, 34.6687] }
+    ],
     mementos: [
       {
         id: 'ginza-line',
+        visitId: 'gr-tokyo',
         kind: 'transit',
         title: { ja: '渋谷から浅草へ', en: 'Shibuya to Asakusa', zh: '从涩谷到浅草' },
         date: { ja: '2026年5月12日', en: '2026.05.12', zh: '2026年5月12日' },
@@ -103,6 +125,7 @@ export const journeys: Journey[] = [
       },
       {
         id: 'kinkakuji',
+        visitId: 'gr-kyoto',
         kind: 'stamp',
         title: { ja: '金閣寺の御朱印', en: 'Kinkaku-ji Goshuin', zh: '金阁寺御朱印' },
         date: { ja: '2026年5月14日', en: '2026.05.14', zh: '2026年5月14日' },
@@ -124,6 +147,7 @@ export const journeys: Journey[] = [
       },
       {
         id: 'fuwamiku',
+        visitId: 'gr-dotonbori',
         kind: 'goods',
         title: { ja: 'ふわみく マスコットぬいぐるみ', en: 'Fuwamiku Mascot Plush', zh: 'Fuwamiku 吉祥物玩偶' },
         date: { ja: '2026年5月16日', en: '2026.05.16', zh: '2026年5月16日' },
@@ -149,6 +173,7 @@ export const journeys: Journey[] = [
       },
       {
         id: 'dotonbori-takoyaki',
+        visitId: 'gr-dotonbori',
         kind: 'goods',
         title: { ja: 'たこ焼きの食べ歩き', en: 'Takoyaki on the Street', zh: '边走边吃的章鱼烧' },
         date: { ja: '2026年5月16日', en: '2026.05.16', zh: '2026年5月16日' },
@@ -175,9 +200,14 @@ export const journeys: Journey[] = [
       [141.0007, 43.1907],
       [142.365, 43.7708]
     ],
+    visits: [
+      { id: 'hk-sapporo', label: { ja: '札幌', en: 'Sapporo', zh: '札幌' }, coords: [141.3545, 43.0618] },
+      { id: 'hk-otaru', label: { ja: '小樽', en: 'Otaru', zh: '小樽' }, coords: [141.0007, 43.1907] }
+    ],
     mementos: [
       {
         id: 'jr-otaru',
+        visitId: 'hk-otaru',
         kind: 'transit',
         title: { ja: '札幌から小樽へ', en: 'Sapporo to Otaru', zh: '从札幌到小樽' },
         date: { ja: '2026年2月4日', en: '2026.02.04', zh: '2026年2月4日' },
@@ -201,6 +231,7 @@ export const journeys: Journey[] = [
       },
       {
         id: 'shiroi-koibito',
+        visitId: 'hk-sapporo',
         kind: 'goods',
         title: { ja: '白い恋人', en: 'Shiroi Koibito', zh: '白色恋人' },
         date: { ja: '2026年2月5日', en: '2026.02.05', zh: '2026年2月5日' },
@@ -227,9 +258,14 @@ export const journeys: Journey[] = [
       [130.6889, 32.7845],
       [131.1, 32.88]
     ],
+    visits: [
+      { id: 'ky-hakata', label: { ja: '福岡 博多', en: 'Hakata, Fukuoka', zh: '福冈 博多' }, coords: [130.4207, 33.5904] },
+      { id: 'ky-kumamoto', label: { ja: '熊本', en: 'Kumamoto', zh: '熊本' }, coords: [130.6889, 32.7845] }
+    ],
     mementos: [
       {
         id: 'kyushu-shinkansen',
+        visitId: 'ky-hakata',
         kind: 'transit',
         title: { ja: '博多から熊本へ', en: 'Hakata to Kumamoto', zh: '从博多到熊本' },
         date: { ja: '2026年4月21日', en: '2026.04.21', zh: '2026年4月21日' },
@@ -253,6 +289,7 @@ export const journeys: Journey[] = [
       },
       {
         id: 'kumamon',
+        visitId: 'ky-kumamoto',
         kind: 'goods',
         title: { ja: 'くまモン ぬいぐるみ', en: 'Kumamon Plush', zh: '熊本熊玩偶' },
         date: { ja: '2026年4月22日', en: '2026.04.22', zh: '2026年4月22日' },

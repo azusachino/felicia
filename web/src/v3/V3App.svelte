@@ -24,28 +24,26 @@
     return value[lang];
   }
 
-  // Group a journey's mementos by place — one map marker per place, and a place
-  // can hold several memories.
+  // Places ARE the journey's derived visits (felicia:decision:place-as-derived-visit);
+  // mementos anchor to them by visitId. One map marker per visit; a visit can hold
+  // several memories. No string-grouping — the visit is the stable place key.
   interface PlaceGroup {
     key: string;
+    label: L;
     coords: Coordinates;
     seq: number;
     mementos: Memento[];
   }
 
-  const placeGroups = $derived.by(() => {
-    const groups = new Map<string, PlaceGroup>();
-    selectedJourney.mementos.forEach(memento => {
-      const key = memento.place.ja || memento.id;
-      let group = groups.get(key);
-      if (!group) {
-        group = { key, coords: memento.coords, seq: groups.size + 1, mementos: [] };
-        groups.set(key, group);
-      }
-      group.mementos.push(memento);
-    });
-    return Array.from(groups.values());
-  });
+  const placeGroups = $derived.by<PlaceGroup[]>(() =>
+    selectedJourney.visits.map((visit, index) => ({
+      key: visit.id,
+      label: visit.label,
+      coords: visit.coords,
+      seq: index + 1,
+      mementos: selectedJourney.mementos.filter(memento => memento.visitId === visit.id)
+    }))
+  );
 
   const mapPlaces = $derived(
     placeGroups.map(group => ({ key: group.key, coords: group.coords, seq: group.seq, count: group.mementos.length }))
@@ -133,6 +131,7 @@
   const selectedBadge = { ja: '選択中', en: 'Selected', zh: '已选' } satisfies L;
   const openCta = { ja: 'この旅をひらく →', en: 'Open this journey →', zh: '打开这段旅程 →' } satisfies L;
   const backLabel = { ja: '手帳に戻る', en: 'Back to journal', zh: '返回手帳' } satisfies L;
+  const noMemoriesLabel = { ja: 'ここではまだ記憶を集めていない。', en: 'No memories collected here yet.', zh: '这里还没有收集记忆。' } satisfies L;
 </script>
 
 <main class="techo-shell" class:theme-light={theme === 'light'} class:is-detail={view === 'detail'}>
@@ -248,8 +247,12 @@
             <p class="m-0 font-mono text-[0.7rem] uppercase tracking-[0.18em] text-ink-faint">
               {placeMemoriesLabel(selectedPlace.mementos.length)}
             </p>
-            <h2 class="m-0 mt-1 font-mincho text-xl font-bold text-ink">{t(selectedPlace.mementos[0].place)}</h2>
+            <h2 class="m-0 mt-1 font-mincho text-xl font-bold text-ink">{t(selectedPlace.label)}</h2>
           </div>
+
+          {#if selectedPlace.mementos.length === 0}
+            <p class="m-0 text-sm text-ink-faint">{t(noMemoriesLabel)}</p>
+          {/if}
 
           {#each selectedPlace.mementos as memento (memento.id)}
             <article class="rounded-lg border border-black/5 bg-paper-0 p-5 shadow-sm">
