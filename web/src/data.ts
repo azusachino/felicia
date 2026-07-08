@@ -146,6 +146,22 @@ export const journeys: Journey[] = [
             }
           }
         ]
+      },
+      {
+        id: 'dotonbori-takoyaki',
+        kind: 'goods',
+        title: { ja: 'たこ焼きの食べ歩き', en: 'Takoyaki on the Street', zh: '边走边吃的章鱼烧' },
+        date: { ja: '2026年5月16日', en: '2026.05.16', zh: '2026年5月16日' },
+        place: { ja: '大阪 道頓堀', en: 'Dotonbori, Osaka', zh: '大阪 道顿堀' },
+        vendor: { ja: '道頓堀の屋台', en: 'Dotonbori stall', zh: '道顿堀路边摊' },
+        price: 'JPY 600',
+        coords: [135.5013, 34.6687],
+        essay: {
+          ja: '同じ道頓堀でも、ぬいぐるみを買った午後とは別の記憶。熱いたこ焼きを手に、川沿いのネオンをただ眺めていた夜。ひとつの場所に、いくつもの記憶が重なっていく。',
+          en: 'Same Dotonbori, a different memory from the afternoon of the plush — a night just watching the neon over the canal with a hot box of takoyaki. One place, several memories stacked on top of each other.',
+          zh: '同样是道顿堀，却是与买玩偶那个下午不同的记忆——手捧一盒滚烫的章鱼烧，只是望着运河上的霓虹的夜晚。同一个地方，叠着好几段记忆。'
+        },
+        photos: []
       }
     ]
   },

@@ -267,7 +267,7 @@
       </div>
       {#if toMemories}
         <button class="all-btn" on:click={toMemories}>
-          {lang === 'en' ? '← Memories' : lang === 'zh' ? '← 回忆' : '← 記憶へ'}
+          {lang === 'en' ? 'Collection →' : lang === 'zh' ? '藏品 →' : 'コレクション →'}
         </button>
       {/if}
     </div>

@@ -18,7 +18,7 @@
 
   const title = { ja: '旅の残り香', en: 'What Lingers', zh: '旅途余香' };
   const label = {
-    map: { ja: '地図で見る', en: 'Map view', zh: '地图视图' },
+    map: { ja: '← 地図', en: '← Map', zh: '← 地图' },
     onMap: { ja: '地図で見る →', en: 'See on the map →', zh: '在地图上查看 →' },
     memories: { ja: '記憶', en: 'Memories', zh: '回忆' }
   };

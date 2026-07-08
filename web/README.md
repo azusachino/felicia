@@ -6,11 +6,13 @@ The demo is fixture-only: no backend, no auth, and no live source connectors. It
 review the product shape before the roadmap hardens. Two front-door concepts share the same
 fixture data (`src/data.ts`) and theme/language state:
 
-- **v2 (default)** — *memento-first.* A detailed memento "page" is the centre (paper stub +
-  facts + essay + gallery); a preview **carousel** of mementos across all journeys is the
-  index. Titled *"…'s True Memories."* Reaches v1 via **Map view**.
-- **v1 (`#map`)** — the liuaaron-aligned **map reader**: journey index rail → dark route map
-  hero → paper detail. The map is the index. Reached from v2 as the "more" view.
+- **v1 (default)** — the liuaaron-aligned **map reader**: journey index rail → dark route map
+  hero → paper detail. **The map is the front door** (`felicia:decision:map-first-landing`):
+  all journeys dim, the selected one bright, mementos as numbered stubs along the route.
+  Reaches the collection via **Collection →**.
+- **v2 (`#collection`)** — *memento-first.* A detailed memento "page" (paper stub + facts +
+  essay + gallery) with a shelf **carousel** across all journeys. A **depth view** — the seed
+  of a future souvenir-shelf landing (per PM feedback 2026-07-07), not the door.
 
 The first priority is the artifact moat. If the memento + essay/gallery interaction does not
 feel compelling, ingestion and authoring automation should not be first on the roadmap.
