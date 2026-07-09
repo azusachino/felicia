@@ -156,6 +156,37 @@ def test_translations():
     assert status == 200, f"Expected 200 OK, got {status}"
     print("✓ Translations OK")
 
+def test_public_apis():
+    print("Testing public read-only query APIs (Valkey cached)...")
+    # 1. Global list
+    status, body = request("/api/v1/journeys")
+    assert status == 200, f"Expected 200, got {status}"
+    assert len(body) == 3, f"Expected 3 public journeys, got {len(body)}"
+    
+    # 2. Get details by slug
+    status, body_slug = request("/api/v1/journeys/japan-spring-2026")
+    assert status == 200, f"Expected 200, got {status}"
+    assert body_slug["slug"] == "japan-spring-2026"
+    assert "gps_route" in body_slug
+    
+    # 3. Get details by UUID (dual lookup)
+    j1_id = "11111111-1111-1111-1111-111111111111"
+    status, body_uuid = request(f"/api/v1/journeys/{j1_id}")
+    assert status == 200, f"Expected 200, got {status}"
+    assert body_uuid["slug"] == "japan-spring-2026"
+    
+    # 4. Get mementos by slug
+    status, mementos_slug = request("/api/v1/journeys/japan-spring-2026/mementos")
+    assert status == 200, f"Expected 200, got {status}"
+    assert len(mementos_slug) == 3, f"Expected 3 mementos, got {len(mementos_slug)}"
+    
+    # 5. Get mementos by UUID (dual lookup)
+    status, mementos_uuid = request(f"/api/v1/journeys/{j1_id}/mementos")
+    assert status == 200, f"Expected 200, got {status}"
+    assert len(mementos_uuid) == 3
+    
+    print("✓ Public APIs (slug & UUID lookup) OK")
+
 def main():
     print("Starting API E2E test suite...")
     try:
@@ -164,6 +195,7 @@ def main():
         test_mementos_list()
         test_memento_validation()
         test_translations()
+        test_public_apis()
         print("🎉 All API E2E tests passed successfully!")
     except AssertionError as e:
         print(f"❌ Test assertion failed: {e}", file=sys.stderr)
