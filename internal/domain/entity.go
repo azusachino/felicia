@@ -2,11 +2,15 @@ package domain
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/paulmach/orb"
 )
+
+// ErrNotFound is returned when a requested entity does not exist.
+var ErrNotFound = errors.New("entity not found")
 
 // Journal is the root container of journeys.
 type Journal struct {
