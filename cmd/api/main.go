@@ -43,6 +43,12 @@ func run() error {
 		return err
 	}
 
+	cacheAddr := os.Getenv("CACHE_ADDR")
+	if cacheAddr == "" {
+		cacheAddr = "localhost:6379"
+	}
+	cacheManager := api.NewCacheManager(cacheAddr)
+
 	ctx := context.Background()
 
 	// 2. Initialize PostgreSQL 18 connection pool
@@ -54,7 +60,7 @@ func run() error {
 
 	// 3. Create repository and server
 	repo := pg.NewRepository(pool)
-	server := api.NewServer(repo, registry)
+	server := api.NewServer(repo, registry, cacheManager)
 
 	// 4. Start local admin web server
 	log.Printf("Starting felicia local admin server on http://localhost:%s", port)

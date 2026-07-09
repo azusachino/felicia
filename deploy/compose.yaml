@@ -16,5 +16,11 @@ services:
       timeout: 5s
       retries: 5
 
+  cache:
+    image: valkey/valkey:8-alpine
+    container_name: felicia-cache
+    ports:
+      - "6379:6379"
+
 volumes:
   pgdata:

@@ -144,7 +144,7 @@ func TestServerGetTemplates(t *testing.T) {
 	}
 
 	repo := newMockRepository()
-	srv := api.NewServer(repo, reg)
+	srv := api.NewServer(repo, reg, api.NewCacheManager(""))
 	handler := srv.Handler()
 
 	req := httptest.NewRequest("GET", "/api/admin/templates", nil)
@@ -172,7 +172,7 @@ func TestServerUpsertMementoValidation(t *testing.T) {
 	}
 
 	repo := newMockRepository()
-	srv := api.NewServer(repo, reg)
+	srv := api.NewServer(repo, reg, api.NewCacheManager(""))
 	handler := srv.Handler()
 
 	// 1. Submit invalid memento (missing required transit fields 'operator', 'from', 'to')

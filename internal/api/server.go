@@ -2,8 +2,11 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -18,13 +21,15 @@ import (
 type Server struct {
 	repo     domain.Repository
 	registry *domain.Registry
+	cache    *CacheManager
 }
 
 // NewServer creates a new API server instance.
-func NewServer(repo domain.Repository, registry *domain.Registry) *Server {
+func NewServer(repo domain.Repository, registry *domain.Registry, cache *CacheManager) *Server {
 	return &Server{
 		repo:     repo,
 		registry: registry,
+		cache:    cache,
 	}
 }
 
@@ -36,6 +41,14 @@ func (s *Server) Handler() http.Handler {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.AllowContentType("application/json"))
 
+	// Public Read-Only Query API (Valkey Cached)
+	r.Route("/api/v1", func(r chi.Router) {
+		r.Get("/journeys", s.handleGetPublicJourneys)
+		r.Get("/journeys/{slug}", s.handleGetPublicJourneyDetails)
+		r.Get("/journeys/{slug}/mementos", s.handleGetPublicMementos)
+	})
+
+	// Authoring Admin API (Valkey Invalidation on Write)
 	r.Route("/api/admin", func(r chi.Router) {
 		r.Get("/templates", s.handleGetTemplates)
 		r.Get("/journeys", s.handleListJourneys)
@@ -65,7 +78,7 @@ func (s *Server) handleGetTemplates(w http.ResponseWriter, _ *http.Request) {
 	respondJSON(w, http.StatusOK, tpls)
 }
 
-// Journey handlers
+// Journey handlers (Admin)
 
 func (s *Server) handleListJourneys(w http.ResponseWriter, r *http.Request) {
 	js, err := s.repo.ListJourneys(r.Context())
@@ -161,10 +174,11 @@ func (s *Server) handleUpsertJourney(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.cache.InvalidateAll(r.Context())
 	respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// Memento handlers
+// Memento handlers (Admin)
 
 func (s *Server) handleListMementos(w http.ResponseWriter, r *http.Request) {
 	journeyIDStr := chi.URLParam(r, "id")
@@ -322,10 +336,11 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.cache.InvalidateAll(r.Context())
 	respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// Photo handler
+// Photo handler (Admin)
 
 type upsertPhotoRequest struct {
 	ID          uuid.UUID  `json:"id"`
@@ -361,10 +376,11 @@ func (s *Server) handleUpsertPhoto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.cache.InvalidateAll(r.Context())
 	respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// Translation handlers
+// Translation handlers (Admin)
 
 func (s *Server) handleListTranslations(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
@@ -413,7 +429,382 @@ func (s *Server) handleUpsertTranslation(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	s.cache.InvalidateAll(r.Context())
 	respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// Public Read-Only Query APIs (Valkey Cached)
+
+// PublicJourneyListItem represents an entry in the landing card index.
+type PublicJourneyListItem struct {
+	Slug               string              `json:"slug"`
+	Title              string              `json:"title"`
+	MementoCount       int                 `json:"memento_count"`
+	RepresentativeDots []RepresentativeDot `json:"representative_dots"`
+}
+
+// RepresentativeDot represents a spatial point anchor for a journey.
+type RepresentativeDot struct {
+	Coord []float64 `json:"coord"`
+	Label string    `json:"label"`
+}
+
+func (s *Server) handleGetPublicJourneys(w http.ResponseWriter, r *http.Request) {
+	cacheKey := "felicia:public:journeys"
+	if cached, err := s.cache.Get(r.Context(), cacheKey); err == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(cached))
+		return
+	}
+
+	journeys, err := s.repo.ListJourneys(r.Context())
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	var list []PublicJourneyListItem
+	for _, j := range journeys {
+		dots := s.getRepresentativeDots(r.Context(), j.ID)
+		mementos, _ := s.repo.ListMementosByJourney(r.Context(), j.ID)
+		list = append(list, PublicJourneyListItem{
+			Slug:               j.Slug,
+			Title:              j.Title,
+			MementoCount:       len(mementos),
+			RepresentativeDots: dots,
+		})
+	}
+
+	jsonData, err := json.Marshal(list)
+	if err == nil {
+		_ = s.cache.Set(r.Context(), cacheKey, string(jsonData))
+	}
+
+	respondJSON(w, http.StatusOK, list)
+}
+
+type publicJourney struct {
+	ID             uuid.UUID                 `json:"id"`
+	JournalID      uuid.UUID                 `json:"journal_id"`
+	Slug           string                    `json:"slug"`
+	SourceRef      *string                   `json:"source_ref,omitempty"`
+	Title          string                    `json:"title"`
+	Place          string                    `json:"place"`
+	Country        *string                   `json:"country,omitempty"`
+	Region         *string                   `json:"region,omitempty"`
+	DateStart      string                    `json:"date_start"`
+	DateEnd        string                    `json:"date_end"`
+	GPSRoute       *geoJSONGeom              `json:"gps_route,omitempty"`
+	AuthoredFields []string                  `json:"authored_fields"`
+	Translations   map[string]map[string]any `json:"translations,omitempty"`
+}
+
+func (s *Server) handleGetPublicJourneyDetails(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "slug")
+	cacheKey := fmt.Sprintf("felicia:public:journey:%s", slug)
+	if cached, err := s.cache.Get(r.Context(), cacheKey); err == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(cached))
+		return
+	}
+
+	j, err := s.repo.GetJourneyBySlug(r.Context(), slug)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "journey not found")
+		return
+	}
+
+	trans, err := s.repo.ListTranslations(r.Context(), "journey", j.ID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	pj := publicJourney{
+		ID:             j.ID,
+		JournalID:      j.JournalID,
+		Slug:           j.Slug,
+		SourceRef:      j.SourceRef,
+		Title:          j.Title,
+		Place:          j.Place,
+		Country:        j.Country,
+		Region:         j.Region,
+		DateStart:      j.DateStart.Format("2006-01-02"),
+		DateEnd:        j.DateEnd.Format("2006-01-02"),
+		GPSRoute:       toGeoJSON(j.GPSRoute),
+		AuthoredFields: j.AuthoredFields,
+		Translations:   buildAPITranslationMap(trans),
+	}
+
+	jsonData, err := json.Marshal(pj)
+	if err == nil {
+		_ = s.cache.Set(r.Context(), cacheKey, string(jsonData))
+	}
+
+	respondJSON(w, http.StatusOK, pj)
+}
+
+type publicMemento struct {
+	ID            uuid.UUID                 `json:"id"`
+	JourneyID     uuid.UUID                 `json:"journey_id"`
+	Kind          string                    `json:"kind"`
+	Seq           int                       `json:"seq"`
+	OccurredAt    string                    `json:"occurred_at"`
+	OccurredTZ    string                    `json:"occurred_tz"`
+	Geom          *geoJSONGeom              `json:"geom,omitempty"`
+	Title         string                    `json:"title"`
+	Place         string                    `json:"place"`
+	Vendor        *string                   `json:"vendor,omitempty"`
+	Essay         *string                   `json:"essay,omitempty"`
+	PriceAmount   *int64                    `json:"price_amount,omitempty"`
+	PriceCurrency *string                   `json:"price_currency,omitempty"`
+	KindData      json.RawMessage           `json:"kind_data,omitempty"`
+	SourceRef     *string                   `json:"source_ref,omitempty"`
+	Photos        []publicPhoto             `json:"photos,omitempty"`
+	Translations  map[string]map[string]any `json:"translations,omitempty"`
+}
+
+type publicPhoto struct {
+	ID          uuid.UUID `json:"id"`
+	MementoID   uuid.UUID `json:"memento_id"`
+	ObjectKey   string    `json:"object_key"`
+	ContentHash string    `json:"content_hash"`
+	Caption     *string   `json:"caption,omitempty"`
+	Seq         int       `json:"seq"`
+	TakenAt     *string   `json:"taken_at,omitempty"`
+	SourceRef   *string   `json:"source_ref,omitempty"`
+}
+
+func (s *Server) handleGetPublicMementos(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "slug")
+	cacheKey := fmt.Sprintf("felicia:public:mementos:%s", slug)
+	if cached, err := s.cache.Get(r.Context(), cacheKey); err == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(cached))
+		return
+	}
+
+	j, err := s.repo.GetJourneyBySlug(r.Context(), slug)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "journey not found")
+		return
+	}
+
+	mementos, err := s.repo.ListMementosByJourney(r.Context(), j.ID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	var list []publicMemento
+	for _, m := range mementos {
+		mTrans, err := s.repo.ListTranslations(r.Context(), "memento", m.ID)
+		if err != nil {
+			respondError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		photos, err := s.repo.ListPhotosByMemento(r.Context(), m.ID)
+		if err != nil {
+			respondError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		var sPhotos []publicPhoto
+		for _, ph := range photos {
+			var takenAtStr *string
+			if ph.TakenAt != nil {
+				tStr := ph.TakenAt.Format(time.RFC3339)
+				takenAtStr = &tStr
+			}
+			sPhotos = append(sPhotos, publicPhoto{
+				ID:          ph.ID,
+				MementoID:   ph.MementoID,
+				ObjectKey:   ph.ObjectKey,
+				ContentHash: ph.ContentHash,
+				Caption:     ph.Caption,
+				Seq:         ph.Seq,
+				TakenAt:     takenAtStr,
+				SourceRef:   ph.SourceRef,
+			})
+		}
+
+		var kindData json.RawMessage
+		if len(m.KindData) > 0 {
+			kindData = m.KindData
+		}
+
+		list = append(list, publicMemento{
+			ID:            m.ID,
+			JourneyID:     m.JourneyID,
+			Kind:          m.Kind,
+			Seq:           m.Seq,
+			OccurredAt:    m.OccurredAt.Format(time.RFC3339),
+			OccurredTZ:    m.OccurredTZ,
+			Geom:          toGeoJSON(m.Geom),
+			Title:         m.Title,
+			Place:         m.Place,
+			Vendor:        m.Vendor,
+			Essay:         m.Essay,
+			PriceAmount:   m.PriceAmount,
+			PriceCurrency: m.PriceCurrency,
+			KindData:      kindData,
+			SourceRef:     m.SourceRef,
+			Photos:        sPhotos,
+			Translations:  buildAPITranslationMap(mTrans),
+		})
+	}
+
+	jsonData, err := json.Marshal(list)
+	if err == nil {
+		_ = s.cache.Set(r.Context(), cacheKey, string(jsonData))
+	}
+
+	respondJSON(w, http.StatusOK, list)
+}
+
+// Helpers
+
+type geoJSONGeom struct {
+	Type        string      `json:"type"`
+	Coordinates interface{} `json:"coordinates"`
+}
+
+func toGeoJSON(geom orb.Geometry) *geoJSONGeom {
+	if geom == nil {
+		return nil
+	}
+	switch g := geom.(type) {
+	case orb.Point:
+		return &geoJSONGeom{
+			Type:        "Point",
+			Coordinates: []float64{g.X(), g.Y()},
+		}
+	case orb.LineString:
+		var coords [][]float64
+		for _, pt := range g {
+			coords = append(coords, []float64{pt.X(), pt.Y()})
+		}
+		return &geoJSONGeom{
+			Type:        "LineString",
+			Coordinates: coords,
+		}
+	case orb.MultiLineString:
+		var coords [][][]float64
+		for _, ls := range g {
+			var lsCoords [][]float64
+			for _, pt := range ls {
+				lsCoords = append(lsCoords, []float64{pt.X(), pt.Y()})
+			}
+			coords = append(coords, lsCoords)
+		}
+		return &geoJSONGeom{
+			Type:        "MultiLineString",
+			Coordinates: coords,
+		}
+	default:
+		return nil
+	}
+}
+
+func buildAPITranslationMap(translations []*domain.Translation) map[string]map[string]any {
+	m := make(map[string]map[string]any)
+	for _, t := range translations {
+		if _, ok := m[t.Lang]; !ok {
+			m[t.Lang] = make(map[string]any)
+		}
+		if strings.HasPrefix(t.Field, "kind_data.") {
+			parts := strings.Split(t.Field, ".")
+			if len(parts) == 2 {
+				kindDataMap, ok := m[t.Lang]["kind_data"].(map[string]any)
+				if !ok {
+					kindDataMap = make(map[string]any)
+					m[t.Lang]["kind_data"] = kindDataMap
+				}
+				kindDataMap[parts[1]] = t.Value
+			} else {
+				m[t.Lang][t.Field] = t.Value
+			}
+		} else {
+			m[t.Lang][t.Field] = t.Value
+		}
+	}
+	return m
+}
+
+func (s *Server) getRepresentativeDots(ctx context.Context, journeyID uuid.UUID) []RepresentativeDot {
+	mementos, err := s.repo.ListMementosByJourney(ctx, journeyID)
+	if err != nil || len(mementos) == 0 {
+		return nil
+	}
+	var dots []RepresentativeDot
+	seenPlaces := make(map[string]bool)
+	for _, m := range mementos {
+		if len(dots) >= 3 {
+			break
+		}
+		if seenPlaces[m.Place] {
+			continue
+		}
+		seenPlaces[m.Place] = true
+
+		var coord []float64
+		if m.Geom != nil {
+			switch g := m.Geom.(type) {
+			case orb.Point:
+				coord = []float64{g.X(), g.Y()}
+			case orb.LineString:
+				if len(g) > 0 {
+					coord = []float64{g[0].X(), g[0].Y()}
+				}
+			}
+		}
+		if coord != nil {
+			dots = append(dots, RepresentativeDot{
+				Coord: coord,
+				Label: m.Place,
+			})
+		}
+	}
+	// Fallback if we didn't get enough distinct places but have mementos
+	if len(dots) < 3 && len(mementos) > 0 {
+		for _, m := range mementos {
+			if len(dots) >= 3 {
+				break
+			}
+			alreadyIn := false
+			for _, d := range dots {
+				if d.Label == m.Place {
+					alreadyIn = true
+					break
+				}
+			}
+			if alreadyIn {
+				continue
+			}
+			var coord []float64
+			if m.Geom != nil {
+				switch g := m.Geom.(type) {
+				case orb.Point:
+					coord = []float64{g.X(), g.Y()}
+				case orb.LineString:
+					if len(g) > 0 {
+						coord = []float64{g[0].X(), g[0].Y()}
+					}
+				}
+			}
+			if coord != nil {
+				dots = append(dots, RepresentativeDot{
+					Coord: coord,
+					Label: m.Place,
+				})
+			}
+		}
+	}
+	return dots
 }
 
 // Helper responders
