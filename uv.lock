@@ -16,6 +16,15 @@ wheels = [
 ]
 
 [[package]]
+name = "bracex"
+version = "3.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d0/f5/4473ad9b48cd0420a2d762a3750fa0e078e23e060b1af72662e5987e5530/bracex-3.0.tar.gz", hash = "sha256:b73f718d6bd98d8419e45df02426c86e9967c179949f779340d6c3a8c83b9111", size = 43162, upload-time = "2026-06-30T00:43:35.279Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f5/2e/68781b78e764e5ccc4af1e3d27e060069c73af90234853fa80000e7ee79d/bracex-3.0-py3-none-any.whl", hash = "sha256:3833e61c2f092d5aa0468fa2e6c6e990a306185abf763b6d122f0158e59c58a5", size = 11738, upload-time = "2026-06-30T00:43:34.196Z" },
+]
+
+[[package]]
 name = "certifi"
 version = "2026.5.20"
 source = { registry = "https://pypi.org/simple" }
@@ -93,6 +102,7 @@ source = { virtual = "." }
 
 [package.dev-dependencies]
 docs = [
+    { name = "mkdocs-awesome-pages-plugin" },
     { name = "mkdocs-material" },
     { name = "pymdown-extensions" },
 ]
@@ -101,6 +111,7 @@ docs = [
 
 [package.metadata.requires-dev]
 docs = [
+    { name = "mkdocs-awesome-pages-plugin", specifier = ">=2.9.2" },
     { name = "mkdocs-material", specifier = ">=9.5,<9.6" },
     { name = "pymdown-extensions", specifier = ">=10" },
 ]
@@ -211,6 +222,20 @@ wheels = [
 ]
 
 [[package]]
+name = "mkdocs-awesome-pages-plugin"
+version = "2.10.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "mkdocs" },
+    { name = "natsort" },
+    { name = "wcmatch" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/92/e8/6ae9c18d8174a5d74ce4ade7a7f4c350955063968bc41ff1e5833cff4a2b/mkdocs_awesome_pages_plugin-2.10.1.tar.gz", hash = "sha256:cda2cb88c937ada81a4785225f20ef77ce532762f4500120b67a1433c1cdbb2f", size = 16303, upload-time = "2024-12-22T21:13:49.19Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/73/61/19fc1e9c579dbfd4e8a402748f1d63cab7aabe8f8d91eb0235e45b32d040/mkdocs_awesome_pages_plugin-2.10.1-py3-none-any.whl", hash = "sha256:c6939dbea37383fc3cf8c0a4e892144ec3d2f8a585e16fdc966b34e7c97042a7", size = 15118, upload-time = "2024-12-22T21:13:46.945Z" },
+]
+
+[[package]]
 name = "mkdocs-get-deps"
 version = "0.2.2"
 source = { registry = "https://pypi.org/simple" }
@@ -253,6 +278,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/79/9b/9b4c96d6593b2a541e1cb8b34899a6d021d208bb357042823d4d2cabdbe7/mkdocs_material_extensions-1.3.1.tar.gz", hash = "sha256:10c9511cea88f568257f960358a467d12b970e1f7b2c0e5fb2bb48cab1928443", size = 11847, upload-time = "2023-11-22T19:09:45.208Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/5b/54/662a4743aa81d9582ee9339d4ffa3c8fd40a4965e033d77b9da9774d3960/mkdocs_material_extensions-1.3.1-py3-none-any.whl", hash = "sha256:adff8b62700b25cb77b53358dad940f3ef973dd6db797907c49e3c2ef3ab4e31", size = 8728, upload-time = "2023-11-22T19:09:43.465Z" },
+]
+
+[[package]]
+name = "natsort"
+version = "8.4.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e2/a9/a0c57aee75f77794adaf35322f8b6404cbd0f89ad45c87197a937764b7d0/natsort-8.4.0.tar.gz", hash = "sha256:45312c4a0e5507593da193dedd04abb1469253b601ecaf63445ad80f0a1ea581", size = 76575, upload-time = "2023-06-20T04:17:19.925Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ef/82/7a9d0550484a62c6da82858ee9419f3dd1ccc9aa1c26a1e43da3ecd20b0d/natsort-8.4.0-py3-none-any.whl", hash = "sha256:4732914fb471f56b5cce04d7bae6f164a592c7712e1c85f9ef585e197299521c", size = 38268, upload-time = "2023-06-20T04:17:17.522Z" },
 ]
 
 [[package]]
@@ -452,4 +486,16 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/07/f6/d0e5b343768e8bcb4cda79f0f2f55051bf26177ecd5651f84c07567461cf/watchdog-6.0.0-py3-none-win32.whl", hash = "sha256:07df1fdd701c5d4c8e55ef6cf55b8f0120fe1aef7ef39a1c6fc6bc2e606d517a", size = 79065, upload-time = "2024-11-01T14:07:09.525Z" },
     { url = "https://files.pythonhosted.org/packages/db/d9/c495884c6e548fce18a8f40568ff120bc3a4b7b99813081c8ac0c936fa64/watchdog-6.0.0-py3-none-win_amd64.whl", hash = "sha256:cbafb470cf848d93b5d013e2ecb245d4aa1c8fd0504e863ccefa32445359d680", size = 79070, upload-time = "2024-11-01T14:07:10.686Z" },
     { url = "https://files.pythonhosted.org/packages/33/e8/e40370e6d74ddba47f002a32919d91310d6074130fe4e17dabcafc15cbf1/watchdog-6.0.0-py3-none-win_ia64.whl", hash = "sha256:a1914259fa9e1454315171103c6a30961236f508b9b623eae470268bbcc6a22f", size = 79067, upload-time = "2024-11-01T14:07:11.845Z" },
+]
+
+[[package]]
+name = "wcmatch"
+version = "10.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "bracex" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/45/98/eb989c3113908e2ef46d940a53695a1ebb4be5a732c4a4f700be8f8d682b/wcmatch-10.2.tar.gz", hash = "sha256:92204839e3e9c945e1e71d7e1e4edeab2601ed50a5c51ff4f3f97ca711eeb738", size = 132499, upload-time = "2026-06-30T00:50:07.198Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d4/73/aef4aaf16b8d785762e2b14cf321a9178cc84a1bf4c40f58320f499a2d65/wcmatch-10.2-py3-none-any.whl", hash = "sha256:f1a79e80ccbe296907b7eaf57d8d3bc49eab0b428d35f7d09986b5079b6e4a5d", size = 39742, upload-time = "2026-06-30T00:50:05.927Z" },
 ]

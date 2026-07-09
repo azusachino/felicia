@@ -1,0 +1,7 @@
+arrange:
+  - index.md
+  - direction.md
+  - setup.md
+  - adr
+  - research
+  - archive

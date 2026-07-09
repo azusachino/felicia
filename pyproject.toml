@@ -11,6 +11,7 @@ docs = [
   # Pin to the 9.5.x line: 9.6.0 added a build-time MkDocs-2.0 promo banner.
   "mkdocs-material>=9.5,<9.6",
   "pymdown-extensions>=10",
+  "mkdocs-awesome-pages-plugin>=2.9.2",
 ]
 
 [tool.uv]

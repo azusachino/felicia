@@ -1,0 +1,14 @@
+title: Research
+arrange:
+  - ingestion-workflows.md
+  - liuaaron-teardown.md
+  - product-vs-personal.md
+  - saas-dataflow.md
+  - mementos-not-tickets.md
+  - notion-prototype.md
+  - notion-to-stack.md
+  - source-connectors.md
+  - transit-tickets.md
+  - authoring-publish-flow.md
+  - ux-restyle.md
+  - ...
