@@ -45,6 +45,9 @@ migrate: ## Apply DB migrations (goose, from nix) — needs DATABASE_DSN
 seed: ## Seed the database with sample data (uv run, psycopg) — needs DATABASE_DSN
 	uv run --group dev python scripts/seed.py
 
+test-api: ## Run Python-based E2E API integration tests (requires running server)
+	python scripts/test_api.py
+
 web-install: ## Install frontend deps (bun, from mise)
 	cd web && bun install
 

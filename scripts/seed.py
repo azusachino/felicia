@@ -49,13 +49,14 @@ def main():
                         "関東・関西",
                         "2026-03-20",
                         "2026-04-05",
-                        [] # empty authored fields
+                        []
                     )
                 )
 
                 # 4. Insert Mementos
+                # Memento 1: Transit Ticket
                 memento_1_id = "22222222-2222-2222-2222-222222222222"
-                print(f"Seeding Memento 1 (Ticket): {memento_1_id}")
+                print(f"Seeding Memento 1 (Transit): {memento_1_id}")
                 cur.execute(
                     """
                     INSERT INTO mementos (
@@ -69,22 +70,23 @@ def main():
                     (
                         memento_1_id,
                         journey_id,
-                        "ticket",
+                        "transit",
                         1,
                         "2026-03-20 10:00:00+0900",
                         "Asia/Tokyo",
                         "JR 東京駅 乗車券",
                         "東京駅",
                         "JR East",
-                        "東京から京都への旅立ち。新幹線の切符を購入し、のぞみ号に乗車した。",
+                        "東京から京都への旅立ち。",
                         14000,
                         "JPY",
-                        '{"operator": "JR East", "line": "Tokaido Shinkansen", "from": "Tokyo", "to": "Kyoto"}',
+                        '{"operator": "JR East", "line": "Tokaido Shinkansen", "from": {"name": "Tokyo", "coords": [139.7671, 35.6812]}, "to": {"name": "Kyoto", "coords": [135.7583, 34.9859]}}',
                         "immich-photo:ticket-pic",
                         []
                     )
                 )
 
+                # Memento 2: Cafe Receipt
                 memento_2_id = "33333333-3333-3333-3333-333333333333"
                 print(f"Seeding Memento 2 (Receipt): {memento_2_id}")
                 cur.execute(
@@ -104,20 +106,116 @@ def main():
                         2,
                         "2026-03-21 15:30:00+0900",
                         "Asia/Tokyo",
-                        "スマートコーヒー 喫茶レシート",
+                        "スマートコーヒー レシート",
                         "京都",
                         "Smart Coffee",
-                        "京都寺町通りの老舗喫茶店。フレンチトーストと自家焙煎珈琲をいただく。最高の時間だった。",
+                        "フレンチトーストと自家焙煎珈琲をいただく。",
                         1200,
                         "JPY",
-                        '{"shop": "Smart Coffee", "items": ["French Toast", "Coffee"]}',
+                        '{"shop": "Smart Coffee", "total": {"amount": 1200, "currency": "JPY"}, "items": "French Toast & Coffee"}',
                         "immich-photo:coffee-pic",
                         []
                     )
                 )
 
+                # Memento 3: Live Event Ticket
+                memento_3_id = "44444444-4444-4444-4444-444444444444"
+                print(f"Seeding Memento 3 (Live): {memento_3_id}")
+                cur.execute(
+                    """
+                    INSERT INTO mementos (
+                        id, journey_id, kind, seq, occurred_at, occurred_tz, geom, title, place, vendor, essay, price_amount, price_currency, kind_data, source_ref, authored_fields
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s,
+                        ST_GeomFromText('POINT(139.7495 35.6933)', 4326),
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    )
+                    """,
+                    (
+                        memento_3_id,
+                        journey_id,
+                        "live",
+                        3,
+                        "2026-03-22 18:30:00+0900",
+                        "Asia/Tokyo",
+                        "羊文学 日本武道館ライブ",
+                        "日本武道館",
+                        "Budokan",
+                        "日本武道館でのライブ。素晴らしい演奏だった。",
+                        7500,
+                        "JPY",
+                        '{"artist": "羊文学", "venue": {"name": "日本武道館", "coords": [139.7495, 35.6933]}, "date": "2026-03-22T18:30:00+09:00", "seat": "Arena A-10"}',
+                        "immich-photo:live-pic",
+                        []
+                    )
+                )
+
+                # Memento 4: Goods / Souvenirs
+                memento_4_id = "55555555-5555-5555-5555-555555555555"
+                print(f"Seeding Memento 4 (Goods): {memento_4_id}")
+                cur.execute(
+                    """
+                    INSERT INTO mementos (
+                        id, journey_id, kind, seq, occurred_at, occurred_tz, geom, title, place, vendor, essay, price_amount, price_currency, kind_data, source_ref, authored_fields
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s,
+                        ST_GeomFromText('POINT(139.7003 35.6895)', 4326),
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    )
+                    """,
+                    (
+                        memento_4_id,
+                        journey_id,
+                        "goods",
+                        4,
+                        "2026-03-25 14:00:00+0900",
+                        "Asia/Tokyo",
+                        "アニメイト キャラクターグッズ",
+                        "新宿",
+                        "Animate",
+                        "お気に入りのアニメのグッズを購入。",
+                        3500,
+                        "JPY",
+                        '{"name": "Fuwamiku Plush", "shop": "Animate Shinjuku", "price": {"amount": 3500, "currency": "JPY"}, "manufacturer": "Good Smile Company"}',
+                        "immich-photo:goods-pic",
+                        []
+                    )
+                )
+
+                # Memento 5: Goshuin Stamp
+                memento_5_id = "66666666-6666-6666-6666-666666666666"
+                print(f"Seeding Memento 5 (Stamp): {memento_5_id}")
+                cur.execute(
+                    """
+                    INSERT INTO mementos (
+                        id, journey_id, kind, seq, occurred_at, occurred_tz, geom, title, place, vendor, essay, price_amount, price_currency, kind_data, source_ref, authored_fields
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s,
+                        ST_GeomFromText('POINT(135.7839 34.9948)', 4326),
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    )
+                    """,
+                    (
+                        memento_5_id,
+                        journey_id,
+                        "stamp",
+                        5,
+                        "2026-03-28 11:00:00+0900",
+                        "Asia/Tokyo",
+                        "清水寺 御朱印",
+                        "京都 清水寺",
+                        "清水寺",
+                        "京都清水寺参拝の際に御朱印をいただく。",
+                        500,
+                        "JPY",
+                        '{"name": "清水寺 御朱印", "shrine_or_temple": "清水寺", "deity": "十一面千手観世音菩薩"}',
+                        "immich-photo:stamp-pic",
+                        []
+                    )
+                )
+
                 # 5. Insert Photos
-                photo_id = "44444444-4444-4444-4444-444444444444"
+                photo_id = "77777777-7777-7777-7777-777777777777"
                 print(f"Seeding Memento Photo: {photo_id}")
                 cur.execute(
                     """
@@ -163,7 +261,7 @@ def main():
                 )
 
                 conn.commit()
-                print("Database seeded successfully!")
+                print("Database seeded successfully with all 5 kinds!")
     except Exception as e:
         print(f"Error seeding database: {e}", file=sys.stderr)
         sys.exit(2)

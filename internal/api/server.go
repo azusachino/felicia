@@ -113,6 +113,10 @@ func (s *Server) handleUpsertJourney(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.AuthoredFields == nil {
+		req.AuthoredFields = []string{}
+	}
+
 	start, err := time.Parse("2006-01-02", req.DateStart)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid date_start format (YYYY-MM-DD)")
@@ -222,6 +226,10 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request JSON")
 		return
+	}
+
+	if req.AuthoredFields == nil {
+		req.AuthoredFields = []string{}
 	}
 
 	// 1. Template registry validation
