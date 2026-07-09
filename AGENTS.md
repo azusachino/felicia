@@ -74,7 +74,8 @@ All daily operations go through `make <target>`. **Tools:** runtimes (go, bun) f
 - `docs/research/` — exploration trail (workflows, liuaaron teardown, product-vs-personal,
   mementos-not-tickets, notion-prototype, notion-to-stack, source-connectors, transit-tickets,
   authoring-publish-flow, ux-restyle, memento-arrangement, reader-admin-surfaces,
-  adventurelog teardown).
+  adventurelog teardown). Backend core: `backend-stack.md` (stack + decisions D1–D9),
+  `data-model.md` (stable schema), `memento-templates.md` (declarative kind-template registry).
 - `docs/archive/` — parked design/spec/plan drafts (premature lock-in); detail, not binding.
 - asobi graph `felicia:*` — decisions (ADRs), session state. Run `asobi` commands.
 

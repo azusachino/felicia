@@ -1,14 +1,32 @@
-# Starting linter config — reconciled with the installed golangci-lint version
-# when implementation begins. Conservative, widely-supported linters.
+version: "2"
+
 run:
   timeout: 5m
 
 linters:
+  default: standard # errcheck, govet, ineffassign, staticcheck, unused
   enable:
-    - errcheck
-    - govet
-    - ineffassign
-    - staticcheck
-    - unused
+    - bodyclose
+    - errorlint
+    - gocritic
     - misspell
     - revive
+    - unconvert
+  exclusions:
+    generated: lax
+    paths:
+      - (^|/)node_modules/
+      - third_party$
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/azusachino/felicia
