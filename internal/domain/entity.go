@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -38,25 +39,25 @@ type Journey struct {
 
 // Memento represents an object that anchors a memory.
 type Memento struct {
-	ID             uuid.UUID    `json:"id"`
-	JourneyID      uuid.UUID    `json:"journey_id"`
-	Kind           string       `json:"kind"`
-	Seq            int          `json:"seq"`
-	OccurredAt     time.Time    `json:"occurred_at"`
-	OccurredTZ     string       `json:"occurred_tz"`
-	Geom           orb.Geometry `json:"geom"`
-	Title          string       `json:"title"` // Canonical Japanese (ja)
-	Place          string       `json:"place"`
-	Vendor         *string      `json:"vendor,omitempty"`
-	Essay          *string      `json:"essay,omitempty"`
-	PriceAmount    *int64       `json:"price_amount,omitempty"`
-	PriceCurrency  *string      `json:"price_currency,omitempty"`
-	KindData       []byte       `json:"kind_data"` // JSONB payload
-	SourceRef      *string      `json:"source_ref,omitempty"`
-	AuthoredFields []string     `json:"authored_fields"`
-	OrphanedAt     *time.Time   `json:"orphaned_at,omitempty"`
-	CreatedAt      time.Time    `json:"created_at"`
-	UpdatedAt      time.Time    `json:"updated_at"`
+	ID             uuid.UUID       `json:"id"`
+	JourneyID      uuid.UUID       `json:"journey_id"`
+	Kind           string          `json:"kind"`
+	Seq            int             `json:"seq"`
+	OccurredAt     time.Time       `json:"occurred_at"`
+	OccurredTZ     string          `json:"occurred_tz"`
+	Geom           orb.Geometry    `json:"geom"`
+	Title          string          `json:"title"` // Canonical Japanese (ja)
+	Place          string          `json:"place"`
+	Vendor         *string         `json:"vendor,omitempty"`
+	Essay          *string         `json:"essay,omitempty"`
+	PriceAmount    *int64          `json:"price_amount,omitempty"`
+	PriceCurrency  *string         `json:"price_currency,omitempty"`
+	KindData       json.RawMessage `json:"kind_data"` // JSONB payload
+	SourceRef      *string         `json:"source_ref,omitempty"`
+	AuthoredFields []string        `json:"authored_fields"`
+	OrphanedAt     *time.Time      `json:"orphaned_at,omitempty"`
+	CreatedAt      time.Time       `json:"created_at"`
+	UpdatedAt      time.Time       `json:"updated_at"`
 }
 
 // Translation represents a translated string in the translations sidecar.
