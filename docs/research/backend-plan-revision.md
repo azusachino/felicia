@@ -26,7 +26,7 @@ CREATE TABLE translations (
 ```
 
 #### The Translatable Path Merge Challenge
-For simple fields like `title` or `essay`, the merge is direct. For JSONB columns like `kind_data` (e.g. transit's `{ "operator": "JR East", "line": "Yamanote Line" }`), the merge requires traversing paths:
+For simple fields like `title`, the merge is direct. User-authored essays (like `essay` and photo captions) are **not** translated and remain solely in the primary Japanese language. For JSONB columns like `kind_data` (e.g. transit's `{ "operator": "JR East", "line": "Yamanote Line" }`), the merge requires traversing paths:
 - If a translation exists for `owner_type='memento'`, `field='kind_data.operator'`, the backend must replace/insert this translated string into the `kind_data` JSON payload before serving the API.
 - **Go Implementation Rule:** The API handler utilizes a JSON path-traversal resolver to dynamically patch the serialized `kind_data` map with translated values before encoding the response.
 
@@ -36,6 +36,7 @@ Point mementos snap to the nearest **Dawarich visit**. But if a photo is taken a
 - **Refinement:** Snapping uses a double-gated threshold:
   1. **Temporal Match:** If the photo's timestamp falls within the `[arrive, depart]` window of a visit, snap to that visit.
   2. **Spatial fallback:** If no visit overlaps temporally, find the nearest visit within a $500\text{m}$ radius. If no visit is found, fallback to the photo's raw EXIF coordinates and label the place as a standalone coord (e.g. `"Coords: Lat, Lng"`), treating it as a transient visit.
+  3. **Coords-Less Timezone Fallback:** If a photo has no EXIF coordinates and no matching visit, its timezone (`occurred_tz`) falls back to the default timezone defined at the Journey level (e.g. `Asia/Tokyo`).
 
 ### C. Geometry SRID
 All spatial data operates strictly on **SRID 4326** (WGS 84), handled via PostGIS geometry columns:
