@@ -165,14 +165,14 @@ If a kind template definition (e.g. `transit.yaml`) changes over time:
 - Saved mementos record `kind_version` in their schema.
 - If a schema mismatch is detected during load, the Go backend applies dynamic resolvers or triggers a database migration to reconcile the `kind_data` JSONB structure.
 
-### C. PostgreSQL 18 & Static-Site Generation (SSG) Model (with SQLite3 Fallback)
-To support a single-user publishing model (similar to `yihong0618/running_page`), `felicia` operates as a compiler that reads from our primary **PostgreSQL 18 + PostGIS** database (or an offline **SQLite3** fallback database) to generate a zero-cost, 100% static public website.
+### C. PostgreSQL 18 & Static-Site Generation (SSG) Model
+To support a single-user publishing model (similar to `yihong0618/running_page`), `felicia` operates as a compiler that reads from our primary **PostgreSQL 18 + PostGIS** database to generate a zero-cost, 100% static public website.
 
 ```
 +------------------+                   +--------------------+                   +----------------------+
-| Local Authoring  |                   | Primary PG18 DB    |                   |   Static Site Build  |
-| (Go localhost    | ==[Writes to]==>  | (PostGIS checks)   | ==[Compiles to]==> | (Static JSONs +      |
-|  admin interface)|                   | [SQLite3 Fallback] |                   |  EXIF-stripped media)|
+| Local Authoring  |                   |   Primary PG18     |                   |   Static Site Build  |
+| (Go localhost    | ==[Writes to]==>  |   Database         | ==[Compiles to]==> | (Static JSONs +      |
+|  admin interface)|                   | (PostGIS checks)   |                   |  EXIF-stripped media)|
 +------------------+                   +--------------------+                   +----------------------+
                                                                                            ||
                                                                                    [Deploys for free to]
@@ -184,17 +184,16 @@ To support a single-user publishing model (similar to `yihong0618/running_page`)
                                                                                 +----------------------+
 ```
 
-1. **Primary Database & Offline SQLite3 Fallback:**
-   * PostgreSQL 18 + PostGIS is the primary, production-ready storage engine.
-   * For offline compilation or local development, SQLite3 is supported as an offline fallback (using a pure-Go, CGO-free driver such as `ncruces/go-sqlite3`).
-   * Geometry processing (such as Douglas–Peucker simplification and spatial snapping to visits) in SQLite3 mode is computed in Go memory via the `paulmach/orb` library, writing standard WKB blobs to SQLite3 and eliminating system-level SpatiaLite dependencies.
+1. **Database Engine (PostgreSQL 18 + PostGIS):**
+   * PostgreSQL 18 + PostGIS is the sole storage and spatial engine.
+   * All spatial operations (such as Douglas–Peucker simplification and spatial snapping to visits) are computed directly in the database layer.
 
 2. **Local Admin UI (`localhost`):**
    * The user runs a command (`felicia admin`) locally to start a lightweight web server on their machine.
-   * They use the admin UI (`web/admin`) locally to edit essays, structure transit legs, and arrange photos.
+   * They use the admin UI (`web/admin`) locally to edit essays, structure transit legs, and arrange photos, with edits stored in the configured PostgreSQL 18 database.
 
 3. **Static Build Output (`felicia build`):**
-   * The compiler queries the local SQLite file and outputs the entire public website into a static directory:
+   * The compiler queries the PostgreSQL 18 database and outputs the entire public website into a static directory:
      * Generates static JSON files representing the API tree (e.g., `/api/v1/journeys.json`, `/api/v1/journeys/<slug>.json`, `/api/v1/mementos.json`). The frontend fetches these static paths directly.
      * Moves resized and EXIF-stripped image derivatives to `images/<content_hash>.jpg`.
      * Emits the Svelte SPA production bundle.

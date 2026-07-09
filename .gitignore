@@ -15,8 +15,6 @@ coverage.*
 /tmp/
 *.sqlite
 *.sqlite-journal
-*.db
-*.db-journal
 
 # Docs (mkdocs build output + uv env; uv.lock is committed)
 /site/

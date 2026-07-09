@@ -3,7 +3,7 @@
 > 2026-07-09. The **stable** backend schema — designed once, meant not to be rebuilt from
 > zero. Derives from the decisions in [`backend-stack.md`](backend-stack.md) (D1–D8), the plan revision in [`backend-plan-revision.md`](backend-plan-revision.md), and
 > supersedes the ticket-era ER in [`archive/design.md`](../archive/design.md) §4. 
-> It provides DDL schemas for both **PostgreSQL 18** (for server mode) and **SQLite** (for local-first, CGO-free compiler mode).
+> It defines the DDL schema strictly for **PostgreSQL 18 + PostGIS**.
 
 ## Design invariants (why this is stable)
 
@@ -13,12 +13,11 @@
 2. **Single journal root** — everything hangs off one `journal` row even though there is
    exactly one. Multi-tenant later = "add rows + a filter," not "reshape every table."
    (direction.md hedge #3)
-3. **Dual Engine Support (PG18 & SQLite)** — unified table schemas matching 1:1 in Go models, with
-   platform-specific differences (PostGIS vs. WKB BLOB, JSONB vs. JSON Text) handled at the repository implementation seam.
+3. **Canonical Spatial Engine** — PostgreSQL 18 with PostGIS is the sole database engine for data storage and spatial operations.
 4. **Provenance is load-bearing** — every writable field is INGESTED / OVERRIDABLE / AUTHORED,
    and translations add a **language axis**; the importer never clobbers authored work.
 5. **Uniform memento** — one `mementos` table, `kind`-tagged, kind-specifics in `kind_data`
-   jsonb/json. New kinds = new enum value, not new tables.
+   jsonb. New kinds = new enum value, not new tables.
 
 ## The shape at a glance
 
@@ -62,9 +61,7 @@ erDiagram
 
 ---
 
-## Database Schemas (DDL)
-
-### 1. PostgreSQL 18 Schema (Server Mode)
+## Database Schema (PostgreSQL 18 DDL)
 
 Leverages native spatial features (PostGIS), standard SQL/JSON querying, sequential UUIDv7 generation, and advanced MERGE actions.
 
@@ -154,139 +151,55 @@ CREATE INDEX idx_mementos_occurred ON mementos(occurred_at DESC);
 CREATE INDEX idx_memento_photos_memento_seq ON memento_photos(memento_id, seq);
 ```
 
-### 2. SQLite Schema (Local-First Compiler Mode)
-
-Uses text UUIDs, standard JSON strings for nested properties, standard text JSON arrays for `authored_fields`, and WKB (Well-Known Binary) BLOBs for spatial data (retaining full CGO-free portability).
-
-```sql
-CREATE TABLE journal (
-    id TEXT PRIMARY KEY, -- UUID string
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE journeys (
-    id TEXT PRIMARY KEY,
-    journal_id TEXT NOT NULL REFERENCES journal(id) ON DELETE CASCADE,
-    slug TEXT NOT NULL UNIQUE,
-    source_ref TEXT,
-    title TEXT NOT NULL,
-    place TEXT NOT NULL,
-    country TEXT,
-    region TEXT,
-    date_start TEXT NOT NULL,
-    date_end TEXT NOT NULL,
-    gps_route BLOB, -- WKB MultiLineString
-    authored_fields TEXT NOT NULL DEFAULT '[]', -- JSON array of strings
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(journal_id, source_ref)
-);
-
-CREATE TABLE mementos (
-    id TEXT PRIMARY KEY,
-    journey_id TEXT NOT NULL REFERENCES journeys(id) ON DELETE CASCADE,
-    kind TEXT NOT NULL,
-    seq INTEGER NOT NULL,
-    occurred_at TEXT NOT NULL,
-    occurred_tz TEXT NOT NULL,
-    geom BLOB NOT NULL, -- WKB Point or LineString
-    title TEXT NOT NULL,
-    place TEXT NOT NULL,
-    vendor TEXT,
-    essay TEXT,
-    price_amount INTEGER,
-    price_currency TEXT,
-    kind_data TEXT NOT NULL DEFAULT '{}', -- JSON text
-    source_ref TEXT,
-    authored_fields TEXT NOT NULL DEFAULT '[]', -- JSON array of strings
-    orphaned_at TEXT,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(journey_id, source_ref)
-);
-
-CREATE TABLE translations (
-    id TEXT PRIMARY KEY,
-    owner_type TEXT NOT NULL CHECK (owner_type IN ('journey', 'memento', 'photo')),
-    owner_id TEXT NOT NULL,
-    lang TEXT NOT NULL CHECK (lang IN ('en', 'zh')),
-    field TEXT NOT NULL,
-    value TEXT NOT NULL,
-    provenance TEXT NOT NULL CHECK (provenance IN ('machine', 'authored')),
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(owner_type, owner_id, lang, field)
-);
-
-CREATE TABLE memento_photos (
-    id TEXT PRIMARY KEY,
-    memento_id TEXT NOT NULL REFERENCES mementos(id) ON DELETE CASCADE,
-    object_key TEXT NOT NULL,
-    content_hash TEXT NOT NULL,
-    caption TEXT,
-    seq INTEGER NOT NULL DEFAULT 0,
-    taken_at TEXT,
-    source_ref TEXT,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(memento_id, source_ref),
-    UNIQUE(memento_id, content_hash)
-);
-
--- Indexes
-CREATE INDEX idx_mementos_journey_seq ON mementos(journey_id, seq);
-CREATE INDEX idx_mementos_kind ON mementos(kind);
-CREATE INDEX idx_mementos_occurred ON mementos(occurred_at);
-CREATE INDEX idx_memento_photos_memento_seq ON memento_photos(memento_id, seq);
-```
-
 ---
 
 ## Entity Details & Field Mapping
 
 ### `journal` — the root (one row)
 
-| Column | PG Type | SQLite Type | Notes |
-| --- | --- | --- | --- |
-| `id` | `uuid pk` | `TEXT pk` | the single root; FKs hang off it |
-| `created_at` | `timestamptz` | `TEXT` | |
+| Column | PG Type | Notes |
+| --- | --- | --- |
+| `id` | `uuid pk` | the single root; FKs hang off it |
+| `created_at` | `timestamptz` | |
 
 ### `journeys`
 
-| Column | PG Type | SQLite Type | Class | Notes |
-| --- | --- | --- | --- | --- |
-| `id` | `uuid pk` | `TEXT pk` | — | |
-| `journal_id` | `uuid` | `TEXT` | — | references `journal.id` |
-| `slug` | `text` | `TEXT` | identity | `<yyyy>-<mm>-<slugify(name)>` (computed once, in URLs) |
-| `source_ref` | `text` | `TEXT` | INGESTED | e.g. `immich-album:<uuid>` |
-| `title` | `text` | `TEXT` | AUTHORED | primary-lang (ja); en/zh in `translations` |
-| `place` | `text` | `TEXT` | OVERRIDABLE | primary-lang summary of the region |
-| `country` | `varchar(3)` | `TEXT` | OVERRIDABLE | ISO country code |
-| `region` | `text` | `TEXT` | OVERRIDABLE | |
-| `date_start` | `date` | `TEXT` | OVERRIDABLE | min asset capture date |
-| `date_end` | `date` | `TEXT` | OVERRIDABLE | max asset capture date |
-| `gps_route` | `geometry` | `BLOB` | INGESTED | simplified passive track |
-| `authored_fields` | `text[]` | `TEXT` | — | no-clobber tracker (SQLite holds as JSON array) |
+| Column | PG Type | Class | Notes |
+| --- | --- | --- | --- |
+| `id` | `uuid pk` | — | |
+| `journal_id` | `uuid` | — | references `journal.id` |
+| `slug` | `text` | identity | `<yyyy>-<mm>-<slugify(name)>` (computed once, in URLs) |
+| `source_ref` | `text` | INGESTED | e.g. `immich-album:<uuid>` |
+| `title` | `text` | AUTHORED | primary-lang (ja); en/zh in `translations` |
+| `place` | `text` | OVERRIDABLE | primary-lang summary of the region |
+| `country` | `varchar(3)` | OVERRIDABLE | ISO country code |
+| `region` | `text` | OVERRIDABLE | |
+| `date_start` | `date` | OVERRIDABLE | min asset capture date |
+| `date_end` | `date` | OVERRIDABLE | max asset capture date |
+| `gps_route` | `geometry` | INGESTED | simplified passive track |
+| `authored_fields` | `text[]` | — | no-clobber tracker |
 
 ### `mementos`
 
-| Column | PG Type | SQLite Type | Class | Notes |
-| --- | --- | --- | --- | --- |
-| `id` | `uuid pk` | `TEXT pk` | — | |
-| `journey_id` | `uuid` | `TEXT` | — | references `journeys.id` |
-| `kind` | `text` | `TEXT` | OVERRIDABLE | enum: `ticket \| transit \| goods \| stamp \| receipt \| souvenir` |
-| `seq` | `int` | `INTEGER` | OVERRIDABLE | chronological default sequence |
-| `occurred_at` | `timestamptz` | `TEXT` | OVERRIDABLE | resolved timestamp |
-| `occurred_tz` | `text` | `TEXT` | OVERRIDABLE | IANA tz identifier |
-| `geom` | `geometry` | `BLOB` | INGESTED¹ | Point (goods/stamp) or LineString (transit) |
-| `title` | `text` | `TEXT` | AUTHORED | primary-lang (ja) |
-| `place` | `text` | `TEXT` | OVERRIDABLE | primary-lang |
-| `vendor` | `text` | `TEXT` | OVERRIDABLE | |
-| `essay` | `text` | `TEXT` | AUTHORED | primary-lang markdown |
-| `price_amount` | `bigint` | `INTEGER` | OVERRIDABLE | minor units (¥210 → 210) |
-| `price_currency`| `char(3)` | `TEXT` | OVERRIDABLE | ISO 4217 currency code |
-| `kind_data` | `jsonb` | `TEXT` | mixed² | kind-specific properties (transit stations, operator) |
-| `source_ref` | `text` | `TEXT` | INGESTED | immich or file reference |
-| `authored_fields` | `text[]` | `TEXT` | — | no-clobber tracker |
-| `orphaned_at` | `timestamptz` | `TEXT` | INGESTED | marked when source asset disappears |
+| Column | PG Type | Class | Notes |
+| --- | --- | --- | --- |
+| `id` | `uuid pk` | — | |
+| `journey_id` | `uuid` | — | references `journeys.id` |
+| `kind` | `text` | OVERRIDABLE | enum: `ticket \| transit \| goods \| stamp \| receipt \| souvenir` |
+| `seq` | `int` | OVERRIDABLE | chronological default sequence |
+| `occurred_at` | `timestamptz` | OVERRIDABLE | resolved timestamp |
+| `occurred_tz` | `text` | OVERRIDABLE | IANA tz identifier |
+| `geom` | `geometry` | INGESTED¹ | Point (goods/stamp) or LineString (transit) |
+| `title` | `text` | AUTHORED | primary-lang (ja) |
+| `place` | `text` | OVERRIDABLE | primary-lang |
+| `vendor` | `text` | OVERRIDABLE | |
+| `essay` | `text` | AUTHORED | primary-lang markdown |
+| `price_amount` | `bigint` | OVERRIDABLE | minor units (¥210 → 210) |
+| `price_currency`| `char(3)` | OVERRIDABLE | ISO 4217 currency code |
+| `kind_data` | `jsonb` | mixed² | kind-specific properties (transit stations, operator) |
+| `source_ref` | `text` | INGESTED | immich or file reference |
+| `authored_fields` | `text[]` | — | no-clobber tracker |
+| `orphaned_at` | `timestamptz` | INGESTED | marked when source asset disappears |
 
 ---
 
@@ -319,7 +232,7 @@ detected by dwell-time + spatial clustering over the track, reverse-geocoded to 
 
 ### Upsert and Translation Merge Rules
 
-1. **Upserts:** In PG 18, conditional MERGE statement writes to target variables if and only if the updated fields are absent from `authored_fields`. In SQLite, the Go layer handles JSON parsing of `authored_fields` before issuing an UPDATE.
+1. **Upserts:** In PG 18, conditional MERGE statement writes to target variables if and only if the updated fields are absent from `authored_fields`.
 2. **Translation Merge:** For translatable fields inside JSON (`kind_data.operator`), the API layer dynamically reads the sidecar `translations` table and merges matching values into the output JSON payload based on the requested locale.
 
 ---
@@ -331,9 +244,9 @@ flowchart LR
   subgraph A["A — Ingest (CLI / GitHub Action)"]
     daw["Dawarich API\n(GPX fallback)"] --> imp["waypoints import"]
     photos["Immich API\n(Local folder fallback)"] --> imp
-    imp -->|"Simplify track (Go orb)"| gr[("journeys.gps_route\nINGESTED")]
+    imp -->|"Simplify track (PostGIS)"| gr[("journeys.gps_route\nINGESTED")]
     imp -->|"Exif strip + Hash"| ph[("memento_photos\nINGESTED")]
-    imp -->|"Validate & Snap"| mo[("mementos\nINGESTED/OVERRIDABLE")]
+    imp -->|"Validate & Snap (PostGIS)"| mo[("mementos\nINGESTED/OVERRIDABLE")]
   end
   subgraph E["E — Author (Local localhost / Edge Admin)"]
     tc["Transit creator"] -->|"leg geom"| mo
