@@ -42,28 +42,45 @@ def test_journeys():
     # List
     status, body = request("/api/admin/journeys")
     assert status == 200, f"Expected 200, got {status}"
-    assert len(body) > 0, "Expected at least 1 seeded journey"
+    assert len(body) == 3, f"Expected 3 seeded journeys, got {len(body)}"
     
-    journey = body[0]
-    journey_id = journey["id"]
+    slugs = [j["slug"] for j in body]
+    assert "japan-spring-2026" in slugs, "Missing J1 slug"
+    assert "hokkaido-winter-2025" in slugs, "Missing J2 slug"
+    assert "tokyo-autumn-2024" in slugs, "Missing J3 slug"
     
-    # Get by ID
-    status, body = request(f"/api/admin/journeys/{journey_id}")
+    # Get by ID (J1)
+    j1_id = "11111111-1111-1111-1111-111111111111"
+    status, body = request(f"/api/admin/journeys/{j1_id}")
     assert status == 200, f"Expected 200, got {status}"
     assert body["slug"] == "japan-spring-2026", f"Unexpected slug: {body['slug']}"
     print("✓ Journeys GET OK")
 
 def test_mementos_list():
     print("Testing GET /api/admin/journeys/{id}/mementos...")
-    journey_id = "11111111-1111-1111-1111-111111111111"
-    status, body = request(f"/api/admin/journeys/{journey_id}/mementos")
+    # J1: Should have 2 mementos
+    j1_id = "11111111-1111-1111-1111-111111111111"
+    status, body = request(f"/api/admin/journeys/{j1_id}/mementos")
     assert status == 200, f"Expected 200, got {status}"
-    assert len(body) == 5, f"Expected 5 seeded mementos, got {len(body)}"
-    
-    kinds = [m["kind"] for m in body]
-    for k in ["transit", "receipt", "live", "goods", "stamp"]:
-        assert k in kinds, f"Missing kind {k} in seeded mementos"
-    print("✓ Mementos List OK")
+    assert len(body) == 2, f"Expected 2 mementos for J1, got {len(body)}"
+    assert body[0]["kind"] == "transit", "Expected J1 memento 1 to be transit"
+    assert body[1]["kind"] == "receipt", "Expected J1 memento 2 to be receipt"
+
+    # J2: Should have 2 mementos
+    j2_id = "11111111-1111-1111-1111-222222222222"
+    status, body = request(f"/api/admin/journeys/{j2_id}/mementos")
+    assert status == 200, f"Expected 200, got {status}"
+    assert len(body) == 2, f"Expected 2 mementos for J2, got {len(body)}"
+    assert body[0]["kind"] == "live", "Expected J2 memento 1 to be live"
+    assert body[1]["kind"] == "goods", "Expected J2 memento 2 to be goods"
+
+    # J3: Should have 1 memento (stamp on Tokyo Station - overlapping location!)
+    j3_id = "11111111-1111-1111-1111-333333333333"
+    status, body = request(f"/api/admin/journeys/{j3_id}/mementos")
+    assert status == 200, f"Expected 200, got {status}"
+    assert len(body) == 1, f"Expected 1 memento for J3, got {len(body)}"
+    assert body[0]["kind"] == "stamp", "Expected J3 memento 1 to be stamp"
+    print("✓ Mementos distribution and overlapping locations OK")
 
 def test_memento_validation():
     print("Testing memento validation endpoint...")
@@ -78,7 +95,7 @@ def test_memento_validation():
         "title": "Invalid Live",
         "place": "Tokyo",
         "kind_data": {
-            "artist": "羊文学" # missing required 'venue' and 'date'
+            "artist": "羊文学"
         }
     }
     status, body = request("/api/admin/mementos", method="POST", data=payload_invalid)
@@ -125,7 +142,7 @@ def test_translations():
     assert status == 200, f"Expected 200, got {status}"
     assert len(body) > 0, "Expected at least 1 translation sidecar row"
     
-    # Upsert
+    # Comic-book upsert style
     new_trans = {
         "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         "owner_type": "memento",
