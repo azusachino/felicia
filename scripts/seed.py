@@ -351,6 +351,30 @@ def main():
                     ("memento", memento_5_id, "en", "title", "Tokyo Station Commemorative Stamp", "machine")
                 )
 
+                # 6. Seed a transit leg on Journey 1 (HND -> KIX flight). Kept
+                # separate from gps_route; the geodesic arc is built by
+                # ST_Segmentize and composed into the display route at read time
+                # (union-at-read). This gives the dev DB a journey with both a
+                # Dawarich track AND an authored leg; Journeys 2 & 3 stay track-only.
+                print("Seeding transit leg on Journey 1 (HND -> KIX)...")
+                cur.execute(
+                    """
+                    INSERT INTO transit_legs (
+                        id, journey_id, seq, origin_label, dest_label, geom
+                    ) VALUES (
+                        generate_uuid_v7(), %s, %s, %s, %s,
+                        ST_Segmentize(
+                            ST_MakeLine(
+                                ST_SetSRID(ST_MakePoint(139.7798, 35.5494), 4326),
+                                ST_SetSRID(ST_MakePoint(135.2381, 34.4342), 4326)
+                            )::geography,
+                            100000
+                        )::geometry
+                    )
+                    """,
+                    (journey_1_id, 0, "HND", "KIX")
+                )
+
                 conn.commit()
                 print("Database successfully seeded with multi-trip UUIDv7 dataset!")
     except Exception as e:

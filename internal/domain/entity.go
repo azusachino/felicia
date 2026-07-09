@@ -72,6 +72,33 @@ type Translation struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 
+// TransitLeg is an authored route segment (a flight, ferry, or GPS-gap fill).
+// Its Geom is a great-circle arc generated server-side. Legs are kept separate
+// from journeys.gps_route and composed into the display route at read time.
+type TransitLeg struct {
+	ID          uuid.UUID      `json:"id"`
+	JourneyID   uuid.UUID      `json:"journey_id"`
+	Seq         int            `json:"seq"`
+	OriginLabel *string        `json:"origin_label,omitempty"`
+	DestLabel   *string        `json:"dest_label,omitempty"`
+	Geom        orb.LineString `json:"geom"`
+	CreatedAt   time.Time      `json:"created_at"`
+}
+
+// TransitLegInput is the input to create a leg. The geodesic arc is generated in
+// PostGIS from the endpoints (ST_Segmentize on geography), so the caller supplies
+// endpoints and a max segment length in metres rather than a geometry.
+type TransitLegInput struct {
+	ID          uuid.UUID
+	JourneyID   uuid.UUID
+	Seq         int
+	OriginLabel *string
+	DestLabel   *string
+	Origin      orb.Point // [lng, lat]
+	Dest        orb.Point // [lng, lat]
+	SegmentLenM float64
+}
+
 // MementoPhoto is a collectible photo associated with a memento.
 type MementoPhoto struct {
 	ID          uuid.UUID  `json:"id"`
@@ -101,6 +128,16 @@ type Repository interface {
 	GetMemento(ctx context.Context, id uuid.UUID) (*Memento, error)
 	ListMementosByJourney(ctx context.Context, journeyID uuid.UUID) ([]*Memento, error)
 	UpsertMemento(ctx context.Context, memento *Memento) error
+
+	// TransitLeg operations (authored legs, union-at-read)
+	CreateTransitLeg(ctx context.Context, leg *TransitLegInput) error
+	ListTransitLegsByJourney(ctx context.Context, journeyID uuid.UUID) ([]*TransitLeg, error)
+	DeleteTransitLeg(ctx context.Context, id uuid.UUID) error
+
+	// Route composition: display route = gps_route ∪ transit legs, and proximity
+	// snap of a point onto that composed route. Both return nil when empty.
+	GetDisplayRoute(ctx context.Context, journeyID uuid.UUID) (orb.MultiLineString, error)
+	SnapToRoute(ctx context.Context, journeyID uuid.UUID, pt orb.Point) (*orb.Point, error)
 
 	// Photo operations
 	GetPhoto(ctx context.Context, id uuid.UUID) (*MementoPhoto, error)

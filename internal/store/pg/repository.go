@@ -3,6 +3,7 @@ package pg
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,6 +14,9 @@ import (
 	"github.com/azusachino/felicia/internal/domain"
 	"github.com/azusachino/felicia/internal/store/pg/db"
 )
+
+// Compile-time check that pgRepository satisfies the domain contract.
+var _ domain.Repository = (*pgRepository)(nil)
 
 type pgRepository struct {
 	q *db.Queries
@@ -30,7 +34,7 @@ func NewRepository(d db.DBTX) domain.Repository {
 func (r *pgRepository) GetJournal(ctx context.Context, id uuid.UUID) (*domain.Journal, error) {
 	row, err := r.q.GetJournal(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get journal %s: %w", id, err)
 	}
 	return &domain.Journal{
 		ID:        row.ID,
@@ -39,10 +43,13 @@ func (r *pgRepository) GetJournal(ctx context.Context, id uuid.UUID) (*domain.Jo
 }
 
 func (r *pgRepository) CreateJournal(ctx context.Context, journal *domain.Journal) error {
-	return r.q.CreateJournal(ctx, db.CreateJournalParams{
+	if err := r.q.CreateJournal(ctx, db.CreateJournalParams{
 		ID:        journal.ID,
 		CreatedAt: toTimestamptz(journal.CreatedAt),
-	})
+	}); err != nil {
+		return fmt.Errorf("create journal %s: %w", journal.ID, err)
+	}
+	return nil
 }
 
 // Journey operations
@@ -50,7 +57,7 @@ func (r *pgRepository) CreateJournal(ctx context.Context, journal *domain.Journa
 func (r *pgRepository) GetJourney(ctx context.Context, id uuid.UUID) (*domain.Journey, error) {
 	row, err := r.q.GetJourney(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get journey %s: %w", id, err)
 	}
 	return toDomainJourney(row.ID, row.JournalID, row.Slug, row.SourceRef, row.Title, row.Place, row.Country, row.Region, row.DateStart, row.DateEnd, row.GpsRouteWkb, row.AuthoredFields, row.CreatedAt, row.UpdatedAt)
 }
@@ -58,7 +65,7 @@ func (r *pgRepository) GetJourney(ctx context.Context, id uuid.UUID) (*domain.Jo
 func (r *pgRepository) GetJourneyBySlug(ctx context.Context, slug string) (*domain.Journey, error) {
 	row, err := r.q.GetJourneyBySlug(ctx, slug)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get journey by slug %q: %w", slug, err)
 	}
 	return toDomainJourney(row.ID, row.JournalID, row.Slug, row.SourceRef, row.Title, row.Place, row.Country, row.Region, row.DateStart, row.DateEnd, row.GpsRouteWkb, row.AuthoredFields, row.CreatedAt, row.UpdatedAt)
 }
@@ -66,13 +73,13 @@ func (r *pgRepository) GetJourneyBySlug(ctx context.Context, slug string) (*doma
 func (r *pgRepository) ListJourneys(ctx context.Context) ([]*domain.Journey, error) {
 	rows, err := r.q.ListJourneys(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list journeys: %w", err)
 	}
 	var res []*domain.Journey
 	for _, row := range rows {
 		j, err := toDomainJourney(row.ID, row.JournalID, row.Slug, row.SourceRef, row.Title, row.Place, row.Country, row.Region, row.DateStart, row.DateEnd, row.GpsRouteWkb, row.AuthoredFields, row.CreatedAt, row.UpdatedAt)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("list journeys: decode %s: %w", row.ID, err)
 		}
 		res = append(res, j)
 	}
@@ -85,11 +92,11 @@ func (r *pgRepository) UpsertJourney(ctx context.Context, journey *domain.Journe
 	if len(journey.GPSRoute) > 0 {
 		gpsRouteBytes, err = wkb.Marshal(journey.GPSRoute)
 		if err != nil {
-			return err
+			return fmt.Errorf("upsert journey %s: marshal gps route: %w", journey.ID, err)
 		}
 	}
 
-	return r.q.UpsertJourney(ctx, db.UpsertJourneyParams{
+	if err := r.q.UpsertJourney(ctx, db.UpsertJourneyParams{
 		ID:             journey.ID,
 		JournalID:      journey.JournalID,
 		Slug:           journey.Slug,
@@ -102,7 +109,10 @@ func (r *pgRepository) UpsertJourney(ctx context.Context, journey *domain.Journe
 		DateEnd:        toDate(journey.DateEnd),
 		StGeomfromwkb:  gpsRouteBytes,
 		AuthoredFields: journey.AuthoredFields,
-	})
+	}); err != nil {
+		return fmt.Errorf("upsert journey %s: %w", journey.ID, err)
+	}
+	return nil
 }
 
 // Memento operations
@@ -110,7 +120,7 @@ func (r *pgRepository) UpsertJourney(ctx context.Context, journey *domain.Journe
 func (r *pgRepository) GetMemento(ctx context.Context, id uuid.UUID) (*domain.Memento, error) {
 	row, err := r.q.GetMemento(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get memento %s: %w", id, err)
 	}
 	return toDomainMemento(row.ID, row.JourneyID, row.Kind, row.Seq, row.OccurredAt, row.OccurredTz, row.GeomWkb, row.Title, row.Place, row.Vendor, row.Essay, row.PriceAmount, row.PriceCurrency, row.KindData, row.SourceRef, row.AuthoredFields, row.OrphanedAt, row.CreatedAt, row.UpdatedAt)
 }
@@ -118,13 +128,13 @@ func (r *pgRepository) GetMemento(ctx context.Context, id uuid.UUID) (*domain.Me
 func (r *pgRepository) ListMementosByJourney(ctx context.Context, journeyID uuid.UUID) ([]*domain.Memento, error) {
 	rows, err := r.q.ListMementosByJourney(ctx, journeyID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list mementos for journey %s: %w", journeyID, err)
 	}
 	var res []*domain.Memento
 	for _, row := range rows {
 		m, err := toDomainMemento(row.ID, row.JourneyID, row.Kind, row.Seq, row.OccurredAt, row.OccurredTz, row.GeomWkb, row.Title, row.Place, row.Vendor, row.Essay, row.PriceAmount, row.PriceCurrency, row.KindData, row.SourceRef, row.AuthoredFields, row.OrphanedAt, row.CreatedAt, row.UpdatedAt)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("list mementos for journey %s: decode %s: %w", journeyID, row.ID, err)
 		}
 		res = append(res, m)
 	}
@@ -137,11 +147,11 @@ func (r *pgRepository) UpsertMemento(ctx context.Context, memento *domain.Mement
 	if memento.Geom != nil {
 		geomBytes, err = wkb.Marshal(memento.Geom)
 		if err != nil {
-			return err
+			return fmt.Errorf("upsert memento %s: marshal geom: %w", memento.ID, err)
 		}
 	}
 
-	return r.q.UpsertMemento(ctx, db.UpsertMementoParams{
+	if err := r.q.UpsertMemento(ctx, db.UpsertMementoParams{
 		ID:             memento.ID,
 		JourneyID:      memento.JourneyID,
 		Kind:           memento.Kind,
@@ -159,7 +169,107 @@ func (r *pgRepository) UpsertMemento(ctx context.Context, memento *domain.Mement
 		SourceRef:      toText(memento.SourceRef),
 		AuthoredFields: memento.AuthoredFields,
 		OrphanedAt:     toTimestamptzPtr(memento.OrphanedAt),
+	}); err != nil {
+		return fmt.Errorf("upsert memento %s: %w", memento.ID, err)
+	}
+	return nil
+}
+
+// TransitLeg operations
+
+func (r *pgRepository) CreateTransitLeg(ctx context.Context, leg *domain.TransitLegInput) error {
+	if err := r.q.CreateTransitLeg(ctx, db.CreateTransitLegParams{
+		ID:             leg.ID,
+		JourneyID:      leg.JourneyID,
+		Seq:            int32(leg.Seq),
+		OriginLabel:    toText(leg.OriginLabel),
+		DestLabel:      toText(leg.DestLabel),
+		OriginLng:      leg.Origin.X(),
+		OriginLat:      leg.Origin.Y(),
+		DestLng:        leg.Dest.X(),
+		DestLat:        leg.Dest.Y(),
+		SegmentLengthM: leg.SegmentLenM,
+	}); err != nil {
+		return fmt.Errorf("create transit leg for journey %s: %w", leg.JourneyID, err)
+	}
+	return nil
+}
+
+func (r *pgRepository) ListTransitLegsByJourney(ctx context.Context, journeyID uuid.UUID) ([]*domain.TransitLeg, error) {
+	rows, err := r.q.ListTransitLegsByJourney(ctx, journeyID)
+	if err != nil {
+		return nil, fmt.Errorf("list transit legs for journey %s: %w", journeyID, err)
+	}
+	var res []*domain.TransitLeg
+	for _, row := range rows {
+		geom, err := wkbToGeom(row.GeomWkb)
+		if err != nil {
+			return nil, fmt.Errorf("list transit legs for journey %s: decode %s: %w", journeyID, row.ID, err)
+		}
+		ls, ok := geom.(orb.LineString)
+		if !ok {
+			return nil, fmt.Errorf("transit leg %s: expected LineString geom, got %T", row.ID, geom)
+		}
+		res = append(res, &domain.TransitLeg{
+			ID:          row.ID,
+			JourneyID:   row.JourneyID,
+			Seq:         int(row.Seq),
+			OriginLabel: fromText(row.OriginLabel),
+			DestLabel:   fromText(row.DestLabel),
+			Geom:        ls,
+			CreatedAt:   fromTimestamptz(row.CreatedAt),
+		})
+	}
+	return res, nil
+}
+
+func (r *pgRepository) DeleteTransitLeg(ctx context.Context, id uuid.UUID) error {
+	if err := r.q.DeleteTransitLeg(ctx, id); err != nil {
+		return fmt.Errorf("delete transit leg %s: %w", id, err)
+	}
+	return nil
+}
+
+func (r *pgRepository) GetDisplayRoute(ctx context.Context, journeyID uuid.UUID) (orb.MultiLineString, error) {
+	raw, err := r.q.GetDisplayRoute(ctx, journeyID)
+	if err != nil {
+		return nil, fmt.Errorf("get display route for journey %s: %w", journeyID, err)
+	}
+	geom, err := wkbToGeom(raw)
+	if err != nil {
+		return nil, fmt.Errorf("get display route for journey %s: decode: %w", journeyID, err)
+	}
+	if geom == nil {
+		return nil, nil // journey has neither a track nor legs
+	}
+	mls, ok := geom.(orb.MultiLineString)
+	if !ok {
+		return nil, fmt.Errorf("display route for journey %s: expected MultiLineString, got %T", journeyID, geom)
+	}
+	return mls, nil
+}
+
+func (r *pgRepository) SnapToRoute(ctx context.Context, journeyID uuid.UUID, pt orb.Point) (*orb.Point, error) {
+	raw, err := r.q.SnapToRoute(ctx, db.SnapToRouteParams{
+		JourneyID: journeyID,
+		Lng:       pt.X(),
+		Lat:       pt.Y(),
 	})
+	if err != nil {
+		return nil, fmt.Errorf("snap to route for journey %s: %w", journeyID, err)
+	}
+	geom, err := wkbToGeom(raw)
+	if err != nil {
+		return nil, fmt.Errorf("snap to route for journey %s: decode: %w", journeyID, err)
+	}
+	if geom == nil {
+		return nil, nil // empty route: nothing to snap to
+	}
+	p, ok := geom.(orb.Point)
+	if !ok {
+		return nil, fmt.Errorf("snap for journey %s: expected Point, got %T", journeyID, geom)
+	}
+	return &p, nil
 }
 
 // Photo operations
@@ -167,7 +277,7 @@ func (r *pgRepository) UpsertMemento(ctx context.Context, memento *domain.Mement
 func (r *pgRepository) GetPhoto(ctx context.Context, id uuid.UUID) (*domain.MementoPhoto, error) {
 	row, err := r.q.GetPhoto(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get photo %s: %w", id, err)
 	}
 	return &domain.MementoPhoto{
 		ID:          row.ID,
@@ -185,7 +295,7 @@ func (r *pgRepository) GetPhoto(ctx context.Context, id uuid.UUID) (*domain.Meme
 func (r *pgRepository) ListPhotosByMemento(ctx context.Context, mementoID uuid.UUID) ([]*domain.MementoPhoto, error) {
 	rows, err := r.q.ListPhotosByMemento(ctx, mementoID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list photos for memento %s: %w", mementoID, err)
 	}
 	var res []*domain.MementoPhoto
 	for _, row := range rows {
@@ -205,7 +315,7 @@ func (r *pgRepository) ListPhotosByMemento(ctx context.Context, mementoID uuid.U
 }
 
 func (r *pgRepository) UpsertPhoto(ctx context.Context, photo *domain.MementoPhoto) error {
-	return r.q.UpsertPhoto(ctx, db.UpsertPhotoParams{
+	if err := r.q.UpsertPhoto(ctx, db.UpsertPhotoParams{
 		ID:          photo.ID,
 		MementoID:   photo.MementoID,
 		ObjectKey:   photo.ObjectKey,
@@ -214,7 +324,10 @@ func (r *pgRepository) UpsertPhoto(ctx context.Context, photo *domain.MementoPho
 		Seq:         int32(photo.Seq),
 		TakenAt:     toTimestamptzPtr(photo.TakenAt),
 		SourceRef:   toText(photo.SourceRef),
-	})
+	}); err != nil {
+		return fmt.Errorf("upsert photo %s: %w", photo.ID, err)
+	}
+	return nil
 }
 
 // Translation operations
@@ -225,7 +338,7 @@ func (r *pgRepository) ListTranslations(ctx context.Context, ownerType string, o
 		OwnerID:   ownerID,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list translations for %s %s: %w", ownerType, ownerID, err)
 	}
 	var res []*domain.Translation
 	for _, row := range rows {
@@ -244,7 +357,7 @@ func (r *pgRepository) ListTranslations(ctx context.Context, ownerType string, o
 }
 
 func (r *pgRepository) UpsertTranslation(ctx context.Context, translation *domain.Translation) error {
-	return r.q.UpsertTranslation(ctx, db.UpsertTranslationParams{
+	if err := r.q.UpsertTranslation(ctx, db.UpsertTranslationParams{
 		ID:         translation.ID,
 		OwnerType:  translation.OwnerType,
 		OwnerID:    translation.OwnerID,
@@ -252,7 +365,21 @@ func (r *pgRepository) UpsertTranslation(ctx context.Context, translation *domai
 		Field:      translation.Field,
 		Value:      translation.Value,
 		Provenance: translation.Provenance,
-	})
+	}); err != nil {
+		return fmt.Errorf("upsert translation %s: %w", translation.ID, err)
+	}
+	return nil
+}
+
+// wkbToGeom decodes a WKB byte slice (as returned by ST_AsBinary and scanned
+// into an interface{}) into an orb geometry. A nil/empty value yields (nil, nil),
+// which callers treat as "no geometry" (e.g. an empty route or a NULL snap).
+func wkbToGeom(v interface{}) (orb.Geometry, error) {
+	b, ok := v.([]byte)
+	if !ok || len(b) == 0 {
+		return nil, nil
+	}
+	return wkb.Unmarshal(b)
 }
 
 // Helper converters

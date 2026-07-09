@@ -65,6 +65,16 @@ type MementoPhoto struct {
 	CreatedAt   pgtype.Timestamptz
 }
 
+type TransitLeg struct {
+	ID          uuid.UUID
+	JourneyID   uuid.UUID
+	Seq         int32
+	OriginLabel pgtype.Text
+	DestLabel   pgtype.Text
+	Geom        interface{}
+	CreatedAt   pgtype.Timestamptz
+}
+
 type Translation struct {
 	ID         uuid.UUID
 	OwnerType  string

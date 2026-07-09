@@ -26,6 +26,84 @@ func (q *Queries) CreateJournal(ctx context.Context, arg CreateJournalParams) er
 	return err
 }
 
+const createTransitLeg = `-- name: CreateTransitLeg :exec
+INSERT INTO transit_legs (
+    id, journey_id, seq, origin_label, dest_label, geom
+) VALUES (
+    $1, $2, $3, $4, $5,
+    ST_Segmentize(
+        ST_MakeLine(
+            ST_SetSRID(ST_MakePoint($6::float8, $7::float8), 4326),
+            ST_SetSRID(ST_MakePoint($8::float8, $9::float8), 4326)
+        )::geography,
+        $10::float8
+    )::geometry
+)
+`
+
+type CreateTransitLegParams struct {
+	ID             uuid.UUID
+	JourneyID      uuid.UUID
+	Seq            int32
+	OriginLabel    pgtype.Text
+	DestLabel      pgtype.Text
+	OriginLng      float64
+	OriginLat      float64
+	DestLng        float64
+	DestLat        float64
+	SegmentLengthM float64
+}
+
+// Build the great-circle arc once, at insert: ST_MakeLine of the two endpoints,
+// densified along the geodesic by ST_Segmentize on geography ($10 = max segment
+// length in metres), cast back to a 4326 LineString for the column (ADR 0009).
+func (q *Queries) CreateTransitLeg(ctx context.Context, arg CreateTransitLegParams) error {
+	_, err := q.db.Exec(ctx, createTransitLeg,
+		arg.ID,
+		arg.JourneyID,
+		arg.Seq,
+		arg.OriginLabel,
+		arg.DestLabel,
+		arg.OriginLng,
+		arg.OriginLat,
+		arg.DestLng,
+		arg.DestLat,
+		arg.SegmentLengthM,
+	)
+	return err
+}
+
+const deleteTransitLeg = `-- name: DeleteTransitLeg :exec
+DELETE FROM transit_legs WHERE id = $1
+`
+
+func (q *Queries) DeleteTransitLeg(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteTransitLeg, id)
+	return err
+}
+
+const getDisplayRoute = `-- name: GetDisplayRoute :one
+SELECT ST_AsBinary(
+    ST_Multi(ST_CollectionExtract(
+        ST_Collect(
+            j.gps_route,
+            (SELECT ST_Collect(l.geom) FROM transit_legs l WHERE l.journey_id = j.id)
+        ), 2))
+) AS route_wkb
+FROM journeys j
+WHERE j.id = $1
+`
+
+// Union-at-read: the display route is the Dawarich track combined with every
+// authored transit leg, composed on the fly (data-model.md D2). gps_route itself
+// is never mutated. Returns NULL WKB when the journey has neither track nor legs.
+func (q *Queries) GetDisplayRoute(ctx context.Context, id uuid.UUID) (interface{}, error) {
+	row := q.db.QueryRow(ctx, getDisplayRoute, id)
+	var route_wkb interface{}
+	err := row.Scan(&route_wkb)
+	return route_wkb, err
+}
+
 const getJournal = `-- name: GetJournal :one
 SELECT id, created_at FROM journal WHERE id = $1
 `
@@ -369,6 +447,51 @@ func (q *Queries) ListPhotosByMemento(ctx context.Context, mementoID uuid.UUID) 
 	return items, nil
 }
 
+const listTransitLegsByJourney = `-- name: ListTransitLegsByJourney :many
+SELECT id, journey_id, seq, origin_label, dest_label, ST_AsBinary(geom) AS geom_wkb, created_at
+FROM transit_legs
+WHERE journey_id = $1
+ORDER BY seq ASC, created_at ASC
+`
+
+type ListTransitLegsByJourneyRow struct {
+	ID          uuid.UUID
+	JourneyID   uuid.UUID
+	Seq         int32
+	OriginLabel pgtype.Text
+	DestLabel   pgtype.Text
+	GeomWkb     interface{}
+	CreatedAt   pgtype.Timestamptz
+}
+
+func (q *Queries) ListTransitLegsByJourney(ctx context.Context, journeyID uuid.UUID) ([]ListTransitLegsByJourneyRow, error) {
+	rows, err := q.db.Query(ctx, listTransitLegsByJourney, journeyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTransitLegsByJourneyRow
+	for rows.Next() {
+		var i ListTransitLegsByJourneyRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.JourneyID,
+			&i.Seq,
+			&i.OriginLabel,
+			&i.DestLabel,
+			&i.GeomWkb,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTranslations = `-- name: ListTranslations :many
 SELECT id, owner_type, owner_id, lang, field, value, provenance, updated_at
 FROM translations
@@ -407,6 +530,37 @@ func (q *Queries) ListTranslations(ctx context.Context, arg ListTranslationsPara
 		return nil, err
 	}
 	return items, nil
+}
+
+const snapToRoute = `-- name: SnapToRoute :one
+SELECT ST_AsBinary(
+    ST_ClosestPoint(
+        ST_CollectionExtract(
+            ST_Collect(
+                j.gps_route,
+                (SELECT ST_Collect(l.geom) FROM transit_legs l WHERE l.journey_id = j.id)
+            ), 2),
+        ST_SetSRID(ST_MakePoint($1::float8, $2::float8), 4326)
+    )
+) AS snapped_wkb
+FROM journeys j
+WHERE j.id = $3
+`
+
+type SnapToRouteParams struct {
+	Lng       float64
+	Lat       float64
+	JourneyID uuid.UUID
+}
+
+// Proximity snap of an arbitrary point onto the composed route (track ∪ legs).
+// ST_ClosestPoint is MultiLineString-safe (unlike ST_LineLocatePoint, which
+// rejects multilinestrings). Returns NULL WKB when the route is empty.
+func (q *Queries) SnapToRoute(ctx context.Context, arg SnapToRouteParams) (interface{}, error) {
+	row := q.db.QueryRow(ctx, snapToRoute, arg.Lng, arg.Lat, arg.JourneyID)
+	var snapped_wkb interface{}
+	err := row.Scan(&snapped_wkb)
+	return snapped_wkb, err
 }
 
 const upsertJourney = `-- name: UpsertJourney :exec

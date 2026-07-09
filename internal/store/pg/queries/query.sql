@@ -110,3 +110,60 @@ INSERT INTO translations (
     value = CASE WHEN translations.provenance = 'machine' OR EXCLUDED.provenance = 'authored' THEN EXCLUDED.value ELSE translations.value END,
     provenance = CASE WHEN translations.provenance = 'machine' OR EXCLUDED.provenance = 'authored' THEN EXCLUDED.provenance ELSE translations.provenance END,
     updated_at = NOW();
+
+-- name: CreateTransitLeg :exec
+-- Build the great-circle arc once, at insert: ST_MakeLine of the two endpoints,
+-- densified along the geodesic by ST_Segmentize on geography ($10 = max segment
+-- length in metres), cast back to a 4326 LineString for the column (ADR 0009).
+INSERT INTO transit_legs (
+    id, journey_id, seq, origin_label, dest_label, geom
+) VALUES (
+    @id, @journey_id, @seq, @origin_label, @dest_label,
+    ST_Segmentize(
+        ST_MakeLine(
+            ST_SetSRID(ST_MakePoint(@origin_lng::float8, @origin_lat::float8), 4326),
+            ST_SetSRID(ST_MakePoint(@dest_lng::float8, @dest_lat::float8), 4326)
+        )::geography,
+        @segment_length_m::float8
+    )::geometry
+);
+
+-- name: ListTransitLegsByJourney :many
+SELECT id, journey_id, seq, origin_label, dest_label, ST_AsBinary(geom) AS geom_wkb, created_at
+FROM transit_legs
+WHERE journey_id = $1
+ORDER BY seq ASC, created_at ASC;
+
+-- name: DeleteTransitLeg :exec
+DELETE FROM transit_legs WHERE id = $1;
+
+-- name: GetDisplayRoute :one
+-- Union-at-read: the display route is the Dawarich track combined with every
+-- authored transit leg, composed on the fly (data-model.md D2). gps_route itself
+-- is never mutated. Returns NULL WKB when the journey has neither track nor legs.
+SELECT ST_AsBinary(
+    ST_Multi(ST_CollectionExtract(
+        ST_Collect(
+            j.gps_route,
+            (SELECT ST_Collect(l.geom) FROM transit_legs l WHERE l.journey_id = j.id)
+        ), 2))
+) AS route_wkb
+FROM journeys j
+WHERE j.id = $1;
+
+-- name: SnapToRoute :one
+-- Proximity snap of an arbitrary point onto the composed route (track ∪ legs).
+-- ST_ClosestPoint is MultiLineString-safe (unlike ST_LineLocatePoint, which
+-- rejects multilinestrings). Returns NULL WKB when the route is empty.
+SELECT ST_AsBinary(
+    ST_ClosestPoint(
+        ST_CollectionExtract(
+            ST_Collect(
+                j.gps_route,
+                (SELECT ST_Collect(l.geom) FROM transit_legs l WHERE l.journey_id = j.id)
+            ), 2),
+        ST_SetSRID(ST_MakePoint(@lng::float8, @lat::float8), 4326)
+    )
+) AS snapped_wkb
+FROM journeys j
+WHERE j.id = @journey_id;

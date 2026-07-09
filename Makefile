@@ -9,7 +9,10 @@ GO      ?= go
 # phase, so Go targets no-op cleanly until the first package is written.
 GO_FILES := $(shell find . -name '*.go' -not -path './vendor/*' -not -path './.git/*' -not -path '*/node_modules/*' -print -quit 2>/dev/null)
 
-.PHONY: help fmt vet lint test check build validate tidy migrate web-install web-check docs docs-build
+# Real module packages, excluding stray Go files vendored inside web/node_modules.
+GO_PKGS = $(shell $(GO) list ./... | grep -v /node_modules/)
+
+.PHONY: help fmt vet lint test check build validate tidy db-up db-down migrate seed web-install web-check docs docs-build
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -19,13 +22,13 @@ fmt: ## Format Go code
 	@if [ -z "$(GO_FILES)" ]; then echo "fmt: no Go packages yet, skipping"; else $(GO) fmt ./...; fi
 
 vet: ## Run go vet
-	@if [ -z "$(GO_FILES)" ]; then echo "vet: no Go packages yet, skipping"; else $(GO) vet ./...; fi
+	@if [ -z "$(GO_FILES)" ]; then echo "vet: no Go packages yet, skipping"; else $(GO) vet $(GO_PKGS); fi
 
 lint: ## Lint Go (golangci-lint, from nix)
 	@if [ -z "$(GO_FILES)" ]; then echo "lint: no Go packages yet, skipping"; else $(NIX_RUN)golangci-lint run; fi
 
 test: ## Run Go tests with race detector + coverage
-	@if [ -z "$(GO_FILES)" ]; then echo "test: no Go packages yet, skipping"; else $(GO) test -race -cover ./...; fi
+	@if [ -z "$(GO_FILES)" ]; then echo "test: no Go packages yet, skipping"; else $(GO) test -race -cover $(GO_PKGS); fi
 
 check: fmt vet lint test ## Pre-commit gate
 
@@ -38,6 +41,12 @@ validate: check build ## Pre-PR gate
 
 tidy: ## Tidy go modules
 	$(GO) mod tidy
+
+db-up: ## Start local Postgres+PostGIS and Valkey (deploy/compose.yaml)
+	docker compose -f deploy/compose.yaml up -d
+
+db-down: ## Stop the local dev containers (keeps the pgdata volume)
+	docker compose -f deploy/compose.yaml down
 
 migrate: ## Apply DB migrations (goose, from nix) — needs DATABASE_DSN
 	$(NIX_RUN)goose -dir migrations postgres "$(DATABASE_DSN)" up

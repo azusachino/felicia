@@ -11,10 +11,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/paulmach/orb"
 
 	"github.com/azusachino/felicia/internal/api"
 	"github.com/azusachino/felicia/internal/domain"
 )
+
+var _ domain.Repository = (*mockRepository)(nil)
 
 type mockRepository struct {
 	journeys     map[uuid.UUID]*domain.Journey
@@ -91,6 +94,26 @@ func (m *mockRepository) ListMementosByJourney(_ context.Context, journeyID uuid
 func (m *mockRepository) UpsertMemento(_ context.Context, memento *domain.Memento) error {
 	m.mementos[memento.ID] = memento
 	return nil
+}
+
+func (m *mockRepository) CreateTransitLeg(_ context.Context, _ *domain.TransitLegInput) error {
+	return nil
+}
+
+func (m *mockRepository) ListTransitLegsByJourney(_ context.Context, _ uuid.UUID) ([]*domain.TransitLeg, error) {
+	return nil, nil
+}
+
+func (m *mockRepository) DeleteTransitLeg(_ context.Context, _ uuid.UUID) error {
+	return nil
+}
+
+func (m *mockRepository) GetDisplayRoute(_ context.Context, _ uuid.UUID) (orb.MultiLineString, error) {
+	return nil, nil
+}
+
+func (m *mockRepository) SnapToRoute(_ context.Context, _ uuid.UUID, _ orb.Point) (*orb.Point, error) {
+	return nil, nil
 }
 
 func (m *mockRepository) GetPhoto(_ context.Context, id uuid.UUID) (*domain.MementoPhoto, error) {
