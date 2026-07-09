@@ -43,7 +43,9 @@ ssh -L 8000:localhost:8000 <host>
 
 ## Database (when implementation starts)
 
-- **Postgres 18 + PostGIS** — locally via the nix shell, or a container from `deploy/`.
+- **Postgres 18 + PostGIS** — Dev-runtime:
+  - **Linux:** Leverage **Podman** and `podman-compose` (configured in `deploy/`) to spin up the local database container.
+  - **macOS:** Leverage the native, lightweight **Bianpai** app ([github.com/bianpai/bianpai](https://github.com/bianpai/bianpai)) to run Postgres natively.
 - `make migrate` applies `migrations/` with goose (needs `DATABASE_DSN`).
 
 ## Configuration (when implementation starts)
