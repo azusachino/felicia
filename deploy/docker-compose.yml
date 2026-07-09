@@ -18,5 +18,32 @@ services:
       timeout: 5s
       retries: 5
 
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: felicia-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_DSN=postgres://postgres:password@db:5432/felicia?sslmode=disable
+      - WAYPOINTS_IMMICH_API_KEY=${WAYPOINTS_IMMICH_API_KEY}
+      - WAYPOINTS_DAWARICH_API_KEY=${WAYPOINTS_DAWARICH_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: felicia-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    depends_on:
+      - app
+
 volumes:
   pgdata:
