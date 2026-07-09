@@ -42,6 +42,9 @@ tidy: ## Tidy go modules
 migrate: ## Apply DB migrations (goose, from nix) — needs DATABASE_DSN
 	$(NIX_RUN)goose -dir migrations postgres "$(DATABASE_DSN)" up
 
+seed: ## Seed the database with sample data (uv run, psycopg) — needs DATABASE_DSN
+	uv run --group dev python scripts/seed.py
+
 web-install: ## Install frontend deps (bun, from mise)
 	cd web && bun install
 
