@@ -15,7 +15,7 @@ def main():
             with conn.cursor() as cur:
                 # 1. Clean up existing data (cascading deletes everything)
                 print("Cleaning up old data...")
-                cur.execute("TRUNCATE TABLE journal CASCADE")
+                cur.execute("TRUNCATE TABLE journal, translations CASCADE")
 
                 # 2. Insert Root Journal
                 journal_id = "00000000-0000-0000-0000-000000000000"
