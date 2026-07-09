@@ -1,37 +1,32 @@
-# ADR 0008: Single-User Local-First & SSG Compiler Model
+# ADR 0008: PostgreSQL 18 & SSG Compiler Model (with SQLite3 Fallback)
 
 * **Status:** Accepted
 * **Date:** 2026-07-09
 * **Decisions:** `felicia:decision:single-user-local-first-ssg`
 
 ## Context
-Running a persistent server and a production-grade database (Go + PostgreSQL 18 + PostGIS + Traefik) on a cloud server/VPS requires continuous hosting costs, backup monitoring, and exposes write APIs to the public web. For personal journals where there is exactly one author and the public audience is read-only, this operational overhead is unnecessary.
+We need to support a single-user workflow where the author uploads data and publishes a personal version of *felicia* as a data-driven static site (similar to `yihong0618/running_page`). We must choose the canonical database architecture for this system, balancing robust spatial features with local portability.
 
 ## Decision
-We decided to support a **Single-User Local-First & Static-Site Generation (SSG)** compiler mode as the primary personal deployment model (modeled on the pattern of `yihong0618/running_page`), while keeping **PostgreSQL 18 + PostGIS** as the primary relational database for server mode.
+We decided to adopt **PostgreSQL 18 + PostGIS** as the canonical database of *felicia* for data storage and spatial operations, utilizing **SQLite3** strictly as a local, offline development and compilation fallback.
 
 Implementation details:
-1. **Primary PG18 & Fallback SQLite3:**
-   * PostgreSQL 18 with PostGIS is the target production engine. SQLite3 is supported as the local-first/offline development fallback.
-2. **CGO-Free SQLite Database File:**
-   * The local database file resides in the project root (e.g. `./.felicia.db`) and is added to `.gitignore`.
-   * The system utilizes a pure-Go SQLite driver (`ncruces/go-sqlite3` or `modernc.org/sqlite`) to keep compilation 100% CGO-free.
-   * Spatial processing (Dawarich track simplification, coordinate snaps) is executed in Go memory using the `paulmach/orb` library and saved as standard WKB BLOBs in SQLite.
-3. **Local Admin Dashboard (`localhost`):**
-   * The author runs the Go CLI locally (`felicia admin`). This starts a local web server on `localhost:8080` talking to the local SQLite file.
-   * The author opens their local browser to curate trips, write essays, and configure stubs.
-4. **Flat-File Backup Serialization:**
-   * To prevent loss of authored work (essays, metadata, overrides), a daily/pre-commit task serializes the database content into human-readable YAML/Markdown files in the repository. The binary `.db` file is ignored; only the flat-files are tracked in Git. On clean clone, the database is reconstituted from these files.
-5. **Static compiler (`felicia build`):**
-   * A build script queries the local database and exports the public-facing view as a fully static website in `dist/`:
+1. **Primary Database (PostgreSQL 18 + PostGIS):**
+   * PostgreSQL 18 with the PostGIS extension is the primary storage engine.
+   * All spatial joins, coordinates snapping, and route simplifications are designed to leverage native PostGIS database-layer calculations (`ST_Collect`, `ST_Simplify`, `ST_DWithin`).
+2. **Local Fallback Database (SQLite3):**
+   * SQLite3 is supported strictly as an offline fallback for local development or disconnected builds.
+   * To maintain CGO-free portability in SQLite3 mode, spatial processing (simplification and snapping) is executed in Go memory using the `paulmach/orb` library, and saved to SQLite3 as WKB (Well-Known Binary) BLOBs.
+3. **Static Compiler Output (`felicia build`):**
+   * The compiler queries the database (PostgreSQL 18 by default, SQLite3 if running offline) and exports the public-facing view as a fully static website in `dist/`:
      * Generates static JSON files representing the API route trees (e.g. `/api/v1/journeys.json`).
      * Exports resized and EXIF-stripped image derivatives.
      * Emits the compiled Vite Svelte SPA.
-6. **Automated CI/CD (GitHub Actions / Cron):**
-   * Ingestion runs automatically via GitHub Actions (on a schedule). It triggers the Go CLI to fetch tracks from Dawarich API and photos from Immich API, runs the static build, commits metadata back to Git, and deploys it to a static host (GitHub Pages or Cloudflare Pages) for free.
+4. **Local Admin UI (`localhost`):**
+   * The author runs the Go CLI locally (`felicia admin`). This starts a local web server on `localhost:8080` talking to the configured database (PG18 or local SQLite3 file).
+   * The author opens their local browser to curate trips, write essays, and configure stubs.
 
 ## Consequences
-* **Zero Hosting Cost:** The public-facing site is fully static and hosted on free CDN tiers (Cloudflare Pages, GitHub Pages).
-* **Absolute Security:** The public site is read-only. Write capabilities and the admin panel are only accessible locally on the author's machine.
-* **Git Versioning:** All authored essays and metadata are checked into a private Git repository, serving as a clean, versioned backup.
-* **Code Reusability:** The Svelte SPA frontend remains completely unchanged; it fetches `/api/v1/...` static JSON files instead of a live API server.
+* **Database Alignment:** The primary architecture utilizes PostgreSQL 18 + PostGIS, ensuring full compatibility with production spatial engines and standard SQL/JSON features.
+* **Zero Hosting Cost for Reader:** The public-facing site is fully static and hosted on free CDN tiers (Cloudflare Pages, GitHub Pages).
+* **Portability Fallback:** If the user has no running PostgreSQL server, they can fall back to the SQLite3 engine to compile and publish their site locally.

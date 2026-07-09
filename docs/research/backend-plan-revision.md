@@ -165,14 +165,14 @@ If a kind template definition (e.g. `transit.yaml`) changes over time:
 - Saved mementos record `kind_version` in their schema.
 - If a schema mismatch is detected during load, the Go backend applies dynamic resolvers or triggers a database migration to reconcile the `kind_data` JSONB structure.
 
-### C. Single-User Local-First & Static-Site Generation (SSG) Model
-To align with the developer-oriented **data-driven static site** paradigm (similar to `yihong0618/running_page`), `felicia` can operate as a local-first compiler that generates a zero-cost, 100% static public site.
+### C. PostgreSQL 18 & Static-Site Generation (SSG) Model (with SQLite3 Fallback)
+To support a single-user publishing model (similar to `yihong0618/running_page`), `felicia` operates as a compiler that reads from our primary **PostgreSQL 18 + PostGIS** database (or an offline **SQLite3** fallback database) to generate a zero-cost, 100% static public website.
 
 ```
 +------------------+                   +--------------------+                   +----------------------+
-| Local Authoring  |                   |   Local SQLite DB  |                   |   Static Site Build  |
-| (Go localhost    | ==[Writes to]==>  | (CGO-free, Go orb  | ==[Compiles to]==> | (Static JSONs +      |
-|  admin interface)|                   |  geometry checks)  |                   |  EXIF-stripped media)|
+| Local Authoring  |                   | Primary PG18 DB    |                   |   Static Site Build  |
+| (Go localhost    | ==[Writes to]==>  | (PostGIS checks)   | ==[Compiles to]==> | (Static JSONs +      |
+|  admin interface)|                   | [SQLite3 Fallback] |                   |  EXIF-stripped media)|
 +------------------+                   +--------------------+                   +----------------------+
                                                                                            ||
                                                                                    [Deploys for free to]
@@ -184,9 +184,10 @@ To align with the developer-oriented **data-driven static site** paradigm (simil
                                                                                 +----------------------+
 ```
 
-1. **Local-First SQLite Engine:**
-   * Instead of requiring a running PostgreSQL/PostGIS server, the single-user mode leverages **SQLite** (using a pure-Go, CGO-free driver such as `ncruces/go-sqlite3`).
-   * Geometry processing (such as Douglas–Peucker simplification and spatial snapping to visits) is computed in Go memory via the `paulmach/orb` library, writing standard WKB blobs to SQLite and eliminating system-level SpatiaLite dependencies.
+1. **Primary Database & Offline SQLite3 Fallback:**
+   * PostgreSQL 18 + PostGIS is the primary, production-ready storage engine.
+   * For offline compilation or local development, SQLite3 is supported as an offline fallback (using a pure-Go, CGO-free driver such as `ncruces/go-sqlite3`).
+   * Geometry processing (such as Douglas–Peucker simplification and spatial snapping to visits) in SQLite3 mode is computed in Go memory via the `paulmach/orb` library, writing standard WKB blobs to SQLite3 and eliminating system-level SpatiaLite dependencies.
 
 2. **Local Admin UI (`localhost`):**
    * The user runs a command (`felicia admin`) locally to start a lightweight web server on their machine.
