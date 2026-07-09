@@ -1,14 +1,53 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE OR REPLACE FUNCTION generate_uuid_v7() RETURNS uuid AS $$
+DECLARE
+    timestamp    timestamp with time zone;
+    timestamp_ms bigint;
+    uuid_bytes   bytea;
+BEGIN
+    -- Get current time and convert to milliseconds since epoch
+    timestamp := clock_timestamp();
+    timestamp_ms := floor(extract(epoch from timestamp) * 1000)::bigint;
+
+    -- Construct UUIDv7 byte array (16 bytes):
+    -- 48 bits (6 bytes) timestamp
+    -- 4 bits version (0111 = 7)
+    -- 12 bits sequence/random
+    -- 2 bits variant (10 = RFC 4122)
+    -- 62 bits random
+    
+    -- Generate 16 random bytes
+    uuid_bytes := gen_random_bytes(16);
+    
+    -- Overwrite first 6 bytes with timestamp_ms (48 bits)
+    uuid_bytes := set_byte(uuid_bytes, 0, (timestamp_ms >> 40 & 255)::int);
+    uuid_bytes := set_byte(uuid_bytes, 1, (timestamp_ms >> 32 & 255)::int);
+    uuid_bytes := set_byte(uuid_bytes, 2, (timestamp_ms >> 24 & 255)::int);
+    uuid_bytes := set_byte(uuid_bytes, 3, (timestamp_ms >> 16 & 255)::int);
+    uuid_bytes := set_byte(uuid_bytes, 4, (timestamp_ms >> 8 & 255)::int);
+    uuid_bytes := set_byte(uuid_bytes, 5, (timestamp_ms & 255)::int);
+    
+    -- Overwrite version bits (set 4 MSB of byte 6 to 7 => 0111xxxx)
+    uuid_bytes := set_byte(uuid_bytes, 6, (get_byte(uuid_bytes, 6) & 15 | 112)::int);
+    
+    -- Overwrite variant bits (set 2 MSB of byte 8 to 2 => 10xxxxxx)
+    uuid_bytes := set_byte(uuid_bytes, 8, (get_byte(uuid_bytes, 8) & 63 | 128)::int);
+    
+    RETURN encode(uuid_bytes, 'hex')::uuid;
+END;
+$$ LANGUAGE plpgsql VOLATILE;
 
 CREATE TABLE journal (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT generate_uuid_v7(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE journeys (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT generate_uuid_v7(),
     journal_id UUID NOT NULL REFERENCES journal(id) ON DELETE CASCADE,
     slug TEXT NOT NULL UNIQUE,
     source_ref TEXT,
@@ -26,7 +65,7 @@ CREATE TABLE journeys (
 );
 
 CREATE TABLE mementos (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT generate_uuid_v7(),
     journey_id UUID NOT NULL REFERENCES journeys(id) ON DELETE CASCADE,
     kind TEXT NOT NULL,
     seq INT NOT NULL,
@@ -50,7 +89,7 @@ CREATE TABLE mementos (
 );
 
 CREATE TABLE translations (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT generate_uuid_v7(),
     owner_type TEXT NOT NULL CHECK (owner_type IN ('journey', 'memento', 'photo')),
     owner_id UUID NOT NULL,
     lang TEXT NOT NULL CHECK (lang IN ('en', 'zh')),
@@ -62,7 +101,7 @@ CREATE TABLE translations (
 );
 
 CREATE TABLE memento_photos (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT generate_uuid_v7(),
     memento_id UUID NOT NULL REFERENCES mementos(id) ON DELETE CASCADE,
     object_key TEXT NOT NULL,
     content_hash TEXT NOT NULL,
@@ -97,4 +136,6 @@ DROP TABLE IF EXISTS translations;
 DROP TABLE IF EXISTS mementos;
 DROP TABLE IF EXISTS journeys;
 DROP TABLE IF EXISTS journal;
+
+DROP FUNCTION IF EXISTS generate_uuid_v7();
 -- +goose StatementEnd

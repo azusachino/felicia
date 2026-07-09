@@ -19,17 +19,17 @@ def main():
                 print("Cleaning up old data...")
                 cur.execute("TRUNCATE TABLE journal, translations CASCADE")
 
-                # 2. Insert Root Journal
-                journal_id = "00000000-0000-0000-0000-000000000000"
+                # 2. Insert Root Journal (UUIDv7)
+                journal_id = "0190cbde-f300-7000-8000-000000000000"
                 print(f"Seeding Journal: {journal_id}")
                 cur.execute(
                     "INSERT INTO journal (id, created_at) VALUES (%s, NOW())",
                     (journal_id,)
                 )
 
-                # 3. Seed Three Journeys across three years with overlapping and new locations
+                # 3. Seed Three Journeys across three years with overlapping and new locations (UUIDv7)
                 # Journey 1: Japan Spring 2026 (Tokyo & Kyoto)
-                journey_1_id = "11111111-1111-1111-1111-111111111111"
+                journey_1_id = "0190cbde-f300-7000-8000-111111111111"
                 print(f"Seeding Journey 1 (2026, Tokyo/Kyoto): {journey_1_id}")
                 cur.execute(
                     """
@@ -57,7 +57,7 @@ def main():
                 )
 
                 # Journey 2: Hokkaido Winter 2025 (Sapporo & Otaru)
-                journey_2_id = "11111111-1111-1111-1111-222222222222"
+                journey_2_id = "0190cbde-f300-7000-8000-222222222222"
                 print(f"Seeding Journey 2 (2025, Hokkaido): {journey_2_id}")
                 cur.execute(
                     """
@@ -85,7 +85,7 @@ def main():
                 )
 
                 # Journey 3: Tokyo Autumn 2024 (Tokyo - overlapping location with J1!)
-                journey_3_id = "11111111-1111-1111-1111-333333333333"
+                journey_3_id = "0190cbde-f300-7000-8000-333333333333"
                 print(f"Seeding Journey 3 (2024, Tokyo): {journey_3_id}")
                 cur.execute(
                     """
@@ -112,9 +112,9 @@ def main():
                     )
                 )
 
-                # 4. Seed Mementos distributed across journeys
+                # 4. Seed Mementos distributed across journeys (UUIDv7)
                 # Memento 1 (J1 - Transit, 2026): Tokyo -> Kyoto
-                memento_1_id = "22222222-2222-2222-2222-222222222222"
+                memento_1_id = "0190cbde-f300-7000-8000-a22222222222"
                 print(f"Seeding Memento 1 (Transit, J1): {memento_1_id}")
                 cur.execute(
                     """
@@ -146,7 +146,7 @@ def main():
                 )
 
                 # Memento 2 (J1 - Receipt, 2026): Kyoto Cafe
-                memento_2_id = "33333333-3333-3333-3333-333333333333"
+                memento_2_id = "0190cbde-f300-7000-8000-a33333333333"
                 print(f"Seeding Memento 2 (Receipt, J1): {memento_2_id}")
                 cur.execute(
                     """
@@ -178,7 +178,7 @@ def main():
                 )
 
                 # Memento 3 (J2 - Live, 2025): Sapporo Concert
-                memento_3_id = "44444444-4444-4444-4444-444444444444"
+                memento_3_id = "0190cbde-f300-7000-8000-a44444444444"
                 print(f"Seeding Memento 3 (Live, J2): {memento_3_id}")
                 cur.execute(
                     """
@@ -210,7 +210,7 @@ def main():
                 )
 
                 # Memento 4 (J2 - Goods, 2025): Hokkaido Souvenirs
-                memento_4_id = "55555555-5555-5555-5555-555555555555"
+                memento_4_id = "0190cbde-f300-7000-8000-a55555555555"
                 print(f"Seeding Memento 4 (Goods, J2): {memento_4_id}")
                 cur.execute(
                     """
@@ -242,7 +242,7 @@ def main():
                 )
 
                 # Memento 5 (J3 - Stamp, 2024): Tokyo Station Stamp (overlapping location with J1!)
-                memento_5_id = "66666666-6666-6666-6666-666666666666"
+                memento_5_id = "0190cbde-f300-7000-8000-a66666666666"
                 print(f"Seeding Memento 5 (Stamp, J3): {memento_5_id}")
                 cur.execute(
                     """
@@ -273,8 +273,8 @@ def main():
                     )
                 )
 
-                # 5. Insert Photos for Memento 1
-                photo_id = "77777777-7777-7777-7777-777777777777"
+                # 5. Insert Photos for Memento 1 (UUIDv7)
+                photo_id = "0190cbde-f300-7000-8000-f77777777777"
                 print(f"Seeding Memento Photo: {photo_id}")
                 cur.execute(
                     """
@@ -296,7 +296,7 @@ def main():
                     )
                 )
 
-                # 6. Insert Translation Sidecars
+                # 6. Insert Translation Sidecars (UUIDv7)
                 print("Seeding Translations...")
                 # English journey names
                 cur.execute(
@@ -304,7 +304,7 @@ def main():
                     INSERT INTO translations (
                         id, owner_type, owner_id, lang, field, value, provenance, updated_at
                     ) VALUES (
-                        gen_random_uuid(), %s, %s, %s, %s, %s, %s, NOW()
+                        generate_uuid_v7(), %s, %s, %s, %s, %s, %s, NOW()
                     )
                     """,
                     ("journey", journey_1_id, "en", "title", "Japan Spring Journey 2026", "machine")
@@ -314,7 +314,7 @@ def main():
                     INSERT INTO translations (
                         id, owner_type, owner_id, lang, field, value, provenance, updated_at
                     ) VALUES (
-                        gen_random_uuid(), %s, %s, %s, %s, %s, %s, NOW()
+                        generate_uuid_v7(), %s, %s, %s, %s, %s, %s, NOW()
                     )
                     """,
                     ("journey", journey_2_id, "en", "title", "Hokkaido Winter Trip 2025", "machine")
@@ -324,7 +324,7 @@ def main():
                     INSERT INTO translations (
                         id, owner_type, owner_id, lang, field, value, provenance, updated_at
                     ) VALUES (
-                        gen_random_uuid(), %s, %s, %s, %s, %s, %s, NOW()
+                        generate_uuid_v7(), %s, %s, %s, %s, %s, %s, NOW()
                     )
                     """,
                     ("journey", journey_3_id, "en", "title", "Tokyo Autumn Tour 2024", "machine")
@@ -335,7 +335,7 @@ def main():
                     INSERT INTO translations (
                         id, owner_type, owner_id, lang, field, value, provenance, updated_at
                     ) VALUES (
-                        gen_random_uuid(), %s, %s, %s, %s, %s, %s, NOW()
+                        generate_uuid_v7(), %s, %s, %s, %s, %s, %s, NOW()
                     )
                     """,
                     ("memento", memento_1_id, "en", "title", "JR Tokyo Station Ticket", "machine")
@@ -345,14 +345,14 @@ def main():
                     INSERT INTO translations (
                         id, owner_type, owner_id, lang, field, value, provenance, updated_at
                     ) VALUES (
-                        gen_random_uuid(), %s, %s, %s, %s, %s, %s, NOW()
+                        generate_uuid_v7(), %s, %s, %s, %s, %s, %s, NOW()
                     )
                     """,
                     ("memento", memento_5_id, "en", "title", "Tokyo Station Commemorative Stamp", "machine")
                 )
 
                 conn.commit()
-                print("Database successfully seeded with multi-trip, multi-year dataset!")
+                print("Database successfully seeded with multi-trip UUIDv7 dataset!")
     except Exception as e:
         print(f"Error seeding database: {e}", file=sys.stderr)
         sys.exit(2)

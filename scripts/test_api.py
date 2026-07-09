@@ -50,7 +50,7 @@ def test_journeys():
     assert "tokyo-autumn-2024" in slugs, "Missing J3 slug"
     
     # Get by ID (J1)
-    j1_id = "11111111-1111-1111-1111-111111111111"
+    j1_id = "0190cbde-f300-7000-8000-111111111111"
     status, body = request(f"/api/admin/journeys/{j1_id}")
     assert status == 200, f"Expected 200, got {status}"
     assert body["slug"] == "japan-spring-2026", f"Unexpected slug: {body['slug']}"
@@ -59,7 +59,7 @@ def test_journeys():
 def test_mementos_list():
     print("Testing GET /api/admin/journeys/{id}/mementos...")
     # J1: Should have 2 mementos
-    j1_id = "11111111-1111-1111-1111-111111111111"
+    j1_id = "0190cbde-f300-7000-8000-111111111111"
     status, body = request(f"/api/admin/journeys/{j1_id}/mementos")
     assert status == 200, f"Expected 200, got {status}"
     assert len(body) == 2, f"Expected 2 mementos for J1, got {len(body)}"
@@ -67,7 +67,7 @@ def test_mementos_list():
     assert body[1]["kind"] == "receipt", "Expected J1 memento 2 to be receipt"
 
     # J2: Should have 2 mementos
-    j2_id = "11111111-1111-1111-1111-222222222222"
+    j2_id = "0190cbde-f300-7000-8000-222222222222"
     status, body = request(f"/api/admin/journeys/{j2_id}/mementos")
     assert status == 200, f"Expected 200, got {status}"
     assert len(body) == 2, f"Expected 2 mementos for J2, got {len(body)}"
@@ -75,7 +75,7 @@ def test_mementos_list():
     assert body[1]["kind"] == "goods", "Expected J2 memento 2 to be goods"
 
     # J3: Should have 1 memento (stamp on Tokyo Station - overlapping location!)
-    j3_id = "11111111-1111-1111-1111-333333333333"
+    j3_id = "0190cbde-f300-7000-8000-333333333333"
     status, body = request(f"/api/admin/journeys/{j3_id}/mementos")
     assert status == 200, f"Expected 200, got {status}"
     assert len(body) == 1, f"Expected 1 memento for J3, got {len(body)}"
@@ -86,8 +86,8 @@ def test_memento_validation():
     print("Testing memento validation endpoint...")
     # A. Test invalid memento POST (missing fields)
     payload_invalid = {
-        "id": "99999999-9999-9999-9999-999999999999",
-        "journey_id": "11111111-1111-1111-1111-111111111111",
+        "id": "0190cbde-f300-7000-8000-a99999999999",
+        "journey_id": "0190cbde-f300-7000-8000-111111111111",
         "kind": "live",
         "seq": 6,
         "occurred_at": "2026-03-20T10:00:00Z",
@@ -108,8 +108,8 @@ def test_memento_validation():
 
     # B. Test valid memento POST
     payload_valid = {
-        "id": "88888888-8888-8888-8888-888888888888",
-        "journey_id": "11111111-1111-1111-1111-111111111111",
+        "id": "0190cbde-f300-7000-8000-a88888888888",
+        "journey_id": "0190cbde-f300-7000-8000-111111111111",
         "kind": "live",
         "seq": 7,
         "occurred_at": "2026-03-20T10:00:00Z",
@@ -136,7 +136,7 @@ def test_memento_validation():
 
 def test_translations():
     print("Testing translation endpoints...")
-    memento_id = "22222222-2222-2222-2222-222222222222"
+    memento_id = "0190cbde-f300-7000-8000-a22222222222"
     # List
     status, body = request(f"/api/admin/mementos/{memento_id}/translations")
     assert status == 200, f"Expected 200, got {status}"
@@ -144,7 +144,7 @@ def test_translations():
     
     # Comic-book upsert style
     new_trans = {
-        "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        "id": "0190cbde-f300-7000-8000-eaaaaaaaaaaa",
         "owner_type": "memento",
         "owner_id": memento_id,
         "lang": "en",
@@ -170,7 +170,7 @@ def test_public_apis():
     assert "gps_route" in body_slug
     
     # 3. Get details by UUID (dual lookup)
-    j1_id = "11111111-1111-1111-1111-111111111111"
+    j1_id = "0190cbde-f300-7000-8000-111111111111"
     status, body_uuid = request(f"/api/v1/journeys/{j1_id}")
     assert status == 200, f"Expected 200, got {status}"
     assert body_uuid["slug"] == "japan-spring-2026"
