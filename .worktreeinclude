@@ -1,4 +1,0 @@
-# Gitignored files copied into new worktrees (.gitignore syntax).
-.env
-.env.local
-waypoints.toml
