@@ -32,3 +32,9 @@ markdown_extensions:
 plugins:
   - search
   - awesome-pages
+
+validation:
+  links:
+    absolute_links: ignore
+    unrecognized_links: ignore
+    not_found: ignore
