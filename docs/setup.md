@@ -41,16 +41,16 @@ ssh -L 8000:localhost:8000 <host>
 
 `make docs-build` writes the static site to `./site` (gitignored).
 
-## Database & Ingress Containers (when implementation starts)
+## Database Container (when implementation starts)
 
-- **Linux Dev & Prod Runtime (Podman Compose):**
-  We run the database (PostgreSQL 18 + PostGIS), Go API server, and secure ingress tunnel middleware inside containers using **Podman** (and `podman-compose`):
+- **Linux Dev Runtime (Podman Compose):**
+  The database (PostgreSQL 18 + PostGIS) runs inside a container using **Podman** and `podman-compose`. The Go application itself runs **locally** on the host.
   ```bash
-  # Spin up PostgreSQL, the Go API server, and the Cloudflare Tunnel client
-  podman-compose -f deploy/docker-compose.yml up -d
+  # Spin up the database container
+  podman-compose -f deploy/compose.yaml up -d
   ```
 - **macOS Dev Runtime:**
-  Leverage the native, lightweight **Bianpai** app ([github.com/bianpai/bianpai](https://github.com/bianpai/bianpai)) to run PostgreSQL 18 + PostGIS natively.
+  Leverage the native, lightweight **Bianpai** app ([github.com/bianpai/bianpai](https://github.com/bianpai/bianpai)) to run PostgreSQL 18 + PostGIS natively on the host.
 - **Migrations:**
   `make migrate` applies `migrations/` with goose (needs `DATABASE_DSN`).
 
