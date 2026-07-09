@@ -1,10 +1,9 @@
 # Research — the stable data model (memento-era schema)
 
-> 2026-07-08. The **stable** backend schema — designed once, meant not to be rebuilt from
-> zero. Derives from the decisions in [`backend-stack.md`](backend-stack.md) (D1–D8) and
-> supersedes the ticket-era ER in [`archive/design.md`](../archive/design.md) §4. Postgres +
-> PostGIS; migrated with goose. Research-stage draft that promotes to `docs/spec/data-model.md`
-> when ratified. Types shown are the intended DDL; a goose migration is the S-phase artifact.
+> 2026-07-09. The **stable** backend schema — designed once, meant not to be rebuilt from
+> zero. Derives from the decisions in [`backend-stack.md`](backend-stack.md) (D1–D8), the plan revision in [`backend-plan-revision.md`](backend-plan-revision.md), and
+> supersedes the ticket-era ER in [`archive/design.md`](../archive/design.md) §4. 
+> It provides DDL schemas for both **PostgreSQL 18** (for server mode) and **SQLite** (for local-first, CGO-free compiler mode).
 
 ## Design invariants (why this is stable)
 
@@ -14,12 +13,12 @@
 2. **Single journal root** — everything hangs off one `journal` row even though there is
    exactly one. Multi-tenant later = "add rows + a filter," not "reshape every table."
    (direction.md hedge #3)
-3. **DB is a rebuildable projection** — raw GPS track and original photos are **not** stored;
-   only derived geometry + EXIF-stripped derivatives. Lose the host → restore DB → re-import.
+3. **Dual Engine Support (PG18 & SQLite)** — unified table schemas matching 1:1 in Go models, with
+   platform-specific differences (PostGIS vs. WKB BLOB, JSONB vs. JSON Text) handled at the repository implementation seam.
 4. **Provenance is load-bearing** — every writable field is INGESTED / OVERRIDABLE / AUTHORED,
    and translations add a **language axis**; the importer never clobbers authored work.
 5. **Uniform memento** — one `mementos` table, `kind`-tagged, kind-specifics in `kind_data`
-   jsonb. New kinds = new enum value, not new tables.
+   jsonb/json. New kinds = new enum value, not new tables.
 
 ## The shape at a glance
 
@@ -61,126 +60,254 @@ erDiagram
   }
 ```
 
-## Entities
+---
+
+## Database Schemas (DDL)
+
+### 1. PostgreSQL 18 Schema (Server Mode)
+
+Leverages native spatial features (PostGIS), standard SQL/JSON querying, sequential UUIDv7 generation, and advanced MERGE actions.
+
+```sql
+-- Enable PostGIS extension
+CREATE EXTENSION IF NOT EXISTS postgis;
+
+CREATE TABLE journal (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(), -- Handled as UUIDv7 generated in Go or DB-default
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE journeys (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    journal_id UUID NOT NULL REFERENCES journal(id) ON DELETE CASCADE,
+    slug TEXT NOT NULL UNIQUE,
+    source_ref TEXT,
+    title TEXT NOT NULL, -- Canonical Japanese (ja)
+    place TEXT NOT NULL,
+    country VARCHAR(3),
+    region TEXT,
+    date_start DATE NOT NULL,
+    date_end DATE NOT NULL,
+    gps_route GEOMETRY(MultiLineString, 4326),
+    authored_fields TEXT[] NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_journal_source UNIQUE (journal_id, source_ref)
+);
+
+CREATE TABLE mementos (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    journey_id UUID NOT NULL REFERENCES journeys(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    seq INT NOT NULL,
+    occurred_at TIMESTAMPTZ NOT NULL,
+    occurred_tz TEXT NOT NULL,
+    geom GEOMETRY(Geometry, 4326) NOT NULL,
+    title TEXT NOT NULL, -- Canonical Japanese (ja)
+    place TEXT NOT NULL,
+    vendor TEXT,
+    essay TEXT,
+    price_amount BIGINT,
+    price_currency CHAR(3),
+    kind_data JSONB NOT NULL DEFAULT '{}',
+    source_ref TEXT,
+    authored_fields TEXT[] NOT NULL DEFAULT '{}',
+    orphaned_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_journey_source_memento UNIQUE (journey_id, source_ref),
+    CONSTRAINT valid_currency CHECK (price_currency IS NULL OR price_currency ~ '^[A-Z]{3}$')
+);
+
+CREATE TABLE translations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    owner_type TEXT NOT NULL CHECK (owner_type IN ('journey', 'memento', 'photo')),
+    owner_id UUID NOT NULL,
+    lang TEXT NOT NULL CHECK (lang IN ('en', 'zh')),
+    field TEXT NOT NULL,
+    value TEXT NOT NULL,
+    provenance TEXT NOT NULL CHECK (provenance IN ('machine', 'authored')),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_translation UNIQUE (owner_type, owner_id, lang, field)
+);
+
+CREATE TABLE memento_photos (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    memento_id UUID NOT NULL REFERENCES mementos(id) ON DELETE CASCADE,
+    object_key TEXT NOT NULL,
+    content_hash TEXT NOT NULL,
+    caption TEXT, -- Canonical Japanese (ja)
+    seq INT NOT NULL DEFAULT 0,
+    taken_at TIMESTAMPTZ,
+    source_ref TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_memento_source_photo UNIQUE (memento_id, source_ref),
+    CONSTRAINT unique_memento_photo_hash UNIQUE (memento_id, content_hash)
+);
+
+-- Indexes
+CREATE INDEX idx_journeys_gps_route ON journeys USING GIST(gps_route);
+CREATE INDEX idx_mementos_geom ON mementos USING GIST(geom);
+CREATE INDEX idx_mementos_journey_seq ON mementos(journey_id, seq);
+CREATE INDEX idx_mementos_kind ON mementos(kind);
+CREATE INDEX idx_mementos_occurred ON mementos(occurred_at DESC);
+CREATE INDEX idx_memento_photos_memento_seq ON memento_photos(memento_id, seq);
+```
+
+### 2. SQLite Schema (Local-First Compiler Mode)
+
+Uses text UUIDs, standard JSON strings for nested properties, standard text JSON arrays for `authored_fields`, and WKB (Well-Known Binary) BLOBs for spatial data (retaining full CGO-free portability).
+
+```sql
+CREATE TABLE journal (
+    id TEXT PRIMARY KEY, -- UUID string
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE journeys (
+    id TEXT PRIMARY KEY,
+    journal_id TEXT NOT NULL REFERENCES journal(id) ON DELETE CASCADE,
+    slug TEXT NOT NULL UNIQUE,
+    source_ref TEXT,
+    title TEXT NOT NULL,
+    place TEXT NOT NULL,
+    country TEXT,
+    region TEXT,
+    date_start TEXT NOT NULL,
+    date_end TEXT NOT NULL,
+    gps_route BLOB, -- WKB MultiLineString
+    authored_fields TEXT NOT NULL DEFAULT '[]', -- JSON array of strings
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(journal_id, source_ref)
+);
+
+CREATE TABLE mementos (
+    id TEXT PRIMARY KEY,
+    journey_id TEXT NOT NULL REFERENCES journeys(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    seq INTEGER NOT NULL,
+    occurred_at TEXT NOT NULL,
+    occurred_tz TEXT NOT NULL,
+    geom BLOB NOT NULL, -- WKB Point or LineString
+    title TEXT NOT NULL,
+    place TEXT NOT NULL,
+    vendor TEXT,
+    essay TEXT,
+    price_amount INTEGER,
+    price_currency TEXT,
+    kind_data TEXT NOT NULL DEFAULT '{}', -- JSON text
+    source_ref TEXT,
+    authored_fields TEXT NOT NULL DEFAULT '[]', -- JSON array of strings
+    orphaned_at TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(journey_id, source_ref)
+);
+
+CREATE TABLE translations (
+    id TEXT PRIMARY KEY,
+    owner_type TEXT NOT NULL CHECK (owner_type IN ('journey', 'memento', 'photo')),
+    owner_id TEXT NOT NULL,
+    lang TEXT NOT NULL CHECK (lang IN ('en', 'zh')),
+    field TEXT NOT NULL,
+    value TEXT NOT NULL,
+    provenance TEXT NOT NULL CHECK (provenance IN ('machine', 'authored')),
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(owner_type, owner_id, lang, field)
+);
+
+CREATE TABLE memento_photos (
+    id TEXT PRIMARY KEY,
+    memento_id TEXT NOT NULL REFERENCES mementos(id) ON DELETE CASCADE,
+    object_key TEXT NOT NULL,
+    content_hash TEXT NOT NULL,
+    caption TEXT,
+    seq INTEGER NOT NULL DEFAULT 0,
+    taken_at TEXT,
+    source_ref TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(memento_id, source_ref),
+    UNIQUE(memento_id, content_hash)
+);
+
+-- Indexes
+CREATE INDEX idx_mementos_journey_seq ON mementos(journey_id, seq);
+CREATE INDEX idx_mementos_kind ON mementos(kind);
+CREATE INDEX idx_mementos_occurred ON mementos(occurred_at);
+CREATE INDEX idx_memento_photos_memento_seq ON memento_photos(memento_id, seq);
+```
+
+---
+
+## Entity Details & Field Mapping
 
 ### `journal` — the root (one row)
 
-| Column | Type | Notes |
-| --- | --- | --- |
-| `id` | `uuid pk` | the single root; FKs hang off it |
-| `created_at` | `timestamptz` | |
-
-Product-ready seam: `owner_id`, `title` etc. arrive here later; nothing else reshapes.
+| Column | PG Type | SQLite Type | Notes |
+| --- | --- | --- | --- |
+| `id` | `uuid pk` | `TEXT pk` | the single root; FKs hang off it |
+| `created_at` | `timestamptz` | `TEXT` | |
 
 ### `journeys`
 
-| Column | Type | Class | Notes |
-| --- | --- | --- | --- |
-| `id` | `uuid pk` | — | |
-| `journal_id` | `uuid → journal` | — | the root FK |
-| `slug` | `text` | identity | `<yyyy>-<mm>-<slugify(name)>`, computed **once**, in URLs (archive A2) |
-| `source_ref` | `text null` | INGESTED | e.g. `immich-album:<uuid>`; survives album rename |
-| `title` | `text` | AUTHORED | primary-lang (ja); en/zh in `translations` |
-| `place` | `text` | OVERRIDABLE | primary-lang summary of the region |
-| `country` | `text null` | OVERRIDABLE | ISO code |
-| `region` | `text null` | OVERRIDABLE | |
-| `date_start` | `date` | OVERRIDABLE | min asset capture date at first import |
-| `date_end` | `date` | OVERRIDABLE | max asset capture date |
-| `gps_route` | `geometry(MultiLineString,4326) null` | INGESTED | simplified passive track from **Dawarich** (D–P, gap-split, archive B2; GPX import is the dev fallback). NULL if no track source. **Not** the raw points — those stay in Dawarich. |
-| `authored_fields` | `text[] not null '{}'` | — | no-clobber tracker |
-| `created_at` / `updated_at` | `timestamptz` | — | |
-
-> **Display route = `gps_route` ∪ transit-leg geoms**, composed at **query time** with
-> `ST_Collect` (D2). Not materialized — so adding a transit memento needs no cache
-> invalidation. Segment order is cosmetic for rendering; timestamp-interleave only matters if
-> a single ordered path is ever needed.
+| Column | PG Type | SQLite Type | Class | Notes |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid pk` | `TEXT pk` | — | |
+| `journal_id` | `uuid` | `TEXT` | — | references `journal.id` |
+| `slug` | `text` | `TEXT` | identity | `<yyyy>-<mm>-<slugify(name)>` (computed once, in URLs) |
+| `source_ref` | `text` | `TEXT` | INGESTED | e.g. `immich-album:<uuid>` |
+| `title` | `text` | `TEXT` | AUTHORED | primary-lang (ja); en/zh in `translations` |
+| `place` | `text` | `TEXT` | OVERRIDABLE | primary-lang summary of the region |
+| `country` | `varchar(3)` | `TEXT` | OVERRIDABLE | ISO country code |
+| `region` | `text` | `TEXT` | OVERRIDABLE | |
+| `date_start` | `date` | `TEXT` | OVERRIDABLE | min asset capture date |
+| `date_end` | `date` | `TEXT` | OVERRIDABLE | max asset capture date |
+| `gps_route` | `geometry` | `BLOB` | INGESTED | simplified passive track |
+| `authored_fields` | `text[]` | `TEXT` | — | no-clobber tracker (SQLite holds as JSON array) |
 
 ### `mementos`
 
-| Column | Type | Class | Notes |
-| --- | --- | --- | --- |
-| `id` | `uuid pk` | — | |
-| `journey_id` | `uuid → journeys` | — | |
-| `kind` | `text` | OVERRIDABLE | enum: `ticket \| transit \| goods \| stamp \| receipt \| souvenir` (D8) |
-| `seq` | `int` | OVERRIDABLE | chronological default; admin may reorder |
-| `occurred_at` | `timestamptz` | OVERRIDABLE | resolved instant (OCR>EXIF>snap, archive A4) |
-| `occurred_tz` | `text` | OVERRIDABLE | IANA tz id, so the client renders local wall-clock |
-| `geom` | `geometry(Geometry,4326)` | INGESTED¹ | **Point** (goods/stamp/ticket — snapped to the nearest **visit**, see Places) or **LineString** (transit leg). ¹transit-leg geom is AUTHORED (created in the transit form). |
-| `title` | `text` | AUTHORED | primary-lang (ja) |
-| `place` | `text` | OVERRIDABLE | primary-lang |
-| `vendor` | `text null` | OVERRIDABLE | primary-lang |
-| `essay` | `text null` | AUTHORED | primary-lang, markdown |
-| `price_amount` | `bigint null` | OVERRIDABLE | **minor units** (¥210 → 210; $4.50 → 450) |
-| `price_currency` | `char(3) null` | OVERRIDABLE | ISO 4217 |
-| `kind_data` | `jsonb not null '{}'` | mixed² | kind-specific, non-translatable: transit `{operator, line, from:{name,coords}, to:{name,coords}, fare}`. ²translatable sub-fields (operator/line/station names) live in `translations` keyed `kind_data.operator` etc.; coords/fare stay here. |
-| `source_ref` | `text null` | INGESTED | `immich:<asset-uuid>` \| `file:...` |
-| `authored_fields` | `text[] not null '{}'` | — | no-clobber tracker |
-| `orphaned_at` | `timestamptz null` | INGESTED | set when source album drops `source_ref`; never auto-deleted (archive C3) |
-| `created_at` / `updated_at` | `timestamptz` | — | |
+| Column | PG Type | SQLite Type | Class | Notes |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid pk` | `TEXT pk` | — | |
+| `journey_id` | `uuid` | `TEXT` | — | references `journeys.id` |
+| `kind` | `text` | `TEXT` | OVERRIDABLE | enum: `ticket \| transit \| goods \| stamp \| receipt \| souvenir` |
+| `seq` | `int` | `INTEGER` | OVERRIDABLE | chronological default sequence |
+| `occurred_at` | `timestamptz` | `TEXT` | OVERRIDABLE | resolved timestamp |
+| `occurred_tz` | `text` | `TEXT` | OVERRIDABLE | IANA tz identifier |
+| `geom` | `geometry` | `BLOB` | INGESTED¹ | Point (goods/stamp) or LineString (transit) |
+| `title` | `text` | `TEXT` | AUTHORED | primary-lang (ja) |
+| `place` | `text` | `TEXT` | OVERRIDABLE | primary-lang |
+| `vendor` | `text` | `TEXT` | OVERRIDABLE | |
+| `essay` | `text` | `TEXT` | AUTHORED | primary-lang markdown |
+| `price_amount` | `bigint` | `INTEGER` | OVERRIDABLE | minor units (¥210 → 210) |
+| `price_currency`| `char(3)` | `TEXT` | OVERRIDABLE | ISO 4217 currency code |
+| `kind_data` | `jsonb` | `TEXT` | mixed² | kind-specific properties (transit stations, operator) |
+| `source_ref` | `text` | `TEXT` | INGESTED | immich or file reference |
+| `authored_fields` | `text[]` | `TEXT` | — | no-clobber tracker |
+| `orphaned_at` | `timestamptz` | `TEXT` | INGESTED | marked when source asset disappears |
 
-### `translations` — i18n sidecar (non-primary locales only)
-
-Primary language (**ja**) lives inline on the entity; `en`/`zh` live here — so the default
-JP render never joins, and each non-primary field carries its own provenance.
-
-| Column | Type | Notes |
-| --- | --- | --- |
-| `owner_type` | `text` | `journey \| memento \| photo` |
-| `owner_id` | `uuid` | |
-| `lang` | `text` | `en \| zh` (never `ja` — that's inline) |
-| `field` | `text` | `title \| place \| vendor \| essay \| caption \| kind_data.operator \| kind_data.line \| kind_data.from.name \| kind_data.to.name` |
-| `value` | `text` | |
-| `provenance` | `text` | `machine \| authored` — **the language axis of no-clobber** |
-| `updated_at` | `timestamptz` | |
-
-Rule: a re-translate pass writes a row **only if it's absent or `provenance='machine'`** —
-a hand-corrected (`authored`) locale is never overwritten. Missing row → client falls back
-to the inline `ja` value.
-
-### `memento_photos` — the gallery
-
-| Column | Type | Class | Notes |
-| --- | --- | --- | --- |
-| `id` | `uuid pk` | — | |
-| `memento_id` | `uuid → mementos` | — | |
-| `object_key` | `text` | INGESTED | `journeys/<slug>/<kind>/<hash>.jpg` (archive C5) |
-| `content_hash` | `text` | INGESTED | SHA-256 of **derivative** bytes → idempotency + dedup |
-| `caption` | `text null` | AUTHORED | primary-lang; en/zh in `translations` (`owner_type=photo`) |
-| `seq` | `int` | AUTHORED | curated order |
-| `taken_at` | `timestamptz null` | INGESTED | |
-| `source_ref` | `text null` | INGESTED | immich asset id |
-| `created_at` | `timestamptz` | — | |
+---
 
 ## Places — a *derived visit* layer (not a stored table)
 
-> Added 2026-07-09, after studying Dawarich's data model (the model below was drawn *before*
-> that — this reconciles it). felicia's foundational sources are **Dawarich** (track) +
-> **Immich** (photos); the design must fit what they actually emit.
-
-Two frontends already group mementos by **place** — the techo landing's city dots and the
+Two frontends group mementos by **place** — the techo landing's city dots and the
 detail's "several memories at one place" — yet there is deliberately **no `places` table**. A
 place is a **derived visit**, computed the way Dawarich and Google Timeline both do it: a *stay*,
 detected by dwell-time + spatial clustering over the track, reverse-geocoded to a name.
-(`felicia:decision:place-as-derived-visit`)
 
 - **Source of truth.** Dawarich already runs this pipeline (`points → tracks → visits @ places →
   trips`). When the track is Dawarich's, **consume its `visits`/`places`** rather than
-  re-deriving. For a raw GPX import, fall back to our own dwell-time coordinate-cluster pass —
-  identical output shape. (Google Timeline data enters the same way: import it into Dawarich, read
-  Dawarich — don't chase Google's shifting `placeVisit`/`semanticSegments` format ourselves.)
+  re-deriving. For a plain GPX import (no Dawarich)
+  a dwell-time clustering fallback produces the same `Visit` shape **at the edge** — the core
+  stays generic over the normalized shape.
 - **A memento anchors to a visit, not a bare point.** Its point `geom` snaps to the nearest
-  **visit** (not merely the nearest track vertex), so its `place` gains a stable identity, dwell
-  window, and canonical coord/label for free.
+  **visit** (within temporal overlap or a spatial threshold of 500m/30min), inheriting its place name and coord.
 - **A projection, not schema.** Per journey the API serves an ordered
-  `places[] = { key, label (i18n), coord, seq, memento_count }`, keyed by **snapped coordinate**
-  (language-invariant, unlike grouping on the `place` string). Consumed by both `GET /journeys`
-  (landing dots) and `/journeys/{slug}` (detail clusters). Derive it; materialize it — or promote
-  to a real `place_id` with authorable merge/rename — only if perf or authoring demands it
-  (rule of three).
-- **Two route projections — don't conflate them.** The **display route** (`gps_route ∪ transit`,
-  the organic path = Dawarich *tracks* + *trips*) vs the **places skeleton** (ordered visit
-  centroids joined by connectors — what a stylized map draws). This is exactly Dawarich's /
-  Google's **visit-vs-activity** (`placeVisit` / `activitySegment`) split.
+  `places[] = { key, label (i18n), coord, seq, memento_count }`, keyed by **snapped coordinate**.
+
+---
 
 ## Provenance map (three classes × language)
 
@@ -188,114 +315,33 @@ detected by dwell-time + spatial clustering over the track, reverse-geocoded to 
 | --- | --- | --- | --- |
 | **INGESTED** | always writes | read-only | `source_ref`, `gps_route`, point `geom`, `object_key`, `content_hash`, `taken_at`, `orphaned_at` |
 | **OVERRIDABLE** | writes **until** the field name is in `authored_fields` | editable | `kind`, `occurred_at`, `occurred_tz`, `place`, `vendor`, `price_*`, `seq`, journey `country/region/date_*` |
-| **AUTHORED** | never writes (absent from Patch types) | owns | `title`, `essay`, `caption`, photo selection/order, transit-leg `geom`, en/zh `translations(authored)` |
+| **AUTHORED** | never writes | owns | `title`, `essay`, `caption`, photo selection/order, transit-leg `geom`, en/zh `translations(authored)` |
 
-Mechanism (archive B1): the admin API appends a column name to `authored_fields` on human
-edit; the repository filters incoming patches so an OVERRIDABLE field is skipped when its
-name is present. AUTHORED fields are structurally absent from Patch types. The **language
-axis** rides on `translations.provenance`.
+### Upsert and Translation Merge Rules
 
-## Indexes & upsert targets
+1. **Upserts:** In PG 18, conditional MERGE statement writes to target variables if and only if the updated fields are absent from `authored_fields`. In SQLite, the Go layer handles JSON parsing of `authored_fields` before issuing an UPDATE.
+2. **Translation Merge:** For translatable fields inside JSON (`kind_data.operator`), the API layer dynamically reads the sidecar `translations` table and merges matching values into the output JSON payload based on the requested locale.
 
-| Table | Unique / index | Purpose |
-| --- | --- | --- |
-| `journeys` | `unique(slug)`, `unique(journal_id, source_ref)` | identity + re-import match |
-| `journeys` | `gist(gps_route)` | spatial |
-| `mementos` | `unique(journey_id, source_ref) where source_ref not null` | re-import upsert (archive C1) |
-| `mementos` | `index(journey_id, seq)`, `index(kind)`, `index(occurred_at desc)` | rail order, by-kind + flat `/api/mementos` sort (D5) |
-| `mementos` | `gist(geom)` | spatial |
-| `translations` | `unique(owner_type, owner_id, lang, field)` | one value per locale-field |
-| `memento_photos` | `unique(memento_id, source_ref)`, `unique(memento_id, content_hash)` | dedup + idempotency (archive C2) |
-| `memento_photos` | `index(memento_id, seq)` | gallery order |
-
-Upserts use `ON CONFLICT ... DO UPDATE` with the `authored_fields` filter; idempotency test:
-second import on identical fixtures → **0** row writes, **0** object puts.
+---
 
 ## Workflow — how data moves through the schema
 
-Two writers, one canonical DB (the **A+E** model, memento-era). Re-running **A** is always
-safe because the importer is field-scoped.
-
 ```mermaid
 flowchart LR
-  subgraph A["A — ingest (auto, from the configured sources)"]
-    daw["Dawarich API\ntrack + visits\n(GPX = dev fallback)"] --> imp["waypoints import"]
-    photos["Immich API\nphotos\n(local dir = dev fallback)"] --> imp
-    imp -->|"simplify + gap-split"| gr[("journeys.gps_route\nINGESTED")]
-    imp -->|"visits → dwell clusters"| pl["places\n(derived, not stored)"]
-    imp -->|"EXIF read → resize → strip → R2"| ph[("memento_photos\nINGESTED")]
-    imp -->|"seed stubs; snap geom to nearest visit"| mo[("mementos\nINGESTED/OVERRIDABLE")]
+  subgraph A["A — Ingest (CLI / GitHub Action)"]
+    daw["Dawarich API\n(GPX fallback)"] --> imp["waypoints import"]
+    photos["Immich API\n(Local folder fallback)"] --> imp
+    imp -->|"Simplify track (Go orb)"| gr[("journeys.gps_route\nINGESTED")]
+    imp -->|"Exif strip + Hash"| ph[("memento_photos\nINGESTED")]
+    imp -->|"Validate & Snap"| mo[("mementos\nINGESTED/OVERRIDABLE")]
   end
-  subgraph E["E — author (admin app)"]
-    tc["transit creator\n(station catalog)"] -->|"leg = LineString (AUTHORED geom)"| mo
-    au["essay · gallery order · title\n· back-fill when/where"] --> mo
-    tr["request en/zh draft → hand-correct"] --> tx[("translations\nprovenance machine→authored")]
+  subgraph E["E — Author (Local localhost / Edge Admin)"]
+    tc["Transit creator"] -->|"leg geom"| mo
+    au["Essay editor"] --> mo
+    tr["Request translation"] --> tx[("translations")]
   end
-  mo --> api["Go API (chi)"]
-  gr --> api
-  ph --> obj[["R2"]]
-  api -->|"public read (4dp, ETag)"| pub["frontends v1/v2/…"]
-  obj --> pub
+  mo --> compile["felicia build (SSG)"]
+  gr --> compile
+  ph --> compile
+  compile -->|"Static JSONs + Images"| static[["GitHub / Cloudflare Pages"]]
 ```
-
-**A — ingest (no toil).** felicia's two foundational sources are **Dawarich** (track) and
-**Immich** (photos) — assumed, not swappable-maybe. `waypoints import` pulls the **track +
-visits** from the Dawarich API (a per-trip GPX/GeoJSON file is the dev fallback) → Douglas–Peucker
-+ gap-split → `journeys.gps_route`, and its **visits** seed the derived place layer (see Places);
-and **photos** from Immich (a local dir is the dev fallback) → EXIF lat/lng/time → resize +
-EXIF-strip → R2 → `memento_photos`, seeding stub mementos. **No OCR** — memento structured fields
-are authored, not vision-prefilled (deferred, §backend-stack). Point mementos snap their `geom` to
-the nearest **visit** at `occurred_at` (Dawarich already knows the visit; GPX falls back to
-nearest-track-vertex + a dwell-cluster pass).
-
-**E — author (the real work).** In the admin app you: run the **transit creator**
-(from→to via the bundled station catalog → a transit memento + a LineString leg, the
-edge-anchored AUTHORED geom); **back-fill** goods/stamps (photograph the object months later,
-drag it onto the trip day); write the **essay**, curate/order the **gallery**, set the
-**title**. Editing an OVERRIDABLE field (place/vendor/price/`occurred_at`) appends its name to
-`authored_fields`. For **i18n**, JP is authored inline; you request a machine EN/ZH draft
-(`provenance=machine`) and hand-correct it (`→authored`).
-
-**Serve (read-only public).** The API is **versioned in the path** (`/api/v1/…`) — a stable
-seam so a future breaking shape ships as `/api/v2` without touching v1 clients. It composes
-the **display route** (`gps_route` ∪ transit legs, `ST_Collect`) and serves
-`GET /api/v1/journeys`, `/api/v1/journeys/{slug}`, and the flat `GET /api/v1/mementos` —
-geometry rounded to 4dp, `ETag`/`Cache-Control` off `updated_at`. The **list** projection
-`GET /api/v1/journeys` is lightweight but self-sufficient for an index/landing view: per
-journey it carries `memento_count` (aggregate) and its ordered **places** (the derived-visit
-projection: `{ key, label, coord, seq, memento_count }`) so a landing map + card grid renders in
-one call — no per-journey N+1 to `/{slug}`. A journey with no visits simply yields no dot.
-**Admin auth is deferred** (single-author MVP; no auth surface now) — it returns behind the
-same publish/visibility seam when felicia becomes a product, additive not reshaping.
-
-**Re-import safety (the invariant that makes A repeatable).** Field-scoped upsert:
-INGESTED always refreshes; OVERRIDABLE writes only if its name is **not** in `authored_fields`;
-AUTHORED is structurally absent from Patch types; `translations` overwrite only where
-`provenance='machine'`. Second import on identical fixtures → **0** row writes, **0** object
-puts.
-
-## Modeling notes (stress-tests)
-
-- **Same place, many trips (e.g. Osaka ×3 this year).** Three **journeys**, each its own route
-  + date range + mementos — a journey is one *contiguous trip*, so repeat visits never collapse
-  into one. Map overlap is resolved by interaction (one active journey brightens), not schema.
-  "All my Osaka memories across trips" is a **spatial projection** (mementos within radius),
-  not a first-class `places` table — a cross-journey "Places" browse tier, if ever wanted, is an
-  additive derived view over the same per-journey **derived-visit** projection (see Places).
-  `place` stays denormalized text + coords (trip-first, not gazetteer-first).
-- **No journey-level detail page.** A journey's "page" *is* its mementos + rail; **the map is
-  one *optional* per-frontend framing**, not a required element. v1 (map reader) puts the map on
-  the journey page; the techo/paper front door (v3, `felicia:decision:techo-paper-v3`) swaps it
-  for a polaroid + essay spread over the *same* data. The only detail pages are **per-memento**
-  (the stories live in the mementos, per liuaaron). A journey with zero mementos is legal (just
-  a route line). An optional trip intro is one additive `journeys.summary` (AUTHORED) column
-  later — no reshape.
-
-## What this schema deliberately does *not* have
-
-Waypoints as a table (D7 — derived overlay, not stored); a `places` table (a place is a
-**derived visit**, projected — Dawarich owns visit detection; promote to a stored `place_id`
-only under the rule of three, see Places); a `stations` table (D4 — bundled fixture,
-denormalized into `kind_data`); `owner_id`/multi-tenant columns (deferred, seam is the
-`journal` root); an `animation` column is **AUTHORED** and can be added to `mementos` once the
-open-animation direction settles (flip vs morph vs tear) — additive, no reshape.
