@@ -42,7 +42,7 @@ describe('adaptJourney', () => {
     expect(result.id).toBe('0190cbde-f300-7000-8000-111111111111')
     expect(result.route).toHaveLength(3)
     expect(result.visits).toHaveLength(2)
-    expect(result.mementos).toHaveLength(2)
+    expect(result.mementos).toHaveLength(3)
     expect(result.mementos[0].photos[0].src).toBe('media/photos/tokyo_ticket.jpg')
     expect(result.mementos[1].kind).toBe('receipt')
   })

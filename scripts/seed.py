@@ -27,8 +27,7 @@ def main():
                     (journal_id,)
                 )
 
-                # 3. Seed Three Journeys across three years with overlapping and new locations (UUIDv7)
-                # Journey 1: Japan Spring 2026 (Tokyo & Kyoto)
+                # 3. Seed Three Journeys across three years (UUIDv7)
                 journey_1_id = "0190cbde-f300-7000-8000-111111111111"
                 print(f"Seeding Journey 1 (2026, Tokyo/Kyoto): {journey_1_id}")
                 cur.execute(
@@ -56,7 +55,6 @@ def main():
                     )
                 )
 
-                # Journey 2: Hokkaido Winter 2025 (Sapporo & Otaru)
                 journey_2_id = "0190cbde-f300-7000-8000-222222222222"
                 print(f"Seeding Journey 2 (2025, Hokkaido): {journey_2_id}")
                 cur.execute(
@@ -84,7 +82,6 @@ def main():
                     )
                 )
 
-                # Journey 3: Tokyo Autumn 2024 (Tokyo - overlapping location with J1!)
                 journey_3_id = "0190cbde-f300-7000-8000-333333333333"
                 print(f"Seeding Journey 3 (2024, Tokyo): {journey_3_id}")
                 cur.execute(
@@ -113,7 +110,7 @@ def main():
                 )
 
                 # 4. Seed Mementos distributed across journeys (UUIDv7)
-                # Memento 1 (J1 - Transit, 2026): Tokyo -> Kyoto
+                # Journey 1 Mementos (Transit, Receipt, Souvenir)
                 memento_1_id = "0190cbde-f300-7000-8000-a22222222222"
                 print(f"Seeding Memento 1 (Transit, J1): {memento_1_id}")
                 cur.execute(
@@ -145,7 +142,6 @@ def main():
                     )
                 )
 
-                # Memento 2 (J1 - Receipt, 2026): Kyoto Cafe
                 memento_2_id = "0190cbde-f300-7000-8000-a33333333333"
                 print(f"Seeding Memento 2 (Receipt, J1): {memento_2_id}")
                 cur.execute(
@@ -177,9 +173,40 @@ def main():
                     )
                 )
 
-                # Memento 3 (J2 - Live, 2025): Sapporo Concert
-                memento_3_id = "0190cbde-f300-7000-8000-a44444444444"
-                print(f"Seeding Memento 3 (Live, J2): {memento_3_id}")
+                memento_3_id = "0190cbde-f300-7000-8000-aaaaa8888888"
+                print(f"Seeding Memento 3 (Souvenir, J1): {memento_3_id}")
+                cur.execute(
+                    """
+                    INSERT INTO mementos (
+                        id, journey_id, kind, seq, occurred_at, occurred_tz, geom, title, place, vendor, essay, price_amount, price_currency, kind_data, source_ref, authored_fields
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s,
+                        ST_GeomFromText('POINT(135.7583 34.9859)', 4326),
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    )
+                    """,
+                    (
+                        memento_3_id,
+                        journey_1_id,
+                        "souvenir",
+                        3,
+                        "2026-03-22 10:00:00+0900",
+                        "Asia/Tokyo",
+                        "清水寺のお守り",
+                        "京都",
+                        "清水寺",
+                        "清水寺を参拝し、開運の木札お守りを授かった。静かな朝の境内の匂いがする。",
+                        800,
+                        "JPY",
+                        '{"shrine_or_temple": "Kiyomizu-dera", "item": "Amulet"}',
+                        "immich-photo:kiyomizu-amulet",
+                        []
+                    )
+                )
+
+                # Journey 2 Mementos (Live, Goods, Receipt)
+                memento_4_id = "0190cbde-f300-7000-8000-a44444444444"
+                print(f"Seeding Memento 4 (Live, J2): {memento_4_id}")
                 cur.execute(
                     """
                     INSERT INTO mementos (
@@ -191,7 +218,7 @@ def main():
                     )
                     """,
                     (
-                        memento_3_id,
+                        memento_4_id,
                         journey_2_id,
                         "live",
                         1,
@@ -200,7 +227,7 @@ def main():
                         "羊文学 札幌コンサート",
                         "札幌市",
                         "Sapporo Hall",
-                        "札幌のホールでのライブ。素晴らしい演奏だった。",
+                        "札幌のホールでのライブ。吹雪の夜だったが、熱気あふれる素晴らしい演奏だった。",
                         7500,
                         "JPY",
                         '{"artist": "羊文学", "venue": {"name": "Sapporo Hall", "coords": [141.3545, 43.0620]}, "date": "2025-01-12T18:30:00+09:00", "seat": "Row B-2"}',
@@ -209,9 +236,8 @@ def main():
                     )
                 )
 
-                # Memento 4 (J2 - Goods, 2025): Hokkaido Souvenirs
-                memento_4_id = "0190cbde-f300-7000-8000-a55555555555"
-                print(f"Seeding Memento 4 (Goods, J2): {memento_4_id}")
+                memento_5_id = "0190cbde-f300-7000-8000-a55555555555"
+                print(f"Seeding Memento 5 (Goods, J2): {memento_5_id}")
                 cur.execute(
                     """
                     INSERT INTO mementos (
@@ -223,7 +249,7 @@ def main():
                     )
                     """,
                     (
-                        memento_4_id,
+                        memento_5_id,
                         journey_2_id,
                         "goods",
                         2,
@@ -232,7 +258,7 @@ def main():
                         "小樽ガラス工芸品",
                         "小樽",
                         "Otaru Glass Shop",
-                        "美しいガラスペンを購入。",
+                        "運河沿いの美しい店で手作りのガラスペンを購入。",
                         5500,
                         "JPY",
                         '{"name": "Glass Pen", "shop": "Otaru Glass Shop", "price": {"amount": 5500, "currency": "JPY"}, "manufacturer": "Otaru Craft"}',
@@ -241,9 +267,40 @@ def main():
                     )
                 )
 
-                # Memento 5 (J3 - Stamp, 2024): Tokyo Station Stamp (overlapping location with J1!)
-                memento_5_id = "0190cbde-f300-7000-8000-a66666666666"
-                print(f"Seeding Memento 5 (Stamp, J3): {memento_5_id}")
+                memento_6_id = "0190cbde-f300-7000-8000-a99999999999"
+                print(f"Seeding Memento 6 (Receipt, J2): {memento_6_id}")
+                cur.execute(
+                    """
+                    INSERT INTO mementos (
+                        id, journey_id, kind, seq, occurred_at, occurred_tz, geom, title, place, vendor, essay, price_amount, price_currency, kind_data, source_ref, authored_fields
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s,
+                        ST_GeomFromText('POINT(141.3545 43.0620)', 4326),
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    )
+                    """,
+                    (
+                        memento_6_id,
+                        journey_2_id,
+                        "receipt",
+                        3,
+                        "2025-01-15 19:30:00+0900",
+                        "Asia/Tokyo",
+                        "サッポロビール園 レシート",
+                        "札幌市",
+                        "サッポロビール園",
+                        "冷えたビールと焼き立てのジンギスカンを囲む夕食。",
+                        4500,
+                        "JPY",
+                        '{"shop": "Sapporo Beer Garden", "total": {"amount": 4500, "currency": "JPY"}, "items": "Genghis Khan & Draft Beer"}',
+                        "immich-photo:beer-garden",
+                        []
+                    )
+                )
+
+                # Journey 3 Mementos (Stamp, Goods)
+                memento_7_id = "0190cbde-f300-7000-8000-a66666666666"
+                print(f"Seeding Memento 7 (Stamp, J3): {memento_7_id}")
                 cur.execute(
                     """
                     INSERT INTO mementos (
@@ -255,7 +312,7 @@ def main():
                     )
                     """,
                     (
-                        memento_5_id,
+                        memento_7_id,
                         journey_3_id,
                         "stamp",
                         1,
@@ -264,7 +321,7 @@ def main():
                         "東京駅 記念スタンプ",
                         "東京駅",
                         "JR Tokyo Station",
-                        "東京駅丸の内改札口で記念の駅スタンプを押した。",
+                        "東京駅丸の内改札口で記念の駅スタンプを押した。インクのにじみが良い味を出している。",
                         0,
                         "JPY",
                         '{"name": "東京駅 記念スタンプ", "shrine_or_temple": "JR Tokyo Station", "deity": "Marunouchi Station Building"}',
@@ -273,32 +330,91 @@ def main():
                     )
                 )
 
-                # 5. Insert Photos for Memento 1 (UUIDv7)
-                photo_id = "0190cbde-f300-7000-8000-f77777777777"
-                print(f"Seeding Memento Photo: {photo_id}")
+                memento_8_id = "0190cbde-f300-7000-8000-aaaaa7777777"
+                print(f"Seeding Memento 8 (Goods, J3): {memento_8_id}")
                 cur.execute(
                     """
-                    INSERT INTO memento_photos (
-                        id, memento_id, object_key, content_hash, caption, seq, taken_at, source_ref, created_at
+                    INSERT INTO mementos (
+                        id, journey_id, kind, seq, occurred_at, occurred_tz, geom, title, place, vendor, essay, price_amount, price_currency, kind_data, source_ref, authored_fields
                     ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, NOW()
+                        %s, %s, %s, %s, %s, %s,
+                        ST_GeomFromText('POINT(139.7003 35.6895)', 4326),
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s
                     )
                     """,
                     (
-                        photo_id,
-                        memento_1_id,
-                        "media/photos/tokyo_ticket.jpg",
-                        "sha256:ticket-photo-hash-12345",
-                        "新幹線の切符",
-                        1,
-                        "2026-03-20 09:55:00+0900",
-                        "immich-photo:ticket-pic"
+                        memento_8_id,
+                        journey_3_id,
+                        "goods",
+                        2,
+                        "2024-11-03 14:00:00+0900",
+                        "Asia/Tokyo",
+                        "秋葉原 レトロゲーム",
+                        "東京",
+                        "スーパーポテト",
+                        "懐かしのファミリーコンピュータカセットを購入。箱のデザインが秀逸。",
+                        3200,
+                        "JPY",
+                        '{"item": "Famicom Cartridge", "shop": "Super Potato", "price": {"amount": 3200, "currency": "JPY"}}',
+                        "immich-photo:retro-game",
+                        []
                     )
                 )
 
+                # 5. Insert Photos for Mementos (Multi-media support!)
+                # Memento 1 Photos (2 photos)
+                photo_ids = [
+                    ("0190cbde-f300-7000-8000-f77777777777", memento_1_id, "media/photos/tokyo_ticket.jpg", "新幹線の切符", 1, "2026-03-20 09:55:00+0900", "immich-photo:ticket-pic"),
+                    ("0190cbde-f300-7000-8000-f77777777778", memento_1_id, "media/photos/tokyo_station_building.jpg", "東京駅丸の内駅舎", 2, "2026-03-20 09:56:00+0900", "immich-photo:station-building-pic")
+                ]
+                # Memento 2 Photos (2 photos)
+                photo_ids += [
+                    ("0190cbde-f300-7000-8000-f88888888881", memento_2_id, "media/photos/coffee_cup.jpg", "自家焙煎のスマートコーヒー", 1, "2026-03-21 15:35:00+0900", "immich-photo:coffee-cup-pic"),
+                    ("0190cbde-f300-7000-8000-f88888888882", memento_2_id, "media/photos/french_toast.jpg", "名物のふっくらフレンチトースト", 2, "2026-03-21 15:40:00+0900", "immich-photo:toast-pic")
+                ]
+                # Memento 3 Photos (2 photos)
+                photo_ids += [
+                    ("0190cbde-f300-7000-8000-f99999999991", memento_3_id, "media/photos/omamori_front.jpg", "授かった開運の木札お守り", 1, "2026-03-22 10:15:00+0900", "immich-photo:omamori-pic"),
+                    ("0190cbde-f300-7000-8000-f99999999992", memento_3_id, "media/photos/kiyomizudera_stage.jpg", "清々しい朝の清水の舞台", 2, "2026-03-22 10:20:00+0900", "immich-photo:stage-pic")
+                ]
+                # Memento 4 Photos (1 photo)
+                photo_ids += [
+                    ("0190cbde-f300-7000-8000-faaaaaaa1111", memento_4_id, "media/photos/sapporo_hall.jpg", "ライブが行われた札幌コンサートホール外観", 1, "2025-01-12 18:25:00+0900", "immich-photo:hall-pic")
+                ]
+                # Memento 5 Photos (2 photos)
+                photo_ids += [
+                    ("0190cbde-f300-7000-8000-faaaaaaa2221", memento_5_id, "media/photos/glass_pen.jpg", "手作りのガラスペン", 1, "2025-01-14 14:05:00+0900", "immich-photo:glass-pen-pic"),
+                    ("0190cbde-f300-7000-8000-faaaaaaa2222", memento_5_id, "media/photos/otaru_canal.jpg", "雪化粧が施された美しい小樽運河", 2, "2025-01-14 14:10:00+0900", "immich-photo:canal-pic")
+                ]
+                # Memento 6 Photos (1 photo)
+                photo_ids += [
+                    ("0190cbde-f300-7000-8000-fbbbbbbb1111", memento_6_id, "media/photos/beer_and_lamb.jpg", "ジンギスカンとジョッキビール", 1, "2025-01-15 19:35:00+0900", "immich-photo:beer-garden-pic")
+                ]
+                # Memento 7 Photos (1 photo)
+                photo_ids += [
+                    ("0190cbde-f300-7000-8000-fccccccc1111", memento_7_id, "media/photos/tokyo_station_stamp.jpg", "スタンプ帳に押した丸の内改札スタンプ", 1, "2024-11-02 11:05:00+0900", "immich-photo:stamp-card-pic")
+                ]
+                # Memento 8 Photos (2 photos)
+                photo_ids += [
+                    ("0190cbde-f300-7000-8000-fddddddd1111", memento_8_id, "media/photos/retro_game_box.jpg", "レトロなパッケージアートのソフト", 1, "2024-11-03 14:10:00+0900", "immich-photo:retro-box-pic"),
+                    ("0190cbde-f300-7000-8000-fddddddd1112", memento_8_id, "media/photos/akihabara_neon.jpg", "電気街の賑やかなネオンサイン", 2, "2024-11-03 14:15:00+0900", "immich-photo:akiba-neon-pic")
+                ]
+
+                for p_id, m_id, o_key, caption, seq, taken_at, s_ref in photo_ids:
+                    print(f"Seeding Photo: {p_id} for Memento {m_id}")
+                    cur.execute(
+                        """
+                        INSERT INTO memento_photos (
+                            id, memento_id, object_key, content_hash, caption, seq, taken_at, source_ref, created_at
+                        ) VALUES (
+                            %s, %s, %s, %s, %s, %s, %s, %s, NOW()
+                        )
+                        """,
+                        (p_id, m_id, o_key, f"sha256:{o_key}-hash", caption, seq, taken_at, s_ref)
+                    )
+
                 # 6. Insert Translation Sidecars (UUIDv7)
                 print("Seeding Translations...")
-                # English journey names
                 cur.execute(
                     """
                     INSERT INTO translations (
@@ -329,7 +445,6 @@ def main():
                     """,
                     ("journey", journey_3_id, "en", "title", "Tokyo Autumn Tour 2024", "machine")
                 )
-                # English memento names
                 cur.execute(
                     """
                     INSERT INTO translations (
@@ -348,14 +463,10 @@ def main():
                         generate_uuid_v7(), %s, %s, %s, %s, %s, %s, NOW()
                     )
                     """,
-                    ("memento", memento_5_id, "en", "title", "Tokyo Station Commemorative Stamp", "machine")
+                    ("memento", memento_7_id, "en", "title", "Tokyo Station Commemorative Stamp", "machine")
                 )
 
-                # 6. Seed a transit leg on Journey 1 (HND -> KIX flight). Kept
-                # separate from gps_route; the geodesic arc is built by
-                # ST_Segmentize and composed into the display route at read time
-                # (union-at-read). This gives the dev DB a journey with both a
-                # Dawarich track AND an authored leg; Journeys 2 & 3 stay track-only.
+                # 7. Seed transit legs on Journey 1 (HND -> KIX flight)
                 print("Seeding transit leg on Journey 1 (HND -> KIX)...")
                 cur.execute(
                     """
@@ -376,7 +487,7 @@ def main():
                 )
 
                 conn.commit()
-                print("Database successfully seeded with multi-trip UUIDv7 dataset!")
+                print("Database successfully seeded with expanded multi-trip UUIDv7 dataset!")
     except Exception as e:
         print(f"Error seeding database: {e}", file=sys.stderr)
         sys.exit(2)

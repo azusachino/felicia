@@ -2,7 +2,7 @@
   {
     "slug": "japan-spring-2026",
     "title": "日本春旅 2026",
-    "memento_count": 2,
+    "memento_count": 3,
     "representative_dots": [
       {
         "coord": [
@@ -23,7 +23,7 @@
   {
     "slug": "hokkaido-winter-2025",
     "title": "北海道冬旅 2025",
-    "memento_count": 2,
+    "memento_count": 3,
     "representative_dots": [
       {
         "coord": [
@@ -44,7 +44,7 @@
   {
     "slug": "tokyo-autumn-2024",
     "title": "東京秋旅 2024",
-    "memento_count": 1,
+    "memento_count": 2,
     "representative_dots": [
       {
         "coord": [
@@ -52,6 +52,13 @@
           35.6812
         ],
         "label": "東京駅"
+      },
+      {
+        "coord": [
+          139.7003,
+          35.6895
+        ],
+        "label": "東京"
       }
     ]
   }

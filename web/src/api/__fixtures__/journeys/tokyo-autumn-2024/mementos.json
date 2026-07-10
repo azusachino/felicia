@@ -1,0 +1,98 @@
+[
+  {
+    "id": "0190cbde-f300-7000-8000-a66666666666",
+    "journey_id": "0190cbde-f300-7000-8000-333333333333",
+    "kind": "stamp",
+    "seq": 1,
+    "occurred_at": "2024-11-02T11:00:00+09:00",
+    "occurred_tz": "Asia/Tokyo",
+    "geom": {
+      "type": "Point",
+      "coordinates": [
+        139.7671,
+        35.6812
+      ]
+    },
+    "title": "東京駅 記念スタンプ",
+    "place": "東京駅",
+    "vendor": "JR Tokyo Station",
+    "essay": "東京駅丸の内改札口で記念の駅スタンプを押した。インクのにじみが良い味を出している。",
+    "price_amount": 0,
+    "price_currency": "JPY",
+    "kind_data": {
+      "deity": "Marunouchi Station Building",
+      "name": "東京駅 記念スタンプ",
+      "shrine_or_temple": "JR Tokyo Station"
+    },
+    "source_ref": "immich-photo:station-stamp",
+    "photos": [
+      {
+        "id": "0190cbde-f300-7000-8000-fccccccc1111",
+        "memento_id": "0190cbde-f300-7000-8000-a66666666666",
+        "object_key": "media/photos/tokyo_station_stamp.jpg",
+        "content_hash": "sha256:media/photos/tokyo_station_stamp.jpg-hash",
+        "caption": "スタンプ帳に押した丸の内改札スタンプ",
+        "seq": 1,
+        "taken_at": "2024-11-02T11:05:00+09:00",
+        "source_ref": "immich-photo:stamp-card-pic"
+      }
+    ],
+    "translations": {
+      "en": {
+        "title": "Tokyo Station Commemorative Stamp"
+      }
+    }
+  },
+  {
+    "id": "0190cbde-f300-7000-8000-aaaaa7777777",
+    "journey_id": "0190cbde-f300-7000-8000-333333333333",
+    "kind": "goods",
+    "seq": 2,
+    "occurred_at": "2024-11-03T14:00:00+09:00",
+    "occurred_tz": "Asia/Tokyo",
+    "geom": {
+      "type": "Point",
+      "coordinates": [
+        139.7003,
+        35.6895
+      ]
+    },
+    "title": "秋葉原 レトロゲーム",
+    "place": "東京",
+    "vendor": "スーパーポテト",
+    "essay": "懐かしのファミリーコンピュータカセットを購入。箱のデザインが秀逸。",
+    "price_amount": 3200,
+    "price_currency": "JPY",
+    "kind_data": {
+      "item": "Famicom Cartridge",
+      "price": {
+        "amount": 3200,
+        "currency": "JPY"
+      },
+      "shop": "Super Potato"
+    },
+    "source_ref": "immich-photo:retro-game",
+    "photos": [
+      {
+        "id": "0190cbde-f300-7000-8000-fddddddd1111",
+        "memento_id": "0190cbde-f300-7000-8000-aaaaa7777777",
+        "object_key": "media/photos/retro_game_box.jpg",
+        "content_hash": "sha256:media/photos/retro_game_box.jpg-hash",
+        "caption": "レトロなパッケージアートのソフト",
+        "seq": 1,
+        "taken_at": "2024-11-03T14:10:00+09:00",
+        "source_ref": "immich-photo:retro-box-pic"
+      },
+      {
+        "id": "0190cbde-f300-7000-8000-fddddddd1112",
+        "memento_id": "0190cbde-f300-7000-8000-aaaaa7777777",
+        "object_key": "media/photos/akihabara_neon.jpg",
+        "content_hash": "sha256:media/photos/akihabara_neon.jpg-hash",
+        "caption": "電気街の賑やかなネオンサイン",
+        "seq": 2,
+        "taken_at": "2024-11-03T14:15:00+09:00",
+        "source_ref": "immich-photo:akiba-neon-pic"
+      }
+    ]
+  }
+]

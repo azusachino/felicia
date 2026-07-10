@@ -43,11 +43,21 @@
         "id": "0190cbde-f300-7000-8000-f77777777777",
         "memento_id": "0190cbde-f300-7000-8000-a22222222222",
         "object_key": "media/photos/tokyo_ticket.jpg",
-        "content_hash": "sha256:ticket-photo-hash-12345",
+        "content_hash": "sha256:media/photos/tokyo_ticket.jpg-hash",
         "caption": "新幹線の切符",
         "seq": 1,
         "taken_at": "2026-03-20T09:55:00+09:00",
         "source_ref": "immich-photo:ticket-pic"
+      },
+      {
+        "id": "0190cbde-f300-7000-8000-f77777777778",
+        "memento_id": "0190cbde-f300-7000-8000-a22222222222",
+        "object_key": "media/photos/tokyo_station_building.jpg",
+        "content_hash": "sha256:media/photos/tokyo_station_building.jpg-hash",
+        "caption": "東京駅丸の内駅舎",
+        "seq": 2,
+        "taken_at": "2026-03-20T09:56:00+09:00",
+        "source_ref": "immich-photo:station-building-pic"
       }
     ],
     "translations": {
@@ -84,6 +94,76 @@
         "currency": "JPY"
       }
     },
-    "source_ref": "immich-photo:coffee-pic"
+    "source_ref": "immich-photo:coffee-pic",
+    "photos": [
+      {
+        "id": "0190cbde-f300-7000-8000-f88888888881",
+        "memento_id": "0190cbde-f300-7000-8000-a33333333333",
+        "object_key": "media/photos/coffee_cup.jpg",
+        "content_hash": "sha256:media/photos/coffee_cup.jpg-hash",
+        "caption": "自家焙煎のスマートコーヒー",
+        "seq": 1,
+        "taken_at": "2026-03-21T15:35:00+09:00",
+        "source_ref": "immich-photo:coffee-cup-pic"
+      },
+      {
+        "id": "0190cbde-f300-7000-8000-f88888888882",
+        "memento_id": "0190cbde-f300-7000-8000-a33333333333",
+        "object_key": "media/photos/french_toast.jpg",
+        "content_hash": "sha256:media/photos/french_toast.jpg-hash",
+        "caption": "名物のふっくらフレンチトースト",
+        "seq": 2,
+        "taken_at": "2026-03-21T15:40:00+09:00",
+        "source_ref": "immich-photo:toast-pic"
+      }
+    ]
+  },
+  {
+    "id": "0190cbde-f300-7000-8000-aaaaa8888888",
+    "journey_id": "0190cbde-f300-7000-8000-111111111111",
+    "kind": "souvenir",
+    "seq": 3,
+    "occurred_at": "2026-03-22T10:00:00+09:00",
+    "occurred_tz": "Asia/Tokyo",
+    "geom": {
+      "type": "Point",
+      "coordinates": [
+        135.7583,
+        34.9859
+      ]
+    },
+    "title": "清水寺のお守り",
+    "place": "京都",
+    "vendor": "清水寺",
+    "essay": "清水寺を参拝し、開運の木札お守りを授かった。静かな朝の境内の匂いがする。",
+    "price_amount": 800,
+    "price_currency": "JPY",
+    "kind_data": {
+      "item": "Amulet",
+      "shrine_or_temple": "Kiyomizu-dera"
+    },
+    "source_ref": "immich-photo:kiyomizu-amulet",
+    "photos": [
+      {
+        "id": "0190cbde-f300-7000-8000-f99999999991",
+        "memento_id": "0190cbde-f300-7000-8000-aaaaa8888888",
+        "object_key": "media/photos/omamori_front.jpg",
+        "content_hash": "sha256:media/photos/omamori_front.jpg-hash",
+        "caption": "授かった開運の木札お守り",
+        "seq": 1,
+        "taken_at": "2026-03-22T10:15:00+09:00",
+        "source_ref": "immich-photo:omamori-pic"
+      },
+      {
+        "id": "0190cbde-f300-7000-8000-f99999999992",
+        "memento_id": "0190cbde-f300-7000-8000-aaaaa8888888",
+        "object_key": "media/photos/kiyomizudera_stage.jpg",
+        "content_hash": "sha256:media/photos/kiyomizudera_stage.jpg-hash",
+        "caption": "清々しい朝の清水の舞台",
+        "seq": 2,
+        "taken_at": "2026-03-22T10:20:00+09:00",
+        "source_ref": "immich-photo:stage-pic"
+      }
+    ]
   }
 ]

@@ -58,28 +58,31 @@ def test_journeys():
 
 def test_mementos_list():
     print("Testing GET /api/admin/journeys/{id}/mementos...")
-    # J1: Should have 2 mementos
+    # J1: Should have 3 mementos
     j1_id = "0190cbde-f300-7000-8000-111111111111"
     status, body = request(f"/api/admin/journeys/{j1_id}/mementos")
     assert status == 200, f"Expected 200, got {status}"
-    assert len(body) == 2, f"Expected 2 mementos for J1, got {len(body)}"
+    assert len(body) == 3, f"Expected 3 mementos for J1, got {len(body)}"
     assert body[0]["kind"] == "transit", "Expected J1 memento 1 to be transit"
     assert body[1]["kind"] == "receipt", "Expected J1 memento 2 to be receipt"
+    assert body[2]["kind"] == "souvenir", "Expected J1 memento 3 to be souvenir"
 
-    # J2: Should have 2 mementos
+    # J2: Should have 3 mementos
     j2_id = "0190cbde-f300-7000-8000-222222222222"
     status, body = request(f"/api/admin/journeys/{j2_id}/mementos")
     assert status == 200, f"Expected 200, got {status}"
-    assert len(body) == 2, f"Expected 2 mementos for J2, got {len(body)}"
+    assert len(body) == 3, f"Expected 3 mementos for J2, got {len(body)}"
     assert body[0]["kind"] == "live", "Expected J2 memento 1 to be live"
     assert body[1]["kind"] == "goods", "Expected J2 memento 2 to be goods"
+    assert body[2]["kind"] == "receipt", "Expected J2 memento 3 to be receipt"
 
-    # J3: Should have 1 memento (stamp on Tokyo Station - overlapping location!)
+    # J3: Should have 2 mementos
     j3_id = "0190cbde-f300-7000-8000-333333333333"
     status, body = request(f"/api/admin/journeys/{j3_id}/mementos")
     assert status == 200, f"Expected 200, got {status}"
-    assert len(body) == 1, f"Expected 1 memento for J3, got {len(body)}"
+    assert len(body) == 2, f"Expected 2 mementos for J3, got {len(body)}"
     assert body[0]["kind"] == "stamp", "Expected J3 memento 1 to be stamp"
+    assert body[1]["kind"] == "goods", "Expected J3 memento 2 to be goods"
     print("✓ Mementos distribution and overlapping locations OK")
 
 def test_memento_validation():
@@ -178,12 +181,12 @@ def test_public_apis():
     # 4. Get mementos by slug
     status, mementos_slug = request("/api/v1/journeys/japan-spring-2026/mementos")
     assert status == 200, f"Expected 200, got {status}"
-    assert len(mementos_slug) == 3, f"Expected 3 mementos, got {len(mementos_slug)}"
+    assert len(mementos_slug) == 4, f"Expected 4 mementos, got {len(mementos_slug)}"
     
     # 5. Get mementos by UUID (dual lookup)
     status, mementos_uuid = request(f"/api/v1/journeys/{j1_id}/mementos")
     assert status == 200, f"Expected 200, got {status}"
-    assert len(mementos_uuid) == 3
+    assert len(mementos_uuid) == 4
     
     print("✓ Public APIs (slug & UUID lookup) OK")
 

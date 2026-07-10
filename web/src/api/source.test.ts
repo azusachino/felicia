@@ -56,7 +56,7 @@ describe('source API', () => {
 
     expect(journey.id).toBe('0190cbde-f300-7000-8000-111111111111')
     expect(journey.title.ja).toBe('日本春旅 2026')
-    expect(journey.mementos).toHaveLength(2)
+    expect(journey.mementos).toHaveLength(3)
   })
 
   test('loadJourney fetches detail and mementos (prod/static mode)', async () => {
