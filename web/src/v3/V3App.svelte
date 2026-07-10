@@ -1,7 +1,15 @@
 <script lang="ts">
-  import { journeys, kindLabel, type Coordinates, type L, type Lang, type Memento, type Theme } from '../data';
-  import { cityDots, project } from './cityLookup';
-  import TripMap from './TripMap.svelte';
+  import {
+    journeys,
+    kindLabel,
+    type Coordinates,
+    type L,
+    type Lang,
+    type Memento,
+    type Theme,
+  } from '../data'
+  import { cityDots, project } from './cityLookup'
+  import TripMap from './TripMap.svelte'
 
   // v3 — the "techo" (手帳, paper notebook) front door. View 1 (landing) is the
   // journal index — a two-page spread with a paper sketch map. View 2 (detail)
@@ -9,30 +17,28 @@
   // (map is the index — felicia:decision:map-first-landing), and opening a place
   // reveals its memories (a place holds several) as paper cards with essay +
   // gallery. Styled with Tailwind (felicia:decision:techo-paper-v3).
-  let {
-    lang = $bindable('ja'),
-    theme = $bindable('dark'),
-  }: { lang?: Lang; theme?: Theme } = $props();
+  let { lang = $bindable('ja'), theme = $bindable('dark') }: { lang?: Lang; theme?: Theme } =
+    $props()
 
-  let selectedIndex = $state(0);
-  let view = $state<'landing' | 'detail'>('landing');
-  let selectedPlaceKey = $state<string | null>(null);
+  let selectedIndex = $state(0)
+  let view = $state<'landing' | 'detail'>('landing')
+  let selectedPlaceKey = $state<string | null>(null)
 
-  const selectedJourney = $derived(journeys[selectedIndex]);
+  const selectedJourney = $derived(journeys[selectedIndex])
 
   function t(value: L): string {
-    return value[lang];
+    return value[lang]
   }
 
   // Places ARE the journey's derived visits (felicia:decision:place-as-derived-visit);
   // mementos anchor to them by visitId. One map marker per visit; a visit can hold
   // several memories. No string-grouping — the visit is the stable place key.
   interface PlaceGroup {
-    key: string;
-    label: L;
-    coords: Coordinates;
-    seq: number;
-    mementos: Memento[];
+    key: string
+    label: L
+    coords: Coordinates
+    seq: number
+    mementos: Memento[]
   }
 
   const placeGroups = $derived.by<PlaceGroup[]>(() =>
@@ -41,41 +47,51 @@
       label: visit.label,
       coords: visit.coords,
       seq: index + 1,
-      mementos: selectedJourney.mementos.filter(memento => memento.visitId === visit.id)
-    }))
-  );
+      mementos: selectedJourney.mementos.filter((memento) => memento.visitId === visit.id),
+    })),
+  )
 
   const mapPlaces = $derived(
-    placeGroups.map(group => ({ key: group.key, coords: group.coords, seq: group.seq, count: group.mementos.length }))
-  );
+    placeGroups.map((group) => ({
+      key: group.key,
+      coords: group.coords,
+      seq: group.seq,
+      count: group.mementos.length,
+    })),
+  )
 
-  const selectedPlace = $derived(placeGroups.find(group => group.key === selectedPlaceKey) ?? null);
+  const selectedPlace = $derived(
+    placeGroups.find((group) => group.key === selectedPlaceKey) ?? null,
+  )
 
   const transitPairs = $derived(
     selectedJourney.mementos
-      .filter(memento => memento.transit)
-      .map(memento => [memento.transit!.from.coords, memento.transit!.to.coords] as [Coordinates, Coordinates])
-  );
+      .filter((memento) => memento.transit)
+      .map(
+        (memento) =>
+          [memento.transit!.from.coords, memento.transit!.to.coords] as [Coordinates, Coordinates],
+      ),
+  )
 
   function selectJourney(index: number) {
-    selectedIndex = index;
+    selectedIndex = index
   }
 
   function openJourney() {
-    selectedPlaceKey = placeGroups[0]?.key ?? null;
-    view = 'detail';
+    selectedPlaceKey = placeGroups[0]?.key ?? null
+    view = 'detail'
   }
 
   function backToLanding() {
-    view = 'landing';
+    view = 'landing'
   }
 
   function selectPlace(key: string) {
-    selectedPlaceKey = key;
+    selectedPlaceKey = key
   }
 
   function onPhotoError(event: Event) {
-    (event.currentTarget as HTMLImageElement).style.display = 'none';
+    ;(event.currentTarget as HTMLImageElement).style.display = 'none'
   }
 
   // Washi tape texture: a small fixed palette cycled by card index.
@@ -83,55 +99,76 @@
     'rgba(200, 120, 60, 0.35)',
     'rgba(120, 150, 108, 0.35)',
     'rgba(120, 138, 188, 0.32)',
-    'rgba(196, 150, 88, 0.35)'
-  ];
-  const washiRotations = [-4, 3, -2, 5];
+    'rgba(196, 150, 88, 0.35)',
+  ]
+  const washiRotations = [-4, 3, -2, 5]
 
   const years = $derived.by(() => {
-    const set = new Set<string>();
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient local dedupe set inside a pure $derived
+    const set = new Set<string>()
     for (const journey of journeys) {
-      const match = journey.dates.ja.match(/(\d{4})年/);
-      set.add(match ? match[1] : '2026');
+      const match = journey.dates.ja.match(/(\d{4})年/)
+      set.add(match ? match[1] : '2026')
     }
-    return Array.from(set).sort((a, b) => Number(b) - Number(a));
-  });
+    return Array.from(set).sort((a, b) => Number(b) - Number(a))
+  })
 
   const activeYear = $derived.by(() => {
-    const match = selectedJourney.dates.ja.match(/(\d{4})年/);
-    return match ? match[1] : years[0];
-  });
+    const match = selectedJourney.dates.ja.match(/(\d{4})年/)
+    return match ? match[1] : years[0]
+  })
 
   const journeyCountLabel = $derived.by(() => {
-    const n = journeys.length;
-    if (lang === 'en') return `${n} journeys`;
-    if (lang === 'zh') return `${n}次旅程`;
-    return `${n}つの旅`;
-  });
+    const n = journeys.length
+    if (lang === 'en') return `${n} journeys`
+    if (lang === 'zh') return `${n}次旅程`
+    return `${n}つの旅`
+  })
 
   function mementoCountLabel(n: number): string {
-    if (lang === 'en') return `${n} stop${n === 1 ? '' : 's'}`;
-    if (lang === 'zh') return `${n}件`;
-    return `${n}件`;
+    if (lang === 'en') return `${n} stop${n === 1 ? '' : 's'}`
+    if (lang === 'zh') return `${n}件`
+    return `${n}件`
   }
 
   function placeMemoriesLabel(n: number): string {
-    if (lang === 'en') return `${n} memor${n === 1 ? 'y' : 'ies'} here`;
-    if (lang === 'zh') return `此地 ${n} 件记忆`;
-    return `この場所の記憶 ${n}件`;
+    if (lang === 'en') return `${n} memor${n === 1 ? 'y' : 'ies'} here`
+    if (lang === 'zh') return `此地 ${n} 件记忆`
+    return `この場所の記憶 ${n}件`
   }
 
   // Landing sketch map: dim every journey's city dots, brighten the selected.
-  const journeyCityDots = $derived(cityDots.filter(dot => dot.journeyId === selectedJourney.id));
-  const routePoints = $derived(journeyCityDots.map(dot => project(dot.coords)));
-  const routePath = $derived(routePoints.map(p => `${p.x},${p.y}`).join(' '));
+  const journeyCityDots = $derived(cityDots.filter((dot) => dot.journeyId === selectedJourney.id))
+  const routePoints = $derived(journeyCityDots.map((dot) => project(dot.coords)))
+  const routePath = $derived(routePoints.map((p) => `${p.x},${p.y}`).join(' '))
 
-  const mapCaption = { ja: '地図の印をえらぶと、その旅がひらきます', en: 'Choose a mark on the map to open that journey', zh: '在地图上选择标记，即可打开这段旅程' } satisfies L;
-  const seasonCaption = { ja: '冬－春の記録', en: 'Winter–spring notes', zh: '冬–春记录' } satisfies L;
-  const brandTagline = { ja: 'Travel journal', en: 'Travel journal', zh: 'Travel journal' } satisfies L;
-  const selectedBadge = { ja: '選択中', en: 'Selected', zh: '已选' } satisfies L;
-  const openCta = { ja: 'この旅をひらく →', en: 'Open this journey →', zh: '打开这段旅程 →' } satisfies L;
-  const backLabel = { ja: '手帳に戻る', en: 'Back to journal', zh: '返回手帳' } satisfies L;
-  const noMemoriesLabel = { ja: 'ここではまだ記憶を集めていない。', en: 'No memories collected here yet.', zh: '这里还没有收集记忆。' } satisfies L;
+  const mapCaption = {
+    ja: '地図の印をえらぶと、その旅がひらきます',
+    en: 'Choose a mark on the map to open that journey',
+    zh: '在地图上选择标记，即可打开这段旅程',
+  } satisfies L
+  const seasonCaption = {
+    ja: '冬－春の記録',
+    en: 'Winter–spring notes',
+    zh: '冬–春记录',
+  } satisfies L
+  const brandTagline = {
+    ja: 'Travel journal',
+    en: 'Travel journal',
+    zh: 'Travel journal',
+  } satisfies L
+  const selectedBadge = { ja: '選択中', en: 'Selected', zh: '已选' } satisfies L
+  const openCta = {
+    ja: 'この旅をひらく →',
+    en: 'Open this journey →',
+    zh: '打开这段旅程 →',
+  } satisfies L
+  const backLabel = { ja: '手帳に戻る', en: 'Back to journal', zh: '返回手帳' } satisfies L
+  const noMemoriesLabel = {
+    ja: 'ここではまだ記憶を集めていない。',
+    en: 'No memories collected here yet.',
+    zh: '这里还没有收集记忆。',
+  } satisfies L
 </script>
 
 <main class="techo-shell" class:theme-light={theme === 'light'} class:is-detail={view === 'detail'}>
@@ -141,7 +178,12 @@
       <div class="techo-spread">
         <section class="techo-page techo-page--map" aria-label="Journey map">
           <div class="map-grid">
-            <svg class="map-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <svg
+              class="map-svg"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
               {#if routePoints.length > 1}
                 <polyline class="map-route" points={routePath} />
               {/if}
@@ -183,7 +225,9 @@
                 >
                   <span
                     class="washi-tape"
-                    style="background:{washiColors[index % washiColors.length]}; transform: translate(-50%, -55%) rotate({washiRotations[
+                    style="background:{washiColors[
+                      index % washiColors.length
+                    ]}; transform: translate(-50%, -55%) rotate({washiRotations[
                       index % washiRotations.length
                     ]}deg)"
                   ></span>
@@ -215,7 +259,10 @@
   {:else}
     <!-- View 2: the journey on a real map; mementos cluster by place, opening a
          place reveals its memories. -->
-    <section class="relative h-full w-full overflow-hidden bg-paper-2" aria-label={t(selectedJourney.title)}>
+    <section
+      class="relative h-full w-full overflow-hidden bg-paper-2"
+      aria-label={t(selectedJourney.title)}
+    >
       <TripMap
         places={mapPlaces}
         route={selectedJourney.route}
@@ -228,14 +275,18 @@
       <header class="pointer-events-none absolute left-6 top-6 z-10 flex items-start gap-3">
         <div class="pointer-events-auto rounded-lg bg-paper-1/95 px-4 py-3 shadow-lg backdrop-blur">
           <p class="m-0 font-mono text-[0.7rem] tracking-[0.3em] text-terracotta">F E L I C I A</p>
-          <h1 class="m-0 mt-1 font-mincho text-2xl font-bold text-ink">{t(selectedJourney.title)}</h1>
-          <p class="m-0 text-sm text-ink-soft">{t(selectedJourney.dates)} · {t(selectedJourney.place)}</p>
+          <h1 class="m-0 mt-1 font-mincho text-2xl font-bold text-ink">
+            {t(selectedJourney.title)}
+          </h1>
+          <p class="m-0 text-sm text-ink-soft">
+            {t(selectedJourney.dates)} · {t(selectedJourney.place)}
+          </p>
         </div>
         <button
           type="button"
           class="pointer-events-auto rounded-md border border-black/10 bg-paper-1/95 px-3 py-2 font-mono text-xs tracking-wide text-terracotta shadow"
-          onclick={backToLanding}
-        >{t(backLabel)} ×</button>
+          onclick={backToLanding}>{t(backLabel)} ×</button
+        >
       </header>
 
       {#if selectedPlace}
@@ -247,7 +298,9 @@
             <p class="m-0 font-mono text-[0.7rem] uppercase tracking-[0.18em] text-ink-faint">
               {placeMemoriesLabel(selectedPlace.mementos.length)}
             </p>
-            <h2 class="m-0 mt-1 font-mincho text-xl font-bold text-ink">{t(selectedPlace.label)}</h2>
+            <h2 class="m-0 mt-1 font-mincho text-xl font-bold text-ink">
+              {t(selectedPlace.label)}
+            </h2>
           </div>
 
           {#if selectedPlace.mementos.length === 0}
@@ -274,7 +327,9 @@
                         class="block aspect-[4/3] w-full object-cover"
                         onerror={onPhotoError}
                       />
-                      <figcaption class="px-3 py-2 text-xs text-ink-soft">{t(photo.caption)}</figcaption>
+                      <figcaption class="px-3 py-2 text-xs text-ink-soft">
+                        {t(photo.caption)}
+                      </figcaption>
                     </figure>
                   {/each}
                 </div>
@@ -329,7 +384,9 @@
     max-height: 92vh;
     border-radius: 0.9rem;
     background: var(--paper-3);
-    box-shadow: 0 2rem 4rem rgba(58, 47, 28, 0.35), 0 0.5rem 1rem rgba(58, 47, 28, 0.2);
+    box-shadow:
+      0 2rem 4rem rgba(58, 47, 28, 0.35),
+      0 0.5rem 1rem rgba(58, 47, 28, 0.2);
     padding: 0.5rem;
   }
 

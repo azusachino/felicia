@@ -1,7 +1,7 @@
 <script lang="ts">
-  import maplibregl, { type StyleSpecification } from 'maplibre-gl';
-  import { onMount } from 'svelte';
-  import { fade, fly } from 'svelte/transition';
+  import maplibregl, { type StyleSpecification } from 'maplibre-gl'
+  import { onMount } from 'svelte'
+  import { fade, fly } from 'svelte/transition'
   import {
     journeys,
     kindLabel,
@@ -11,49 +11,50 @@
     type Lang,
     type Memento,
     type Station,
-    type Theme
-  } from '../data';
+    type Theme,
+  } from '../data'
 
   // v1 — the liuaaron-aligned map reader: journey index rail -> map hero ->
   // paper detail. The map is the index. Reached from v2 as the "more" view.
-  export let lang: Lang = 'ja';
-  export let theme: Theme = 'dark';
-  export let toMemories: (() => void) | undefined = undefined;
+  export let lang: Lang = 'ja'
+  export let theme: Theme = 'dark'
+  export let toMemories: (() => void) | undefined = undefined
 
-  let selectedJourneyId = journeys[0].id;
-  let selected = journeys[0].mementos[0];
-  let mapContainer: HTMLDivElement;
-  let map: maplibregl.Map | undefined;
-  const markers = new Map<string, maplibregl.Marker>();
+  let selectedJourneyId = journeys[0].id
+  let selected = journeys[0].mementos[0]
+  let mapContainer: HTMLDivElement
+  let map: maplibregl.Map | undefined
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- imperative maplibre marker cache, not reactive UI state
+  const markers = new Map<string, maplibregl.Marker>()
 
-  $: t = (value: { ja: string; en: string; zh: string }) => value[lang];
-  $: stationName = (s: Station) => (lang === 'en' ? s.name : s.ja);
-  $: selectedJourney = journeys.find(j => j.id === selectedJourneyId) ?? journeys[0];
-  $: countLabel = (n: number) => (lang === 'en' ? `${n} mementos` : `${n}件`);
+  $: t = (value: { ja: string; en: string; zh: string }) => value[lang]
+  $: stationName = (s: Station) => (lang === 'en' ? s.name : s.ja)
+  $: selectedJourney = journeys.find((j) => j.id === selectedJourneyId) ?? journeys[0]
+  $: countLabel = (n: number) => (lang === 'en' ? `${n} mementos` : `${n}件`)
 
   const routesGeoJson = {
     type: 'FeatureCollection' as const,
-    features: journeys.map(journey => ({
+    features: journeys.map((journey) => ({
       type: 'Feature' as const,
       geometry: { type: 'LineString' as const, coordinates: journey.route },
-      properties: { journeyId: journey.id }
-    }))
-  };
+      properties: { journeyId: journey.id },
+    })),
+  }
 
   function transitFeatures(journey: Journey) {
     return {
       type: 'FeatureCollection' as const,
       features: journey.mementos
-        .filter(memento => memento.transit)
-        .map(memento => ({
+        .filter((memento) => memento.transit)
+        .map((memento) => ({
           type: 'Feature' as const,
           geometry: {
             type: 'LineString' as const,
-            coordinates: [memento.transit!.from.coords, memento.transit!.to.coords]
+            coordinates: [memento.transit!.from.coords, memento.transit!.to.coords],
           },
-          properties: { id: memento.id }
-        }))
-    };
+          properties: { id: memento.id },
+        })),
+    }
   }
 
   const mapStyle: StyleSpecification = {
@@ -63,113 +64,116 @@
         type: 'raster',
         tiles: ['https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'],
         tileSize: 256,
-        attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
       },
       light: {
         type: 'raster',
         tiles: ['https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'],
         tileSize: 256,
-        attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
-      }
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+      },
     },
     layers: [
       { id: 'base-dark', type: 'raster', source: 'dark' },
-      { id: 'base-light', type: 'raster', source: 'light', layout: { visibility: 'none' } }
-    ]
-  };
-
-  function boundsOf(coords: Coordinates[]) {
-    const bounds = new maplibregl.LngLatBounds(coords[0], coords[0]);
-    for (const coord of coords) bounds.extend(coord);
-    return bounds;
+      { id: 'base-light', type: 'raster', source: 'light', layout: { visibility: 'none' } },
+    ],
   }
 
-  const fitPadding = { top: 80, bottom: 80, left: 80, right: 460 };
+  function boundsOf(coords: Coordinates[]) {
+    const bounds = new maplibregl.LngLatBounds(coords[0], coords[0])
+    for (const coord of coords) bounds.extend(coord)
+    return bounds
+  }
+
+  const fitPadding = { top: 80, bottom: 80, left: 80, right: 460 }
 
   function fitAll() {
-    if (!map) return;
-    map.fitBounds(boundsOf(journeys.flatMap(journey => journey.route)), {
+    if (!map) return
+    map.fitBounds(boundsOf(journeys.flatMap((journey) => journey.route)), {
       padding: fitPadding,
       maxZoom: 6.5,
-      duration: 800
-    });
+      duration: 800,
+    })
   }
 
   function fitJourney(journey: Journey) {
-    if (!map) return;
-    map.fitBounds(boundsOf(journey.route), { padding: fitPadding, maxZoom: 9, duration: 800 });
+    if (!map) return
+    map.fitBounds(boundsOf(journey.route), { padding: fitPadding, maxZoom: 9, duration: 800 })
   }
 
   function markerElement(memento: Memento, seq: number) {
-    const button = document.createElement('button');
-    button.className = `map-marker map-marker--${memento.kind}`;
-    button.type = 'button';
-    button.setAttribute('aria-label', `${seq}. ${memento.title[lang]}`);
-    button.innerHTML = `<span>${seq}</span>`;
-    button.addEventListener('click', () => selectMemento(memento));
-    return button;
+    const button = document.createElement('button')
+    button.className = `map-marker map-marker--${memento.kind}`
+    button.type = 'button'
+    button.setAttribute('aria-label', `${seq}. ${memento.title[lang]}`)
+    button.innerHTML = `<span>${seq}</span>`
+    button.addEventListener('click', () => selectMemento(memento))
+    return button
   }
 
   function rebuildMarkers(journey: Journey) {
-    if (!map) return;
-    markers.forEach(marker => marker.remove());
-    markers.clear();
+    if (!map) return
+    markers.forEach((marker) => marker.remove())
+    markers.clear()
     journey.mementos.forEach((memento, index) => {
-      const marker = new maplibregl.Marker({ element: markerElement(memento, index + 1), anchor: 'center' })
+      const marker = new maplibregl.Marker({
+        element: markerElement(memento, index + 1),
+        anchor: 'center',
+      })
         .setLngLat(memento.coords)
-        .addTo(map!);
-      markers.set(memento.id, marker);
-    });
-    syncMarkers();
+        .addTo(map!)
+      markers.set(memento.id, marker)
+    })
+    syncMarkers()
   }
 
   function syncMarkers() {
     markers.forEach((marker, id) => {
-      marker.getElement().classList.toggle('is-active', id === selected.id);
-    });
+      marker.getElement().classList.toggle('is-active', id === selected.id)
+    })
   }
 
   function updateJourneyLayers(journey: Journey) {
-    if (!map || !map.getLayer('route-active')) return;
-    map.setFilter('route-active', ['==', ['get', 'journeyId'], journey.id]);
-    map.setFilter('route-active-glow', ['==', ['get', 'journeyId'], journey.id]);
-    (map.getSource('transit') as maplibregl.GeoJSONSource).setData(transitFeatures(journey));
-    rebuildMarkers(journey);
+    if (!map || !map.getLayer('route-active')) return
+    map.setFilter('route-active', ['==', ['get', 'journeyId'], journey.id])
+    map.setFilter('route-active-glow', ['==', ['get', 'journeyId'], journey.id])
+    ;(map.getSource('transit') as maplibregl.GeoJSONSource).setData(transitFeatures(journey))
+    rebuildMarkers(journey)
   }
 
   function selectJourney(journey: Journey) {
-    selectedJourneyId = journey.id;
-    selected = journey.mementos[0];
-    updateJourneyLayers(journey);
-    fitJourney(journey);
+    selectedJourneyId = journey.id
+    selected = journey.mementos[0]
+    updateJourneyLayers(journey)
+    fitJourney(journey)
   }
 
   function selectMemento(memento: Memento) {
-    selected = memento;
-    focusMap(memento);
+    selected = memento
+    focusMap(memento)
   }
 
   function focusMap(memento: Memento) {
-    if (!map) return;
+    if (!map) return
     if (memento.transit) {
       map.fitBounds(boundsOf([memento.transit.from.coords, memento.transit.to.coords]), {
         padding: fitPadding,
         maxZoom: 10.5,
-        duration: 700
-      });
-      return;
+        duration: 700,
+      })
+      return
     }
-    map.flyTo({ center: memento.coords, zoom: 9.6, duration: 700, essential: true });
+    map.flyTo({ center: memento.coords, zoom: 9.6, duration: 700, essential: true })
   }
 
   function applyMapTheme(next: Theme) {
-    if (!map || !map.getLayer('base-light')) return;
-    map.setLayoutProperty('base-light', 'visibility', next === 'light' ? 'visible' : 'none');
-    map.setLayoutProperty('base-dark', 'visibility', next === 'light' ? 'none' : 'visible');
+    if (!map || !map.getLayer('base-light')) return
+    map.setLayoutProperty('base-light', 'visibility', next === 'light' ? 'visible' : 'none')
+    map.setLayoutProperty('base-dark', 'visibility', next === 'light' ? 'none' : 'visible')
   }
 
   function toggleTheme() {
-    theme = theme === 'dark' ? 'light' : 'dark';
+    theme = theme === 'dark' ? 'light' : 'dark'
   }
 
   function setupMap() {
@@ -178,67 +182,68 @@
       style: mapStyle,
       center: [138.0, 38.0],
       zoom: 4.4,
-      attributionControl: false
-    });
+      attributionControl: false,
+    })
 
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
 
     map.on('load', () => {
-      if (!map) return;
+      if (!map) return
 
-      map.addSource('routes', { type: 'geojson', data: routesGeoJson });
+      map.addSource('routes', { type: 'geojson', data: routesGeoJson })
       // All journeys, dim — the world index.
       map.addLayer({
         id: 'routes-all',
         type: 'line',
         source: 'routes',
-        paint: { 'line-color': '#fb923c', 'line-width': 2, 'line-opacity': 0.28 }
-      });
+        paint: { 'line-color': '#fb923c', 'line-width': 2, 'line-opacity': 0.28 },
+      })
       // Selected journey, bright + glow.
       map.addLayer({
         id: 'route-active-glow',
         type: 'line',
         source: 'routes',
         filter: ['==', ['get', 'journeyId'], selectedJourneyId],
-        paint: { 'line-color': '#f97316', 'line-width': 8, 'line-opacity': 0.16, 'line-blur': 4 }
-      });
+        paint: { 'line-color': '#f97316', 'line-width': 8, 'line-opacity': 0.16, 'line-blur': 4 },
+      })
       map.addLayer({
         id: 'route-active',
         type: 'line',
         source: 'routes',
         filter: ['==', ['get', 'journeyId'], selectedJourneyId],
-        paint: { 'line-color': '#fb923c', 'line-width': 3, 'line-opacity': 0.95 }
-      });
+        paint: { 'line-color': '#fb923c', 'line-width': 3, 'line-opacity': 0.95 },
+      })
 
-      map.addSource('transit', { type: 'geojson', data: transitFeatures(selectedJourney) });
+      map.addSource('transit', { type: 'geojson', data: transitFeatures(selectedJourney) })
       map.addLayer({
         id: 'transit',
         type: 'line',
         source: 'transit',
-        paint: { 'line-color': '#fde68a', 'line-width': 4, 'line-opacity': 0.9 }
-      });
+        paint: { 'line-color': '#fde68a', 'line-width': 4, 'line-opacity': 0.9 },
+      })
 
-      rebuildMarkers(selectedJourney);
-      applyMapTheme(theme);
-      fitAll();
-    });
+      rebuildMarkers(selectedJourney)
+      applyMapTheme(theme)
+      fitAll()
+    })
   }
 
-  $: if (markers.size) {
-    syncMarkers();
+  // Re-highlight the active marker whenever the selected memento changes.
+  $: if (selected && markers.size) {
+    syncMarkers()
   }
 
-  $: applyMapTheme(theme);
+  $: applyMapTheme(theme)
 
   onMount(() => {
-    setupMap();
+    setupMap()
 
     return () => {
-      markers.forEach(marker => marker.remove());
-      markers.clear();
-      map?.remove();
-    };
-  });
+      markers.forEach((marker) => marker.remove())
+      markers.clear()
+      map?.remove()
+    }
+  })
 </script>
 
 <main class="app-shell" class:theme-light={theme === 'light'}>
@@ -363,7 +368,7 @@
 
         {#if selected.photos.length}
           <div class="gallery">
-            {#each selected.photos as photo}
+            {#each selected.photos as photo (photo.src)}
               <figure>
                 <img src={photo.src} alt={t(selected.title)} />
                 <figcaption>{t(photo.caption)}</figcaption>

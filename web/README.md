@@ -10,7 +10,7 @@ fixture data (`src/data.ts`) and theme/language state:
   hero → paper detail. **The map is the front door** (`felicia:decision:map-first-landing`):
   all journeys dim, the selected one bright, mementos as numbered stubs along the route.
   Reaches the collection via **Collection →**.
-- **v2 (`#collection`)** — *memento-first.* A detailed memento "page" (paper stub + facts +
+- **v2 (`#collection`)** — _memento-first._ A detailed memento "page" (paper stub + facts +
   essay + gallery) with a shelf **carousel** across all journeys. A **depth view** — the seed
   of a future souvenir-shelf landing (per PM feedback 2026-07-07), not the door.
 

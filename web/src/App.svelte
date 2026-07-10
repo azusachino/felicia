@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { designs, designFromHash } from './designs';
-  import type { Lang, Theme } from './data';
+  import { designs, designFromHash } from './designs'
+  import type { Lang, Theme } from './data'
 
   // The demo is a deployable, immutable-data showcase that can switch between
   // multiple front-of-house DESIGNS (the PM may supply several). Every design
@@ -9,16 +9,16 @@
   // designs.ts is the single source of truth and this shell just resolves the
   // active one from the URL hash and renders it, with a persistent switcher so
   // any design is one click (and deep-linkable) away.
-  let hash = $state(location.hash);
-  const active = $derived(designFromHash(hash));
-  const Active = $derived(active.component);
+  let hash = $state(location.hash)
+  const active = $derived(designFromHash(hash))
+  const Active = $derived(active.component)
 
   // lang/theme are shared across designs so switching keeps your reading state.
-  let lang: Lang = $state('ja');
-  let theme: Theme = $state('dark');
+  let lang: Lang = $state('ja')
+  let theme: Theme = $state('dark')
 
   function select(target: (typeof designs)[number]) {
-    location.hash = target.hash;
+    location.hash = target.hash
   }
 </script>
 
