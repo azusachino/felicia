@@ -39,5 +39,12 @@ export async function loadJourneys(): Promise<Journey[]> {
   const items = (await res.json()) as ApiJourneyListItem[]
 
   // Fetch details and mementos in parallel to build full Journey objects
-  return Promise.all(items.map((item) => loadJourney(item.slug)))
+  const journeys = await Promise.all(
+    items.map(async (item) => {
+      const journey = await loadJourney(item.slug)
+      journey.representativeDots = item.representative_dots
+      return journey
+    }),
+  )
+  return journeys
 }

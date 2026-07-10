@@ -112,6 +112,7 @@ describe('source API', () => {
 
     expect(journeys).toHaveLength(1)
     expect(journeys[0].id).toBe('0190cbde-f300-7000-8000-111111111111')
+    expect(journeys[0].representativeDots).toEqual([])
   })
 
   test('loadJourneys fetches list and detail/mementos (prod/static mode)', async () => {
@@ -146,6 +147,7 @@ describe('source API', () => {
       const journeys = await loadJourneys()
       expect(journeys).toHaveLength(1)
       expect(journeys[0].id).toBe('0190cbde-f300-7000-8000-111111111111')
+      expect(journeys[0].representativeDots).toEqual([])
     } finally {
       importMeta.env.PROD = false
     }

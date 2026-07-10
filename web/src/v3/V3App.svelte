@@ -1,6 +1,6 @@
 <script lang="ts">
   import { kindLabel, type Coordinates, type L, type Lang, type Memento, type Theme } from '../data'
-  import { cityDots, project } from './cityLookup'
+  import { project } from './cityLookup'
   import TripMap from './TripMap.svelte'
   import { loadJourneys } from '../api/source'
   import type { Journey } from '../data'
@@ -22,6 +22,30 @@
   let selectedPlaceKey = $state<string | null>(null)
 
   const selectedJourney = $derived(journeys[selectedIndex] ?? null)
+
+  interface CityDot {
+    id: string
+    journeyId: string
+    label: string
+    coords: Coordinates
+  }
+
+  const cityDots = $derived.by<CityDot[]>(() => {
+    const list: CityDot[] = []
+    for (const journey of journeys) {
+      if (journey.representativeDots) {
+        journey.representativeDots.forEach((dot, index) => {
+          list.push({
+            id: `${journey.id}:dot:${index}`,
+            journeyId: journey.id,
+            label: dot.label.toUpperCase(),
+            coords: dot.coord,
+          })
+        })
+      }
+    }
+    return list
+  })
 
   function loadData() {
     isLoading = true

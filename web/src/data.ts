@@ -62,6 +62,7 @@ export interface Journey {
   route: Coordinates[] // the track (Dawarich); display route = track ∪ transit legs
   visits: Visit[] // derived stays in travel order; mementos anchor here
   mementos: Memento[]
+  representativeDots?: { coord: Coordinates; label: string }[]
 }
 
 export const stations: Station[] = [

@@ -84,6 +84,9 @@
   }
 
   function boundsOf(coords: Coordinates[]) {
+    if (coords.length === 0) {
+      return new maplibregl.LngLatBounds([138, 38], [138, 38])
+    }
     const bounds = new maplibregl.LngLatBounds(coords[0], coords[0])
     for (const coord of coords) bounds.extend(coord)
     return bounds
