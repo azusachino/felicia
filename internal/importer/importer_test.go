@@ -2,6 +2,7 @@ package importer
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -28,6 +29,14 @@ func (f *fakeTracks) FetchRoutes(_ context.Context, from, to time.Time) ([]domai
 func (f *fakeTracks) FetchVisits(_ context.Context, from, to time.Time) ([]domain.Visit, error) {
 	f.gotFrom, f.gotTo = from, to
 	return f.visits, nil
+}
+
+type fakePhotos struct {
+	assets []domain.PhotoAsset
+}
+
+func (f *fakePhotos) FetchAssets(_ context.Context, _, _ time.Time) ([]domain.PhotoAsset, error) {
+	return f.assets, nil
 }
 
 type fakeStore struct {
@@ -69,7 +78,7 @@ func TestSyncRouteSimplifiesAndPersists(t *testing.T) {
 	tracks := &fakeTracks{routes: []domain.Route{route}}
 	store := &fakeStore{journeys: map[uuid.UUID]*domain.Journey{j.ID: j}}
 
-	im := New(tracks, store, 0) // 0 -> DefaultEpsilon
+	im := New(tracks, nil, store, 0) // 0 -> DefaultEpsilon
 	if err := im.SyncRoute(context.Background(), j.ID); err != nil {
 		t.Fatalf("SyncRoute: %v", err)
 	}
@@ -99,7 +108,7 @@ func TestSyncRouteSkipsAuthoredRoute(t *testing.T) {
 	tracks := &fakeTracks{routes: []domain.Route{{Line: orb.LineString{{9, 9}, {8, 8}}}}}
 	store := &fakeStore{journeys: map[uuid.UUID]*domain.Journey{j.ID: j}}
 
-	im := New(tracks, store, 0)
+	im := New(tracks, nil, store, 0)
 	if err := im.SyncRoute(context.Background(), j.ID); err != nil {
 		t.Fatalf("SyncRoute: %v", err)
 	}
@@ -124,12 +133,43 @@ func TestSyncVisitsReturnsCandidates(t *testing.T) {
 	tracks := &fakeTracks{visits: visits}
 	store := &fakeStore{journeys: map[uuid.UUID]*domain.Journey{j.ID: j}}
 
-	im := New(tracks, store, 0)
+	im := New(tracks, nil, store, 0)
 	got, err := im.SyncVisits(context.Background(), j.ID)
 	if err != nil {
 		t.Fatalf("SyncVisits: %v", err)
 	}
 	if len(got) != 2 || got[0].Label != "明治神宮" || got[1].SourceRef != "dawarich:visit:8" {
 		t.Errorf("unexpected visits: %+v", got)
+	}
+}
+
+func TestSyncPhotoTrayReturnsAssets(t *testing.T) {
+	j := newJourney()
+	photos := &fakePhotos{assets: []domain.PhotoAsset{
+		{ID: "asset-1", Coord: &orb.Point{139.6993, 35.6764}, SourceRef: "immich:asset:asset-1"},
+		{ID: "asset-2", SourceRef: "immich:asset:asset-2"},
+	}}
+	store := &fakeStore{journeys: map[uuid.UUID]*domain.Journey{j.ID: j}}
+
+	im := New(nil, photos, store, 0)
+	got, err := im.SyncPhotoTray(context.Background(), j.ID)
+	if err != nil {
+		t.Fatalf("SyncPhotoTray: %v", err)
+	}
+	if len(got) != 2 || got[1].Coord != nil {
+		t.Errorf("unexpected tray: %+v", got)
+	}
+}
+
+func TestSyncWithoutSourcesErrors(t *testing.T) {
+	j := newJourney()
+	store := &fakeStore{journeys: map[uuid.UUID]*domain.Journey{j.ID: j}}
+	im := New(nil, nil, store, 0)
+
+	if err := im.SyncRoute(context.Background(), j.ID); !errors.Is(err, ErrNoTrackSource) {
+		t.Errorf("SyncRoute: expected ErrNoTrackSource, got %v", err)
+	}
+	if _, err := im.SyncPhotoTray(context.Background(), j.ID); !errors.Is(err, ErrNoPhotoSource) {
+		t.Errorf("SyncPhotoTray: expected ErrNoPhotoSource, got %v", err)
 	}
 }

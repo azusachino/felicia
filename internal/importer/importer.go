@@ -4,6 +4,7 @@ package importer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -19,6 +20,12 @@ import (
 // per ADR 0009.
 const DefaultEpsilon = 0.0001
 
+// Sentinel errors for when a capability's source was not wired.
+var (
+	ErrNoTrackSource = errors.New("importer: no track source configured")
+	ErrNoPhotoSource = errors.New("importer: no photo source configured")
+)
+
 // JourneyStore is the narrow slice of the repository the importer needs. The
 // full domain.Repository satisfies it.
 type JourneyStore interface {
@@ -26,25 +33,30 @@ type JourneyStore interface {
 	UpsertJourney(ctx context.Context, journey *domain.Journey) error
 }
 
-// Importer joins a TrackSource to the journey store.
+// Importer joins the track and photo sources to the journey store. Either source
+// may be nil; the matching Sync* method then returns ErrNo{Track,Photo}Source.
 type Importer struct {
 	tracks  domain.TrackSource
+	photos  domain.PhotoSource
 	store   JourneyStore
 	epsilon float64
 }
 
 // New builds an Importer. A non-positive epsilon falls back to DefaultEpsilon.
-func New(tracks domain.TrackSource, store JourneyStore, epsilon float64) *Importer {
+func New(tracks domain.TrackSource, photos domain.PhotoSource, store JourneyStore, epsilon float64) *Importer {
 	if epsilon <= 0 {
 		epsilon = DefaultEpsilon
 	}
-	return &Importer{tracks: tracks, store: store, epsilon: epsilon}
+	return &Importer{tracks: tracks, photos: photos, store: store, epsilon: epsilon}
 }
 
 // SyncRoute fetches the journey's Dawarich tracks, RDP-simplifies them, and
 // writes the union into gps_route. It is a no-op when gps_route is authored, so
 // re-import never clobbers a hand-edited route (design §5).
 func (im *Importer) SyncRoute(ctx context.Context, journeyID uuid.UUID) error {
+	if im.tracks == nil {
+		return ErrNoTrackSource
+	}
 	j, err := im.store.GetJourney(ctx, journeyID)
 	if err != nil {
 		return fmt.Errorf("sync route %s: %w", journeyID, err)
@@ -75,6 +87,9 @@ func (im *Importer) SyncRoute(ctx context.Context, journeyID uuid.UUID) error {
 // SyncVisits returns the journey's Dawarich visits as derived-place candidates.
 // They are not persisted here — they become mementos through admin curation.
 func (im *Importer) SyncVisits(ctx context.Context, journeyID uuid.UUID) ([]domain.Visit, error) {
+	if im.tracks == nil {
+		return nil, ErrNoTrackSource
+	}
 	j, err := im.store.GetJourney(ctx, journeyID)
 	if err != nil {
 		return nil, fmt.Errorf("sync visits %s: %w", journeyID, err)
@@ -84,6 +99,23 @@ func (im *Importer) SyncVisits(ctx context.Context, journeyID uuid.UUID) ([]doma
 		return nil, fmt.Errorf("sync visits %s: %w", journeyID, err)
 	}
 	return visits, nil
+}
+
+// SyncPhotoTray returns the journey's Immich photos for the date range as tray
+// candidates for drag-to-snap curation. They are not persisted here.
+func (im *Importer) SyncPhotoTray(ctx context.Context, journeyID uuid.UUID) ([]domain.PhotoAsset, error) {
+	if im.photos == nil {
+		return nil, ErrNoPhotoSource
+	}
+	j, err := im.store.GetJourney(ctx, journeyID)
+	if err != nil {
+		return nil, fmt.Errorf("sync photo tray %s: %w", journeyID, err)
+	}
+	assets, err := im.photos.FetchAssets(ctx, j.DateStart, endOfDay(j.DateEnd))
+	if err != nil {
+		return nil, fmt.Errorf("sync photo tray %s: %w", journeyID, err)
+	}
+	return assets, nil
 }
 
 // endOfDay returns the inclusive end of the journey's last date, so a track or

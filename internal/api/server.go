@@ -4,8 +4,10 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -16,6 +18,7 @@ import (
 	"github.com/paulmach/orb"
 
 	"github.com/azusachino/felicia/internal/domain"
+	"github.com/azusachino/felicia/internal/importer"
 )
 
 // Server represents the API server.
@@ -24,11 +27,12 @@ type Server struct {
 	registry *domain.Registry
 	cache    *CacheManager
 	logger   *slog.Logger
+	importer *importer.Importer // may be nil when no sources are configured
 }
 
 // NewServer creates a new API server instance. A nil logger falls back to
-// slog.Default.
-func NewServer(repo domain.Repository, registry *domain.Registry, cache *CacheManager, logger *slog.Logger) *Server {
+// slog.Default. A nil importer disables the ingest endpoints (503).
+func NewServer(repo domain.Repository, registry *domain.Registry, cache *CacheManager, logger *slog.Logger, imp *importer.Importer) *Server {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -37,6 +41,7 @@ func NewServer(repo domain.Repository, registry *domain.Registry, cache *CacheMa
 		registry: registry,
 		cache:    cache,
 		logger:   logger,
+		importer: imp,
 	}
 }
 
@@ -82,15 +87,103 @@ func (s *Server) Handler() http.Handler {
 		r.Get("/journeys", s.handleListJourneys)
 		r.Get("/journeys/{id}", s.handleGetJourney)
 		r.Post("/journeys", s.handleUpsertJourney)
+		r.Post("/journeys/{id}/legs", s.handleCreateTransitLeg)
 		r.Get("/journeys/{id}/mementos", s.handleListMementos)
 		r.Get("/mementos/{id}", s.handleGetMemento)
 		r.Post("/mementos", s.handleUpsertMemento)
 		r.Post("/photos", s.handleUpsertPhoto)
 		r.Get("/mementos/{id}/translations", s.handleListTranslations)
 		r.Post("/translations", s.handleUpsertTranslation)
+
+		// Ingest triggers (auto-seed from the configured sources)
+		r.Post("/journeys/{id}/sync-route", s.handleSyncRoute)
+		r.Get("/journeys/{id}/visits", s.handleSyncVisits)
+		r.Get("/journeys/{id}/tray", s.handlePhotoTray)
 	})
 
 	return r
+}
+
+const transitLegSegmentLengthM = 100000
+
+type createTransitLegRequest struct {
+	Origin      []float64 `json:"origin"`
+	Dest        []float64 `json:"dest"`
+	OriginLabel *string   `json:"origin_label,omitempty"`
+	DestLabel   *string   `json:"dest_label,omitempty"`
+}
+
+// handleCreateTransitLeg adds an authored transit segment. PostGIS builds its
+// great-circle geometry; the response returns the composed display route.
+func (s *Server) handleCreateTransitLeg(w http.ResponseWriter, r *http.Request) {
+	journeyID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid journey UUID")
+		return
+	}
+
+	var req createTransitLegRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request JSON")
+		return
+	}
+	origin, err := parseCoordinate(req.Origin, "origin")
+	if err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	dest, err := parseCoordinate(req.Dest, "dest")
+	if err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	legs, err := s.repo.ListTransitLegsByJourney(r.Context(), journeyID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	seq := 0
+	for _, leg := range legs {
+		seq = max(seq, leg.Seq+1)
+	}
+	leg := &domain.TransitLegInput{
+		ID:          uuid.New(),
+		JourneyID:   journeyID,
+		Seq:         seq,
+		OriginLabel: req.OriginLabel,
+		DestLabel:   req.DestLabel,
+		Origin:      origin,
+		Dest:        dest,
+		SegmentLenM: transitLegSegmentLengthM,
+	}
+	if err := s.repo.CreateTransitLeg(r.Context(), leg); err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	s.cache.InvalidateAll(r.Context())
+
+	route, err := s.repo.GetDisplayRoute(r.Context(), journeyID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]any{
+		"status":        "ok",
+		"leg_id":        leg.ID,
+		"display_route": toGeoJSON(route),
+	})
+}
+
+func parseCoordinate(coord []float64, name string) (orb.Point, error) {
+	if len(coord) != 2 {
+		return orb.Point{}, fmt.Errorf("%s must be [lng, lat]", name)
+	}
+	lng, lat := coord[0], coord[1]
+	if math.IsNaN(lng) || math.IsInf(lng, 0) || math.IsNaN(lat) || math.IsInf(lat, 0) || lng < -180 || lng > 180 || lat < -90 || lat > 90 {
+		return orb.Point{}, fmt.Errorf("%s has invalid longitude or latitude", name)
+	}
+	return orb.Point{lng, lat}, nil
 }
 
 // Templates endpoint
@@ -461,6 +554,128 @@ func (s *Server) handleUpsertTranslation(w http.ResponseWriter, r *http.Request)
 	respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
+// Ingest handlers (Admin) — trigger the auto-seed importer from the sources.
+
+func (s *Server) ingestReady(w http.ResponseWriter) bool {
+	if s.importer == nil {
+		respondError(w, http.StatusServiceUnavailable, "ingest sources not configured")
+		return false
+	}
+	return true
+}
+
+func (s *Server) writeImporterErr(w http.ResponseWriter, err error) {
+	if errors.Is(err, importer.ErrNoTrackSource) || errors.Is(err, importer.ErrNoPhotoSource) {
+		respondError(w, http.StatusServiceUnavailable, err.Error())
+		return
+	}
+	respondError(w, http.StatusInternalServerError, err.Error())
+}
+
+// handleSyncRoute pulls the journey's Dawarich tracks, RDP-simplifies, and
+// writes gps_route, then returns the composed display route.
+func (s *Server) handleSyncRoute(w http.ResponseWriter, r *http.Request) {
+	if !s.ingestReady(w) {
+		return
+	}
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid journey UUID")
+		return
+	}
+	if err := s.importer.SyncRoute(r.Context(), id); err != nil {
+		s.writeImporterErr(w, err)
+		return
+	}
+	s.cache.InvalidateAll(r.Context())
+
+	route, err := s.repo.GetDisplayRoute(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]any{"status": "ok", "gps_route": toGeoJSON(route)})
+}
+
+type visitResponse struct {
+	Coord      []float64 `json:"coord"` // [lng, lat]
+	Label      string    `json:"label"`
+	Arrive     string    `json:"arrive"`
+	Depart     string    `json:"depart"`
+	Confidence float64   `json:"confidence"`
+	SourceRef  string    `json:"source_ref"`
+}
+
+// handleSyncVisits returns the journey's Dawarich visits as derived-place
+// candidates for curation (not persisted).
+func (s *Server) handleSyncVisits(w http.ResponseWriter, r *http.Request) {
+	if !s.ingestReady(w) {
+		return
+	}
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid journey UUID")
+		return
+	}
+	visits, err := s.importer.SyncVisits(r.Context(), id)
+	if err != nil {
+		s.writeImporterErr(w, err)
+		return
+	}
+	out := make([]visitResponse, 0, len(visits))
+	for _, v := range visits {
+		out = append(out, visitResponse{
+			Coord:      []float64{v.Coord.X(), v.Coord.Y()},
+			Label:      v.Label,
+			Arrive:     v.Arrive.Format(time.RFC3339),
+			Depart:     v.Depart.Format(time.RFC3339),
+			Confidence: v.Confidence,
+			SourceRef:  v.SourceRef,
+		})
+	}
+	respondJSON(w, http.StatusOK, out)
+}
+
+type photoTrayItem struct {
+	ID        string    `json:"id"`
+	At        string    `json:"at"`
+	Coord     []float64 `json:"coord,omitempty"` // omitted when the photo has no GPS
+	Checksum  string    `json:"checksum"`
+	SourceRef string    `json:"source_ref"`
+}
+
+// handlePhotoTray returns the journey's Immich photos as drag-to-snap tray
+// candidates (not persisted).
+func (s *Server) handlePhotoTray(w http.ResponseWriter, r *http.Request) {
+	if !s.ingestReady(w) {
+		return
+	}
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid journey UUID")
+		return
+	}
+	assets, err := s.importer.SyncPhotoTray(r.Context(), id)
+	if err != nil {
+		s.writeImporterErr(w, err)
+		return
+	}
+	out := make([]photoTrayItem, 0, len(assets))
+	for _, a := range assets {
+		item := photoTrayItem{
+			ID:        a.ID,
+			At:        a.At.Format(time.RFC3339),
+			Checksum:  a.Checksum,
+			SourceRef: a.SourceRef,
+		}
+		if a.Coord != nil {
+			item.Coord = []float64{a.Coord.X(), a.Coord.Y()}
+		}
+		out = append(out, item)
+	}
+	respondJSON(w, http.StatusOK, out)
+}
+
 // Public Read-Only Query APIs (Valkey Cached)
 
 // PublicJourneyListItem represents an entry in the landing card index.
@@ -766,6 +981,9 @@ func toGeoJSON(geom orb.Geometry) *geoJSONGeom {
 			Coordinates: []float64{g.X(), g.Y()},
 		}
 	case orb.LineString:
+		if len(g) == 0 {
+			return nil
+		}
 		var coords [][]float64
 		for _, pt := range g {
 			coords = append(coords, []float64{pt.X(), pt.Y()})
@@ -775,6 +993,9 @@ func toGeoJSON(geom orb.Geometry) *geoJSONGeom {
 			Coordinates: coords,
 		}
 	case orb.MultiLineString:
+		if len(g) == 0 {
+			return nil
+		}
 		var coords [][][]float64
 		for _, ls := range g {
 			var lsCoords [][]float64

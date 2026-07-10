@@ -13,7 +13,10 @@ import (
 
 	"github.com/azusachino/felicia"
 	"github.com/azusachino/felicia/internal/api"
+	"github.com/azusachino/felicia/internal/dawarich"
 	"github.com/azusachino/felicia/internal/domain"
+	"github.com/azusachino/felicia/internal/immich"
+	"github.com/azusachino/felicia/internal/importer"
 	"github.com/azusachino/felicia/internal/store/pg"
 )
 
@@ -46,8 +49,8 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 
-	cacheAddr := os.Getenv("CACHE_ADDR")
-	if cacheAddr == "" {
+	cacheAddr, cacheConfigured := os.LookupEnv("CACHE_ADDR")
+	if !cacheConfigured {
 		cacheAddr = "localhost:6379"
 	}
 	cacheManager := api.NewCacheManager(cacheAddr, logger)
@@ -63,7 +66,22 @@ func run(logger *slog.Logger) error {
 
 	// 3. Create repository and server
 	repo := pg.NewRepository(pool)
-	server := api.NewServer(repo, registry, cacheManager, logger)
+
+	// Ingest sources are optional; the ingest endpoints return 503 when unset.
+	// Point *_URL at a live instance or the mock (scripts/mock_upstream.py).
+	var tracks domain.TrackSource
+	if url := os.Getenv("DAWARICH_URL"); url != "" {
+		tracks = dawarich.New(url, os.Getenv("DAWARICH_API_KEY"), nil)
+		logger.Info("dawarich source configured", "url", url)
+	}
+	var photos domain.PhotoSource
+	if url := os.Getenv("IMMICH_URL"); url != "" {
+		photos = immich.New(url, os.Getenv("IMMICH_API_KEY"), nil)
+		logger.Info("immich source configured", "url", url)
+	}
+	imp := importer.New(tracks, photos, repo, importer.DefaultEpsilon)
+
+	server := api.NewServer(repo, registry, cacheManager, logger, imp)
 
 	// 4. Start local admin web server
 	logger.Info("starting admin server", "url", "http://localhost:"+port)
