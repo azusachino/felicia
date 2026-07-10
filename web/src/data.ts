@@ -3,7 +3,7 @@
 // Journey -> Visit (derived place) -> Memento model (Dawarich-shaped).
 
 export type Coordinates = [number, number]
-export type MementoKind = 'goods' | 'transit' | 'stamp'
+export type MementoKind = 'goods' | 'transit' | 'stamp' | 'receipt' | 'souvenir'
 export type Lang = 'ja' | 'en' | 'zh'
 export type Theme = 'dark' | 'light'
 
@@ -357,6 +357,8 @@ export const kindLabel: Record<MementoKind, L> = {
   transit: { ja: '交通', en: 'Transit', zh: '交通' },
   stamp: { ja: '御朱印', en: 'Stamp', zh: '御朱印' },
   goods: { ja: 'グッズ', en: 'Goods', zh: '周边' },
+  receipt: { ja: 'レシート', en: 'Receipt', zh: '收据' },
+  souvenir: { ja: 'おみやげ', en: 'Souvenir', zh: '纪念品' },
 }
 
 export const uiText = {
