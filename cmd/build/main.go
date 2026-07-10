@@ -16,6 +16,7 @@ import (
 	"github.com/paulmach/orb"
 
 	"github.com/azusachino/felicia/internal/domain"
+	"github.com/azusachino/felicia/internal/publication"
 	"github.com/azusachino/felicia/internal/store/pg"
 )
 
@@ -139,7 +140,7 @@ func run() error {
 		return fmt.Errorf("failed to list journeys: %w", err)
 	}
 
-	var staticJourneys []staticJourney
+	var staticJourneyList []publication.JourneyListItem
 	for _, j := range journeys {
 		trans, err := repo.ListTranslations(ctx, "journey", j.ID)
 		if err != nil {
@@ -162,8 +163,6 @@ func run() error {
 			AuthoredFields: j.AuthoredFields,
 			Translations:   buildTranslationMap(trans),
 		}
-		staticJourneys = append(staticJourneys, sj)
-
 		// 2. Fetch mementos for this journey
 		mementos, err := repo.ListMementosByJourney(ctx, j.ID)
 		if err != nil {
@@ -230,6 +229,7 @@ func run() error {
 			}
 			staticMementos = append(staticMementos, sm)
 		}
+		staticJourneyList = append(staticJourneyList, publication.NewJourneyListItem(j, mementos))
 
 		// Write journey-specific mementos: /api/v1/journeys/<slug>/mementos.json
 		journeySlugDir := filepath.Join(apiDir, "journeys", j.Slug)
@@ -251,7 +251,7 @@ func run() error {
 
 	// Write global journeys list: /api/v1/journeys.json
 	journeysFilePath := filepath.Join(apiDir, "journeys.json")
-	if err := writeJSONFile(journeysFilePath, staticJourneys); err != nil {
+	if err := writeJSONFile(journeysFilePath, staticJourneyList); err != nil {
 		return fmt.Errorf("failed to write global journeys file: %w", err)
 	}
 

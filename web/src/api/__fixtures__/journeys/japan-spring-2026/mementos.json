@@ -1,0 +1,89 @@
+[
+  {
+    "id": "0190cbde-f300-7000-8000-a22222222222",
+    "journey_id": "0190cbde-f300-7000-8000-111111111111",
+    "kind": "transit",
+    "seq": 1,
+    "occurred_at": "2026-03-20T10:00:00+09:00",
+    "occurred_tz": "Asia/Tokyo",
+    "geom": {
+      "type": "Point",
+      "coordinates": [
+        139.7671,
+        35.6812
+      ]
+    },
+    "title": "JR 東京駅 乗車券",
+    "place": "東京駅",
+    "vendor": "JR East",
+    "essay": "東京から京都への旅立ち。",
+    "price_amount": 14000,
+    "price_currency": "JPY",
+    "kind_data": {
+      "from": {
+        "coords": [
+          139.7671,
+          35.6812
+        ],
+        "name": "Tokyo"
+      },
+      "line": "Tokaido Shinkansen",
+      "operator": "JR East",
+      "to": {
+        "coords": [
+          135.7583,
+          34.9859
+        ],
+        "name": "Kyoto"
+      }
+    },
+    "source_ref": "immich-photo:ticket-pic",
+    "photos": [
+      {
+        "id": "0190cbde-f300-7000-8000-f77777777777",
+        "memento_id": "0190cbde-f300-7000-8000-a22222222222",
+        "object_key": "media/photos/tokyo_ticket.jpg",
+        "content_hash": "sha256:ticket-photo-hash-12345",
+        "caption": "新幹線の切符",
+        "seq": 1,
+        "taken_at": "2026-03-20T09:55:00+09:00",
+        "source_ref": "immich-photo:ticket-pic"
+      }
+    ],
+    "translations": {
+      "en": {
+        "title": "JR Tokyo Station Ticket"
+      }
+    }
+  },
+  {
+    "id": "0190cbde-f300-7000-8000-a33333333333",
+    "journey_id": "0190cbde-f300-7000-8000-111111111111",
+    "kind": "receipt",
+    "seq": 2,
+    "occurred_at": "2026-03-21T15:30:00+09:00",
+    "occurred_tz": "Asia/Tokyo",
+    "geom": {
+      "type": "Point",
+      "coordinates": [
+        135.7583,
+        34.9859
+      ]
+    },
+    "title": "スマートコーヒー レシート",
+    "place": "京都",
+    "vendor": "Smart Coffee",
+    "essay": "フレンチトーストと自家焙煎珈琲をいただく。",
+    "price_amount": 1200,
+    "price_currency": "JPY",
+    "kind_data": {
+      "items": "French Toast \u0026 Coffee",
+      "shop": "Smart Coffee",
+      "total": {
+        "amount": 1200,
+        "currency": "JPY"
+      }
+    },
+    "source_ref": "immich-photo:coffee-pic"
+  }
+]

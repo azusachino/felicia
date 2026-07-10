@@ -2,7 +2,6 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,6 +18,7 @@ import (
 
 	"github.com/azusachino/felicia/internal/domain"
 	"github.com/azusachino/felicia/internal/importer"
+	"github.com/azusachino/felicia/internal/publication"
 )
 
 // Server represents the API server.
@@ -725,20 +725,6 @@ func (s *Server) handlePhotoTray(w http.ResponseWriter, r *http.Request) {
 
 // Public Read-Only Query APIs (Valkey Cached)
 
-// PublicJourneyListItem represents an entry in the landing card index.
-type PublicJourneyListItem struct {
-	Slug               string              `json:"slug"`
-	Title              string              `json:"title"`
-	MementoCount       int                 `json:"memento_count"`
-	RepresentativeDots []RepresentativeDot `json:"representative_dots"`
-}
-
-// RepresentativeDot represents a spatial point anchor for a journey.
-type RepresentativeDot struct {
-	Coord []float64 `json:"coord"`
-	Label string    `json:"label"`
-}
-
 func (s *Server) handleGetPublicJourneys(w http.ResponseWriter, r *http.Request) {
 	cacheKey := "felicia:public:journeys"
 	if cached, err := s.cache.Get(r.Context(), cacheKey); err == nil {
@@ -754,16 +740,14 @@ func (s *Server) handleGetPublicJourneys(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	var list []PublicJourneyListItem
+	var list []publication.JourneyListItem
 	for _, j := range journeys {
-		dots := s.getRepresentativeDots(r.Context(), j.ID)
-		mementos, _ := s.repo.ListMementosByJourney(r.Context(), j.ID)
-		list = append(list, PublicJourneyListItem{
-			Slug:               j.Slug,
-			Title:              j.Title,
-			MementoCount:       len(mementos),
-			RepresentativeDots: dots,
-		})
+		mementos, err := s.repo.ListMementosByJourney(r.Context(), j.ID)
+		if err != nil {
+			respondError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		list = append(list, publication.NewJourneyListItem(j, mementos))
 	}
 
 	jsonData, err := json.Marshal(list)
@@ -1083,78 +1067,6 @@ func buildAPITranslationMap(translations []*domain.Translation) map[string]map[s
 		}
 	}
 	return m
-}
-
-func (s *Server) getRepresentativeDots(ctx context.Context, journeyID uuid.UUID) []RepresentativeDot {
-	mementos, err := s.repo.ListMementosByJourney(ctx, journeyID)
-	if err != nil || len(mementos) == 0 {
-		return nil
-	}
-	var dots []RepresentativeDot
-	seenPlaces := make(map[string]bool)
-	for _, m := range mementos {
-		if len(dots) >= 3 {
-			break
-		}
-		if seenPlaces[m.Place] {
-			continue
-		}
-		seenPlaces[m.Place] = true
-
-		var coord []float64
-		if m.Geom != nil {
-			switch g := m.Geom.(type) {
-			case orb.Point:
-				coord = []float64{g.X(), g.Y()}
-			case orb.LineString:
-				if len(g) > 0 {
-					coord = []float64{g[0].X(), g[0].Y()}
-				}
-			}
-		}
-		if coord != nil {
-			dots = append(dots, RepresentativeDot{
-				Coord: coord,
-				Label: m.Place,
-			})
-		}
-	}
-	// Fallback if we didn't get enough distinct places but have mementos
-	if len(dots) < 3 && len(mementos) > 0 {
-		for _, m := range mementos {
-			if len(dots) >= 3 {
-				break
-			}
-			alreadyIn := false
-			for _, d := range dots {
-				if d.Label == m.Place {
-					alreadyIn = true
-					break
-				}
-			}
-			if alreadyIn {
-				continue
-			}
-			var coord []float64
-			if m.Geom != nil {
-				switch g := m.Geom.(type) {
-				case orb.Point:
-					coord = []float64{g.X(), g.Y()}
-				case orb.LineString:
-					if len(g) > 0 {
-						coord = []float64{g[0].X(), g[0].Y()}
-					}
-				}
-			}
-			if coord != nil {
-				dots = append(dots, RepresentativeDot{
-					Coord: coord,
-					Label: m.Place,
-				})
-			}
-		}
-	}
-	return dots
 }
 
 // Helper responders
