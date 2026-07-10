@@ -25,10 +25,10 @@ transit_segment_length_m = 200000
 		t.Fatal(err)
 	}
 	values := map[string]string{
-		"FELICIA_PORT":             "9191",
-		"DAWARICH_API_KEY":         "legacy-key",
-		"FELICIA_IMMICH_URL":       "https://immich.example",
-		"FELICIA_CACHE_ADDR":       "",
+		"FELICIA_PORT":       "9191",
+		"DAWARICH_API_KEY":   "legacy-key",
+		"FELICIA_IMMICH_URL": "https://immich.example",
+		"FELICIA_CACHE_ADDR": "",
 	}
 	cfg, err := Load(path, lookup(values))
 	if err != nil {

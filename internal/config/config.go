@@ -14,11 +14,11 @@ import (
 )
 
 const (
-	defaultPort                = "8080"
-	defaultCacheAddr           = "localhost:6379"
-	defaultRDPEpsilon          = 0.0001
-	defaultTransitSegmentLenM  = 100000
-	defaultConfigPath          = "felicia.toml"
+	defaultPort               = "8080"
+	defaultCacheAddr          = "localhost:6379"
+	defaultRDPEpsilon         = 0.0001
+	defaultTransitSegmentLenM = 100000
+	defaultConfigPath         = "felicia.toml"
 )
 
 // SourceConfig describes one authenticated upstream source.
