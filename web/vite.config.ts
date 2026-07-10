@@ -11,5 +11,11 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     allowedHosts: ['harus-mini'],
+    proxy: {
+      '/api/v1': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+    },
   },
 })
