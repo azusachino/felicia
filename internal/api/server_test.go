@@ -199,7 +199,7 @@ func TestServerGetTemplates(t *testing.T) {
 	}
 
 	repo := newMockRepository()
-	srv := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, nil)
+	srv := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{})
 	handler := srv.Handler()
 
 	req := httptest.NewRequest("GET", "/api/admin/templates", nil)
@@ -227,7 +227,7 @@ func TestServerUpsertMementoValidation(t *testing.T) {
 	}
 
 	repo := newMockRepository()
-	srv := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, nil)
+	srv := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{})
 	handler := srv.Handler()
 
 	// 1. Submit invalid memento (missing required transit fields 'operator', 'from', 'to')
@@ -283,7 +283,7 @@ func TestServerIngestEndpoints(t *testing.T) {
 	}
 	photos := &fakePhotoSource{assets: []domain.PhotoAsset{{ID: "asset-1", SourceRef: "immich:asset:asset-1"}}}
 	imp := importer.New(tracks, photos, repo, 0)
-	handler := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, imp).Handler()
+	handler := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, imp, api.RouteConfig{}).Handler()
 
 	base := "/api/admin/journeys/" + jid.String()
 
@@ -321,7 +321,7 @@ func TestServerIngestNotConfigured(t *testing.T) {
 	reg, _ := domain.LoadRegistry(os.DirFS("../../kinds"))
 	repo := newMockRepository()
 	// nil importer -> ingest endpoints are unavailable.
-	handler := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, nil).Handler()
+	handler := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{}).Handler()
 
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, httptest.NewRequest("POST", "/api/admin/journeys/"+uuid.NewString()+"/sync-route", nil))
@@ -338,7 +338,7 @@ func TestServerCreateTransitLeg(t *testing.T) {
 		{{139.7671, 35.6812}, {139.7003, 35.6895}},
 		{{139.7798, 35.5494}, {135.2381, 34.4342}},
 	}
-	handler := api.NewServer(repo, nil, api.NewCacheManager("", testLogger), testLogger, nil).Handler()
+	handler := api.NewServer(repo, nil, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{TransitSegmentLengthM: 50000}).Handler()
 
 	body := bytes.NewBufferString(`{"origin":[139.7798,35.5494],"dest":[135.2381,34.4342],"origin_label":"HND","dest_label":"KIX"}`)
 	w := httptest.NewRecorder()
@@ -357,8 +357,8 @@ func TestServerCreateTransitLeg(t *testing.T) {
 	if repo.createdLeg.Origin != (orb.Point{139.7798, 35.5494}) || repo.createdLeg.Dest != (orb.Point{135.2381, 34.4342}) {
 		t.Errorf("unexpected leg endpoints: %+v", repo.createdLeg)
 	}
-	if repo.createdLeg.SegmentLenM != 100000 {
-		t.Errorf("expected 100000m segments, got %v", repo.createdLeg.SegmentLenM)
+	if repo.createdLeg.SegmentLenM != 50000 {
+		t.Errorf("expected configured 50000m segments, got %v", repo.createdLeg.SegmentLenM)
 	}
 
 	var response struct {
@@ -377,7 +377,7 @@ func TestServerCreateTransitLeg(t *testing.T) {
 }
 
 func TestServerCreateTransitLegRejectsInvalidCoordinates(t *testing.T) {
-	handler := api.NewServer(newMockRepository(), nil, api.NewCacheManager("", testLogger), testLogger, nil).Handler()
+	handler := api.NewServer(newMockRepository(), nil, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{}).Handler()
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/admin/journeys/"+uuid.NewString()+"/legs", bytes.NewBufferString(`{"origin":[139.7],"dest":[135.2,34.4]}`))
@@ -392,7 +392,7 @@ func TestServerSnapToRoute(t *testing.T) {
 	repo := newMockRepository()
 	snapped := orb.Point{139.7003, 35.6895}
 	repo.snappedPoint = &snapped
-	handler := api.NewServer(repo, nil, api.NewCacheManager("", testLogger), testLogger, nil).Handler()
+	handler := api.NewServer(repo, nil, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{}).Handler()
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/admin/journeys/"+uuid.NewString()+"/snap", bytes.NewBufferString(`{"point":[139.71,35.69]}`))
@@ -417,7 +417,7 @@ func TestServerSnapToRoute(t *testing.T) {
 }
 
 func TestServerSnapToRouteRejectsEmptyRouteAndInvalidPoint(t *testing.T) {
-	handler := api.NewServer(newMockRepository(), nil, api.NewCacheManager("", testLogger), testLogger, nil).Handler()
+	handler := api.NewServer(newMockRepository(), nil, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{}).Handler()
 
 	emptyRoute := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/admin/journeys/"+uuid.NewString()+"/snap", bytes.NewBufferString(`{"point":[139.71,35.69]}`))
@@ -449,7 +449,7 @@ func TestPublicJourneyOmitsEmptyGPSRoute(t *testing.T) {
 		AuthoredFields: []string{},
 	}
 	repo.journeys[journey.ID] = journey
-	handler := api.NewServer(repo, nil, api.NewCacheManager("", testLogger), testLogger, nil).Handler()
+	handler := api.NewServer(repo, nil, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{}).Handler()
 
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/journeys/empty-route", nil))

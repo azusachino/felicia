@@ -23,25 +23,37 @@ import (
 
 // Server represents the API server.
 type Server struct {
-	repo     domain.Repository
-	registry *domain.Registry
-	cache    *CacheManager
-	logger   *slog.Logger
-	importer *importer.Importer // may be nil when no sources are configured
+	repo                  domain.Repository
+	registry              *domain.Registry
+	cache                 *CacheManager
+	logger                *slog.Logger
+	importer              *importer.Importer // may be nil when no sources are configured
+	transitSegmentLengthM float64
+}
+
+const defaultTransitSegmentLengthM = 100000
+
+// RouteConfig controls the route-curation values used by HTTP handlers.
+type RouteConfig struct {
+	TransitSegmentLengthM float64
 }
 
 // NewServer creates a new API server instance. A nil logger falls back to
 // slog.Default. A nil importer disables the ingest endpoints (503).
-func NewServer(repo domain.Repository, registry *domain.Registry, cache *CacheManager, logger *slog.Logger, imp *importer.Importer) *Server {
+func NewServer(repo domain.Repository, registry *domain.Registry, cache *CacheManager, logger *slog.Logger, imp *importer.Importer, routeConfig RouteConfig) *Server {
 	if logger == nil {
 		logger = slog.Default()
 	}
+	if routeConfig.TransitSegmentLengthM <= 0 {
+		routeConfig.TransitSegmentLengthM = defaultTransitSegmentLengthM
+	}
 	return &Server{
-		repo:     repo,
-		registry: registry,
-		cache:    cache,
-		logger:   logger,
-		importer: imp,
+		repo:                  repo,
+		registry:              registry,
+		cache:                 cache,
+		logger:                logger,
+		importer:              imp,
+		transitSegmentLengthM: routeConfig.TransitSegmentLengthM,
 	}
 }
 
@@ -105,8 +117,6 @@ func (s *Server) Handler() http.Handler {
 	return r
 }
 
-const transitLegSegmentLengthM = 100000
-
 type createTransitLegRequest struct {
 	Origin      []float64 `json:"origin"`
 	Dest        []float64 `json:"dest"`
@@ -156,7 +166,7 @@ func (s *Server) handleCreateTransitLeg(w http.ResponseWriter, r *http.Request) 
 		DestLabel:   req.DestLabel,
 		Origin:      origin,
 		Dest:        dest,
-		SegmentLenM: transitLegSegmentLengthM,
+		SegmentLenM: s.transitSegmentLengthM,
 	}
 	if err := s.repo.CreateTransitLeg(r.Context(), leg); err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
