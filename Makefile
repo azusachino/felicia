@@ -12,7 +12,7 @@ GO_FILES := $(shell find . -name '*.go' -not -path './vendor/*' -not -path './.g
 # Real module packages, excluding stray Go files vendored inside web/node_modules.
 GO_PKGS = $(shell $(GO) list ./... | grep -v /node_modules/)
 
-.PHONY: help fmt vet lint test check build validate tidy db-up db-down migrate seed web-install web-check docs docs-build
+.PHONY: help fmt vet lint test check build validate tidy db-up db-down migrate seed mock-up mock-down web-install web-check docs docs-build
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -53,6 +53,12 @@ migrate: ## Apply DB migrations (goose, from nix) — needs DATABASE_DSN
 
 seed: ## Seed the database with sample data (uv run, psycopg) — needs DATABASE_DSN
 	uv run --group dev python scripts/seed.py
+
+mock-up: ## Start the mock Dawarich+Immich upstream in the background (:8099)
+	nohup uv run python scripts/mock_upstream.py > /tmp/felicia-mock.log 2>&1 & echo "mock up on :8099 (log: /tmp/felicia-mock.log)"
+
+mock-down: ## Stop the mock upstream
+	@pkill -f scripts/mock_upstream.py && echo "mock stopped" || echo "no mock running"
 
 test-api: ## Run Python-based E2E API integration tests (requires running server)
 	python scripts/test_api.py
