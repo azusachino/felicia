@@ -63,10 +63,12 @@ func Validate(tpl Template, data map[string]any) []Issue {
 	// Anchor ↔ geometry invariant: count coord-bearing fields that are present
 	// and actually resolve to coordinates.
 	coords := 0
+	coordFields := 0
 	for _, f := range tpl.Fields {
 		if !f.Type.coordBearing() {
 			continue
 		}
+		coordFields++
 		if v, ok := data[f.Name]; ok && v != nil && hasCoords(v) {
 			coords++
 		}
@@ -77,7 +79,7 @@ func Validate(tpl Template, data map[string]any) []Issue {
 			issues = append(issues, Issue{Code: CodeAnchorMismatch})
 		}
 	case AnchorPoint:
-		if coords != 1 {
+		if coordFields > 0 && coords != 1 {
 			issues = append(issues, Issue{Code: CodeAnchorMismatch})
 		}
 	}

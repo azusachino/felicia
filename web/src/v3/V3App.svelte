@@ -20,6 +20,18 @@
   let selectedIndex = $state(0)
   let view = $state<'landing' | 'detail'>('landing')
   let selectedPlaceKey = $state<string | null>(null)
+  let selectedMementoIndex = $state(0)
+
+  function handleKeydown(event: KeyboardEvent) {
+    if (view !== 'detail' || !selectedMemento) return
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault()
+      goToPrevMemento()
+    } else if (event.key === 'ArrowRight') {
+      event.preventDefault()
+      goToNextMemento()
+    }
+  }
 
   const selectedJourney = $derived(journeys[selectedIndex] ?? null)
 
@@ -104,6 +116,8 @@
     placeGroups.find((group) => group.key === selectedPlaceKey) ?? null,
   )
 
+  const selectedMemento = $derived(selectedJourney?.mementos[selectedMementoIndex] ?? null)
+
   const transitPairs = $derived.by(() => {
     if (!selectedJourney) return []
     return selectedJourney.mementos
@@ -114,12 +128,32 @@
       )
   })
 
-  function selectJourney(index: number) {
-    selectedIndex = index
+  function selectJourneyById(id: string) {
+    const idx = journeys.findIndex((j) => j.id === id)
+    if (idx !== -1) {
+      selectedIndex = idx
+      selectedMementoIndex = 0
+      selectedPlaceKey = null
+    }
   }
 
-  function openJourney() {
-    selectedPlaceKey = placeGroups[0]?.key ?? null
+  function selectYear(year: string) {
+    const idx = journeys.findIndex((journey) => {
+      const match = journey.dates.ja.match(/(\d{4})年/)
+      const y = match ? match[1] : '2026'
+      return y === year
+    })
+    if (idx !== -1) {
+      selectedIndex = idx
+      selectedMementoIndex = 0
+      selectedPlaceKey = null
+    }
+  }
+
+  function openJourney(index = selectedIndex) {
+    selectedIndex = index
+    selectedMementoIndex = 0
+    selectedPlaceKey = selectedJourney?.mementos[0]?.visitId ?? null
     view = 'detail'
   }
 
@@ -128,7 +162,25 @@
   }
 
   function selectPlace(key: string) {
-    selectedPlaceKey = key
+    if (!key || selectedPlaceKey === key) {
+      selectedPlaceKey = null
+    } else {
+      selectedPlaceKey = key
+      const first = selectedJourney?.mementos.findIndex((memento) => memento.visitId === key) ?? -1
+      if (first >= 0) selectedMementoIndex = first
+    }
+  }
+
+  function goToPrevMemento() {
+    if (!selectedJourney || selectedMementoIndex === 0) return
+    selectedMementoIndex -= 1
+    selectedPlaceKey = selectedJourney.mementos[selectedMementoIndex]?.visitId ?? null
+  }
+
+  function goToNextMemento() {
+    if (!selectedJourney || selectedMementoIndex >= selectedJourney.mementos.length - 1) return
+    selectedMementoIndex += 1
+    selectedPlaceKey = selectedJourney.mementos[selectedMementoIndex]?.visitId ?? null
   }
 
   function onPhotoError(event: Event) {
@@ -180,10 +232,7 @@
   }
 
   // Landing sketch map: dim every journey's city dots, brighten the selected.
-  const journeyCityDots = $derived(
-    selectedJourney ? cityDots.filter((dot) => dot.journeyId === selectedJourney.id) : [],
-  )
-  const routePoints = $derived(journeyCityDots.map((dot) => project(dot.coords)))
+  const routePoints = $derived(selectedJourney?.route.map((coord) => project(coord)) ?? [])
   const routePath = $derived(routePoints.map((p) => `${p.x},${p.y}`).join(' '))
 
   const mapCaption = {
@@ -208,12 +257,11 @@
     zh: '打开这段旅程 →',
   } satisfies L
   const backLabel = { ja: '手帳に戻る', en: 'Back to journal', zh: '返回手帳' } satisfies L
-  const noMemoriesLabel = {
-    ja: 'ここではまだ記憶を集めていない。',
-    en: 'No memories collected here yet.',
-    zh: '这里还没有收集记忆。',
-  } satisfies L
+  const prevMemoryLabel = { ja: '前の記憶', en: 'Previous memory', zh: '上一段记忆' } satisfies L
+  const nextMemoryLabel = { ja: '次の記憶', en: 'Next memory', zh: '下一段记忆' } satisfies L
 </script>
+
+<svelte:window on:keydown={handleKeydown} />
 
 <main class="techo-shell" class:theme-light={theme === 'light'} class:is-detail={view === 'detail'}>
   {#if view === 'landing'}
@@ -317,10 +365,16 @@
               {#each cityDots as dot (dot.id)}
                 {@const p = project(dot.coords)}
                 {@const active = selectedJourney && dot.journeyId === selectedJourney.id}
-                <div class="map-dot" class:active style="left:{p.x}%; top:{p.y}%">
+                <button
+                  type="button"
+                  class="map-dot border-none bg-transparent p-0 cursor-pointer focus:outline-none animate-none"
+                  class:active
+                  style="left:{p.x}%; top:{p.y}%"
+                  onclick={() => selectJourneyById(dot.journeyId)}
+                >
                   <span class="map-dot-mark"></span>
                   <span class="map-dot-label">{dot.label}</span>
-                </div>
+                </button>
               {/each}
             </div>
             <p class="map-caption">{t(mapCaption)}</p>
@@ -340,6 +394,13 @@
               <p class="year-count">{journeyCountLabel}</p>
             </div>
 
+            <button type="button" class="open-cta open-cta--top" onclick={() => openJourney()}>
+              {t(openCta)}
+              <span class="open-cta-subtitle"
+                >{t(selectedJourney?.title ?? { ja: '', en: '', zh: '' })}</span
+              >
+            </button>
+
             <ol class="journey-cards">
               {#each journeys as journey, index (journey.id)}
                 <li>
@@ -347,7 +408,8 @@
                     type="button"
                     class="journey-card"
                     class:selected={index === selectedIndex}
-                    onclick={() => selectJourney(index)}
+                    onclick={() => openJourney(index)}
+                    aria-label={`${t(journey.title)} — ${t(openCta)}`}
                   >
                     <span
                       class="washi-tape"
@@ -371,14 +433,19 @@
                 </li>
               {/each}
             </ol>
-
-            <button type="button" class="open-cta" onclick={openJourney}>{t(openCta)}</button>
           </section>
         {/if}
 
         <nav class="year-tabs" aria-label="Years">
           {#each years as year (year)}
-            <span class="year-tab" class:active={year === activeYear}>{year}</span>
+            <button
+              type="button"
+              class="year-tab cursor-pointer border border-solid focus:outline-none"
+              class:active={year === activeYear}
+              onclick={() => selectYear(year)}
+            >
+              {year}
+            </button>
           {/each}
         </nav>
       </div>
@@ -416,53 +483,86 @@
         >
       </header>
 
-      {#if selectedPlace}
+      {#if selectedMemento}
         <aside
           class="absolute right-0 top-0 z-10 flex h-full w-[min(30rem,46vw)] flex-col gap-5 overflow-y-auto bg-paper-1/95 px-6 py-6 shadow-2xl backdrop-blur"
           aria-label="Memories at this place"
+          aria-keyshortcuts="ArrowLeft ArrowRight"
         >
-          <div>
-            <p class="m-0 font-mono text-[0.7rem] uppercase tracking-[0.18em] text-ink-faint">
-              {placeMemoriesLabel(selectedPlace.mementos.length)}
-            </p>
-            <h2 class="m-0 mt-1 font-mincho text-xl font-bold text-ink">
-              {t(selectedPlace.label)}
-            </h2>
+          <div class="flex items-start justify-between">
+            <div>
+              <p class="m-0 font-mono text-[0.7rem] uppercase tracking-[0.18em] text-ink-faint">
+                {placeMemoriesLabel(1)}
+              </p>
+              <h2 class="m-0 mt-1 font-mincho text-xl font-bold text-ink">
+                {t(selectedPlace?.label ?? selectedMemento.place)}
+              </h2>
+            </div>
+            <button
+              type="button"
+              class="flex h-7 w-7 items-center justify-center rounded-full border border-black/10 bg-paper-2 hover:bg-paper-3 text-base text-ink-soft cursor-pointer transition focus:outline-none"
+              onclick={() => selectPlace('')}
+              aria-label="Close"
+            >
+              ×
+            </button>
           </div>
 
-          {#if selectedPlace.mementos.length === 0}
-            <p class="m-0 text-sm text-ink-faint">{t(noMemoriesLabel)}</p>
-          {/if}
+          <div
+            class="flex items-center justify-between border-b border-dashed border-black/15 pb-3"
+          >
+            <button
+              type="button"
+              class="flex items-center gap-1 font-mono text-xs text-ink-soft disabled:opacity-30 disabled:cursor-not-allowed hover:text-terracotta transition cursor-pointer bg-transparent border-none p-0 focus:outline-none"
+              disabled={selectedMementoIndex === 0}
+              onclick={goToPrevMemento}
+            >
+              ← {t(prevMemoryLabel)}
+            </button>
+            <span class="font-mono text-xs text-ink-faint">
+              {selectedMementoIndex + 1} / {selectedJourney.mementos.length}
+            </span>
+            <button
+              type="button"
+              class="flex items-center gap-1 font-mono text-xs text-ink-soft disabled:opacity-30 disabled:cursor-not-allowed hover:text-terracotta transition cursor-pointer bg-transparent border-none p-0 focus:outline-none"
+              disabled={selectedMementoIndex === selectedJourney.mementos.length - 1}
+              onclick={goToNextMemento}
+            >
+              {t(nextMemoryLabel)} →
+            </button>
+          </div>
 
-          {#each selectedPlace.mementos as memento (memento.id)}
-            <article class="rounded-lg border border-black/5 bg-paper-0 p-5 shadow-sm">
-              <p class="m-0 font-mono text-[0.68rem] uppercase tracking-[0.2em] text-terracotta">
-                {t(kindLabel[memento.kind])}
-              </p>
-              <h3 class="m-0 mt-1 font-mincho text-lg font-bold text-ink">{t(memento.title)}</h3>
-              <p class="m-0 mt-0.5 text-xs text-ink-faint">
-                {t(memento.date)}{memento.price ? ` · ${memento.price}` : ''}
-              </p>
-              <p class="m-0 mt-3 text-[0.9rem] leading-relaxed text-ink-soft">{t(memento.essay)}</p>
-              {#if memento.photos.length}
-                <div class="mt-4 flex flex-col gap-3">
-                  {#each memento.photos as photo (photo.src)}
-                    <figure class="m-0 overflow-hidden rounded-md border border-black/5">
-                      <img
-                        src={photo.src}
-                        alt={t(memento.title)}
-                        class="block aspect-[4/3] w-full object-cover"
-                        onerror={onPhotoError}
-                      />
-                      <figcaption class="px-3 py-2 text-xs text-ink-soft">
-                        {t(photo.caption)}
-                      </figcaption>
-                    </figure>
-                  {/each}
-                </div>
-              {/if}
-            </article>
-          {/each}
+          <article class="rounded-lg border border-black/5 bg-paper-0 p-5 shadow-sm">
+            <p class="m-0 font-mono text-[0.68rem] uppercase tracking-[0.2em] text-terracotta">
+              {t(kindLabel[selectedMemento.kind])}
+            </p>
+            <h3 class="m-0 mt-1 font-mincho text-lg font-bold text-ink">
+              {t(selectedMemento.title)}
+            </h3>
+            <p class="m-0 mt-0.5 text-xs text-ink-faint">
+              {t(selectedMemento.date)}{selectedMemento.price ? ` · ${selectedMemento.price}` : ''}
+            </p>
+            <p class="m-0 mt-3 text-[0.9rem] leading-relaxed text-ink-soft">
+              {t(selectedMemento.essay)}
+            </p>
+            {#if selectedMemento.photos.length}
+              <div class="mt-4 flex flex-col gap-3">
+                {#each selectedMemento.photos as photo (photo.src)}
+                  <figure class="m-0 overflow-hidden rounded-md border border-black/5">
+                    <img
+                      src={photo.src}
+                      alt={t(selectedMemento.title)}
+                      class="block aspect-[4/3] w-full object-cover"
+                      onerror={onPhotoError}
+                    />
+                    <figcaption class="px-3 py-2 text-xs text-ink-soft">
+                      {t(photo.caption)}
+                    </figcaption>
+                  </figure>
+                {/each}
+              </div>
+            {/if}
+          </article>
         </aside>
       {/if}
     </section>
@@ -776,6 +876,19 @@
     background: #a05420;
   }
 
+  .open-cta--top {
+    margin-top: 1rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .open-cta-subtitle {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.7rem;
+    font-weight: 400;
+    opacity: 0.85;
+  }
+
   .year-tabs {
     position: absolute;
     top: 3rem;
@@ -808,6 +921,14 @@
   @media (max-width: 900px) {
     .techo-spread {
       grid-template-columns: 1fr;
+    }
+
+    .techo-page--index {
+      order: 1;
+    }
+
+    .techo-page--map {
+      order: 2;
     }
 
     .year-tabs {

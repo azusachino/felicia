@@ -1,6 +1,7 @@
 import { describe, expect, test, mock, beforeAll, afterAll } from 'bun:test'
 import { loadJourney, loadJourneys } from './source'
 import type { ApiJourney, ApiMemento } from './types'
+import { loadGoldenRouteFixture } from './testdata'
 
 // Access import.meta.env in a type-safe way that is extensible and avoids ESLint any/ignore rules
 const importMeta = import.meta as unknown as {
@@ -26,13 +27,9 @@ describe('source API', () => {
   let japanSpringMementos: ApiMemento[]
 
   beforeAll(async () => {
-    japanSpringJourney = (await Bun.file(
-      new URL('./__fixtures__/journeys/japan-spring-2026.json', import.meta.url),
-    ).json()) as ApiJourney
-
-    japanSpringMementos = (await Bun.file(
-      new URL('./__fixtures__/journeys/japan-spring-2026/mementos.json', import.meta.url),
-    ).json()) as ApiMemento[]
+    const fixture = await loadGoldenRouteFixture()
+    japanSpringJourney = fixture.journey
+    japanSpringMementos = fixture.mementos
   })
 
   afterAll(() => {
@@ -43,20 +40,20 @@ describe('source API', () => {
     globalThis.fetch = mock((url: string | URL) => {
       const urlStr = url.toString()
       expect(urlStr).not.toContain('.json') // should not have .json in dev mode
-      if (urlStr.endsWith('/api/v1/journeys/japan-spring-2026')) {
+      if (urlStr.endsWith('/api/v1/journeys/golden-route')) {
         return Promise.resolve(Response.json(japanSpringJourney))
       }
-      if (urlStr.endsWith('/api/v1/journeys/japan-spring-2026/mementos')) {
+      if (urlStr.endsWith('/api/v1/journeys/golden-route/mementos')) {
         return Promise.resolve(Response.json(japanSpringMementos))
       }
       return Promise.resolve(new Response('Not Found', { status: 404 }))
     }) as unknown as typeof fetch
 
-    const journey = await loadJourney('japan-spring-2026')
+    const journey = await loadJourney('golden-route')
 
     expect(journey.id).toBe('0190cbde-f300-7000-8000-111111111111')
-    expect(journey.title.ja).toBe('日本春旅 2026')
-    expect(journey.mementos).toHaveLength(3)
+    expect(journey.title.ja).toBe('日本ゴールデンルート')
+    expect(journey.mementos).toHaveLength(5)
   })
 
   test('loadJourney fetches detail and mementos (prod/static mode)', async () => {
@@ -66,17 +63,17 @@ describe('source API', () => {
       const urlStr = url.toString()
       expect(urlStr).toContain('.json') // should have .json in static mode
       expect(urlStr).not.toContain('http://localhost:8080')
-      if (urlStr.endsWith('/api/v1/journeys/japan-spring-2026.json')) {
+      if (urlStr.endsWith('/api/v1/journeys/golden-route.json')) {
         return Promise.resolve(Response.json(japanSpringJourney))
       }
-      if (urlStr.endsWith('/api/v1/journeys/japan-spring-2026/mementos.json')) {
+      if (urlStr.endsWith('/api/v1/journeys/golden-route/mementos.json')) {
         return Promise.resolve(Response.json(japanSpringMementos))
       }
       return Promise.resolve(new Response('Not Found', { status: 404 }))
     }) as unknown as typeof fetch
 
     try {
-      const journey = await loadJourney('japan-spring-2026')
+      const journey = await loadJourney('golden-route')
       expect(journey.id).toBe('0190cbde-f300-7000-8000-111111111111')
     } finally {
       importMeta.env.PROD = false
@@ -86,9 +83,9 @@ describe('source API', () => {
   test('loadJourneys fetches list, then detail/mementos for each, and adapts (dev mode)', async () => {
     const listFixture = [
       {
-        slug: 'japan-spring-2026',
-        title: '日本春旅 2026',
-        memento_count: 2,
+        slug: 'golden-route',
+        title: '日本ゴールデンルート',
+        memento_count: 11,
         representative_dots: [],
       },
     ]
@@ -99,10 +96,10 @@ describe('source API', () => {
       if (urlStr.endsWith('/api/v1/journeys')) {
         return Promise.resolve(Response.json(listFixture))
       }
-      if (urlStr.endsWith('/api/v1/journeys/japan-spring-2026')) {
+      if (urlStr.endsWith('/api/v1/journeys/golden-route')) {
         return Promise.resolve(Response.json(japanSpringJourney))
       }
-      if (urlStr.endsWith('/api/v1/journeys/japan-spring-2026/mementos')) {
+      if (urlStr.endsWith('/api/v1/journeys/golden-route/mementos')) {
         return Promise.resolve(Response.json(japanSpringMementos))
       }
       return Promise.resolve(new Response('Not Found', { status: 404 }))
@@ -120,9 +117,9 @@ describe('source API', () => {
 
     const listFixture = [
       {
-        slug: 'japan-spring-2026',
-        title: '日本春旅 2026',
-        memento_count: 2,
+        slug: 'golden-route',
+        title: '日本ゴールデンルート',
+        memento_count: 11,
         representative_dots: [],
       },
     ]
@@ -134,10 +131,10 @@ describe('source API', () => {
       if (urlStr.endsWith('/api/v1/journeys.json')) {
         return Promise.resolve(Response.json(listFixture))
       }
-      if (urlStr.endsWith('/api/v1/journeys/japan-spring-2026.json')) {
+      if (urlStr.endsWith('/api/v1/journeys/golden-route.json')) {
         return Promise.resolve(Response.json(japanSpringJourney))
       }
-      if (urlStr.endsWith('/api/v1/journeys/japan-spring-2026/mementos.json')) {
+      if (urlStr.endsWith('/api/v1/journeys/golden-route/mementos.json')) {
         return Promise.resolve(Response.json(japanSpringMementos))
       }
       return Promise.resolve(new Response('Not Found', { status: 404 }))
@@ -158,7 +155,7 @@ describe('source API', () => {
       Promise.resolve(new Response('Error', { status: 500 })),
     ) as unknown as typeof fetch
 
-    expect(loadJourney('japan-spring-2026')).rejects.toThrow()
+    expect(loadJourney('golden-route')).rejects.toThrow()
   })
 
   test('loadJourneys throws on non-ok response', async () => {

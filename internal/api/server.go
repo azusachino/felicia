@@ -96,6 +96,7 @@ func (s *Server) Handler() http.Handler {
 	// Authoring Admin API (Valkey Invalidation on Write)
 	r.Route("/api/admin", func(r chi.Router) {
 		r.Get("/templates", s.handleGetTemplates)
+		r.Post("/journals", s.handleCreateJournal)
 		r.Get("/journeys", s.handleListJourneys)
 		r.Get("/journeys/{id}", s.handleGetJourney)
 		r.Post("/journeys", s.handleUpsertJourney)
@@ -247,6 +248,36 @@ func (s *Server) handleGetTemplates(w http.ResponseWriter, _ *http.Request) {
 }
 
 // Journey handlers (Admin)
+
+type createJournalRequest struct {
+	ID uuid.UUID `json:"id"`
+}
+
+func (s *Server) handleCreateJournal(w http.ResponseWriter, r *http.Request) {
+	var req createJournalRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request JSON")
+		return
+	}
+	if req.ID == uuid.Nil {
+		req.ID = uuid.Must(uuid.NewV7())
+	}
+
+	journal := &domain.Journal{ID: req.ID, CreatedAt: time.Now().UTC()}
+	if err := s.repo.CreateJournal(r.Context(), journal); err != nil {
+		// Seed data is intentionally rerunnable. Treat an existing journal as
+		// success and let the journey upserts refresh its contents.
+		if existing, getErr := s.repo.GetJournal(r.Context(), req.ID); getErr == nil {
+			respondJSON(w, http.StatusOK, existing)
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	s.cache.InvalidateAll(r.Context())
+	respondJSON(w, http.StatusOK, journal)
+}
 
 func (s *Server) handleListJourneys(w http.ResponseWriter, r *http.Request) {
 	js, err := s.repo.ListJourneys(r.Context())

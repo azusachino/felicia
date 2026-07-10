@@ -3,8 +3,12 @@ import json
 import urllib.request
 import urllib.error
 import sys
+from pathlib import Path
 
 BASE_URL = "http://localhost:8080"
+DATA = json.loads((Path(__file__).with_name("data.json")).read_text())
+EXPECTED_JOURNEYS = len(DATA["journeys"])
+EXPECTED_MEMENTOS = len(DATA["journeys"][0]["mementos"])
 
 def request(path, method="GET", data=None):
     url = f"{BASE_URL}{path}"
@@ -42,47 +46,46 @@ def test_journeys():
     # List
     status, body = request("/api/admin/journeys")
     assert status == 200, f"Expected 200, got {status}"
-    assert len(body) == 3, f"Expected 3 seeded journeys, got {len(body)}"
+    assert len(body) == EXPECTED_JOURNEYS, f"Expected {EXPECTED_JOURNEYS} seeded journeys, got {len(body)}"
     
     slugs = [j["slug"] for j in body]
-    assert "japan-spring-2026" in slugs, "Missing J1 slug"
-    assert "hokkaido-winter-2025" in slugs, "Missing J2 slug"
-    assert "tokyo-autumn-2024" in slugs, "Missing J3 slug"
+    assert "golden-route" in slugs, "Missing J1 slug"
+    assert "hokkaido" in slugs, "Missing J2 slug"
+    assert "kyushu" in slugs, "Missing J3 slug"
     
     # Get by ID (J1)
     j1_id = "0190cbde-f300-7000-8000-111111111111"
     status, body = request(f"/api/admin/journeys/{j1_id}")
     assert status == 200, f"Expected 200, got {status}"
-    assert body["slug"] == "japan-spring-2026", f"Unexpected slug: {body['slug']}"
+    assert body["slug"] == "golden-route", f"Unexpected slug: {body['slug']}"
     print("✓ Journeys GET OK")
 
 def test_mementos_list():
     print("Testing GET /api/admin/journeys/{id}/mementos...")
-    # J1: Should have 3 mementos
+    # J1: Should have the canonical memento count
     j1_id = "0190cbde-f300-7000-8000-111111111111"
     status, body = request(f"/api/admin/journeys/{j1_id}/mementos")
     assert status == 200, f"Expected 200, got {status}"
-    assert len(body) == 3, f"Expected 3 mementos for J1, got {len(body)}"
+    assert len(body) == EXPECTED_MEMENTOS, f"Expected {EXPECTED_MEMENTOS} mementos for J1, got {len(body)}"
     assert body[0]["kind"] == "transit", "Expected J1 memento 1 to be transit"
-    assert body[1]["kind"] == "receipt", "Expected J1 memento 2 to be receipt"
-    assert body[2]["kind"] == "souvenir", "Expected J1 memento 3 to be souvenir"
+    assert body[1]["kind"] == "stamp", "Expected J1 memento 2 to be stamp"
+    assert body[2]["kind"] == "receipt", "Expected J1 memento 3 to be receipt"
 
-    # J2: Should have 3 mementos
+    # J2: Should have the canonical memento count
     j2_id = "0190cbde-f300-7000-8000-222222222222"
     status, body = request(f"/api/admin/journeys/{j2_id}/mementos")
     assert status == 200, f"Expected 200, got {status}"
-    assert len(body) == 3, f"Expected 3 mementos for J2, got {len(body)}"
-    assert body[0]["kind"] == "live", "Expected J2 memento 1 to be live"
-    assert body[1]["kind"] == "goods", "Expected J2 memento 2 to be goods"
-    assert body[2]["kind"] == "receipt", "Expected J2 memento 3 to be receipt"
+    assert len(body) == EXPECTED_MEMENTOS, f"Expected {EXPECTED_MEMENTOS} mementos for J2, got {len(body)}"
+    assert body[0]["kind"] == "transit", "Expected J2 memento 1 to be transit"
+    assert body[1]["kind"] == "stamp", "Expected J2 memento 2 to be stamp"
 
-    # J3: Should have 2 mementos
+    # J3: Should have the canonical memento count
     j3_id = "0190cbde-f300-7000-8000-333333333333"
     status, body = request(f"/api/admin/journeys/{j3_id}/mementos")
     assert status == 200, f"Expected 200, got {status}"
-    assert len(body) == 2, f"Expected 2 mementos for J3, got {len(body)}"
-    assert body[0]["kind"] == "stamp", "Expected J3 memento 1 to be stamp"
-    assert body[1]["kind"] == "goods", "Expected J3 memento 2 to be goods"
+    assert len(body) == EXPECTED_MEMENTOS, f"Expected {EXPECTED_MEMENTOS} mementos for J3, got {len(body)}"
+    assert body[0]["kind"] == "transit", "Expected J3 memento 1 to be transit"
+    assert body[1]["kind"] == "stamp", "Expected J3 memento 2 to be stamp"
     print("✓ Mementos distribution and overlapping locations OK")
 
 def test_memento_validation():
@@ -139,7 +142,7 @@ def test_memento_validation():
 
 def test_translations():
     print("Testing translation endpoints...")
-    memento_id = "0190cbde-f300-7000-8000-a22222222222"
+    memento_id = "0190cbde-f300-7000-8000-a01000000001"
     # List
     status, body = request(f"/api/admin/mementos/{memento_id}/translations")
     assert status == 200, f"Expected 200, got {status}"
@@ -164,29 +167,29 @@ def test_public_apis():
     # 1. Global list
     status, body = request("/api/v1/journeys")
     assert status == 200, f"Expected 200, got {status}"
-    assert len(body) == 3, f"Expected 3 public journeys, got {len(body)}"
+    assert len(body) == EXPECTED_JOURNEYS, f"Expected {EXPECTED_JOURNEYS} public journeys, got {len(body)}"
     
     # 2. Get details by slug
-    status, body_slug = request("/api/v1/journeys/japan-spring-2026")
+    status, body_slug = request("/api/v1/journeys/golden-route")
     assert status == 200, f"Expected 200, got {status}"
-    assert body_slug["slug"] == "japan-spring-2026"
+    assert body_slug["slug"] == "golden-route"
     assert "gps_route" in body_slug
     
     # 3. Get details by UUID (dual lookup)
     j1_id = "0190cbde-f300-7000-8000-111111111111"
     status, body_uuid = request(f"/api/v1/journeys/{j1_id}")
     assert status == 200, f"Expected 200, got {status}"
-    assert body_uuid["slug"] == "japan-spring-2026"
+    assert body_uuid["slug"] == "golden-route"
     
     # 4. Get mementos by slug
-    status, mementos_slug = request("/api/v1/journeys/japan-spring-2026/mementos")
+    status, mementos_slug = request("/api/v1/journeys/golden-route/mementos")
     assert status == 200, f"Expected 200, got {status}"
-    assert len(mementos_slug) == 4, f"Expected 4 mementos, got {len(mementos_slug)}"
+    assert len(mementos_slug) == EXPECTED_MEMENTOS + 1, f"Expected {EXPECTED_MEMENTOS + 1} mementos, got {len(mementos_slug)}"
     
     # 5. Get mementos by UUID (dual lookup)
     status, mementos_uuid = request(f"/api/v1/journeys/{j1_id}/mementos")
     assert status == 200, f"Expected 200, got {status}"
-    assert len(mementos_uuid) == 4
+    assert len(mementos_uuid) == EXPECTED_MEMENTOS + 1
     
     print("✓ Public APIs (slug & UUID lookup) OK")
 

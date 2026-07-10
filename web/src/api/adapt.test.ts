@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import type { ApiJourney, ApiMemento } from './types'
 import { adaptJourney } from './adapt'
+import { loadGoldenRouteFixture } from './testdata'
 
 const journey = (overrides: Partial<ApiJourney> = {}): ApiJourney => ({
   id: 'journey-1',
@@ -31,20 +32,15 @@ const memento = (overrides: Partial<ApiMemento> = {}): ApiMemento => ({
 
 describe('adaptJourney', () => {
   test('adapts the captured canonical compiler fixture', async () => {
-    const apiJourney = (await Bun.file(
-      new URL('./__fixtures__/journeys/japan-spring-2026.json', import.meta.url),
-    ).json()) as ApiJourney
-    const apiMementos = (await Bun.file(
-      new URL('./__fixtures__/journeys/japan-spring-2026/mementos.json', import.meta.url),
-    ).json()) as ApiMemento[]
+    const { journey: apiJourney, mementos: apiMementos } = await loadGoldenRouteFixture()
 
     const result = adaptJourney(apiJourney, apiMementos)
     expect(result.id).toBe('0190cbde-f300-7000-8000-111111111111')
     expect(result.route).toHaveLength(3)
-    expect(result.visits).toHaveLength(2)
-    expect(result.mementos).toHaveLength(3)
-    expect(result.mementos[0].photos[0].src).toBe('media/photos/tokyo_ticket.jpg')
-    expect(result.mementos[1].kind).toBe('receipt')
+    expect(result.visits).toHaveLength(3)
+    expect(result.mementos).toHaveLength(5)
+    expect(result.mementos[0].photos).toHaveLength(2)
+    expect(result.mementos[1].kind).toBe('stamp')
   })
 
   test('maps translations with Japanese fallback and groups mementos by visit', () => {

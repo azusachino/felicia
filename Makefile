@@ -12,7 +12,16 @@ GO_FILES := $(shell find . -name '*.go' -not -path './vendor/*' -not -path './.g
 # Real module packages, excluding stray Go files vendored inside web/node_modules.
 GO_PKGS = $(shell $(GO) list ./... | grep -v /node_modules/)
 
-.PHONY: help fmt vet lint test check build validate tidy db-up db-down migrate seed mock-up mock-down web-install web-check docs docs-build
+DATABASE_DSN ?= postgres://postgres:password@localhost:5432/felicia?sslmode=disable
+PORT ?= 8080
+CACHE_ADDR ?= localhost:6379
+
+COMPOSE ?= $(shell \
+	if command -v podman-compose >/dev/null 2>&1; then echo podman-compose; \
+	elif command -v docker >/dev/null 2>&1; then echo docker compose; \
+	else echo ''; fi)
+
+.PHONY: help fmt vet lint test check build validate tidy db-up db-down migrate seed dev mock-up mock-down web-install web-check docs docs-build
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -43,16 +52,37 @@ tidy: ## Tidy go modules
 	$(GO) mod tidy
 
 db-up: ## Start local Postgres+PostGIS and Valkey (deploy/compose.yaml)
-	docker compose -f deploy/compose.yaml up -d
+	@test -n "$(COMPOSE)" || (echo "No container compose command found (install podman-compose or Docker Compose)" >&2; exit 1)
+	$(COMPOSE) -f deploy/compose.yaml up -d
 
 db-down: ## Stop the local dev containers (keeps the pgdata volume)
-	docker compose -f deploy/compose.yaml down
+	@test -n "$(COMPOSE)" || (echo "No container compose command found (install podman-compose or Docker Compose)" >&2; exit 1)
+	$(COMPOSE) -f deploy/compose.yaml down
 
 migrate: ## Apply DB migrations (goose, from nix) — needs DATABASE_DSN
 	$(NIX_RUN)goose -dir migrations postgres "$(DATABASE_DSN)" up
 
 seed: ## Seed the database with sample data (uv run, psycopg) — needs DATABASE_DSN
 	uv run --group dev python scripts/seed.py
+
+dev: ## Start the complete local stack, seed mock data, and serve the web app
+	@set -e; \
+		$(MAKE) db-up; \
+		DATABASE_DSN="$(DATABASE_DSN)" $(MAKE) migrate; \
+		api_bin="/tmp/felicia-api-$$"; \
+		go build -o "$$api_bin" ./cmd/api; \
+		DATABASE_DSN="$(DATABASE_DSN)" PORT="$(PORT)" CACHE_ADDR="$(CACHE_ADDR)" "$$api_bin" & \
+		api_pid=$$!; \
+		cleanup() { kill $$api_pid 2>/dev/null || true; rm -f "$$api_bin"; }; \
+		trap cleanup EXIT INT TERM; \
+		for attempt in $$(seq 1 30); do \
+			if curl --fail --silent -X POST -H 'Content-Type: application/json' -d '{"id":"0190cbde-f300-7000-8000-000000000000"}' "http://localhost:$(PORT)/api/admin/journals" >/dev/null; then break; fi; \
+			if [ "$$attempt" = 30 ]; then echo "API did not become ready" >&2; exit 1; fi; \
+			sleep 1; \
+		done; \
+		DATABASE_DSN="$(DATABASE_DSN)" SEED_API_BASE="http://localhost:$(PORT)" $(MAKE) seed; \
+		if [ ! -d web/node_modules ]; then $(MAKE) web-install; fi; \
+		cd web && bun run dev
 
 mock-up: ## Start the mock Dawarich+Immich upstream in the background (:8099)
 	nohup uv run python scripts/mock_upstream.py > /tmp/felicia-mock.log 2>&1 & echo "mock up on :8099 (log: /tmp/felicia-mock.log)"

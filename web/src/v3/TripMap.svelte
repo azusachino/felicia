@@ -109,7 +109,10 @@
     button.innerHTML = `<span>${place.seq}</span>${
       place.count > 1 ? `<i class="v3-mark-count">${place.count}</i>` : ''
     }`
-    button.addEventListener('click', () => onSelect(place.key))
+    button.addEventListener('click', (e) => {
+      e.stopPropagation()
+      onSelect(place.key)
+    })
     return button
   }
 
@@ -147,6 +150,12 @@
       attributionControl: false,
     })
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
+
+    map.on('click', (e) => {
+      if ((e.originalEvent?.target as HTMLElement)?.tagName === 'CANVAS') {
+        onSelect('')
+      }
+    })
 
     // The container reaches full size after mount/layout; keep the canvas in
     // sync so the map fills its box (otherwise only a corner renders).
@@ -209,7 +218,11 @@
     if (!loaded || !map) return
     syncActive()
     const place = places.find((p) => p.key === activeKey)
-    if (place) map.flyTo({ center: place.coords, zoom: 8.5, duration: 600, essential: true })
+    if (place) {
+      map.flyTo({ center: place.coords, zoom: 8.5, duration: 600, essential: true })
+    } else {
+      fitJourney()
+    }
   })
 
   $effect(() => {
