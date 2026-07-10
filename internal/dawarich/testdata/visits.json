@@ -1,0 +1,35 @@
+[
+  {
+    "id": 7,
+    "started_at": "2026-03-20T10:00:00Z",
+    "ended_at": "2026-03-20T11:30:00Z",
+    "duration": 5400,
+    "name": "明治神宮",
+    "status": "confirmed",
+    "confidence": 0.92,
+    "confidence_band": "high",
+    "place": { "id": 3, "latitude": 35.6764, "longitude": 139.6993 }
+  },
+  {
+    "id": 8,
+    "started_at": "2026-03-20T15:00:00Z",
+    "ended_at": "2026-03-20T16:00:00Z",
+    "duration": 3600,
+    "name": "道頓堀",
+    "status": "suggested",
+    "confidence": 0.7,
+    "confidence_band": "medium",
+    "place": { "id": 4, "latitude": 34.6687, "longitude": 135.5013 }
+  },
+  {
+    "id": 9,
+    "started_at": "2026-03-20T17:00:00Z",
+    "ended_at": "2026-03-20T17:20:00Z",
+    "duration": 1200,
+    "name": "Declined stop",
+    "status": "declined",
+    "confidence": 0.2,
+    "confidence_band": "low",
+    "place": { "id": 5, "latitude": 34.7, "longitude": 135.5 }
+  }
+]
