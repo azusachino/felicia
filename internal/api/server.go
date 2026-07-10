@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -22,14 +23,41 @@ type Server struct {
 	repo     domain.Repository
 	registry *domain.Registry
 	cache    *CacheManager
+	logger   *slog.Logger
 }
 
-// NewServer creates a new API server instance.
-func NewServer(repo domain.Repository, registry *domain.Registry, cache *CacheManager) *Server {
+// NewServer creates a new API server instance. A nil logger falls back to
+// slog.Default.
+func NewServer(repo domain.Repository, registry *domain.Registry, cache *CacheManager, logger *slog.Logger) *Server {
+	if logger == nil {
+		logger = slog.Default()
+	}
 	return &Server{
 		repo:     repo,
 		registry: registry,
 		cache:    cache,
+		logger:   logger,
+	}
+}
+
+// requestLogger is a chi middleware that emits one structured slog line per
+// request with method, path, status, size, and latency.
+func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+			start := time.Now()
+			defer func() {
+				logger.Info("http request",
+					"method", r.Method,
+					"path", r.URL.Path,
+					"status", ww.Status(),
+					"bytes", ww.BytesWritten(),
+					"duration_ms", time.Since(start).Milliseconds(),
+				)
+			}()
+			next.ServeHTTP(ww, r)
+		})
 	}
 }
 
@@ -37,7 +65,7 @@ func NewServer(repo domain.Repository, registry *domain.Registry, cache *CacheMa
 func (s *Server) Handler() http.Handler {
 	r := chi.NewRouter()
 
-	r.Use(middleware.Logger)
+	r.Use(requestLogger(s.logger))
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.AllowContentType("application/json"))
 

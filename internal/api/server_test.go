@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -16,6 +18,9 @@ import (
 	"github.com/azusachino/felicia/internal/api"
 	"github.com/azusachino/felicia/internal/domain"
 )
+
+// testLogger discards output so tests stay quiet.
+var testLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
 
 var _ domain.Repository = (*mockRepository)(nil)
 
@@ -167,7 +172,7 @@ func TestServerGetTemplates(t *testing.T) {
 	}
 
 	repo := newMockRepository()
-	srv := api.NewServer(repo, reg, api.NewCacheManager(""))
+	srv := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger)
 	handler := srv.Handler()
 
 	req := httptest.NewRequest("GET", "/api/admin/templates", nil)
@@ -195,7 +200,7 @@ func TestServerUpsertMementoValidation(t *testing.T) {
 	}
 
 	repo := newMockRepository()
-	srv := api.NewServer(repo, reg, api.NewCacheManager(""))
+	srv := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger)
 	handler := srv.Handler()
 
 	// 1. Submit invalid memento (missing required transit fields 'operator', 'from', 'to')

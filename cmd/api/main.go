@@ -3,8 +3,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"io/fs"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -17,15 +18,17 @@ import (
 )
 
 func main() {
-	if err := run(); err != nil {
-		log.Fatalf("server exited with error: %v", err)
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	if err := run(logger); err != nil {
+		logger.Error("server exited", "err", err)
+		os.Exit(1)
 	}
 }
 
-func run() error {
+func run(logger *slog.Logger) error {
 	dsn := os.Getenv("DATABASE_DSN")
 	if dsn == "" {
-		log.Fatal("DATABASE_DSN environment variable is required")
+		return errors.New("DATABASE_DSN environment variable is required")
 	}
 
 	port := os.Getenv("PORT")
@@ -47,7 +50,7 @@ func run() error {
 	if cacheAddr == "" {
 		cacheAddr = "localhost:6379"
 	}
-	cacheManager := api.NewCacheManager(cacheAddr)
+	cacheManager := api.NewCacheManager(cacheAddr, logger)
 
 	ctx := context.Background()
 
@@ -60,9 +63,9 @@ func run() error {
 
 	// 3. Create repository and server
 	repo := pg.NewRepository(pool)
-	server := api.NewServer(repo, registry, cacheManager)
+	server := api.NewServer(repo, registry, cacheManager, logger)
 
 	// 4. Start local admin web server
-	log.Printf("Starting felicia local admin server on http://localhost:%s", port)
+	logger.Info("starting admin server", "url", "http://localhost:"+port)
 	return http.ListenAndServe(":"+port, server.Handler())
 }

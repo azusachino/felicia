@@ -3,7 +3,7 @@ package api
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -11,20 +11,25 @@ import (
 
 // CacheManager manages cached stable public content using Valkey (Redis-compatible).
 type CacheManager struct {
-	rdb *redis.Client
+	rdb    *redis.Client
+	logger *slog.Logger
 }
 
 // NewCacheManager initializes a CacheManager. If addr is empty, caching is disabled.
-func NewCacheManager(addr string) *CacheManager {
+// A nil logger falls back to slog.Default.
+func NewCacheManager(addr string, logger *slog.Logger) *CacheManager {
+	if logger == nil {
+		logger = slog.Default()
+	}
 	if addr == "" {
-		log.Println("Cache address is empty. Caching is disabled.")
-		return &CacheManager{}
+		logger.Info("cache disabled: empty address")
+		return &CacheManager{logger: logger}
 	}
 	rdb := redis.NewClient(&redis.Options{
 		Addr: addr,
 	})
-	log.Printf("Valkey cache initialized on address: %s", addr)
-	return &CacheManager{rdb: rdb}
+	logger.Info("cache initialized", "addr", addr)
+	return &CacheManager{rdb: rdb, logger: logger}
 }
 
 // Get retrieves a string value from the cache.
@@ -48,17 +53,17 @@ func (c *CacheManager) InvalidateAll(ctx context.Context) {
 	if c.rdb == nil {
 		return
 	}
-	log.Println("Invalidating all public cached API endpoints...")
+	c.logger.Info("invalidating public cache")
 	keys, err := c.rdb.Keys(ctx, "felicia:public:*").Result()
 	if err != nil {
-		log.Printf("Error searching cache keys to invalidate: %v", err)
+		c.logger.Error("cache invalidate: list keys failed", "err", err)
 		return
 	}
 	if len(keys) > 0 {
 		if err := c.rdb.Del(ctx, keys...).Err(); err != nil {
-			log.Printf("Error deleting cache keys: %v", err)
+			c.logger.Error("cache invalidate: delete keys failed", "err", err)
 		} else {
-			log.Printf("Successfully invalidated %d cache keys.", len(keys))
+			c.logger.Info("cache invalidated", "keys", len(keys))
 		}
 	}
 }

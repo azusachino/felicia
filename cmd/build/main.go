@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -99,8 +99,11 @@ func buildTranslationMap(translations []*domain.Translation) translationMap {
 }
 
 func main() {
+	// The build tool writes files to the output dir, so logs go to stderr.
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, nil)))
 	if err := run(); err != nil {
-		log.Fatalf("Static site compilation failed: %v", err)
+		slog.Error("static site compilation failed", "err", err)
+		os.Exit(1)
 	}
 }
 
@@ -122,7 +125,7 @@ func run() error {
 
 	repo := pg.NewRepository(pool)
 
-	log.Printf("Starting static site compilation. Output dir: %s", *outDir)
+	slog.Info("starting static site compilation", "out_dir", *outDir)
 
 	// Create directories
 	apiDir := filepath.Join(*outDir, "api", "v1")
@@ -201,7 +204,7 @@ func run() error {
 			var kindData map[string]any
 			if len(m.KindData) > 0 {
 				if err := json.Unmarshal(m.KindData, &kindData); err != nil {
-					log.Printf("Warning: failed to parse kind_data for memento %s: %v", m.ID, err)
+					slog.Warn("failed to parse kind_data", "memento", m.ID, "err", err)
 				}
 			}
 
@@ -252,7 +255,7 @@ func run() error {
 		return fmt.Errorf("failed to write global journeys file: %w", err)
 	}
 
-	log.Printf("Static site compilation complete! Output written to %s", *outDir)
+	slog.Info("static site compilation complete", "out_dir", *outDir)
 	return nil
 }
 
