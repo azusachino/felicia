@@ -88,6 +88,7 @@ func (s *Server) Handler() http.Handler {
 		r.Get("/journeys/{id}", s.handleGetJourney)
 		r.Post("/journeys", s.handleUpsertJourney)
 		r.Post("/journeys/{id}/legs", s.handleCreateTransitLeg)
+		r.Post("/journeys/{id}/snap", s.handleSnapToRoute)
 		r.Get("/journeys/{id}/mementos", s.handleListMementos)
 		r.Get("/mementos/{id}", s.handleGetMemento)
 		r.Post("/mementos", s.handleUpsertMemento)
@@ -184,6 +185,42 @@ func parseCoordinate(coord []float64, name string) (orb.Point, error) {
 		return orb.Point{}, fmt.Errorf("%s has invalid longitude or latitude", name)
 	}
 	return orb.Point{lng, lat}, nil
+}
+
+type snapToRouteRequest struct {
+	Point []float64 `json:"point"`
+}
+
+// handleSnapToRoute projects a proposed memento coordinate onto the journey's
+// composed route (GPS track plus authored transit legs).
+func (s *Server) handleSnapToRoute(w http.ResponseWriter, r *http.Request) {
+	journeyID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid journey UUID")
+		return
+	}
+
+	var req snapToRouteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request JSON")
+		return
+	}
+	point, err := parseCoordinate(req.Point, "point")
+	if err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	snapped, err := s.repo.SnapToRoute(r.Context(), journeyID, point)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if snapped == nil {
+		respondError(w, http.StatusUnprocessableEntity, "journey has no route to snap to")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]any{"point": toGeoJSON(*snapped)})
 }
 
 // Templates endpoint

@@ -54,6 +54,7 @@ type mockRepository struct {
 	transitLegs  []*domain.TransitLeg
 	createdLeg   *domain.TransitLegInput
 	displayRoute orb.MultiLineString
+	snappedPoint *orb.Point
 }
 
 func newMockRepository() *mockRepository {
@@ -144,7 +145,7 @@ func (m *mockRepository) GetDisplayRoute(_ context.Context, _ uuid.UUID) (orb.Mu
 }
 
 func (m *mockRepository) SnapToRoute(_ context.Context, _ uuid.UUID, _ orb.Point) (*orb.Point, error) {
-	return nil, nil
+	return m.snappedPoint, nil
 }
 
 func (m *mockRepository) GetPhoto(_ context.Context, id uuid.UUID) (*domain.MementoPhoto, error) {
@@ -384,6 +385,54 @@ func TestServerCreateTransitLegRejectsInvalidCoordinates(t *testing.T) {
 	handler.ServeHTTP(w, req)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("expected 400 for invalid coordinates, got %d (%s)", w.Code, w.Body)
+	}
+}
+
+func TestServerSnapToRoute(t *testing.T) {
+	repo := newMockRepository()
+	snapped := orb.Point{139.7003, 35.6895}
+	repo.snappedPoint = &snapped
+	handler := api.NewServer(repo, nil, api.NewCacheManager("", testLogger), testLogger, nil).Handler()
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/journeys/"+uuid.NewString()+"/snap", bytes.NewBufferString(`{"point":[139.71,35.69]}`))
+	req.Header.Set("Content-Type", "application/json")
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", w.Code, w.Body)
+	}
+
+	var response struct {
+		Point struct {
+			Type        string    `json:"type"`
+			Coordinates []float64 `json:"coordinates"`
+		} `json:"point"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if response.Point.Type != "Point" || len(response.Point.Coordinates) != 2 || response.Point.Coordinates[0] != snapped.X() || response.Point.Coordinates[1] != snapped.Y() {
+		t.Errorf("unexpected snap response: %+v", response)
+	}
+}
+
+func TestServerSnapToRouteRejectsEmptyRouteAndInvalidPoint(t *testing.T) {
+	handler := api.NewServer(newMockRepository(), nil, api.NewCacheManager("", testLogger), testLogger, nil).Handler()
+
+	emptyRoute := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/journeys/"+uuid.NewString()+"/snap", bytes.NewBufferString(`{"point":[139.71,35.69]}`))
+	req.Header.Set("Content-Type", "application/json")
+	handler.ServeHTTP(emptyRoute, req)
+	if emptyRoute.Code != http.StatusUnprocessableEntity {
+		t.Errorf("expected 422 for an empty route, got %d (%s)", emptyRoute.Code, emptyRoute.Body)
+	}
+
+	invalidPoint := httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodPost, "/api/admin/journeys/"+uuid.NewString()+"/snap", bytes.NewBufferString(`{"point":[200,35.69]}`))
+	req.Header.Set("Content-Type", "application/json")
+	handler.ServeHTTP(invalidPoint, req)
+	if invalidPoint.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for invalid point, got %d (%s)", invalidPoint.Code, invalidPoint.Body)
 	}
 }
 
