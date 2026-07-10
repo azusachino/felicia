@@ -1,15 +1,9 @@
 <script lang="ts">
-  import {
-    journeys,
-    kindLabel,
-    type Coordinates,
-    type L,
-    type Lang,
-    type Memento,
-    type Theme,
-  } from '../data'
+  import { kindLabel, type Coordinates, type L, type Lang, type Memento, type Theme } from '../data'
   import { cityDots, project } from './cityLookup'
   import TripMap from './TripMap.svelte'
+  import { loadJourneys } from '../api/source'
+  import type { Journey } from '../data'
 
   // v3 — the "techo" (手帳, paper notebook) front door. View 1 (landing) is the
   // journal index — a two-page spread with a paper sketch map. View 2 (detail)
@@ -20,11 +14,32 @@
   let { lang = $bindable('ja'), theme = $bindable('dark') }: { lang?: Lang; theme?: Theme } =
     $props()
 
+  let journeys = $state<Journey[]>([])
+  let isLoading = $state(true)
+  let error = $state<string | null>(null)
   let selectedIndex = $state(0)
   let view = $state<'landing' | 'detail'>('landing')
   let selectedPlaceKey = $state<string | null>(null)
 
-  const selectedJourney = $derived(journeys[selectedIndex])
+  const selectedJourney = $derived(journeys[selectedIndex] ?? null)
+
+  function loadData() {
+    isLoading = true
+    error = null
+    loadJourneys()
+      .then((data) => {
+        journeys = data
+        isLoading = false
+      })
+      .catch((err) => {
+        error = err instanceof Error ? err.message : String(err)
+        isLoading = false
+      })
+  }
+
+  $effect(() => {
+    loadData()
+  })
 
   function t(value: L): string {
     return value[lang]
@@ -41,15 +56,16 @@
     mementos: Memento[]
   }
 
-  const placeGroups = $derived.by<PlaceGroup[]>(() =>
-    selectedJourney.visits.map((visit, index) => ({
+  const placeGroups = $derived.by<PlaceGroup[]>(() => {
+    if (!selectedJourney) return []
+    return selectedJourney.visits.map((visit, index) => ({
       key: visit.id,
       label: visit.label,
       coords: visit.coords,
       seq: index + 1,
       mementos: selectedJourney.mementos.filter((memento) => memento.visitId === visit.id),
-    })),
-  )
+    }))
+  })
 
   const mapPlaces = $derived(
     placeGroups.map((group) => ({
@@ -64,14 +80,15 @@
     placeGroups.find((group) => group.key === selectedPlaceKey) ?? null,
   )
 
-  const transitPairs = $derived(
-    selectedJourney.mementos
+  const transitPairs = $derived.by(() => {
+    if (!selectedJourney) return []
+    return selectedJourney.mementos
       .filter((memento) => memento.transit)
       .map(
         (memento) =>
           [memento.transit!.from.coords, memento.transit!.to.coords] as [Coordinates, Coordinates],
-      ),
-  )
+      )
+  })
 
   function selectJourney(index: number) {
     selectedIndex = index
@@ -114,6 +131,7 @@
   })
 
   const activeYear = $derived.by(() => {
+    if (!selectedJourney) return years[0] ?? '2026'
     const match = selectedJourney.dates.ja.match(/(\d{4})年/)
     return match ? match[1] : years[0]
   })
@@ -138,7 +156,9 @@
   }
 
   // Landing sketch map: dim every journey's city dots, brighten the selected.
-  const journeyCityDots = $derived(cityDots.filter((dot) => dot.journeyId === selectedJourney.id))
+  const journeyCityDots = $derived(
+    selectedJourney ? cityDots.filter((dot) => dot.journeyId === selectedJourney.id) : [],
+  )
   const routePoints = $derived(journeyCityDots.map((dot) => project(dot.coords)))
   const routePath = $derived(routePoints.map((p) => `${p.x},${p.y}`).join(' '))
 
@@ -176,78 +196,161 @@
     <!-- View 1: the journal index — sketch map on the left, journey cards on the right. -->
     <div class="techo-frame">
       <div class="techo-spread">
-        <section class="techo-page techo-page--map" aria-label="Journey map">
-          <div class="map-grid">
-            <svg
-              class="map-svg"
-              viewBox="0 0 100 100"
-              preserveAspectRatio="none"
-              aria-hidden="true"
-            >
-              {#if routePoints.length > 1}
-                <polyline class="map-route" points={routePath} />
-              {/if}
-            </svg>
-            {#each cityDots as dot (dot.id)}
-              {@const p = project(dot.coords)}
-              {@const active = dot.journeyId === selectedJourney.id}
-              <div class="map-dot" class:active style="left:{p.x}%; top:{p.y}%">
-                <span class="map-dot-mark"></span>
-                <span class="map-dot-label">{dot.label}</span>
+        {#if isLoading}
+          <!-- Map page skeleton -->
+          <section class="techo-page techo-page--map" aria-label="Journey map loading">
+            <div class="map-grid skeleton-pulse"></div>
+            <p
+              class="map-caption skeleton-pulse"
+              style="width: 70%; height: 0.8rem; border-radius: 0.2rem; background: var(--paper-3);"
+            ></p>
+          </section>
+
+          <!-- Index page skeleton -->
+          <section class="techo-page techo-page--index" aria-label="Journal index loading">
+            <header class="index-header">
+              <div>
+                <p
+                  class="brand-mark skeleton-pulse"
+                  style="width: 6rem; height: 1.1rem; border-radius: 0.2rem; background: var(--paper-2);"
+                ></p>
+                <p
+                  class="brand-tagline skeleton-pulse"
+                  style="width: 8rem; height: 0.9rem; border-radius: 0.2rem; background: var(--paper-2); margin-top: 0.5rem;"
+                ></p>
               </div>
-            {/each}
-          </div>
-          <p class="map-caption">{t(mapCaption)}</p>
-        </section>
+              <p
+                class="season-caption skeleton-pulse"
+                style="width: 5rem; height: 0.8rem; border-radius: 0.2rem; background: var(--paper-2);"
+              ></p>
+            </header>
 
-        <section class="techo-page techo-page--index" aria-label="Journal index">
-          <header class="index-header">
-            <div>
-              <p class="brand-mark">F E L I C I A</p>
-              <p class="brand-tagline">{t(brandTagline)}</p>
+            <div class="year-row" style="margin-top: 2rem;">
+              <div
+                class="skeleton-pulse"
+                style="width: 5rem; height: 2.4rem; border-radius: 0.2rem; background: var(--paper-2);"
+              ></div>
+              <div
+                class="skeleton-pulse"
+                style="width: 4rem; height: 0.8rem; border-radius: 0.2rem; background: var(--paper-2);"
+              ></div>
             </div>
-            <p class="season-caption">{t(seasonCaption)}</p>
-          </header>
 
-          <div class="year-row">
-            <h1 class="year-heading">{activeYear}</h1>
-            <p class="year-count">{journeyCountLabel}</p>
-          </div>
-
-          <ol class="journey-cards">
-            {#each journeys as journey, index (journey.id)}
-              <li>
-                <button
-                  type="button"
-                  class="journey-card"
-                  class:selected={index === selectedIndex}
-                  onclick={() => selectJourney(index)}
-                >
-                  <span
-                    class="washi-tape"
-                    style="background:{washiColors[
-                      index % washiColors.length
-                    ]}; transform: translate(-50%, -55%) rotate({washiRotations[
-                      index % washiRotations.length
-                    ]}deg)"
-                  ></span>
-                  {#if index === selectedIndex}
-                    <span class="selected-badge">{t(selectedBadge)}</span>
-                  {/if}
-                  <h2 class="card-title">{t(journey.title)}</h2>
-                  <p class="card-dates">{t(journey.dates)}</p>
+            <div
+              class="journey-cards"
+              style="margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.9rem;"
+            >
+              {#each [0, 1] as i (i)}
+                <div class="skeleton-card">
+                  <div
+                    class="skeleton-line skeleton-line--title skeleton-pulse"
+                    style="margin-top: 0.5rem;"
+                  ></div>
+                  <div class="skeleton-line skeleton-line--date skeleton-pulse"></div>
                   <div class="card-divider"></div>
-                  <div class="card-footer">
-                    <span class="card-place">{t(journey.place)}</span>
-                    <span class="card-count">{mementoCountLabel(journey.mementos.length)}</span>
-                  </div>
-                </button>
-              </li>
-            {/each}
-          </ol>
+                  <div class="skeleton-line skeleton-line--place skeleton-pulse"></div>
+                </div>
+              {/each}
+            </div>
+          </section>
+        {:else if error}
+          <section class="techo-page techo-page--map" aria-label="Journey map error">
+            <div class="map-grid" style="opacity: 0.4;"></div>
+          </section>
+          <section class="techo-page techo-page--index" aria-label="Journal index error">
+            <div class="error-container">
+              <h2 class="error-title">読み込みエラー / Loading Error</h2>
+              <p class="error-text">{error}</p>
+              <button type="button" class="retry-button" onclick={loadData}>再試行 / Retry</button>
+            </div>
+          </section>
+        {:else if journeys.length === 0}
+          <section class="techo-page techo-page--map" aria-label="Journey map empty">
+            <div class="map-grid" style="opacity: 0.4;"></div>
+          </section>
+          <section class="techo-page techo-page--index" aria-label="Journal index empty">
+            <div class="empty-container">
+              <h2 class="error-title">旅の記録がありません</h2>
+              <p class="empty-text">
+                現在、この手帳には記録された旅がありません。<br />There are no journeys recorded in
+                this journal.
+              </p>
+            </div>
+          </section>
+        {:else}
+          <section class="techo-page techo-page--map" aria-label="Journey map">
+            <div class="map-grid">
+              <svg
+                class="map-svg"
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+                aria-hidden="true"
+              >
+                {#if routePoints.length > 1}
+                  <polyline class="map-route" points={routePath} />
+                {/if}
+              </svg>
+              {#each cityDots as dot (dot.id)}
+                {@const p = project(dot.coords)}
+                {@const active = selectedJourney && dot.journeyId === selectedJourney.id}
+                <div class="map-dot" class:active style="left:{p.x}%; top:{p.y}%">
+                  <span class="map-dot-mark"></span>
+                  <span class="map-dot-label">{dot.label}</span>
+                </div>
+              {/each}
+            </div>
+            <p class="map-caption">{t(mapCaption)}</p>
+          </section>
 
-          <button type="button" class="open-cta" onclick={openJourney}>{t(openCta)}</button>
-        </section>
+          <section class="techo-page techo-page--index" aria-label="Journal index">
+            <header class="index-header">
+              <div>
+                <p class="brand-mark">F E L I C I A</p>
+                <p class="brand-tagline">{t(brandTagline)}</p>
+              </div>
+              <p class="season-caption">{t(seasonCaption)}</p>
+            </header>
+
+            <div class="year-row">
+              <h1 class="year-heading">{activeYear}</h1>
+              <p class="year-count">{journeyCountLabel}</p>
+            </div>
+
+            <ol class="journey-cards">
+              {#each journeys as journey, index (journey.id)}
+                <li>
+                  <button
+                    type="button"
+                    class="journey-card"
+                    class:selected={index === selectedIndex}
+                    onclick={() => selectJourney(index)}
+                  >
+                    <span
+                      class="washi-tape"
+                      style="background:{washiColors[
+                        index % washiColors.length
+                      ]}; transform: translate(-50%, -55%) rotate({washiRotations[
+                        index % washiRotations.length
+                      ]}deg)"
+                    ></span>
+                    {#if index === selectedIndex}
+                      <span class="selected-badge">{t(selectedBadge)}</span>
+                    {/if}
+                    <h2 class="card-title">{t(journey.title)}</h2>
+                    <p class="card-dates">{t(journey.dates)}</p>
+                    <div class="card-divider"></div>
+                    <div class="card-footer">
+                      <span class="card-place">{t(journey.place)}</span>
+                      <span class="card-count">{mementoCountLabel(journey.mementos.length)}</span>
+                    </div>
+                  </button>
+                </li>
+              {/each}
+            </ol>
+
+            <button type="button" class="open-cta" onclick={openJourney}>{t(openCta)}</button>
+          </section>
+        {/if}
 
         <nav class="year-tabs" aria-label="Years">
           {#each years as year (year)}
@@ -686,5 +789,101 @@
     .year-tabs {
       display: none;
     }
+  }
+
+  /* --- Skeletons, Errors, Empty States --- */
+
+  .skeleton-pulse {
+    animation: skeleton-loading 1.5s infinite ease-in-out;
+  }
+
+  @keyframes skeleton-loading {
+    0% {
+      background-color: var(--paper-2);
+      opacity: 0.6;
+    }
+    50% {
+      background-color: var(--paper-3);
+      opacity: 0.95;
+    }
+    100% {
+      background-color: var(--paper-2);
+      opacity: 0.6;
+    }
+  }
+
+  .skeleton-line {
+    height: 1rem;
+    border-radius: 0.2rem;
+    background-color: var(--paper-2);
+    margin-bottom: 0.5rem;
+  }
+
+  .skeleton-line--title {
+    width: 60%;
+    height: 1.4rem;
+  }
+
+  .skeleton-line--date {
+    width: 40%;
+  }
+
+  .skeleton-line--place {
+    width: 30%;
+  }
+
+  .skeleton-card {
+    background: var(--paper-0);
+    border: 1px solid var(--hairline);
+    border-radius: 0.35rem;
+    padding: 1.6rem 1.25rem 0.9rem;
+    box-shadow: 0 0.3rem 0.6rem rgba(58, 47, 28, 0.04);
+    pointer-events: none;
+  }
+
+  .error-container,
+  .empty-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    height: 100%;
+    min-height: 26rem;
+    padding: 2rem;
+  }
+
+  .error-title {
+    font-family: 'Zen Old Mincho', serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--terracotta);
+    margin: 0 0 1rem;
+  }
+
+  .error-text,
+  .empty-text {
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+    margin: 0 0 1.5rem;
+    line-height: 1.6;
+  }
+
+  .retry-button {
+    padding: 0.6rem 1.5rem;
+    border: 1px solid var(--terracotta);
+    border-radius: 0.25rem;
+    background: transparent;
+    color: var(--terracotta);
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .retry-button:hover {
+    background: var(--terracotta);
+    color: #fdf6ec;
   }
 </style>
