@@ -26,7 +26,7 @@ CREATE TABLE translations (
 ```
 
 #### The Translatable Path Merge Challenge
-For simple fields like `title` or `essay`, the merge is direct. For JSONB columns like `kind_data` (e.g. transit's `{ "operator": "JR East", "line": "Yamanote Line" }`), the merge requires traversing paths:
+For simple fields like `title`, the merge is direct. User-authored essays (like `essay` and photo captions) are **not** translated and remain solely in the primary Japanese language. For JSONB columns like `kind_data` (e.g. transit's `{ "operator": "JR East", "line": "Yamanote Line" }`), the merge requires traversing paths:
 - If a translation exists for `owner_type='memento'`, `field='kind_data.operator'`, the backend must replace/insert this translated string into the `kind_data` JSON payload before serving the API.
 - **Go Implementation Rule:** The API handler utilizes a JSON path-traversal resolver to dynamically patch the serialized `kind_data` map with translated values before encoding the response.
 
@@ -36,6 +36,7 @@ Point mementos snap to the nearest **Dawarich visit**. But if a photo is taken a
 - **Refinement:** Snapping uses a double-gated threshold:
   1. **Temporal Match:** If the photo's timestamp falls within the `[arrive, depart]` window of a visit, snap to that visit.
   2. **Spatial fallback:** If no visit overlaps temporally, find the nearest visit within a $500\text{m}$ radius. If no visit is found, fallback to the photo's raw EXIF coordinates and label the place as a standalone coord (e.g. `"Coords: Lat, Lng"`), treating it as a transient visit.
+  3. **Coords-Less Timezone Fallback:** If a photo has no EXIF coordinates and no matching visit, its timezone (`occurred_tz`) falls back to the default timezone defined at the Journey level (e.g. `Asia/Tokyo`).
 
 ### C. Geometry SRID
 All spatial data operates strictly on **SRID 4326** (WGS 84), handled via PostGIS geometry columns:
@@ -164,14 +165,14 @@ If a kind template definition (e.g. `transit.yaml`) changes over time:
 - Saved mementos record `kind_version` in their schema.
 - If a schema mismatch is detected during load, the Go backend applies dynamic resolvers or triggers a database migration to reconcile the `kind_data` JSONB structure.
 
-### C. Single-User Local-First & Static-Site Generation (SSG) Model
-To align with the developer-oriented **data-driven static site** paradigm (similar to `yihong0618/running_page`), `felicia` can operate as a local-first compiler that generates a zero-cost, 100% static public site.
+### C. PostgreSQL 18 & Static-Site Generation (SSG) Model
+To support a single-user publishing model (similar to `yihong0618/running_page`), `felicia` operates as a compiler that reads from our primary **PostgreSQL 18 + PostGIS** database to generate a zero-cost, 100% static public website.
 
 ```
 +------------------+                   +--------------------+                   +----------------------+
-| Local Authoring  |                   |   Local SQLite DB  |                   |   Static Site Build  |
-| (Go localhost    | ==[Writes to]==>  | (CGO-free, Go orb  | ==[Compiles to]==> | (Static JSONs +      |
-|  admin interface)|                   |  geometry checks)  |                   |  EXIF-stripped media)|
+| Local Authoring  |                   |   Primary PG18     |                   |   Static Site Build  |
+| (Go localhost    | ==[Writes to]==>  |   Database         | ==[Compiles to]==> | (Static JSONs +      |
+|  admin interface)|                   | (PostGIS checks)   |                   |  EXIF-stripped media)|
 +------------------+                   +--------------------+                   +----------------------+
                                                                                            ||
                                                                                    [Deploys for free to]
@@ -183,16 +184,16 @@ To align with the developer-oriented **data-driven static site** paradigm (simil
                                                                                 +----------------------+
 ```
 
-1. **Local-First SQLite Engine:**
-   * Instead of requiring a running PostgreSQL/PostGIS server, the single-user mode leverages **SQLite** (using a pure-Go, CGO-free driver such as `ncruces/go-sqlite3`).
-   * Geometry processing (such as Douglas–Peucker simplification and spatial snapping to visits) is computed in Go memory via the `paulmach/orb` library, writing standard WKB blobs to SQLite and eliminating system-level SpatiaLite dependencies.
+1. **Database Engine (PostgreSQL 18 + PostGIS):**
+   * PostgreSQL 18 + PostGIS is the sole storage and spatial engine.
+   * All spatial operations (such as Douglas–Peucker simplification and spatial snapping to visits) are computed directly in the database layer.
 
 2. **Local Admin UI (`localhost`):**
    * The user runs a command (`felicia admin`) locally to start a lightweight web server on their machine.
-   * They use the admin UI (`web/admin`) locally to edit essays, structure transit legs, and arrange photos.
+   * They use the admin UI (`web/admin`) locally to edit essays, structure transit legs, and arrange photos, with edits stored in the configured PostgreSQL 18 database.
 
 3. **Static Build Output (`felicia build`):**
-   * The compiler queries the local SQLite file and outputs the entire public website into a static directory:
+   * The compiler queries the PostgreSQL 18 database and outputs the entire public website into a static directory:
      * Generates static JSON files representing the API tree (e.g., `/api/v1/journeys.json`, `/api/v1/journeys/<slug>.json`, `/api/v1/mementos.json`). The frontend fetches these static paths directly.
      * Moves resized and EXIF-stripped image derivatives to `images/<content_hash>.jpg`.
      * Emits the Svelte SPA production bundle.

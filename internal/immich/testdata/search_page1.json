@@ -1,0 +1,27 @@
+{
+  "assets": {
+    "total": 2,
+    "count": 1,
+    "items": [
+      {
+        "id": "asset-1",
+        "checksum": "abc123",
+        "type": "IMAGE",
+        "fileCreatedAt": "2026-03-20T09:05:00.000Z",
+        "localDateTime": "2026-03-20T18:05:00.000Z",
+        "visibility": "timeline",
+        "exifInfo": {
+          "latitude": 35.6764,
+          "longitude": 139.6993,
+          "dateTimeOriginal": "2026-03-20T09:05:00.000Z",
+          "city": "Shibuya",
+          "country": "Japan",
+          "make": "Apple",
+          "model": "iPhone 15",
+          "timeZone": "Asia/Tokyo"
+        }
+      }
+    ],
+    "nextPage": "2"
+  }
+}

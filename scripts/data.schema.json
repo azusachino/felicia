@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["journal_id", "journeys"],
+  "properties": {
+    "journal_id": { "type": "string", "format": "uuid" },
+    "journeys": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["id", "slug", "title", "place", "country", "date_start", "date_end", "gps_route", "mementos"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "slug": { "type": "string", "minLength": 1 },
+          "title": { "type": "string" },
+          "place": { "type": "string" },
+          "country": { "type": "string", "minLength": 3, "maxLength": 3 },
+          "region": { "type": "string" },
+          "route_file": { "type": "string", "pattern": "^tracks/.+\\.gpx$" },
+          "date_start": { "type": "string", "format": "date" },
+          "date_end": { "type": "string", "format": "date" },
+          "gps_route": { "type": "array", "minItems": 1 },
+          "mementos": {
+            "type": "array",
+            "minItems": 5,
+            "items": { "$ref": "#/$defs/memento" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "memento": {
+      "type": "object",
+      "required": ["id", "kind", "seq", "occurred_at", "place", "title", "geom", "kind_data"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "kind": { "enum": ["transit", "live", "goods", "receipt", "stamp"] },
+        "seq": { "type": "integer", "minimum": 1 },
+        "occurred_at": { "type": "string", "format": "date-time" },
+        "place": { "type": "string" },
+        "title": { "type": "string" },
+        "geom": { "type": "array", "minItems": 2, "maxItems": 2 },
+        "kind_data": { "type": "object" },
+        "photos": { "type": "array" }
+      }
+    }
+  }
+}

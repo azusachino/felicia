@@ -1,0 +1,9 @@
+kind: live
+anchor: point
+stub: live
+fields:
+  - { name: artist, type: text, required: true, translatable: true }
+  - { name: venue, type: venue, required: true }
+  - { name: date, type: datetime, required: true }
+  - { name: seat, type: text, required: false }
+  - { name: setlist_url, type: url, required: false }

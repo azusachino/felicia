@@ -6,10 +6,16 @@ import { svelte } from '@sveltejs/vite-plugin-svelte'
 export default defineConfig({
   plugins: [svelte(), tailwindcss()],
   build: {
-    chunkSizeWarningLimit: 2200
+    chunkSizeWarningLimit: 2200,
   },
   server: {
     host: '0.0.0.0',
-    allowedHosts: ['harus-mini']
-  }
+    allowedHosts: ['harus-mini'],
+    proxy: {
+      '/api/v1': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+    },
+  },
 })

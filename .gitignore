@@ -13,6 +13,7 @@ coverage.*
 
 # Local data / object-store scratch
 /tmp/
+/design/
 *.sqlite
 *.sqlite-journal
 
@@ -31,4 +32,3 @@ coverage.*
 
 # Asobi project-local database
 /.asobi/
-

@@ -25,6 +25,7 @@
             postgresql_16
             postgresqlPackages.postgis
             gnumake
+            sqlc
           ];
         };
       });

@@ -1,0 +1,7 @@
+kind: receipt
+anchor: point
+stub: receipt
+fields:
+  - { name: shop, type: text, required: true, translatable: true }
+  - { name: total, type: money, required: true }
+  - { name: items, type: text, required: false }

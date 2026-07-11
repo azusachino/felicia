@@ -1,0 +1,23 @@
+{
+  "assets": {
+    "total": 2,
+    "count": 1,
+    "items": [
+      {
+        "id": "asset-2",
+        "checksum": "def456",
+        "type": "IMAGE",
+        "fileCreatedAt": "2026-03-20T12:00:00.000Z",
+        "localDateTime": "2026-03-20T21:00:00.000Z",
+        "visibility": "timeline",
+        "exifInfo": {
+          "latitude": null,
+          "longitude": null,
+          "dateTimeOriginal": null,
+          "timeZone": null
+        }
+      }
+    ],
+    "nextPage": null
+  }
+}

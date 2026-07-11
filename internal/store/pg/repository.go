@@ -1,0 +1,541 @@
+// Package pg implements the PostgreSQL 18 database store repository.
+package pg
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/paulmach/orb"
+	"github.com/paulmach/orb/encoding/wkb"
+
+	"github.com/azusachino/felicia/internal/domain"
+	"github.com/azusachino/felicia/internal/store/pg/db"
+)
+
+// Compile-time check that pgRepository satisfies the domain contract.
+var _ domain.Repository = (*pgRepository)(nil)
+
+type pgRepository struct {
+	q *db.Queries
+}
+
+// NewRepository creates a new domain.Repository implementation backed by Postgres.
+func NewRepository(d db.DBTX) domain.Repository {
+	return &pgRepository{
+		q: db.New(d),
+	}
+}
+
+// Journal operations
+
+func (r *pgRepository) GetJournal(ctx context.Context, id uuid.UUID) (*domain.Journal, error) {
+	row, err := r.q.GetJournal(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get journal %s: %w", id, err)
+	}
+	return &domain.Journal{
+		ID:        row.ID,
+		CreatedAt: fromTimestamptz(row.CreatedAt),
+	}, nil
+}
+
+func (r *pgRepository) CreateJournal(ctx context.Context, journal *domain.Journal) error {
+	if err := r.q.CreateJournal(ctx, db.CreateJournalParams{
+		ID:        journal.ID,
+		CreatedAt: toTimestamptz(journal.CreatedAt),
+	}); err != nil {
+		return fmt.Errorf("create journal %s: %w", journal.ID, err)
+	}
+	return nil
+}
+
+func (r *pgRepository) ResetMockJournal(ctx context.Context, id uuid.UUID) error {
+	if err := r.q.ResetMockJournal(ctx, id); err != nil {
+		return fmt.Errorf("reset mock journal %s: %w", id, err)
+	}
+	return nil
+}
+
+// Journey operations
+
+func (r *pgRepository) GetJourney(ctx context.Context, id uuid.UUID) (*domain.Journey, error) {
+	row, err := r.q.GetJourney(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get journey %s: %w", id, err)
+	}
+	return toDomainJourney(row.ID, row.JournalID, row.Slug, row.SourceRef, row.Title, row.Place, row.Country, row.Region, row.DateStart, row.DateEnd, row.GpsRouteWkb, row.AuthoredFields, row.CreatedAt, row.UpdatedAt)
+}
+
+func (r *pgRepository) GetJourneyBySlug(ctx context.Context, slug string) (*domain.Journey, error) {
+	row, err := r.q.GetJourneyBySlug(ctx, slug)
+	if err != nil {
+		return nil, fmt.Errorf("get journey by slug %q: %w", slug, err)
+	}
+	return toDomainJourney(row.ID, row.JournalID, row.Slug, row.SourceRef, row.Title, row.Place, row.Country, row.Region, row.DateStart, row.DateEnd, row.GpsRouteWkb, row.AuthoredFields, row.CreatedAt, row.UpdatedAt)
+}
+
+func (r *pgRepository) ListJourneys(ctx context.Context) ([]*domain.Journey, error) {
+	rows, err := r.q.ListJourneys(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list journeys: %w", err)
+	}
+	var res []*domain.Journey
+	for _, row := range rows {
+		j, err := toDomainJourney(row.ID, row.JournalID, row.Slug, row.SourceRef, row.Title, row.Place, row.Country, row.Region, row.DateStart, row.DateEnd, row.GpsRouteWkb, row.AuthoredFields, row.CreatedAt, row.UpdatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("list journeys: decode %s: %w", row.ID, err)
+		}
+		res = append(res, j)
+	}
+	return res, nil
+}
+
+func (r *pgRepository) UpsertJourney(ctx context.Context, journey *domain.Journey) error {
+	var gpsRouteBytes []byte
+	var err error
+	if len(journey.GPSRoute) > 0 {
+		gpsRouteBytes, err = wkb.Marshal(journey.GPSRoute)
+		if err != nil {
+			return fmt.Errorf("upsert journey %s: marshal gps route: %w", journey.ID, err)
+		}
+	}
+
+	if err := r.q.UpsertJourney(ctx, db.UpsertJourneyParams{
+		ID:             journey.ID,
+		JournalID:      journey.JournalID,
+		Slug:           journey.Slug,
+		SourceRef:      toText(journey.SourceRef),
+		Title:          journey.Title,
+		Place:          journey.Place,
+		Country:        toText(journey.Country),
+		Region:         toText(journey.Region),
+		DateStart:      toDate(journey.DateStart),
+		DateEnd:        toDate(journey.DateEnd),
+		StGeomfromwkb:  gpsRouteBytes,
+		AuthoredFields: journey.AuthoredFields,
+	}); err != nil {
+		return fmt.Errorf("upsert journey %s: %w", journey.ID, err)
+	}
+	return nil
+}
+
+// Memento operations
+
+func (r *pgRepository) GetMemento(ctx context.Context, id uuid.UUID) (*domain.Memento, error) {
+	row, err := r.q.GetMemento(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get memento %s: %w", id, err)
+	}
+	return toDomainMemento(row.ID, row.JourneyID, row.Kind, row.Seq, row.OccurredAt, row.OccurredTz, row.GeomWkb, row.Title, row.Place, row.Vendor, row.Essay, row.PriceAmount, row.PriceCurrency, row.KindData, row.SourceRef, row.AuthoredFields, row.OrphanedAt, row.CreatedAt, row.UpdatedAt)
+}
+
+func (r *pgRepository) ListMementosByJourney(ctx context.Context, journeyID uuid.UUID) ([]*domain.Memento, error) {
+	rows, err := r.q.ListMementosByJourney(ctx, journeyID)
+	if err != nil {
+		return nil, fmt.Errorf("list mementos for journey %s: %w", journeyID, err)
+	}
+	var res []*domain.Memento
+	for _, row := range rows {
+		m, err := toDomainMemento(row.ID, row.JourneyID, row.Kind, row.Seq, row.OccurredAt, row.OccurredTz, row.GeomWkb, row.Title, row.Place, row.Vendor, row.Essay, row.PriceAmount, row.PriceCurrency, row.KindData, row.SourceRef, row.AuthoredFields, row.OrphanedAt, row.CreatedAt, row.UpdatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("list mementos for journey %s: decode %s: %w", journeyID, row.ID, err)
+		}
+		res = append(res, m)
+	}
+	return res, nil
+}
+
+func (r *pgRepository) UpsertMemento(ctx context.Context, memento *domain.Memento) error {
+	var geomBytes []byte
+	var err error
+	if memento.Geom != nil {
+		geomBytes, err = wkb.Marshal(memento.Geom)
+		if err != nil {
+			return fmt.Errorf("upsert memento %s: marshal geom: %w", memento.ID, err)
+		}
+	}
+
+	if err := r.q.UpsertMemento(ctx, db.UpsertMementoParams{
+		ID:             memento.ID,
+		JourneyID:      memento.JourneyID,
+		Kind:           memento.Kind,
+		Seq:            int32(memento.Seq),
+		OccurredAt:     toTimestamptz(memento.OccurredAt),
+		OccurredTz:     memento.OccurredTZ,
+		StGeomfromwkb:  geomBytes,
+		Title:          memento.Title,
+		Place:          memento.Place,
+		Vendor:         toText(memento.Vendor),
+		Essay:          toText(memento.Essay),
+		PriceAmount:    toInt8(memento.PriceAmount),
+		PriceCurrency:  toText(memento.PriceCurrency),
+		KindData:       memento.KindData,
+		SourceRef:      toText(memento.SourceRef),
+		AuthoredFields: memento.AuthoredFields,
+		OrphanedAt:     toTimestamptzPtr(memento.OrphanedAt),
+	}); err != nil {
+		return fmt.Errorf("upsert memento %s: %w", memento.ID, err)
+	}
+	return nil
+}
+
+// TransitLeg operations
+
+func (r *pgRepository) CreateTransitLeg(ctx context.Context, leg *domain.TransitLegInput) error {
+	if err := r.q.CreateTransitLeg(ctx, db.CreateTransitLegParams{
+		ID:             leg.ID,
+		JourneyID:      leg.JourneyID,
+		Seq:            int32(leg.Seq),
+		OriginLabel:    toText(leg.OriginLabel),
+		DestLabel:      toText(leg.DestLabel),
+		OriginLng:      leg.Origin.X(),
+		OriginLat:      leg.Origin.Y(),
+		DestLng:        leg.Dest.X(),
+		DestLat:        leg.Dest.Y(),
+		SegmentLengthM: leg.SegmentLenM,
+	}); err != nil {
+		return fmt.Errorf("create transit leg for journey %s: %w", leg.JourneyID, err)
+	}
+	return nil
+}
+
+func (r *pgRepository) ListTransitLegsByJourney(ctx context.Context, journeyID uuid.UUID) ([]*domain.TransitLeg, error) {
+	rows, err := r.q.ListTransitLegsByJourney(ctx, journeyID)
+	if err != nil {
+		return nil, fmt.Errorf("list transit legs for journey %s: %w", journeyID, err)
+	}
+	var res []*domain.TransitLeg
+	for _, row := range rows {
+		geom, err := wkbToGeom(row.GeomWkb)
+		if err != nil {
+			return nil, fmt.Errorf("list transit legs for journey %s: decode %s: %w", journeyID, row.ID, err)
+		}
+		ls, ok := geom.(orb.LineString)
+		if !ok {
+			return nil, fmt.Errorf("transit leg %s: expected LineString geom, got %T", row.ID, geom)
+		}
+		res = append(res, &domain.TransitLeg{
+			ID:          row.ID,
+			JourneyID:   row.JourneyID,
+			Seq:         int(row.Seq),
+			OriginLabel: fromText(row.OriginLabel),
+			DestLabel:   fromText(row.DestLabel),
+			Geom:        ls,
+			CreatedAt:   fromTimestamptz(row.CreatedAt),
+		})
+	}
+	return res, nil
+}
+
+func (r *pgRepository) DeleteTransitLeg(ctx context.Context, id uuid.UUID) error {
+	if err := r.q.DeleteTransitLeg(ctx, id); err != nil {
+		return fmt.Errorf("delete transit leg %s: %w", id, err)
+	}
+	return nil
+}
+
+func (r *pgRepository) GetDisplayRoute(ctx context.Context, journeyID uuid.UUID) (orb.MultiLineString, error) {
+	raw, err := r.q.GetDisplayRoute(ctx, journeyID)
+	if err != nil {
+		return nil, fmt.Errorf("get display route for journey %s: %w", journeyID, err)
+	}
+	geom, err := wkbToGeom(raw)
+	if err != nil {
+		return nil, fmt.Errorf("get display route for journey %s: decode: %w", journeyID, err)
+	}
+	if geom == nil {
+		return nil, nil // journey has neither a track nor legs
+	}
+	mls, ok := geom.(orb.MultiLineString)
+	if !ok {
+		return nil, fmt.Errorf("display route for journey %s: expected MultiLineString, got %T", journeyID, geom)
+	}
+	return mls, nil
+}
+
+func (r *pgRepository) SnapToRoute(ctx context.Context, journeyID uuid.UUID, pt orb.Point) (*orb.Point, error) {
+	raw, err := r.q.SnapToRoute(ctx, db.SnapToRouteParams{
+		JourneyID: journeyID,
+		Lng:       pt.X(),
+		Lat:       pt.Y(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("snap to route for journey %s: %w", journeyID, err)
+	}
+	geom, err := wkbToGeom(raw)
+	if err != nil {
+		return nil, fmt.Errorf("snap to route for journey %s: decode: %w", journeyID, err)
+	}
+	if geom == nil {
+		return nil, nil // empty route: nothing to snap to
+	}
+	p, ok := geom.(orb.Point)
+	if !ok {
+		return nil, fmt.Errorf("snap for journey %s: expected Point, got %T", journeyID, geom)
+	}
+	return &p, nil
+}
+
+// Photo operations
+
+func (r *pgRepository) GetPhoto(ctx context.Context, id uuid.UUID) (*domain.MementoPhoto, error) {
+	row, err := r.q.GetPhoto(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get photo %s: %w", id, err)
+	}
+	return &domain.MementoPhoto{
+		ID:          row.ID,
+		MementoID:   row.MementoID,
+		ObjectKey:   row.ObjectKey,
+		ContentHash: row.ContentHash,
+		Caption:     fromText(row.Caption),
+		Seq:         int(row.Seq),
+		TakenAt:     fromTimestamptzPtr(row.TakenAt),
+		SourceRef:   fromText(row.SourceRef),
+		CreatedAt:   fromTimestamptz(row.CreatedAt),
+	}, nil
+}
+
+func (r *pgRepository) ListPhotosByMemento(ctx context.Context, mementoID uuid.UUID) ([]*domain.MementoPhoto, error) {
+	rows, err := r.q.ListPhotosByMemento(ctx, mementoID)
+	if err != nil {
+		return nil, fmt.Errorf("list photos for memento %s: %w", mementoID, err)
+	}
+	var res []*domain.MementoPhoto
+	for _, row := range rows {
+		res = append(res, &domain.MementoPhoto{
+			ID:          row.ID,
+			MementoID:   row.MementoID,
+			ObjectKey:   row.ObjectKey,
+			ContentHash: row.ContentHash,
+			Caption:     fromText(row.Caption),
+			Seq:         int(row.Seq),
+			TakenAt:     fromTimestamptzPtr(row.TakenAt),
+			SourceRef:   fromText(row.SourceRef),
+			CreatedAt:   fromTimestamptz(row.CreatedAt),
+		})
+	}
+	return res, nil
+}
+
+func (r *pgRepository) UpsertPhoto(ctx context.Context, photo *domain.MementoPhoto) error {
+	if err := r.q.UpsertPhoto(ctx, db.UpsertPhotoParams{
+		ID:          photo.ID,
+		MementoID:   photo.MementoID,
+		ObjectKey:   photo.ObjectKey,
+		ContentHash: photo.ContentHash,
+		Caption:     toText(photo.Caption),
+		Seq:         int32(photo.Seq),
+		TakenAt:     toTimestamptzPtr(photo.TakenAt),
+		SourceRef:   toText(photo.SourceRef),
+	}); err != nil {
+		return fmt.Errorf("upsert photo %s: %w", photo.ID, err)
+	}
+	return nil
+}
+
+// Translation operations
+
+func (r *pgRepository) ListTranslations(ctx context.Context, ownerType string, ownerID uuid.UUID) ([]*domain.Translation, error) {
+	rows, err := r.q.ListTranslations(ctx, db.ListTranslationsParams{
+		OwnerType: ownerType,
+		OwnerID:   ownerID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list translations for %s %s: %w", ownerType, ownerID, err)
+	}
+	var res []*domain.Translation
+	for _, row := range rows {
+		res = append(res, &domain.Translation{
+			ID:         row.ID,
+			OwnerType:  row.OwnerType,
+			OwnerID:    row.OwnerID,
+			Lang:       row.Lang,
+			Field:      row.Field,
+			Value:      row.Value,
+			Provenance: row.Provenance,
+			UpdatedAt:  fromTimestamptz(row.UpdatedAt),
+		})
+	}
+	return res, nil
+}
+
+func (r *pgRepository) UpsertTranslation(ctx context.Context, translation *domain.Translation) error {
+	if err := r.q.UpsertTranslation(ctx, db.UpsertTranslationParams{
+		ID:         translation.ID,
+		OwnerType:  translation.OwnerType,
+		OwnerID:    translation.OwnerID,
+		Lang:       translation.Lang,
+		Field:      translation.Field,
+		Value:      translation.Value,
+		Provenance: translation.Provenance,
+	}); err != nil {
+		return fmt.Errorf("upsert translation %s: %w", translation.ID, err)
+	}
+	return nil
+}
+
+// wkbToGeom decodes a WKB byte slice (as returned by ST_AsBinary and scanned
+// into an interface{}) into an orb geometry. A nil/empty value yields (nil, nil),
+// which callers treat as "no geometry" (e.g. an empty route or a NULL snap).
+func wkbToGeom(v interface{}) (orb.Geometry, error) {
+	b, ok := v.([]byte)
+	if !ok || len(b) == 0 {
+		return nil, nil
+	}
+	return wkb.Unmarshal(b)
+}
+
+// Helper converters
+
+func toDomainJourney(
+	id uuid.UUID, journalID uuid.UUID, slug string, sourceRef pgtype.Text,
+	title string, place string, country pgtype.Text, region pgtype.Text,
+	dateStart pgtype.Date, dateEnd pgtype.Date, gpsRouteWkb interface{},
+	authoredFields []string, createdAt pgtype.Timestamptz, updatedAt pgtype.Timestamptz,
+) (*domain.Journey, error) {
+	var gpsRoute orb.MultiLineString
+	if gpsRouteWkb != nil {
+		if bytes, ok := gpsRouteWkb.([]byte); ok && len(bytes) > 0 {
+			geom, err := wkb.Unmarshal(bytes)
+			if err != nil {
+				return nil, err
+			}
+			if mls, ok := geom.(orb.MultiLineString); ok {
+				gpsRoute = mls
+			}
+		}
+	}
+
+	return &domain.Journey{
+		ID:             id,
+		JournalID:      journalID,
+		Slug:           slug,
+		SourceRef:      fromText(sourceRef),
+		Title:          title,
+		Place:          place,
+		Country:        fromText(country),
+		Region:         fromText(region),
+		DateStart:      fromDate(dateStart),
+		DateEnd:        fromDate(dateEnd),
+		GPSRoute:       gpsRoute,
+		AuthoredFields: authoredFields,
+		CreatedAt:      fromTimestamptz(createdAt),
+		UpdatedAt:      fromTimestamptz(updatedAt),
+	}, nil
+}
+
+func toDomainMemento(
+	id uuid.UUID, journeyID uuid.UUID, kind string, seq int32,
+	occurredAt pgtype.Timestamptz, occurredTz string, geomWkb interface{},
+	title string, place string, vendor pgtype.Text, essay pgtype.Text,
+	priceAmount pgtype.Int8, priceCurrency pgtype.Text, kindData []byte,
+	sourceRef pgtype.Text, authoredFields []string, orphanedAt pgtype.Timestamptz,
+	createdAt pgtype.Timestamptz, updatedAt pgtype.Timestamptz,
+) (*domain.Memento, error) {
+	var geom orb.Geometry
+	if geomWkb != nil {
+		if bytes, ok := geomWkb.([]byte); ok && len(bytes) > 0 {
+			g, err := wkb.Unmarshal(bytes)
+			if err != nil {
+				return nil, err
+			}
+			geom = g
+		}
+	}
+
+	return &domain.Memento{
+		ID:             id,
+		JourneyID:      journeyID,
+		Kind:           kind,
+		Seq:            int(seq),
+		OccurredAt:     fromTimestamptz(occurredAt),
+		OccurredTZ:     occurredTz,
+		Geom:           geom,
+		Title:          title,
+		Place:          place,
+		Vendor:         fromText(vendor),
+		Essay:          fromText(essay),
+		PriceAmount:    fromInt8(priceAmount),
+		PriceCurrency:  fromText(priceCurrency),
+		KindData:       kindData,
+		SourceRef:      fromText(sourceRef),
+		AuthoredFields: authoredFields,
+		OrphanedAt:     fromTimestamptzPtr(orphanedAt),
+		CreatedAt:      fromTimestamptz(createdAt),
+		UpdatedAt:      fromTimestamptz(updatedAt),
+	}, nil
+}
+
+func toText(s *string) pgtype.Text {
+	if s == nil {
+		return pgtype.Text{Valid: false}
+	}
+	return pgtype.Text{String: *s, Valid: true}
+}
+
+func fromText(t pgtype.Text) *string {
+	if !t.Valid {
+		return nil
+	}
+	return &t.String
+}
+
+func toInt8(i *int64) pgtype.Int8 {
+	if i == nil {
+		return pgtype.Int8{Valid: false}
+	}
+	return pgtype.Int8{Int64: *i, Valid: true}
+}
+
+func fromInt8(i pgtype.Int8) *int64 {
+	if !i.Valid {
+		return nil
+	}
+	return &i.Int64
+}
+
+func toTimestamptz(t time.Time) pgtype.Timestamptz {
+	if t.IsZero() {
+		return pgtype.Timestamptz{Valid: false}
+	}
+	return pgtype.Timestamptz{Time: t, Valid: true}
+}
+
+func toTimestamptzPtr(t *time.Time) pgtype.Timestamptz {
+	if t == nil || t.IsZero() {
+		return pgtype.Timestamptz{Valid: false}
+	}
+	return pgtype.Timestamptz{Time: *t, Valid: true}
+}
+
+func fromTimestamptz(t pgtype.Timestamptz) time.Time {
+	if !t.Valid {
+		return time.Time{}
+	}
+	return t.Time
+}
+
+func fromTimestamptzPtr(t pgtype.Timestamptz) *time.Time {
+	if !t.Valid {
+		return nil
+	}
+	return &t.Time
+}
+
+func toDate(t time.Time) pgtype.Date {
+	if t.IsZero() {
+		return pgtype.Date{Valid: false}
+	}
+	return pgtype.Date{Time: t, Valid: true}
+}
+
+func fromDate(d pgtype.Date) time.Time {
+	if !d.Valid {
+		return time.Time{}
+	}
+	return d.Time
+}

@@ -41,10 +41,18 @@ ssh -L 8000:localhost:8000 <host>
 
 `make docs-build` writes the static site to `./site` (gitignored).
 
-## Database (when implementation starts)
+## Database Container (when implementation starts)
 
-- **Postgres 18 + PostGIS** — locally via the nix shell, or a container from `deploy/`.
-- `make migrate` applies `migrations/` with goose (needs `DATABASE_DSN`).
+- **Linux Dev Runtime (Podman Compose):**
+  The database (PostgreSQL 18 + PostGIS) runs inside a container using **Podman** and `podman-compose`. The Go application itself runs **locally** on the host.
+  ```bash
+  # Spin up the database container
+  podman-compose -f deploy/compose.yaml up -d
+  ```
+- **macOS Dev Runtime:**
+  Leverage the native, lightweight **Bianpai** app ([github.com/bianpai/bianpai](https://github.com/bianpai/bianpai)) to run PostgreSQL 18 + PostGIS natively on the host.
+- **Migrations:**
+  `make migrate` applies `migrations/` with goose (needs `DATABASE_DSN`).
 
 ## Configuration (when implementation starts)
 

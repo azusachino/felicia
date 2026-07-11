@@ -12,11 +12,12 @@ We decided to treat **Japanese (`ja`) as the authored canonical language** for t
 
 Implementation details:
 1. **Inline Japanese:** All core text fields on primary tables (e.g., `mementos.title`, `journeys.title`, `memento_photos.caption`) store Japanese directly. This ensures that the default Japanese render requires zero table joins.
-2. **Translation Sidecar:** A dedicated `translations` table stores non-primary translations (`en`, `zh`) keyed by `(owner_type, owner_id, lang, field)`.
-3. **No-Clobber Provenance:** Each translation row carries a `provenance` field (`machine` or `authored`).
+2. **No Translation for User-Authored Content:** User-authored essays (`mementos.essay`) and photo captions are **not** translated; they remain solely in the primary Japanese language. i18n only applies to structural fields (e.g., transit station names, line names, and operators).
+3. **Translation Sidecar:** A dedicated `translations` table stores non-primary translations (`en`, `zh`) keyed by `(owner_type, owner_id, lang, field)`.
+4. **No-Clobber Provenance:** Each translation row carries a `provenance` field (`machine` or `authored`).
    * When importing or auto-translating, the system only overwrites translations marked `machine`.
    * Once a human hand-corrects a translation, the system updates its provenance to `authored` and never clobbers it on subsequent data syncs.
-4. **Fallback Rules:** If a requested translation is missing, the client or API falls back to the inline Japanese value.
+5. **Fallback Rules:** If a requested translation is missing, the client or API falls back to the inline Japanese value.
 
 ## Consequences
 * High performance for the primary `ja` localization.

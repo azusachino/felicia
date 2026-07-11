@@ -1,0 +1,17 @@
+[server]
+port = "8080"
+
+[cache]
+addr = "localhost:6379"
+
+[dawarich]
+url = "https://dawarich.example"
+# api_key = "set-with-FELICIA_DAWARICH_API_KEY"
+
+[immich]
+url = "https://immich.example"
+# api_key = "set-with-FELICIA_IMMICH_API_KEY"
+
+[ingest]
+rdp_epsilon = 0.0001
+transit_segment_length_m = 100000

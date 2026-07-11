@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { fade, fly } from 'svelte/transition';
+  import { fade, fly } from 'svelte/transition'
   import {
     allMementos,
     kindLabel,
@@ -7,36 +7,36 @@
     type Lang,
     type MementoCard,
     type Station,
-    type Theme
-  } from '../data';
+    type Theme,
+  } from '../data'
 
   // v2 — memento-first front door. The detailed memento "page" is the centre;
   // a preview carousel is the index. The map (v1) is reached as the "more" view.
-  export let lang: Lang = 'ja';
-  export let theme: Theme = 'dark';
-  export let toMap: (() => void) | undefined = undefined;
+  export let lang: Lang = 'ja'
+  export let theme: Theme = 'dark'
+  export let toMap: (() => void) | undefined = undefined
 
-  const title = { ja: '旅の残り香', en: 'What Lingers', zh: '旅途余香' };
+  const title = { ja: '旅の残り香', en: 'What Lingers', zh: '旅途余香' }
   const label = {
     map: { ja: '← 地図', en: '← Map', zh: '← 地图' },
     onMap: { ja: '地図で見る →', en: 'See on the map →', zh: '在地图上查看 →' },
-    memories: { ja: '記憶', en: 'Memories', zh: '回忆' }
-  };
+    memories: { ja: '記憶', en: 'Memories', zh: '回忆' },
+  }
 
-  let selected: MementoCard = allMementos[0];
+  let selected: MementoCard = allMementos[0]
   // Doubled so the shelf can auto-scroll seamlessly (translateX -50% loops).
-  const shelf: MementoCard[] = [...allMementos, ...allMementos];
+  const shelf: MementoCard[] = [...allMementos, ...allMementos]
 
-  $: t = (value: { ja: string; en: string; zh: string }) => value[lang];
-  $: stationName = (s: Station) => (lang === 'en' ? s.name : s.ja);
-  $: memento = selected.memento;
+  $: t = (value: { ja: string; en: string; zh: string }) => value[lang]
+  $: stationName = (s: Station) => (lang === 'en' ? s.name : s.ja)
+  $: memento = selected.memento
 
   function select(card: MementoCard) {
-    selected = card;
+    selected = card
   }
 
   function toggleTheme() {
-    theme = theme === 'dark' ? 'light' : 'dark';
+    theme = theme === 'dark' ? 'light' : 'dark'
   }
 </script>
 
@@ -103,9 +103,18 @@
           </div>
 
           <dl class="v2-facts">
-            <div><dt>{lang === 'en' ? 'Journey' : lang === 'zh' ? '旅程' : '旅'}</dt><dd>{t(selected.journey.title)}</dd></div>
-            <div><dt>{lang === 'en' ? 'Date' : lang === 'zh' ? '日期' : '日付'}</dt><dd>{t(memento.date)}</dd></div>
-            <div><dt>{lang === 'en' ? 'Place' : lang === 'zh' ? '地点' : '場所'}</dt><dd>{t(memento.place)}</dd></div>
+            <div>
+              <dt>{lang === 'en' ? 'Journey' : lang === 'zh' ? '旅程' : '旅'}</dt>
+              <dd>{t(selected.journey.title)}</dd>
+            </div>
+            <div>
+              <dt>{lang === 'en' ? 'Date' : lang === 'zh' ? '日期' : '日付'}</dt>
+              <dd>{t(memento.date)}</dd>
+            </div>
+            <div>
+              <dt>{lang === 'en' ? 'Place' : lang === 'zh' ? '地点' : '場所'}</dt>
+              <dd>{t(memento.place)}</dd>
+            </div>
           </dl>
         </div>
 
@@ -122,7 +131,7 @@
 
           {#if memento.photos.length}
             <div class="gallery">
-              {#each memento.photos as photo}
+              {#each memento.photos as photo (photo.src)}
                 <figure>
                   <img src={photo.src} alt={t(memento.title)} />
                   <figcaption>{t(photo.caption)}</figcaption>
@@ -324,7 +333,10 @@
     border: 1px solid var(--border);
     border-left: 4px solid var(--chip-border);
     background: var(--card);
-    transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    transition:
+      transform 0.15s ease,
+      border-color 0.15s ease,
+      background 0.15s ease;
   }
 
   .v2-preview:hover {
