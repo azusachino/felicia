@@ -34,6 +34,7 @@ export interface Memento {
   price: string
   coords: Coordinates
   essay: L
+  kindData?: Record<string, unknown>
   photos: { src: string; caption: L }[]
   transit?: {
     operator: L

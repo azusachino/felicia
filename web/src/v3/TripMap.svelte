@@ -1,10 +1,11 @@
 <script lang="ts">
-  import maplibregl, { type StyleSpecification } from 'maplibre-gl'
+  import maplibregl from 'maplibre-gl'
   import { onMount } from 'svelte'
   import type { Coordinates, Theme } from '../data'
 
-  // v3 detail map — reuses v1's MapLibre setup (CARTO raster basemap, route +
-  // transit lines, DOM markers) but scoped to a single journey and clustered by
+  // v3 detail map — MapLibre vector basemap from OpenFreeMap (OSM-derived,
+  // with attribution), route + transit lines, DOM markers, scoped to a journey
+  // and clustered by
   // PLACE: one marker per place, a count badge when a place holds several
   // mementos. Selecting a place is bubbled up; the parent opens its memories.
   interface Place {
@@ -37,27 +38,7 @@
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- imperative maplibre marker cache, not reactive UI state
   const markers = new Map<string, maplibregl.Marker>()
 
-  const mapStyle: StyleSpecification = {
-    version: 8,
-    sources: {
-      dark: {
-        type: 'raster',
-        tiles: ['https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'],
-        tileSize: 256,
-        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-      },
-      light: {
-        type: 'raster',
-        tiles: ['https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'],
-        tileSize: 256,
-        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-      },
-    },
-    layers: [
-      { id: 'base-dark', type: 'raster', source: 'dark' },
-      { id: 'base-light', type: 'raster', source: 'light', layout: { visibility: 'none' } },
-    ],
-  }
+  const mapStyle = 'https://tiles.openfreemap.org/styles/liberty'
 
   function routeGeoJson() {
     return {
@@ -96,7 +77,7 @@
 
   function fitJourney() {
     if (!map) return
-    const coords = route.length ? route : places.map((p) => p.coords)
+    const coords = [...route, ...places.map((place) => place.coords)]
     if (!coords.length) return
     map.fitBounds(boundsOf(coords), { padding: fitPadding, maxZoom: 9, duration: 700 })
   }
@@ -136,9 +117,10 @@
   }
 
   function applyTheme(next: Theme) {
-    if (!map || !map.getLayer('base-light')) return
-    map.setLayoutProperty('base-light', 'visibility', next === 'light' ? 'visible' : 'none')
-    map.setLayoutProperty('base-dark', 'visibility', next === 'light' ? 'none' : 'visible')
+    // Liberty is intentionally used for both themes: it is a readable OSM
+    // vector style, and hiding attribution or swapping to OSMF's public tile
+    // server would be the wrong trade-off for a local prototype.
+    void next
   }
 
   onMount(() => {
@@ -147,7 +129,6 @@
       style: mapStyle,
       center: route[0] ?? places[0]?.coords ?? [138, 38],
       zoom: 6,
-      attributionControl: false,
     })
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
 
@@ -175,14 +156,24 @@
         id: 'route-line',
         type: 'line',
         source: 'route',
-        paint: { 'line-color': '#fb923c', 'line-width': 3, 'line-opacity': 0.95 },
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: {
+          'line-color': '#fb923c',
+          'line-width': 4,
+          'line-opacity': 0.95,
+        },
       })
       map.addSource('transit', { type: 'geojson', data: transitGeoJson() })
       map.addLayer({
         id: 'transit',
         type: 'line',
         source: 'transit',
-        paint: { 'line-color': '#fde68a', 'line-width': 4, 'line-opacity': 0.9 },
+        paint: {
+          'line-color': '#f6c98b',
+          'line-width': 2,
+          'line-opacity': 0.35,
+          'line-dasharray': [1, 2],
+        },
       })
 
       rebuildMarkers()
@@ -217,12 +208,9 @@
   $effect(() => {
     if (!loaded || !map) return
     syncActive()
-    const place = places.find((p) => p.key === activeKey)
-    if (place) {
-      map.flyTo({ center: place.coords, zoom: 8.5, duration: 600, essential: true })
-    } else {
-      fitJourney()
-    }
+    // Keep the full journey visible while the reader changes memories. The
+    // active marker is enough feedback; zooming to every memory hides the route.
+    if (!activeKey) fitJourney()
   })
 
   $effect(() => {

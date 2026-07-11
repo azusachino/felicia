@@ -6,7 +6,8 @@ import os
 import sys
 import urllib.error
 import urllib.request
-import uuid
+import xml.etree.ElementTree as ET
+from datetime import date, datetime
 from pathlib import Path
 
 
@@ -29,14 +30,83 @@ def post(path: str, payload: dict) -> dict:
         raise RuntimeError(f"POST {path} failed ({exc.code}): {detail}") from exc
 
 
-def localized(value: dict, lang: str) -> str:
-    return value.get(lang) or value["ja"]
+def get(path: str) -> object:
+    request = urllib.request.Request(f"{API_BASE}{path}", method="GET")
+    try:
+        with urllib.request.urlopen(request) as response:
+            return json.load(response)
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode()
+        raise RuntimeError(f"GET {path} failed ({exc.code}): {detail}") from exc
+
+
+def read_gpx(relative_path: str) -> list[list[list[float]]]:
+    path = DATA_PATH.parent / relative_path
+    try:
+        root = ET.parse(path).getroot()
+    except (ET.ParseError, OSError) as exc:
+        raise RuntimeError(f"read GPX {relative_path} failed: {exc}") from exc
+
+    segments: list[list[list[float]]] = []
+    for segment in root.findall(".//{*}trkseg"):
+        points = [
+            [float(point.attrib["lon"]), float(point.attrib["lat"])]
+            for point in segment.findall("{*}trkpt")
+            if "lon" in point.attrib and "lat" in point.attrib
+        ]
+        if len(points) >= 2:
+            segments.append(points)
+    if not segments:
+        raise RuntimeError(f"GPX {relative_path} contains no track segment with two points")
+    return segments
+
+
+def validate_data(data: dict) -> None:
+    required_kinds = {"transit", "live", "goods", "receipt", "stamp"}
+    journey_ids: set[str] = set()
+    memento_ids: set[str] = set()
+    for journey in data.get("journeys", []):
+        if journey["id"] in journey_ids:
+            raise RuntimeError(f"duplicate journey id {journey['id']}")
+        journey_ids.add(journey["id"])
+        country = journey.get("country")
+        if not isinstance(country, str) or len(country) != 3 or country != country.upper():
+            raise RuntimeError(f"journey {journey['slug']} must declare one ISO country code")
+        start = date.fromisoformat(journey["date_start"])
+        end = date.fromisoformat(journey["date_end"])
+        previous = None
+        kinds = set()
+        for memento in journey["mementos"]:
+            if memento["id"] in memento_ids:
+                raise RuntimeError(f"duplicate memento id {memento['id']}")
+            memento_ids.add(memento["id"])
+            occurred = datetime.fromisoformat(memento["occurred_at"])
+            if not start <= occurred.date() <= end:
+                raise RuntimeError(f"memento {memento['id']} falls outside {journey['slug']} dates")
+            if previous and occurred < previous:
+                raise RuntimeError(f"mementos are not chronological in {journey['slug']}")
+            previous = occurred
+            kinds.add(memento["kind"])
+        if kinds != required_kinds:
+            raise RuntimeError(f"journey {journey['slug']} does not cover all memento kinds")
 
 
 def seed(data: dict) -> None:
+    validate_data(data)
+    post(f"/api/admin/journals/{data['journal_id']}/reset-mock", {})
     post("/api/admin/journals", {"id": data["journal_id"]})
+    existing_journeys = get("/api/admin/journeys")
+    if not isinstance(existing_journeys, list):
+        raise RuntimeError("GET /api/admin/journeys returned an invalid response")
+    journey_ids = {
+        item["slug"]: item["id"]
+        for item in existing_journeys
+        if isinstance(item, dict) and isinstance(item.get("slug"), str) and item.get("id")
+    }
+
     for journey in data["journeys"]:
-        journey_id = journey["id"]
+        journey_id = journey_ids.get(journey["slug"], journey["id"])
+        route = read_gpx(journey["route_file"]) if journey.get("route_file") else journey["gps_route"]
         post(
             "/api/admin/journeys",
             {
@@ -44,20 +114,16 @@ def seed(data: dict) -> None:
                 "journal_id": data["journal_id"],
                 "slug": journey["slug"],
                 "source_ref": f"mock:{journey['slug']}",
-                "title": journey["title"]["ja"],
-                "place": journey["place"]["ja"],
+                "title": journey["title"],
+                "place": journey["place"],
                 "country": journey.get("country"),
                 "region": journey.get("region"),
                 "date_start": journey["date_start"],
                 "date_end": journey["date_end"],
-                "gps_route": journey["gps_route"],
+                "gps_route": route,
                 "authored_fields": [],
             },
         )
-        for lang in ("en", "zh"):
-            post_translation("journey", journey_id, "title", lang, localized(journey["title"], lang))
-            post_translation("journey", journey_id, "place", lang, localized(journey["place"], lang))
-
         for memento in journey["mementos"]:
             memento_id = memento["id"]
             post(
@@ -70,10 +136,10 @@ def seed(data: dict) -> None:
                     "occurred_at": memento["occurred_at"],
                     "occurred_tz": memento.get("occurred_tz", "Asia/Tokyo"),
                     "geom": {"type": "Point", "coordinates": memento["geom"]},
-                    "title": memento["title"]["ja"],
-                    "place": memento["place"]["ja"],
+                    "title": memento["title"],
+                    "place": memento["place"],
                     "vendor": memento.get("vendor"),
-                    "essay": memento.get("essay", {}).get("ja"),
+                    "essay": memento.get("essay"),
                     "price_amount": memento.get("price_amount"),
                     "price_currency": memento.get("price_currency", "JPY"),
                     "kind_data": memento["kind_data"],
@@ -81,28 +147,8 @@ def seed(data: dict) -> None:
                     "authored_fields": [],
                 },
             )
-            for lang in ("en", "zh"):
-                post_translation("memento", memento_id, "title", lang, localized(memento["title"], lang))
-                post_translation("memento", memento_id, "place", lang, localized(memento["place"], lang))
-                if memento.get("essay"):
-                    post_translation("memento", memento_id, "essay", lang, localized(memento["essay"], lang))
             for photo in memento.get("photos", []):
                 post("/api/admin/photos", {**photo, "memento_id": memento_id})
-
-
-def post_translation(owner_type: str, owner_id: str, field: str, lang: str, value: str) -> None:
-    post(
-        "/api/admin/translations",
-        {
-            "id": str(uuid.uuid5(uuid.NAMESPACE_URL, f"felicia:{owner_type}:{owner_id}:{lang}:{field}")),
-            "owner_type": owner_type,
-            "owner_id": owner_id,
-            "lang": lang,
-            "field": field,
-            "value": value,
-            "provenance": "machine",
-        },
-    )
 
 
 def main() -> None:

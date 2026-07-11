@@ -9,14 +9,15 @@
       "minItems": 5,
       "items": {
         "type": "object",
-        "required": ["id", "slug", "title", "place", "date_start", "date_end", "gps_route", "mementos"],
+        "required": ["id", "slug", "title", "place", "country", "date_start", "date_end", "gps_route", "mementos"],
         "properties": {
           "id": { "type": "string", "format": "uuid" },
           "slug": { "type": "string", "minLength": 1 },
-          "title": { "$ref": "#/$defs/localized" },
-          "place": { "$ref": "#/$defs/localized" },
+          "title": { "type": "string" },
+          "place": { "type": "string" },
           "country": { "type": "string", "minLength": 3, "maxLength": 3 },
           "region": { "type": "string" },
+          "route_file": { "type": "string", "pattern": "^tracks/.+\\.gpx$" },
           "date_start": { "type": "string", "format": "date" },
           "date_end": { "type": "string", "format": "date" },
           "gps_route": { "type": "array", "minItems": 1 },
@@ -30,11 +31,6 @@
     }
   },
   "$defs": {
-    "localized": {
-      "type": "object",
-      "required": ["ja", "en", "zh"],
-      "additionalProperties": { "type": "string" }
-    },
     "memento": {
       "type": "object",
       "required": ["id", "kind", "seq", "occurred_at", "place", "title", "geom", "kind_data"],
@@ -43,8 +39,8 @@
         "kind": { "enum": ["transit", "live", "goods", "receipt", "stamp"] },
         "seq": { "type": "integer", "minimum": 1 },
         "occurred_at": { "type": "string", "format": "date-time" },
-        "place": { "$ref": "#/$defs/localized" },
-        "title": { "$ref": "#/$defs/localized" },
+        "place": { "type": "string" },
+        "title": { "type": "string" },
         "geom": { "type": "array", "minItems": 2, "maxItems": 2 },
         "kind_data": { "type": "object" },
         "photos": { "type": "array" }

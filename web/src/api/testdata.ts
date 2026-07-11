@@ -4,8 +4,8 @@ type Scenario = {
   journeys: Array<{
     id: string
     slug: string
-    title: Record<string, string>
-    place: Record<string, string>
+    title: string
+    place: string
     country?: string
     region?: string
     date_start: string
@@ -17,8 +17,8 @@ type Scenario = {
       seq: number
       occurred_at: string
       occurred_tz?: string
-      title: Record<string, string>
-      place: Record<string, string>
+      title: string
+      place: string
       geom: number[]
       kind_data: Record<string, unknown>
       photos?: ApiMemento['photos']
@@ -38,8 +38,8 @@ export async function loadGoldenRouteFixture(): Promise<{
     id: source.id,
     journal_id: '0190cbde-f300-7000-8000-000000000000',
     slug: source.slug,
-    title: source.title.ja,
-    place: source.place.ja,
+    title: source.title,
+    place: source.place,
     country: source.country,
     region: source.region,
     date_start: source.date_start,
@@ -54,8 +54,8 @@ export async function loadGoldenRouteFixture(): Promise<{
     occurred_at: memento.occurred_at,
     journey_id: source.id,
     occurred_tz: memento.occurred_tz ?? 'Asia/Tokyo',
-    title: memento.title.ja,
-    place: memento.place.ja,
+    title: memento.title,
+    place: memento.place,
     geom: { type: 'Point', coordinates: memento.geom },
     kind_data: memento.kind_data,
     photos: memento.photos,

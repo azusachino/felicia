@@ -3,6 +3,7 @@
 package publication
 
 import (
+	"github.com/google/uuid"
 	"github.com/paulmach/orb"
 
 	"github.com/azusachino/felicia/internal/domain"
@@ -10,6 +11,7 @@ import (
 
 // JourneyListItem is the compact landing-page projection for one journey.
 type JourneyListItem struct {
+	ID                 uuid.UUID           `json:"id"`
 	Slug               string              `json:"slug"`
 	Title              string              `json:"title"`
 	MementoCount       int                 `json:"memento_count"`
@@ -26,6 +28,7 @@ type RepresentativeDot struct {
 // loaded journey and its ordered mementos.
 func NewJourneyListItem(journey *domain.Journey, mementos []*domain.Memento) JourneyListItem {
 	return JourneyListItem{
+		ID:                 journey.ID,
 		Slug:               journey.Slug,
 		Title:              journey.Title,
 		MementoCount:       len(mementos),

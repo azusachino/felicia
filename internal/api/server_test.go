@@ -127,6 +127,18 @@ func (m *mockRepository) UpsertMemento(_ context.Context, memento *domain.Mement
 	return nil
 }
 
+func (m *mockRepository) ResetMockJournal(_ context.Context, journalID uuid.UUID) error {
+	for id, journey := range m.journeys {
+		if journey.JournalID == journalID {
+			delete(m.journeys, id)
+		}
+	}
+	for id := range m.mementos {
+		delete(m.mementos, id)
+	}
+	return nil
+}
+
 func (m *mockRepository) CreateTransitLeg(_ context.Context, leg *domain.TransitLegInput) error {
 	m.createdLeg = leg
 	return nil
@@ -452,7 +464,7 @@ func TestPublicJourneyOmitsEmptyGPSRoute(t *testing.T) {
 	handler := api.NewServer(repo, nil, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{}).Handler()
 
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/journeys/empty-route", nil))
+	handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/journeys/"+journey.ID.String(), nil))
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d (%s)", w.Code, w.Body)
 	}

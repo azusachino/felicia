@@ -231,19 +231,19 @@ func run() error {
 		}
 		staticJourneyList = append(staticJourneyList, publication.NewJourneyListItem(j, mementos))
 
-		// Write journey-specific mementos: /api/v1/journeys/<slug>/mementos.json
-		journeySlugDir := filepath.Join(apiDir, "journeys", j.Slug)
-		if err := os.MkdirAll(journeySlugDir, 0755); err != nil {
-			return fmt.Errorf("failed to create journey slug directory: %w", err)
+		// Write journey-specific mementos: /api/v1/journeys/<id>/mementos.json
+		journeyIDDir := filepath.Join(apiDir, "journeys", j.ID.String())
+		if err := os.MkdirAll(journeyIDDir, 0755); err != nil {
+			return fmt.Errorf("failed to create journey ID directory: %w", err)
 		}
 
-		mementosFilePath := filepath.Join(journeySlugDir, "mementos.json")
+		mementosFilePath := filepath.Join(journeyIDDir, "mementos.json")
 		if err := writeJSONFile(mementosFilePath, staticMementos); err != nil {
 			return fmt.Errorf("failed to write mementos file: %w", err)
 		}
 
-		// Write journey details: /api/v1/journeys/<slug>.json
-		journeyFilePath := filepath.Join(apiDir, "journeys", fmt.Sprintf("%s.json", j.Slug))
+		// Write journey details: /api/v1/journeys/<id>.json
+		journeyFilePath := filepath.Join(apiDir, "journeys", fmt.Sprintf("%s.json", j.ID))
 		if err := writeJSONFile(journeyFilePath, sj); err != nil {
 			return fmt.Errorf("failed to write journey file: %w", err)
 		}

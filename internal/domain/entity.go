@@ -117,6 +117,7 @@ type Repository interface {
 	// Journal operations
 	GetJournal(ctx context.Context, id uuid.UUID) (*Journal, error)
 	CreateJournal(ctx context.Context, journal *Journal) error
+	ResetMockJournal(ctx context.Context, id uuid.UUID) error
 
 	// Journey operations
 	GetJourney(ctx context.Context, id uuid.UUID) (*Journey, error)

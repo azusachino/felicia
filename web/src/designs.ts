@@ -9,6 +9,7 @@ import type { L, Lang, Theme } from './data'
 import V1App from './v1/V1App.svelte'
 import V2App from './v2/V2App.svelte'
 import V3App from './v3/V3App.svelte'
+import V4App from './v4/V4App.svelte'
 
 export interface Design {
   id: string
@@ -40,6 +41,12 @@ export const designs: Design[] = [
     label: { ja: '手帳', en: 'Journal', zh: '手帐' },
     component: V3App as unknown as Design['component'],
   },
+  {
+    id: 'v4',
+    hash: '#atlas',
+    label: { ja: '世界地図', en: 'Atlas', zh: '世界图册' },
+    component: V4App as unknown as Design['component'],
+  },
 ]
 
 // Resolve the active design from a location hash, tolerating a couple of
@@ -47,5 +54,6 @@ export const designs: Design[] = [
 export function designFromHash(hash: string): Design {
   const aliases: Record<string, string> = { '#v2': '#collection', '#v3': '#techo' }
   const normalized = aliases[hash] ?? hash
-  return designs.find((d) => d.hash === normalized) ?? designs[0]
+  const designHash = normalized.split('/')[0]
+  return designs.find((d) => d.hash === designHash) ?? designs[0]
 }

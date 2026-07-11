@@ -16,6 +16,15 @@ const createJournal = `-- name: CreateJournal :exec
 INSERT INTO journal (id, created_at) VALUES ($1, $2)
 `
 
+const resetMockJournal = `-- name: ResetMockJournal :exec
+DELETE FROM journal WHERE id = $1
+`
+
+func (q *Queries) ResetMockJournal(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, resetMockJournal, id)
+	return err
+}
+
 type CreateJournalParams struct {
 	ID        uuid.UUID
 	CreatedAt pgtype.Timestamptz

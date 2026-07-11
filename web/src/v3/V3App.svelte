@@ -1,9 +1,10 @@
 <script lang="ts">
   import { kindLabel, type Coordinates, type L, type Lang, type Memento, type Theme } from '../data'
-  import { project } from './cityLookup'
   import TripMap from './TripMap.svelte'
+  import TechoIndexMap from './TechoIndexMap.svelte'
   import { loadJourneys } from '../api/source'
   import type { Journey } from '../data'
+  import { onMount } from 'svelte'
 
   // v3 — the "techo" (手帳, paper notebook) front door. View 1 (landing) is the
   // journal index — a two-page spread with a paper sketch map. View 2 (detail)
@@ -35,36 +36,20 @@
 
   const selectedJourney = $derived(journeys[selectedIndex] ?? null)
 
-  interface CityDot {
-    id: string
-    journeyId: string
-    label: string
-    coords: Coordinates
-  }
-
-  const cityDots = $derived.by<CityDot[]>(() => {
-    const list: CityDot[] = []
-    for (const journey of journeys) {
-      if (journey.representativeDots) {
-        journey.representativeDots.forEach((dot, index) => {
-          list.push({
-            id: `${journey.id}:dot:${index}`,
-            journeyId: journey.id,
-            label: dot.label.toUpperCase(),
-            coords: dot.coord,
-          })
-        })
-      }
-    }
-    return list
-  })
-
   function loadData() {
     isLoading = true
     error = null
     loadJourneys()
       .then((data) => {
         journeys = data
+        const deepLinkedID = window.location.hash.match(/^#techo\/journeys\/([^/]+)$/)?.[1]
+        const deepLinkedIndex = deepLinkedID ? data.findIndex((j) => j.id === deepLinkedID) : -1
+        if (deepLinkedIndex >= 0) {
+          selectedIndex = deepLinkedIndex
+          selectedMementoIndex = 0
+          selectedPlaceKey = data[deepLinkedIndex].mementos[0]?.visitId ?? null
+          view = 'detail'
+        }
         isLoading = false
       })
       .catch((err) => {
@@ -130,19 +115,11 @@
 
   function selectJourneyById(id: string) {
     const idx = journeys.findIndex((j) => j.id === id)
-    if (idx !== -1) {
-      selectedIndex = idx
-      selectedMementoIndex = 0
-      selectedPlaceKey = null
-    }
+    if (idx !== -1) openJourney(idx)
   }
 
   function selectYear(year: string) {
-    const idx = journeys.findIndex((journey) => {
-      const match = journey.dates.ja.match(/(\d{4})年/)
-      const y = match ? match[1] : '2026'
-      return y === year
-    })
+    const idx = journeys.findIndex((journey) => journeyYears(journey).includes(year))
     if (idx !== -1) {
       selectedIndex = idx
       selectedMementoIndex = 0
@@ -151,15 +128,36 @@
   }
 
   function openJourney(index = selectedIndex) {
+    const journey = journeys[index]
+    if (!journey) return
     selectedIndex = index
     selectedMementoIndex = 0
-    selectedPlaceKey = selectedJourney?.mementos[0]?.visitId ?? null
+    selectedPlaceKey = journey.mementos[0]?.visitId ?? null
     view = 'detail'
+    history.pushState({}, '', `#techo/journeys/${journey.id}`)
   }
 
   function backToLanding() {
     view = 'landing'
+    history.pushState({}, '', '#techo')
   }
+
+  onMount(() => {
+    const restoreFromURL = () => {
+      const id = window.location.hash.match(/^#techo\/journeys\/([^/]+)$/)?.[1]
+      const index = id ? journeys.findIndex((journey) => journey.id === id) : -1
+      if (index >= 0) {
+        selectedIndex = index
+        selectedMementoIndex = 0
+        selectedPlaceKey = journeys[index].mementos[0]?.visitId ?? null
+        view = 'detail'
+      } else if (window.location.hash === '#techo') {
+        view = 'landing'
+      }
+    }
+    window.addEventListener('popstate', restoreFromURL)
+    return () => window.removeEventListener('popstate', restoreFromURL)
+  })
 
   function selectPlace(key: string) {
     if (!key || selectedPlaceKey === key) {
@@ -200,17 +198,39 @@
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient local dedupe set inside a pure $derived
     const set = new Set<string>()
     for (const journey of journeys) {
-      const match = journey.dates.ja.match(/(\d{4})年/)
-      set.add(match ? match[1] : '2026')
+      journeyYears(journey).forEach((year) => set.add(year))
     }
     return Array.from(set).sort((a, b) => Number(b) - Number(a))
   })
 
   const activeYear = $derived.by(() => {
     if (!selectedJourney) return years[0] ?? '2026'
-    const match = selectedJourney.dates.ja.match(/(\d{4})年/)
-    return match ? match[1] : years[0]
+    return journeyYears(selectedJourney)[0] ?? years[0]
   })
+
+  function journeyYears(journey: Journey): string[] {
+    const years = [...journey.dates.ja, ...journey.dates.en, ...journey.dates.zh]
+      .join(' ')
+      .match(/\b(?:19|20)\d{2}\b/g)
+      ?.map(Number)
+    if (!years?.length) return []
+    const first = Math.min(...years)
+    const last = Math.max(...years)
+    return Array.from({ length: last - first + 1 }, (_, index) => String(first + index))
+  }
+
+  function kindSummary(journey: Journey): string {
+    return Array.from(new Set(journey.mementos.map((memento) => t(kindLabel[memento.kind])))).join(
+      ' · ',
+    )
+  }
+
+  function kindDetails(memento: Memento): [string, string][] {
+    if (!memento.kindData) return []
+    return Object.entries(memento.kindData)
+      .filter(([, value]) => typeof value === 'string' || typeof value === 'number')
+      .map(([key, value]) => [key.replaceAll('_', ' '), String(value)])
+  }
 
   const journeyCountLabel = $derived.by(() => {
     const n = journeys.length
@@ -230,10 +250,6 @@
     if (lang === 'zh') return `此地 ${n} 件记忆`
     return `この場所の記憶 ${n}件`
   }
-
-  // Landing sketch map: dim every journey's city dots, brighten the selected.
-  const routePoints = $derived(selectedJourney?.route.map((coord) => project(coord)) ?? [])
-  const routePath = $derived(routePoints.map((p) => `${p.x},${p.y}`).join(' '))
 
   const mapCaption = {
     ja: '地図の印をえらぶと、その旅がひらきます',
@@ -352,30 +368,13 @@
         {:else}
           <section class="techo-page techo-page--map" aria-label="Journey map">
             <div class="map-grid">
-              <svg
-                class="map-svg"
-                viewBox="0 0 100 100"
-                preserveAspectRatio="none"
-                aria-hidden="true"
-              >
-                {#if routePoints.length > 1}
-                  <polyline class="map-route" points={routePath} />
-                {/if}
-              </svg>
-              {#each cityDots as dot (dot.id)}
-                {@const p = project(dot.coords)}
-                {@const active = selectedJourney && dot.journeyId === selectedJourney.id}
-                <button
-                  type="button"
-                  class="map-dot border-none bg-transparent p-0 cursor-pointer focus:outline-none animate-none"
-                  class:active
-                  style="left:{p.x}%; top:{p.y}%"
-                  onclick={() => selectJourneyById(dot.journeyId)}
-                >
-                  <span class="map-dot-mark"></span>
-                  <span class="map-dot-label">{dot.label}</span>
-                </button>
-              {/each}
+              <TechoIndexMap
+                {journeys}
+                selectedJourneyId={selectedJourney?.id ?? null}
+                {lang}
+                {theme}
+                onSelect={selectJourneyById}
+              />
             </div>
             <p class="map-caption">{t(mapCaption)}</p>
           </section>
@@ -393,13 +392,6 @@
               <h1 class="year-heading">{activeYear}</h1>
               <p class="year-count">{journeyCountLabel}</p>
             </div>
-
-            <button type="button" class="open-cta open-cta--top" onclick={() => openJourney()}>
-              {t(openCta)}
-              <span class="open-cta-subtitle"
-                >{t(selectedJourney?.title ?? { ja: '', en: '', zh: '' })}</span
-              >
-            </button>
 
             <ol class="journey-cards">
               {#each journeys as journey, index (journey.id)}
@@ -424,10 +416,14 @@
                     {/if}
                     <h2 class="card-title">{t(journey.title)}</h2>
                     <p class="card-dates">{t(journey.dates)}</p>
+                    <p class="card-kinds">{kindSummary(journey)}</p>
                     <div class="card-divider"></div>
                     <div class="card-footer">
                       <span class="card-place">{t(journey.place)}</span>
-                      <span class="card-count">{mementoCountLabel(journey.mementos.length)}</span>
+                      <span class="card-action">
+                        <span class="card-count">{mementoCountLabel(journey.mementos.length)}</span>
+                        <span aria-hidden="true">→</span>
+                      </span>
                     </div>
                   </button>
                 </li>
@@ -476,12 +472,17 @@
             {t(selectedJourney.dates)} · {t(selectedJourney.place)}
           </p>
         </div>
-        <button
-          type="button"
-          class="pointer-events-auto rounded-md border border-black/10 bg-paper-1/95 px-3 py-2 font-mono text-xs tracking-wide text-terracotta shadow"
-          onclick={backToLanding}>{t(backLabel)} ×</button
-        >
       </header>
+
+      <button
+        type="button"
+        class="detail-back pointer-events-auto"
+        onclick={backToLanding}
+        aria-label={t(backLabel)}
+      >
+        <span aria-hidden="true">←</span>
+        {t(backLabel)}
+      </button>
 
       {#if selectedMemento}
         <aside
@@ -501,8 +502,8 @@
             <button
               type="button"
               class="flex h-7 w-7 items-center justify-center rounded-full border border-black/10 bg-paper-2 hover:bg-paper-3 text-base text-ink-soft cursor-pointer transition focus:outline-none"
-              onclick={() => selectPlace('')}
-              aria-label="Close"
+              onclick={backToLanding}
+              aria-label={t(backLabel)}
             >
               ×
             </button>
@@ -543,8 +544,21 @@
               {t(selectedMemento.date)}{selectedMemento.price ? ` · ${selectedMemento.price}` : ''}
             </p>
             <p class="m-0 mt-3 text-[0.9rem] leading-relaxed text-ink-soft">
-              {t(selectedMemento.essay)}
+              {t(selectedMemento.essay) || `${t(kindLabel[selectedMemento.kind])} record`}
             </p>
+            {#if selectedMemento.kindData}
+              {@const details = kindDetails(selectedMemento)}
+              {#if details.length}
+                <dl
+                  class="mt-4 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 border-t border-black/10 pt-4 text-xs"
+                >
+                  {#each details as [label, value] (label)}
+                    <dt class="font-mono uppercase tracking-wide text-ink-faint">{label}</dt>
+                    <dd class="m-0 text-ink-soft">{value}</dd>
+                  {/each}
+                </dl>
+              {/if}
+            {/if}
             {#if selectedMemento.photos.length}
               <div class="mt-4 flex flex-col gap-3">
                 {#each selectedMemento.photos as photo (photo.src)}
@@ -605,6 +619,33 @@
     display: block;
   }
 
+  .detail-back {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    z-index: 30;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 0.45rem;
+    background: rgba(253, 249, 240, 0.95);
+    box-shadow: 0 0.35rem 0.8rem rgba(58, 47, 28, 0.18);
+    color: var(--terracotta);
+    cursor: pointer;
+    font-family: ui-monospace, 'SFMono-Regular', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+  }
+
+  .detail-back:hover,
+  .detail-back:focus-visible {
+    background: #fffdf8;
+    outline: 2px solid var(--terracotta);
+    outline-offset: 2px;
+  }
+
   .techo-frame {
     position: relative;
     width: min(94vw, 76rem);
@@ -646,7 +687,7 @@
     border-bottom-right-radius: 0.9rem;
   }
 
-  /* --- View 1: sketch map --- */
+  /* --- View 1: OSM index map --- */
 
   .map-grid {
     position: relative;
@@ -658,56 +699,6 @@
       repeating-linear-gradient(90deg, transparent, transparent 39px, var(--hairline) 40px);
     background-color: rgba(251, 247, 238, 0.35);
     opacity: 0.92;
-  }
-
-  .map-svg {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-  }
-
-  .map-route {
-    fill: none;
-    stroke: var(--terracotta);
-    stroke-width: 0.4;
-    stroke-dasharray: 1.4 1.2;
-    opacity: 0.85;
-  }
-
-  .map-dot {
-    position: absolute;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.3rem;
-    transform: translate(-50%, -50%);
-  }
-
-  .map-dot-mark {
-    width: 0.55rem;
-    height: 0.55rem;
-    border-radius: 999px;
-    background: #8a8272;
-    box-shadow: 0 0 0 4px rgba(138, 130, 114, 0.15);
-  }
-
-  .map-dot-label {
-    font-family: ui-monospace, 'SFMono-Regular', monospace;
-    font-size: 0.6rem;
-    letter-spacing: 0.08em;
-    color: var(--ink-faint);
-    white-space: nowrap;
-  }
-
-  .map-dot.active .map-dot-mark {
-    background: var(--terracotta);
-    box-shadow: 0 0 0 5px rgba(180, 95, 38, 0.22);
-  }
-
-  .map-dot.active .map-dot-label {
-    color: var(--terracotta);
-    font-weight: 700;
   }
 
   .map-caption {
@@ -835,6 +826,18 @@
     color: var(--ink-soft);
   }
 
+  .card-kinds {
+    margin: 0.45rem 0 0;
+    overflow: hidden;
+    color: var(--terracotta);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
   .card-divider {
     margin: 0.7rem 0;
     border-top: 1px dashed var(--hairline-strong);
@@ -856,37 +859,11 @@
     color: var(--terracotta);
   }
 
-  .open-cta {
-    display: block;
-    width: 100%;
-    margin-top: 1.4rem;
-    padding: 0.85rem 1rem;
-    border: none;
-    border-radius: 0.4rem;
-    background: var(--terracotta);
-    color: #fdf6ec;
-    font-family: 'Zen Old Mincho', serif;
-    font-size: 1rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    cursor: pointer;
-  }
-
-  .open-cta:hover {
-    background: #a05420;
-  }
-
-  .open-cta--top {
-    margin-top: 1rem;
-    margin-bottom: 0.25rem;
-  }
-
-  .open-cta-subtitle {
-    display: block;
-    margin-top: 0.2rem;
-    font-size: 0.7rem;
-    font-weight: 400;
-    opacity: 0.85;
+  .card-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--terracotta);
   }
 
   .year-tabs {

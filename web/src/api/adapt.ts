@@ -122,6 +122,7 @@ function adaptMemento(apiMemento: ApiMemento, visitId: string, visitCoords: Coor
     price: price(apiMemento.price_amount, apiMemento.price_currency),
     coords: coords[0] === 0 && coords[1] === 0 ? visitCoords : coords,
     essay,
+    kindData: apiMemento.kind_data,
     photos: (apiMemento.photos ?? []).map((photo) => ({
       src: photo.object_key,
       caption: localized(photo.caption, undefined, 'caption'),

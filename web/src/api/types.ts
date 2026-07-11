@@ -8,6 +8,7 @@ export interface ApiGeoJSONGeometry {
 export type ApiTranslationMap = Record<string, Record<string, unknown>>
 
 export interface ApiJourneyListItem {
+  id: string
   slug: string
   title: string
   memento_count: number

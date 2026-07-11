@@ -52,6 +52,13 @@ func (r *pgRepository) CreateJournal(ctx context.Context, journal *domain.Journa
 	return nil
 }
 
+func (r *pgRepository) ResetMockJournal(ctx context.Context, id uuid.UUID) error {
+	if err := r.q.ResetMockJournal(ctx, id); err != nil {
+		return fmt.Errorf("reset mock journal %s: %w", id, err)
+	}
+	return nil
+}
+
 // Journey operations
 
 func (r *pgRepository) GetJourney(ctx context.Context, id uuid.UUID) (*domain.Journey, error) {

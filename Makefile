@@ -69,7 +69,7 @@ dev: ## Start the complete local stack, seed mock data, and serve the web app
 	@set -e; \
 		$(MAKE) db-up; \
 		DATABASE_DSN="$(DATABASE_DSN)" $(MAKE) migrate; \
-		api_bin="/tmp/felicia-api-$$"; \
+		api_bin="/tmp/felicia-api-$$$$"; \
 		go build -o "$$api_bin" ./cmd/api; \
 		DATABASE_DSN="$(DATABASE_DSN)" PORT="$(PORT)" CACHE_ADDR="$(CACHE_ADDR)" "$$api_bin" & \
 		api_pid=$$!; \

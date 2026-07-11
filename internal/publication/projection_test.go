@@ -52,7 +52,7 @@ func TestJourneyListItemJSONShape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := `{"slug":"japan","title":"日本","memento_count":1,"representative_dots":[{"coord":[139.7,35.6],"label":"東京"}]}`
+	want := `{"id":"00000000-0000-0000-0000-000000000000","slug":"japan","title":"日本","memento_count":1,"representative_dots":[{"coord":[139.7,35.6],"label":"東京"}]}`
 	if string(data) != want {
 		t.Errorf("unexpected JSON shape:\n got: %s\nwant: %s", data, want)
 	}

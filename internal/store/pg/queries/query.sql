@@ -4,6 +4,9 @@ SELECT id, created_at FROM journal WHERE id = $1;
 -- name: CreateJournal :exec
 INSERT INTO journal (id, created_at) VALUES ($1, $2);
 
+-- name: ResetMockJournal :exec
+DELETE FROM journal WHERE id = $1;
+
 -- name: GetJourney :one
 SELECT id, journal_id, slug, source_ref, title, place, country, region, date_start, date_end, ST_AsBinary(gps_route) AS gps_route_wkb, authored_fields, created_at, updated_at
 FROM journeys

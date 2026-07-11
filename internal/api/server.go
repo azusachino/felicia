@@ -89,14 +89,15 @@ func (s *Server) Handler() http.Handler {
 	// Public Read-Only Query API (Valkey Cached)
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/journeys", s.handleGetPublicJourneys)
-		r.Get("/journeys/{slug}", s.handleGetPublicJourneyDetails)
-		r.Get("/journeys/{slug}/mementos", s.handleGetPublicMementos)
+		r.Get("/journeys/{id}", s.handleGetPublicJourneyDetails)
+		r.Get("/journeys/{id}/mementos", s.handleGetPublicMementos)
 	})
 
 	// Authoring Admin API (Valkey Invalidation on Write)
 	r.Route("/api/admin", func(r chi.Router) {
 		r.Get("/templates", s.handleGetTemplates)
 		r.Post("/journals", s.handleCreateJournal)
+		r.Post("/journals/{id}/reset-mock", s.handleResetMockJournal)
 		r.Get("/journeys", s.handleListJourneys)
 		r.Get("/journeys/{id}", s.handleGetJourney)
 		r.Post("/journeys", s.handleUpsertJourney)
@@ -285,7 +286,24 @@ func (s *Server) handleListJourneys(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	if js == nil {
+		js = make([]*domain.Journey, 0)
+	}
 	respondJSON(w, http.StatusOK, js)
+}
+
+func (s *Server) handleResetMockJournal(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid journal UUID")
+		return
+	}
+	if err := s.repo.ResetMockJournal(r.Context(), id); err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	s.cache.InvalidateAll(r.Context())
+	respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (s *Server) handleGetJourney(w http.ResponseWriter, r *http.Request) {
@@ -806,41 +824,20 @@ type publicJourney struct {
 }
 
 func (s *Server) handleGetPublicJourneyDetails(w http.ResponseWriter, r *http.Request) {
-	slugOrID := chi.URLParam(r, "slug")
-
-	var j *domain.Journey
-	var err error
-	var cacheKey string
-
-	if id, parseErr := uuid.Parse(slugOrID); parseErr == nil {
-		// 1. If it's a UUID, look it up by ID
-		cacheKey = fmt.Sprintf("felicia:public:journey:%s", id.String())
-		if cached, err := s.cache.Get(r.Context(), cacheKey); err == nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(cached))
-			return
-		}
-		j, err = s.repo.GetJourney(r.Context(), id)
-	} else {
-		// 2. If it's a slug, check the slug index cache first
-		slugKey := fmt.Sprintf("felicia:public:slug:%s", slugOrID)
-		if cachedIDStr, err := s.cache.Get(r.Context(), slugKey); err == nil {
-			cacheKey = fmt.Sprintf("felicia:public:journey:%s", cachedIDStr)
-			if cached, err := s.cache.Get(r.Context(), cacheKey); err == nil {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write([]byte(cached))
-				return
-			}
-		}
-
-		// Cache miss or slug key miss; fetch from DB
-		j, err = s.repo.GetJourneyBySlug(r.Context(), slugOrID)
-		if err == nil {
-			cacheKey = fmt.Sprintf("felicia:public:journey:%s", j.ID.String())
-		}
+	id, parseErr := uuid.Parse(chi.URLParam(r, "id"))
+	if parseErr != nil {
+		respondError(w, http.StatusBadRequest, "invalid journey UUID")
+		return
 	}
+
+	cacheKey := fmt.Sprintf("felicia:public:journey:%s", id.String())
+	if cached, err := s.cache.Get(r.Context(), cacheKey); err == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(cached))
+		return
+	}
+	j, err := s.repo.GetJourney(r.Context(), id)
 
 	if err != nil {
 		respondError(w, http.StatusNotFound, "journey not found")
@@ -872,7 +869,6 @@ func (s *Server) handleGetPublicJourneyDetails(w http.ResponseWriter, r *http.Re
 	jsonData, err := json.Marshal(pj)
 	if err == nil {
 		_ = s.cache.Set(r.Context(), cacheKey, string(jsonData))
-		_ = s.cache.Set(r.Context(), fmt.Sprintf("felicia:public:slug:%s", j.Slug), j.ID.String())
 	}
 
 	respondJSON(w, http.StatusOK, pj)
@@ -910,41 +906,20 @@ type publicPhoto struct {
 }
 
 func (s *Server) handleGetPublicMementos(w http.ResponseWriter, r *http.Request) {
-	slugOrID := chi.URLParam(r, "slug")
-
-	var j *domain.Journey
-	var err error
-	var cacheKey string
-
-	if id, parseErr := uuid.Parse(slugOrID); parseErr == nil {
-		// 1. If it's a UUID, look it up by ID
-		cacheKey = fmt.Sprintf("felicia:public:mementos:%s", id.String())
-		if cached, err := s.cache.Get(r.Context(), cacheKey); err == nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(cached))
-			return
-		}
-		j, err = s.repo.GetJourney(r.Context(), id)
-	} else {
-		// 2. If it's a slug, check the slug index cache first
-		slugKey := fmt.Sprintf("felicia:public:slug:%s", slugOrID)
-		if cachedIDStr, err := s.cache.Get(r.Context(), slugKey); err == nil {
-			cacheKey = fmt.Sprintf("felicia:public:mementos:%s", cachedIDStr)
-			if cached, err := s.cache.Get(r.Context(), cacheKey); err == nil {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write([]byte(cached))
-				return
-			}
-		}
-
-		// Cache miss or slug key miss; fetch from DB
-		j, err = s.repo.GetJourneyBySlug(r.Context(), slugOrID)
-		if err == nil {
-			cacheKey = fmt.Sprintf("felicia:public:mementos:%s", j.ID.String())
-		}
+	id, parseErr := uuid.Parse(chi.URLParam(r, "id"))
+	if parseErr != nil {
+		respondError(w, http.StatusBadRequest, "invalid journey UUID")
+		return
 	}
+
+	cacheKey := fmt.Sprintf("felicia:public:mementos:%s", id.String())
+	if cached, err := s.cache.Get(r.Context(), cacheKey); err == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(cached))
+		return
+	}
+	j, err := s.repo.GetJourney(r.Context(), id)
 
 	if err != nil {
 		respondError(w, http.StatusNotFound, "journey not found")
@@ -1019,7 +994,6 @@ func (s *Server) handleGetPublicMementos(w http.ResponseWriter, r *http.Request)
 	jsonData, err := json.Marshal(list)
 	if err == nil {
 		_ = s.cache.Set(r.Context(), cacheKey, string(jsonData))
-		_ = s.cache.Set(r.Context(), fmt.Sprintf("felicia:public:slug:%s", j.Slug), j.ID.String())
 	}
 
 	respondJSON(w, http.StatusOK, list)

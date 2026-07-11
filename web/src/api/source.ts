@@ -2,22 +2,22 @@ import type { Journey } from '../data'
 import { adaptJourney } from './adapt'
 import type { ApiJourney, ApiJourneyListItem, ApiMemento } from './types'
 
-export async function loadJourney(slug: string): Promise<Journey> {
+export async function loadJourney(id: string): Promise<Journey> {
   const apiBase = import.meta.env.VITE_API_BASE || ''
   const isProd = import.meta.env.PROD
 
-  const journeyUrl = isProd ? `/api/v1/journeys/${slug}.json` : `${apiBase}/api/v1/journeys/${slug}`
+  const journeyUrl = isProd ? `/api/v1/journeys/${id}.json` : `${apiBase}/api/v1/journeys/${id}`
   const mementosUrl = isProd
-    ? `/api/v1/journeys/${slug}/mementos.json`
-    : `${apiBase}/api/v1/journeys/${slug}/mementos`
+    ? `/api/v1/journeys/${id}/mementos.json`
+    : `${apiBase}/api/v1/journeys/${id}/mementos`
 
   const [journeyRes, mementosRes] = await Promise.all([fetch(journeyUrl), fetch(mementosUrl)])
 
   if (!journeyRes.ok) {
-    throw new Error(`Failed to load journey details for slug "${slug}": ${journeyRes.statusText}`)
+    throw new Error(`Failed to load journey details for id "${id}": ${journeyRes.statusText}`)
   }
   if (!mementosRes.ok) {
-    throw new Error(`Failed to load mementos for slug "${slug}": ${mementosRes.statusText}`)
+    throw new Error(`Failed to load mementos for id "${id}": ${mementosRes.statusText}`)
   }
 
   const apiJourney = (await journeyRes.json()) as ApiJourney
@@ -41,7 +41,7 @@ export async function loadJourneys(): Promise<Journey[]> {
   // Fetch details and mementos in parallel to build full Journey objects
   const journeys = await Promise.all(
     items.map(async (item) => {
-      const journey = await loadJourney(item.slug)
+      const journey = await loadJourney(item.id)
       journey.representativeDots = item.representative_dots
       return journey
     }),

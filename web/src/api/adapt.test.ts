@@ -36,7 +36,7 @@ describe('adaptJourney', () => {
 
     const result = adaptJourney(apiJourney, apiMementos)
     expect(result.id).toBe('0190cbde-f300-7000-8000-111111111111')
-    expect(result.route).toHaveLength(3)
+    expect(result.route).toHaveLength(4)
     expect(result.visits).toHaveLength(3)
     expect(result.mementos).toHaveLength(5)
     expect(result.mementos[0].photos).toHaveLength(2)
