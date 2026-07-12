@@ -1,66 +1,88 @@
 <script lang="ts">
+  import V4Detail from './V4Detail.svelte'
+  import V4Map from './V4Map.svelte'
+  import V4Stub from './V4Stub.svelte'
   import { loadJourneys } from '../api/source'
-  import type { Coordinates, Journey, Lang, Theme } from '../data'
+  import type { Journey, Lang, Memento, Theme } from '../data'
 
   let { lang = $bindable('ja'), theme = $bindable('dark') }: { lang?: Lang; theme?: Theme } =
     $props()
   let journeys = $state<Journey[]>([])
-  let selectedIndex = $state(0)
+  let newestFirst = $state(true)
   let isLoading = $state(true)
   let error = $state<string | null>(null)
-  let selectedMementoIndex = $state(0)
-  const selectedJourney = $derived(journeys[selectedIndex] ?? null)
-  const selectedMemento = $derived(selectedJourney?.mementos[selectedMementoIndex] ?? null)
+  let activeJourneyId = $state<string | null>(null)
+  let activeMementoId = $state<string | null>(null)
+  let selectedMementoId = $state<string | null>(null)
+
+  const orderedJourneys = $derived(
+    [...journeys]
+      .sort((left, right) => {
+        const comparison = journeyStart(left).localeCompare(journeyStart(right))
+        return newestFirst ? -comparison : comparison
+      })
+      .map((journey) => ({
+        journey,
+        mementos: [...journey.mementos].sort((left, right) => {
+          const comparison = left.date.en.localeCompare(right.date.en)
+          return newestFirst ? -comparison : comparison
+        }),
+      })),
+  )
+  const activeJourney = $derived(
+    journeys.find((journey) => journey.id === activeJourneyId) ?? journeys[0] ?? null,
+  )
+  const selectedMemento = $derived(
+    activeJourney?.mementos.find((memento) => memento.id === selectedMementoId) ?? null,
+  )
 
   const ui = {
     ja: {
       title: '旅の地図帳',
-      subtitle: '世界中の記憶を、場所からひらく',
+      subtitle: '旅の記憶を、チケットのかたちで',
+      newest: 'Newest',
+      oldest: 'Oldest',
       journeys: '旅',
-      memories: '記憶',
-      back: '一覧に戻る',
-      previous: '前',
-      next: '次',
+      photos: 'photos',
+      photosHeading: '写真',
       loading: '読み込み中…',
       retry: '再試行',
+      close: '閉じる',
+      story: 'Story',
     },
     en: {
-      title: 'The Atlas',
-      subtitle: 'Open the archive from the places you remember',
+      title: "Felicia's Waypoints",
+      subtitle: 'A travel journal in memento stubs',
+      newest: 'Newest',
+      oldest: 'Oldest',
       journeys: 'journeys',
-      memories: 'memories',
-      back: 'Back to atlas',
-      previous: 'Previous',
-      next: 'Next',
+      photos: 'photos',
+      photosHeading: 'Photos',
       loading: 'Loading…',
       retry: 'Retry',
+      close: 'Close',
+      story: 'Story',
     },
     zh: {
       title: '旅行图册',
-      subtitle: '从记得的地方打开这份档案',
+      subtitle: '以纪念物记录旅途',
+      newest: 'Newest',
+      oldest: 'Oldest',
       journeys: '次旅程',
-      memories: '段记忆',
-      back: '返回图册',
-      previous: '上一段',
-      next: '下一段',
+      photos: 'photos',
+      photosHeading: '照片',
       loading: '加载中…',
       retry: '重试',
+      close: '关闭',
+      story: '故事',
     },
   } as const
+
   const t = (value: { ja: string; en: string; zh: string }) => value[lang]
   const label = $derived(ui[lang])
 
-  function world([lon, lat]: Coordinates) {
-    return { x: ((lon + 180) / 360) * 100, y: (1 - (lat + 60) / 210) * 100 }
-  }
-
-  function routePoints(journey: Journey) {
-    return journey.route
-      .map((coord) => {
-        const point = world(coord)
-        return `${point.x},${point.y}`
-      })
-      .join(' ')
+  function journeyStart(journey: Journey) {
+    return journey.dates.en.slice(0, 10)
   }
 
   function loadData() {
@@ -69,438 +91,351 @@
     loadJourneys()
       .then((data) => {
         journeys = data
-        isLoading = false
+        activeJourneyId = data[0]?.id ?? null
+        activeMementoId = data[0]?.mementos[0]?.id ?? null
       })
       .catch((reason) => {
         error = reason instanceof Error ? reason.message : String(reason)
+      })
+      .finally(() => {
         isLoading = false
       })
   }
 
-  function selectJourney(index: number) {
-    selectedIndex = index
-    selectedMementoIndex = 0
+  function observeJourney(node: HTMLElement, journey: Journey) {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) activeJourneyId = journey.id
+      },
+      { rootMargin: '-35% 0px -55% 0px', threshold: 0 },
+    )
+    observer.observe(node)
+    return { destroy: () => observer.disconnect() }
   }
 
-  function previousMemory() {
-    if (selectedMementoIndex > 0) selectedMementoIndex -= 1
+  function observeMemento(node: HTMLElement, memento: Memento) {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          activeMementoId = memento.id
+          activeJourneyId = node.dataset.journeyId ?? activeJourneyId
+        }
+      },
+      { rootMargin: '-42% 0px -42% 0px', threshold: 0 },
+    )
+    observer.observe(node)
+    return { destroy: () => observer.disconnect() }
   }
 
-  function nextMemory() {
-    if (selectedJourney && selectedMementoIndex < selectedJourney.mementos.length - 1)
-      selectedMementoIndex += 1
+  function selectMemento(memento: Memento, journeyId: string) {
+    activeJourneyId = journeyId
+    activeMementoId = memento.id
+    selectedMementoId = memento.id
   }
 
-  function handleKeydown(event: KeyboardEvent) {
-    if (!selectedMemento) return
-    if (event.key === 'ArrowLeft') {
-      event.preventDefault()
-      previousMemory()
-    } else if (event.key === 'ArrowRight') {
-      event.preventDefault()
-      nextMemory()
-    }
+  function closeMemento() {
+    selectedMementoId = null
   }
 
   $effect(() => loadData())
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
-
-<main class="atlas" class:light={theme === 'light'}>
+<main class="waypoints" class:light={theme === 'light'}>
   {#if isLoading}
-    <div class="atlas-loading">{label.loading}</div>
+    <div class="status" role="status">{label.loading}</div>
   {:else if error}
-    <div class="atlas-error">
+    <div class="status status-error" role="alert">
       <p>{error}</p>
-      <button onclick={loadData}>{label.retry}</button>
+      <button type="button" onclick={loadData}>{label.retry}</button>
     </div>
-  {:else}
-    <section class="atlas-map" aria-label={label.title}>
-      <div class="atlas-heading">
-        <p class="eyebrow">F E L I C I A / ATLAS</p>
-        <h1>{label.title}</h1>
-        <p>{label.subtitle}</p>
-      </div>
-      <svg class="world-map" viewBox="0 0 100 100" role="img" aria-label={label.title}>
-        <defs>
-          <pattern id="atlas-grid" width="5" height="5" patternUnits="userSpaceOnUse">
-            <path
-              d="M 5 0 L 0 0 0 5"
-              fill="none"
-              stroke="currentColor"
-              stroke-opacity=".13"
-              stroke-width=".12"
-            />
-          </pattern>
-        </defs>
-        <rect width="100" height="100" fill="url(#atlas-grid)" />
-        {#each journeys as journey, index (journey.id)}
-          <polyline
-            class:active={index === selectedIndex}
-            class="atlas-route"
-            points={routePoints(journey)}
-          />
-          {@const first = journey.route[0]}
-          {@const point = world(first)}
-          <circle
-            class:active={index === selectedIndex}
-            class="atlas-dot"
-            cx={point.x}
-            cy={point.y}
-            r={index === selectedIndex ? 1.1 : 0.65}
-            role="button"
-            tabindex="0"
-            aria-label={t(journey.title)}
-            onclick={() => selectJourney(index)}
-            onkeydown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') selectJourney(index)
-            }}
-          />
-        {/each}
-      </svg>
-      <div class="map-note">
-        {journeys.length}
-        {label.journeys} · {journeys.reduce((sum, journey) => sum + journey.mementos.length, 0)}
-        {label.memories}
-      </div>
-    </section>
+  {:else if orderedJourneys.length}
+    <div class="map-surface" aria-hidden="true">
+      <V4Map
+        {journeys}
+        {activeJourneyId}
+        {activeMementoId}
+        {lang}
+        {theme}
+        onSelect={(id) => (selectedMementoId = id)}
+      />
+    </div>
 
-    <aside class="atlas-rail" aria-label={label.title}>
-      <div class="rail-head">
-        <span>{journeys.length} {label.journeys}</span>
-        <span>← →</span>
-      </div>
-      <div class="journey-list">
-        {#each journeys as journey, index (journey.id)}
-          <button
-            class:active={index === selectedIndex}
-            class="journey-row"
-            onclick={() => selectJourney(index)}
-          >
-            <span class="row-number">{String(index + 1).padStart(2, '0')}</span>
-            <span class="row-copy"
-              ><strong>{t(journey.title)}</strong><small
-                >{t(journey.dates)} · {t(journey.place)}</small
-              ></span
-            >
-            <span class="row-count">{journey.mementos.length}</span>
-          </button>
-        {/each}
-      </div>
-
-      {#if selectedJourney && selectedMemento}
-        <section
-          class="memory-card"
-          aria-label={t(selectedMemento.title)}
-          aria-keyshortcuts="ArrowLeft ArrowRight"
+    <header class="hero">
+      <p class="brand">F E L I C I A / ATLAS</p>
+      <h1>{label.title}</h1>
+      <p>{label.subtitle}</p>
+      <nav class="social" aria-label="Links">
+        <a href="https://github.com" aria-label="GitHub">◉</a>
+        <a href="https://x.com" aria-label="X">𝕏</a>
+        <a href="https://telegram.org" aria-label="Telegram">➤</a>
+        <a href="mailto:hello@example.com" aria-label="Email">✉</a>
+      </nav>
+      <div class="sort" role="group" aria-label="Sort journeys">
+        <button
+          type="button"
+          class:active={newestFirst}
+          aria-pressed={newestFirst}
+          onclick={() => (newestFirst = true)}>{label.newest}</button
         >
-          <div class="memory-toolbar">
-            <span>{selectedMementoIndex + 1} / {selectedJourney.mementos.length}</span>
-            <span>{t(selectedJourney.title)}</span>
-          </div>
-          <p class="eyebrow">{selectedMemento.kind}</p>
-          <h2>{t(selectedMemento.title)}</h2>
-          <p class="memory-meta">{t(selectedMemento.place)} · {t(selectedMemento.date)}</p>
-          <p class="memory-essay">{t(selectedMemento.essay)}</p>
-          <div class="memory-nav">
-            <button disabled={selectedMementoIndex === 0} onclick={previousMemory}
-              >← {label.previous}</button
-            >
-            <button
-              disabled={selectedMementoIndex === selectedJourney.mementos.length - 1}
-              onclick={nextMemory}>{label.next} →</button
-            >
+        <button
+          type="button"
+          class:active={!newestFirst}
+          aria-pressed={!newestFirst}
+          onclick={() => (newestFirst = false)}>{label.oldest}</button
+        >
+      </div>
+    </header>
+
+    <div class="journey-stream">
+      {#each orderedJourneys as entry (entry.journey.id)}
+        <section
+          class:active={entry.journey.id === activeJourneyId}
+          class="journey-section"
+          use:observeJourney={entry.journey}
+          data-journey-id={entry.journey.id}
+        >
+          <header class="journey-heading">
+            <p class="journey-number">
+              {String(orderedJourneys.indexOf(entry) + 1).padStart(2, '0')}
+            </p>
+            <h2>{t(entry.journey.title)}</h2>
+            <p>{t(entry.journey.place)} · {t(entry.journey.dates)}</p>
+          </header>
+
+          <div class="stub-field" aria-label={t(entry.journey.title)}>
+            {#each entry.mementos as memento (memento.id)}
+              <div
+                class:active={memento.id === activeMementoId}
+                class="memento-entry"
+                data-journey-id={entry.journey.id}
+                use:observeMemento={memento}
+              >
+                <V4Stub
+                  {memento}
+                  {lang}
+                  photoLabel={label.photos}
+                  selected={memento.id === selectedMementoId}
+                  onSelect={() => selectMemento(memento, entry.journey.id)}
+                />
+              </div>
+            {/each}
           </div>
         </section>
-      {/if}
-    </aside>
+      {/each}
+    </div>
+
+    {#if selectedMemento}
+      <V4Detail
+        memento={selectedMemento}
+        {lang}
+        photoLabel={label.photos}
+        photosHeading={label.photosHeading}
+        closeLabel={label.close}
+        storyLabel={label.story}
+        onClose={closeMemento}
+      />
+    {/if}
+  {:else}
+    <div class="status">{label.journeys}: 0</div>
   {/if}
 </main>
 
 <style>
-  .atlas {
-    --ink: #f1eadc;
-    --muted: #a69e90;
-    --line: rgba(241, 234, 220, 0.18);
-    --accent: #f28b35;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 27rem;
+  .waypoints {
+    --ink: #f5f5f5;
+    --muted: #a8a8a8;
+    --orange: #d46728;
     min-height: 100%;
-    background: #171614;
+    height: 100%;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    background: #121212;
     color: var(--ink);
-    font-family: 'Zen Old Mincho', Georgia, serif;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   }
-  .atlas.light {
-    background: #eee5d5;
-    color: #332a20;
-    --muted: #766c5d;
-    --line: rgba(51, 42, 32, 0.18);
+
+  .waypoints.light {
+    --ink: #2d2925;
+    --muted: #706a65;
+    --orange: #b45f26;
+    background: #e7e0d5;
   }
-  .atlas-map {
-    position: relative;
-    min-height: 100vh;
-    overflow: hidden;
-    background: radial-gradient(circle at 48% 45%, #27231d, #11100f 75%);
+
+  .map-surface {
+    position: fixed;
+    z-index: 0;
+    inset: 0;
+    pointer-events: none;
   }
-  .light .atlas-map {
-    background: radial-gradient(circle at 48% 45%, #fff8ea, #ded0b9 75%);
-  }
-  .atlas-heading {
-    position: absolute;
-    z-index: 2;
-    top: 2rem;
-    left: 2.5rem;
-    max-width: 24rem;
-  }
-  .eyebrow {
-    margin: 0 0 0.55rem;
-    color: var(--accent);
-    font:
-      0.68rem/1.2 ui-monospace,
-      SFMono-Regular,
-      monospace;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-  }
-  h1,
-  h2,
-  p {
-    margin-top: 0;
-  }
-  h1 {
-    margin-bottom: 0.35rem;
-    font-size: clamp(2.2rem, 4vw, 4.6rem);
-    line-height: 0.98;
-  }
-  .atlas-heading p:last-child {
-    color: var(--muted);
-    font-size: 1rem;
-  }
-  .world-map {
+
+  .map-surface :global(.maplibregl-map) {
     position: absolute;
     inset: 0;
-    width: 100%;
-    height: 100%;
-    padding: 9rem 3rem 3rem;
-    box-sizing: border-box;
-    color: var(--line);
   }
-  .atlas-route {
-    fill: none;
-    stroke: #d6b18c;
-    stroke-width: 0.22;
-    stroke-dasharray: 0.8 0.7;
-    opacity: 0.28;
-    cursor: pointer;
-    transition:
-      stroke 0.2s,
-      opacity 0.2s,
-      stroke-width 0.2s;
+
+  .hero,
+  .journey-stream {
+    position: relative;
+    z-index: 1;
   }
-  .atlas-route.active {
-    stroke: var(--accent);
-    stroke-width: 0.55;
-    opacity: 1;
-  }
-  .atlas-dot {
-    fill: #d6b18c;
-    opacity: 0.65;
-    cursor: pointer;
-  }
-  .atlas-dot.active {
-    fill: var(--accent);
-    opacity: 1;
-  }
-  .map-note {
-    position: absolute;
-    bottom: 1.75rem;
-    left: 2.5rem;
-    color: var(--muted);
-    font:
-      0.7rem ui-monospace,
-      SFMono-Regular,
-      monospace;
-    letter-spacing: 0.08em;
-  }
-  .atlas-rail {
+
+  .hero {
     display: flex;
-    min-height: 100vh;
-    flex-direction: column;
-    border-left: 1px solid var(--line);
-    background: rgba(22, 20, 17, 0.92);
-  }
-  .light .atlas-rail {
-    background: rgba(255, 250, 240, 0.94);
-  }
-  .rail-head {
-    display: flex;
-    justify-content: space-between;
-    padding: 1.6rem 1.4rem 1rem;
-    color: var(--muted);
-    font:
-      0.68rem ui-monospace,
-      SFMono-Regular,
-      monospace;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-  }
-  .journey-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0 0.75rem 0.75rem;
-  }
-  .journey-row {
-    display: grid;
-    width: 100%;
-    grid-template-columns: 2rem 1fr auto;
-    gap: 0.75rem;
     align-items: center;
-    padding: 1rem 0.7rem;
-    border: 0;
-    border-top: 1px solid var(--line);
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-    text-align: left;
-    font: inherit;
-  }
-  .journey-row:hover,
-  .journey-row.active {
-    background: rgba(242, 139, 53, 0.1);
-  }
-  .row-number {
-    color: var(--accent);
-    font:
-      0.7rem ui-monospace,
-      SFMono-Regular,
-      monospace;
-  }
-  .row-copy {
-    display: grid;
-    gap: 0.25rem;
-    min-width: 0;
-  }
-  .row-copy strong {
-    overflow: hidden;
-    font-size: 1rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .row-copy small {
-    overflow: hidden;
-    color: var(--muted);
-    font:
-      0.68rem ui-monospace,
-      SFMono-Regular,
-      monospace;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .row-count {
-    color: var(--muted);
-    font:
-      0.7rem ui-monospace,
-      SFMono-Regular,
-      monospace;
-  }
-  .memory-card {
-    margin: 0 0.75rem 0.75rem;
-    padding: 1.25rem;
-    border: 1px solid var(--line);
-    border-radius: 0.65rem;
-    background: rgba(255, 250, 240, 0.07);
-  }
-  .light .memory-card {
-    background: rgba(255, 255, 255, 0.55);
-  }
-  .memory-toolbar {
-    display: flex;
-    justify-content: space-between;
-    gap: 0.75rem;
-    margin-bottom: 1.2rem;
-    color: var(--muted);
-    font:
-      0.65rem ui-monospace,
-      SFMono-Regular,
-      monospace;
-  }
-  .memory-card h2 {
-    margin-bottom: 0.35rem;
-    font-size: 1.5rem;
-  }
-  .memory-meta {
-    color: var(--muted);
-    font:
-      0.7rem ui-monospace,
-      SFMono-Regular,
-      monospace;
-  }
-  .memory-essay {
-    color: var(--muted);
-    font-size: 0.9rem;
-    line-height: 1.65;
-  }
-  .memory-nav {
-    display: flex;
-    justify-content: space-between;
-    gap: 0.5rem;
-    margin-top: 1.3rem;
-  }
-  .memory-nav button {
-    border: 1px solid var(--line);
-    border-radius: 0.3rem;
-    padding: 0.55rem 0.65rem;
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-    font:
-      0.7rem ui-monospace,
-      SFMono-Regular,
-      monospace;
-  }
-  .memory-nav button:disabled {
-    cursor: not-allowed;
-    opacity: 0.3;
-  }
-  .atlas-loading,
-  .atlas-error {
-    display: grid;
-    min-height: 100%;
-    place-items: center;
-    background: #171614;
-    color: var(--ink);
-  }
-  .atlas-error {
-    display: flex;
     flex-direction: column;
+    min-height: 100vh;
+    padding: clamp(7rem, 18vh, 12rem) 1rem 5rem;
+    text-align: center;
+  }
+
+  .brand,
+  .journey-number {
+    margin: 0 0 0.8rem;
+    color: var(--orange);
+    font-size: 0.68rem;
+    letter-spacing: 0.18em;
+  }
+
+  .hero h1 {
+    margin: 0;
+    font-size: clamp(2.8rem, 5vw, 5rem);
+    font-weight: 800;
+    letter-spacing: -0.06em;
+    text-shadow: 0 5px 18px #000;
+  }
+
+  .hero > p:not(.brand),
+  .journey-heading > p:last-child {
+    margin: 1rem 0 0;
+    color: var(--muted);
+    font-size: clamp(1rem, 1.7vw, 1.35rem);
+  }
+
+  .social {
+    display: flex;
+    gap: 1.35rem;
+    margin-top: 1.25rem;
+  }
+
+  .social a {
+    color: var(--muted);
+    font-size: 1.35rem;
+    text-decoration: none;
+  }
+
+  .sort {
+    display: flex;
+    margin-top: 1.5rem;
+    padding: 0.2rem;
+    border: 1px solid #444;
+    border-radius: 0.7rem;
+    background: #353535b8;
+  }
+
+  .sort button {
+    padding: 0.55rem 1.15rem;
+    border: 0;
+    border-radius: 0.5rem;
+    color: var(--muted);
+    background: transparent;
+  }
+
+  .sort button.active {
+    color: #fff;
+    background: #686868;
+  }
+
+  .journey-section {
+    max-width: 80rem;
+    min-height: 100vh;
+    margin: 0 auto;
+    padding: 7rem 1.25rem 9rem;
+    opacity: 0.62;
+    transition: opacity 240ms ease;
+  }
+
+  .journey-section.active {
+    opacity: 1;
+  }
+
+  .journey-heading {
+    margin: 0 auto 3rem;
+    text-align: center;
+  }
+
+  .journey-heading h2 {
+    margin: 0;
+    font-size: clamp(2.2rem, 4vw, 4rem);
+    text-shadow: 0 4px 15px #000;
+  }
+
+  .journey-heading p:last-child {
+    margin-bottom: 0;
+  }
+
+  .stub-field {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2rem 1.5rem;
+  }
+
+  .memento-entry {
+    scroll-margin-top: 38vh;
+    opacity: 0.72;
+    transition:
+      opacity 180ms ease,
+      transform 180ms ease;
+  }
+
+  .memento-entry.active {
+    opacity: 1;
+    transform: translateY(-0.25rem);
+  }
+
+  .status {
+    display: grid;
+    min-height: 100vh;
+    place-items: center;
+    color: var(--muted);
+  }
+
+  .status-error {
     gap: 1rem;
+    align-content: center;
   }
-  .atlas-error button {
+
+  .status button {
     padding: 0.6rem 1rem;
+    border: 1px solid #555;
+    border-radius: 0.4rem;
+    color: var(--ink);
+    background: transparent;
   }
-  @media (max-width: 900px) {
-    .atlas {
-      display: block;
+
+  @media (max-width: 640px) {
+    .hero {
+      min-height: 100svh;
+      padding-top: 8rem;
     }
-    .atlas-map {
-      min-height: 52vh;
+
+    .hero h1 {
+      max-width: 18rem;
+      line-height: 1.05;
     }
-    .atlas-rail {
-      min-height: 48vh;
-      border-top: 1px solid var(--line);
-      border-left: 0;
+
+    .journey-section {
+      padding-top: 5rem;
     }
-    .world-map {
-      padding: 7rem 1rem 1rem;
+
+    .stub-field {
+      display: grid;
+      grid-template-columns: 1fr;
     }
-    .atlas-heading {
-      top: 1.25rem;
-      left: 1.25rem;
-    }
-    .map-note {
-      bottom: 1rem;
-      left: 1.25rem;
+
+    .memento-entry :global(.stub) {
+      width: min(100%, 25rem);
+      margin-inline: auto;
     }
   }
 </style>

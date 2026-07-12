@@ -21,6 +21,52 @@ services:
     container_name: felicia-cache
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # --- Shared-demo services (make share) ---
+  # These sit on top of the always-on db+cache dev backing store. The api is
+  # published to the host so host-run `make migrate`/`make seed` reach it; the
+  # web (caddy) origin fronts the SPA + /api/v1 and is what the tunnel exposes.
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Containerfile
+    container_name: felicia-api
+    environment:
+      DATABASE_DSN: postgres://postgres:password@db:5432/felicia?sslmode=disable
+      CACHE_ADDR: cache:6379
+      PORT: "8080"
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+
+  web:
+    image: docker.io/library/caddy:2-alpine
+    container_name: felicia-web
+    volumes:
+      - ../web/dist:/srv:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    ports:
+      - "8081:80"
+    depends_on:
+      - api
+
+  # Quick ephemeral Cloudflare tunnel — no account/domain. On start it prints a
+  # random https://<name>.trycloudflare.com URL (see `make share` output).
+  cloudflared:
+    image: docker.io/cloudflare/cloudflared:latest
+    container_name: felicia-cloudflared
+    command: tunnel --no-autoupdate --url http://web:80
+    depends_on:
+      - web
 
 volumes:
   pgdata:

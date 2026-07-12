@@ -477,3 +477,38 @@ func TestPublicJourneyOmitsEmptyGPSRoute(t *testing.T) {
 		t.Error("expected empty GPS route to be omitted")
 	}
 }
+
+func TestGetPublicJourneysExcludesEmpty(t *testing.T) {
+	repo := newMockRepository()
+	base := time.Date(2026, 3, 20, 0, 0, 0, 0, time.UTC)
+
+	withMementos := &domain.Journey{ID: uuid.New(), JournalID: uuid.New(), Slug: "kyushu", Title: "Kyushu"}
+	empty := &domain.Journey{ID: uuid.New(), JournalID: uuid.New(), Slug: "bare", Title: "Bare"}
+	repo.journeys[withMementos.ID] = withMementos
+	repo.journeys[empty.ID] = empty
+	repo.mementos[uuid.New()] = &domain.Memento{
+		ID: uuid.New(), JourneyID: withMementos.ID, Kind: "stamp", Place: "Kagoshima",
+		OccurredAt: base, Geom: orb.Point{130.6, 31.6},
+	}
+
+	handler := api.NewServer(repo, nil, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{}).Handler()
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/journeys", nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", w.Code, w.Body)
+	}
+
+	var list []struct {
+		Slug         string `json:"slug"`
+		MementoCount int    `json:"memento_count"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&list); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("expected only non-empty journeys, got %d: %s", len(list), w.Body)
+	}
+	if list[0].Slug != "kyushu" || list[0].MementoCount == 0 {
+		t.Errorf("expected the journey with mementos, got %+v", list[0])
+	}
+}

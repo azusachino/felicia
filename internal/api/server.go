@@ -796,6 +796,11 @@ func (s *Server) handleGetPublicJourneys(w http.ResponseWriter, r *http.Request)
 			respondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+		// The public reader only surfaces journeys with content — an empty
+		// (draft) journey is not a valid public projection.
+		if len(mementos) == 0 {
+			continue
+		}
 		list = append(list, publication.NewJourneyListItem(j, mementos))
 	}
 

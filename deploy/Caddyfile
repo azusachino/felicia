@@ -1,0 +1,17 @@
+# Single public origin for the shared demo: serve the built SPA and reverse
+# proxy the public read API. Only /api/v1/* is exposed — the admin API is never
+# proxied, so seeding/authoring stays host-only.
+:80 {
+	encode zstd gzip
+
+	@api path /api/v1/*
+	handle @api {
+		reverse_proxy api:8080
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
