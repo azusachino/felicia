@@ -1,9 +1,9 @@
 <script lang="ts">
   import maplibregl, { type StyleSpecification } from 'maplibre-gl'
-  import { onMount } from 'svelte'
+  import { onMount, tick } from 'svelte'
   import { fade, fly } from 'svelte/transition'
+  import { loadJourneys } from '../api/source'
   import {
-    journeys,
     kindLabel,
     uiText,
     type Coordinates,
@@ -20,8 +20,11 @@
   export let theme: Theme = 'dark'
   export let toMemories: (() => void) | undefined = undefined
 
-  let selectedJourneyId = journeys[0].id
-  let selected = journeys[0].mementos[0]
+  let journeys: Journey[] = []
+  let selectedJourneyId = ''
+  let selected: Memento | undefined
+  let isLoading = true
+  let error: string | null = null
   let mapContainer: HTMLDivElement
   let map: maplibregl.Map | undefined
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- imperative maplibre marker cache, not reactive UI state
@@ -32,13 +35,15 @@
   $: selectedJourney = journeys.find((j) => j.id === selectedJourneyId) ?? journeys[0]
   $: countLabel = (n: number) => (lang === 'en' ? `${n} mementos` : `${n}件`)
 
-  const routesGeoJson = {
-    type: 'FeatureCollection' as const,
-    features: journeys.map((journey) => ({
-      type: 'Feature' as const,
-      geometry: { type: 'LineString' as const, coordinates: journey.route },
-      properties: { journeyId: journey.id },
-    })),
+  function routesGeoJson() {
+    return {
+      type: 'FeatureCollection' as const,
+      features: journeys.map((journey) => ({
+        type: 'Feature' as const,
+        geometry: { type: 'LineString' as const, coordinates: journey.route },
+        properties: { journeyId: journey.id },
+      })),
+    }
   }
 
   function transitFeatures(journey: Journey) {
@@ -80,6 +85,7 @@
   }
 
   function boundsOf(coords: Coordinates[]) {
+    if (!coords.length) return undefined
     const bounds = new maplibregl.LngLatBounds(coords[0], coords[0])
     for (const coord of coords) bounds.extend(coord)
     return bounds
@@ -89,7 +95,9 @@
 
   function fitAll() {
     if (!map) return
-    map.fitBounds(boundsOf(journeys.flatMap((journey) => journey.route)), {
+    const bounds = boundsOf(journeys.flatMap((journey) => journey.route))
+    if (!bounds) return
+    map.fitBounds(bounds, {
       padding: fitPadding,
       maxZoom: 6.5,
       duration: 800,
@@ -98,7 +106,9 @@
 
   function fitJourney(journey: Journey) {
     if (!map) return
-    map.fitBounds(boundsOf(journey.route), { padding: fitPadding, maxZoom: 9, duration: 800 })
+    const bounds = boundsOf(journey.route)
+    if (!bounds) return
+    map.fitBounds(bounds, { padding: fitPadding, maxZoom: 9, duration: 800 })
   }
 
   function markerElement(memento: Memento, seq: number) {
@@ -129,7 +139,7 @@
 
   function syncMarkers() {
     markers.forEach((marker, id) => {
-      marker.getElement().classList.toggle('is-active', id === selected.id)
+      marker.getElement().classList.toggle('is-active', id === selected?.id)
     })
   }
 
@@ -156,7 +166,9 @@
   function focusMap(memento: Memento) {
     if (!map) return
     if (memento.transit) {
-      map.fitBounds(boundsOf([memento.transit.from.coords, memento.transit.to.coords]), {
+      const bounds = boundsOf([memento.transit.from.coords, memento.transit.to.coords])
+      if (!bounds) return
+      map.fitBounds(bounds, {
         padding: fitPadding,
         maxZoom: 10.5,
         duration: 700,
@@ -177,6 +189,7 @@
   }
 
   function setupMap() {
+    if (!mapContainer) return
     map = new maplibregl.Map({
       container: mapContainer,
       style: mapStyle,
@@ -190,7 +203,7 @@
     map.on('load', () => {
       if (!map) return
 
-      map.addSource('routes', { type: 'geojson', data: routesGeoJson })
+      map.addSource('routes', { type: 'geojson', data: routesGeoJson() })
       // All journeys, dim — the world index.
       map.addLayer({
         id: 'routes-all',
@@ -236,7 +249,19 @@
   $: applyMapTheme(theme)
 
   onMount(() => {
-    setupMap()
+    loadJourneys()
+      .then(async (data) => {
+        journeys = data
+        selectedJourneyId = data[0]?.id ?? ''
+        selected = data[0]?.mementos[0]
+        isLoading = false
+        await tick()
+        setupMap()
+      })
+      .catch((reason) => {
+        error = reason instanceof Error ? reason.message : String(reason)
+        isLoading = false
+      })
 
     return () => {
       markers.forEach((marker) => marker.remove())
@@ -247,136 +272,154 @@
 </script>
 
 <main class="app-shell" class:theme-light={theme === 'light'}>
-  <!-- Index rail: journeys (world index) -> selected journey's chronological timeline. -->
-  <aside class="index-rail" aria-label="Journey index">
-    <div class="rail-toolbar">
-      <div class="lang-switch" role="group" aria-label="Language">
-        <button class:active={lang === 'ja'} on:click={() => (lang = 'ja')}>日本語</button>
-        <button class:active={lang === 'en'} on:click={() => (lang = 'en')}>EN</button>
-        <button class:active={lang === 'zh'} on:click={() => (lang = 'zh')}>中文</button>
-      </div>
-      <button
-        class="theme-toggle"
-        on:click={toggleTheme}
-        aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-      >
-        {theme === 'dark' ? '☀' : '☾'}
-      </button>
-    </div>
-
-    <div class="rail-head">
-      <p class="eyebrow">felicia</p>
-      <div class="rail-head-row">
-        <h1>{t(uiText.journeys)}</h1>
-        <button class="all-btn" on:click={fitAll}>{t(uiText.all)}</button>
-      </div>
-      {#if toMemories}
-        <button class="all-btn" on:click={toMemories}>
-          {lang === 'en' ? 'Collection →' : lang === 'zh' ? '藏品 →' : 'コレクション →'}
+  {#if isLoading}
+    <div class="v1-status">Loading…</div>
+  {:else if error}
+    <div class="v1-status">{error}</div>
+  {:else if selectedJourney && selected}
+    <!-- Index rail: journeys (world index) -> selected journey's chronological timeline. -->
+    <aside class="index-rail" aria-label="Journey index">
+      <div class="rail-toolbar">
+        <div class="lang-switch" role="group" aria-label="Language">
+          <button class:active={lang === 'ja'} on:click={() => (lang = 'ja')}>日本語</button>
+          <button class:active={lang === 'en'} on:click={() => (lang = 'en')}>EN</button>
+          <button class:active={lang === 'zh'} on:click={() => (lang = 'zh')}>中文</button>
+        </div>
+        <button
+          class="theme-toggle"
+          on:click={toggleTheme}
+          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+        >
+          {theme === 'dark' ? '☀' : '☾'}
         </button>
-      {/if}
-    </div>
+      </div>
 
-    <ol class="journey-list" aria-label="Journeys">
-      {#each journeys as journey (journey.id)}
-        <li>
-          <button
-            class="journey-item"
-            class:active={journey.id === selectedJourneyId}
-            on:click={() => selectJourney(journey)}
-          >
-            <span class="journey-item-title">{t(journey.title)}</span>
-            <span class="journey-item-meta">{t(journey.dates)} · {t(journey.place)}</span>
-            <span class="journey-item-count">{countLabel(journey.mementos.length)}</span>
+      <div class="rail-head">
+        <p class="eyebrow">felicia</p>
+        <div class="rail-head-row">
+          <h1>{t(uiText.journeys)}</h1>
+          <button class="all-btn" on:click={fitAll}>{t(uiText.all)}</button>
+        </div>
+        {#if toMemories}
+          <button class="all-btn" on:click={toMemories}>
+            {lang === 'en' ? 'Collection →' : lang === 'zh' ? '藏品 →' : 'コレクション →'}
           </button>
-
-          {#if journey.id === selectedJourneyId}
-            <ol class="timeline" aria-label="Mementos in order">
-              {#each journey.mementos as memento, index (memento.id)}
-                <li>
-                  <button
-                    class="timeline-item"
-                    class:active={memento.id === selected.id}
-                    on:click={() => selectMemento(memento)}
-                  >
-                    <span class="timeline-glyph timeline-glyph--{memento.kind}">{index + 1}</span>
-                    <span class="timeline-body">
-                      <span class="timeline-date">{t(memento.date)}</span>
-                      <strong>{t(memento.title)}</strong>
-                      <span class="timeline-place">{t(memento.place)}</span>
-                    </span>
-                  </button>
-                </li>
-              {/each}
-            </ol>
-          {/if}
-        </li>
-      {/each}
-    </ol>
-  </aside>
-
-  <!-- Map: the hero. -->
-  <section class="map-stage" aria-label="Journey map">
-    <div bind:this={mapContainer} class="map-canvas"></div>
-  </section>
-
-  <!-- Detail: the memento opened — paper stub + essay + gallery. -->
-  <aside class="detail-panel" aria-label="Memento detail">
-    {#key selected.id}
-      <div class="detail-inner" in:fade={{ duration: 220 }}>
-        <div class="section-head">
-          <p class="eyebrow">{t(kindLabel[selected.kind])}</p>
-          <h2>{t(selected.title)}</h2>
-        </div>
-
-        <div class="stub-card {selected.kind}" in:fly={{ y: 12, duration: 320, delay: 60 }}>
-          {#if selected.kind === 'transit' && selected.transit}
-            <div class="ticket-face">
-              <div class="ticket-line">
-                <span>{t(selected.transit.operator)}</span>
-                <strong>{t(selected.transit.line)}</strong>
-              </div>
-              <div class="station-pair">
-                <span>{stationName(selected.transit.from)}</span>
-                <b>→</b>
-                <span>{stationName(selected.transit.to)}</span>
-              </div>
-              <div class="ticket-meta">
-                <span>{t(selected.date)}</span>
-                <span>{selected.transit.fare}</span>
-              </div>
-            </div>
-          {:else if selected.kind === 'stamp'}
-            <div class="stamp-face">
-              <span>御朱印</span>
-              <strong>{t(selected.place)}</strong>
-              <small>{t(selected.date)}</small>
-            </div>
-          {:else}
-            <div class="goods-face">
-              <span>{t(kindLabel.goods)}</span>
-              <strong>{t(selected.title)}</strong>
-              <small>{t(selected.vendor)} · {selected.price}</small>
-            </div>
-          {/if}
-        </div>
-
-        <article class="essay">
-          <span>{t(uiText.story)}</span>
-          <p>{t(selected.essay)}</p>
-        </article>
-
-        {#if selected.photos.length}
-          <div class="gallery">
-            {#each selected.photos as photo (photo.src)}
-              <figure>
-                <img src={photo.src} alt={t(selected.title)} />
-                <figcaption>{t(photo.caption)}</figcaption>
-              </figure>
-            {/each}
-          </div>
         {/if}
       </div>
-    {/key}
-  </aside>
+
+      <ol class="journey-list" aria-label="Journeys">
+        {#each journeys as journey (journey.id)}
+          <li>
+            <button
+              class="journey-item"
+              class:active={journey.id === selectedJourneyId}
+              on:click={() => selectJourney(journey)}
+            >
+              <span class="journey-item-title">{t(journey.title)}</span>
+              <span class="journey-item-meta">{t(journey.dates)} · {t(journey.place)}</span>
+              <span class="journey-item-count">{countLabel(journey.mementos.length)}</span>
+            </button>
+
+            {#if journey.id === selectedJourneyId}
+              <ol class="timeline" aria-label="Mementos in order">
+                {#each journey.mementos as memento, index (memento.id)}
+                  <li>
+                    <button
+                      class="timeline-item"
+                      class:active={memento.id === selected.id}
+                      on:click={() => selectMemento(memento)}
+                    >
+                      <span class="timeline-glyph timeline-glyph--{memento.kind}">{index + 1}</span>
+                      <span class="timeline-body">
+                        <span class="timeline-date">{t(memento.date)}</span>
+                        <strong>{t(memento.title)}</strong>
+                        <span class="timeline-place">{t(memento.place)}</span>
+                      </span>
+                    </button>
+                  </li>
+                {/each}
+              </ol>
+            {/if}
+          </li>
+        {/each}
+      </ol>
+    </aside>
+
+    <!-- Map: the hero. -->
+    <section class="map-stage" aria-label="Journey map">
+      <div bind:this={mapContainer} class="map-canvas"></div>
+    </section>
+
+    <!-- Detail: the memento opened — paper stub + essay + gallery. -->
+    <aside class="detail-panel" aria-label="Memento detail">
+      {#key selected.id}
+        <div class="detail-inner" in:fade={{ duration: 220 }}>
+          <div class="section-head">
+            <p class="eyebrow">{t(kindLabel[selected.kind])}</p>
+            <h2>{t(selected.title)}</h2>
+          </div>
+
+          <div class="stub-card {selected.kind}" in:fly={{ y: 12, duration: 320, delay: 60 }}>
+            {#if selected.kind === 'transit' && selected.transit}
+              <div class="ticket-face">
+                <div class="ticket-line">
+                  <span>{t(selected.transit.operator)}</span>
+                  <strong>{t(selected.transit.line)}</strong>
+                </div>
+                <div class="station-pair">
+                  <span>{stationName(selected.transit.from)}</span>
+                  <b>→</b>
+                  <span>{stationName(selected.transit.to)}</span>
+                </div>
+                <div class="ticket-meta">
+                  <span>{t(selected.date)}</span>
+                  <span>{selected.transit.fare}</span>
+                </div>
+              </div>
+            {:else if selected.kind === 'stamp'}
+              <div class="stamp-face">
+                <span>御朱印</span>
+                <strong>{t(selected.place)}</strong>
+                <small>{t(selected.date)}</small>
+              </div>
+            {:else}
+              <div class="goods-face">
+                <span>{t(kindLabel.goods)}</span>
+                <strong>{t(selected.title)}</strong>
+                <small>{t(selected.vendor)} · {selected.price}</small>
+              </div>
+            {/if}
+          </div>
+
+          <article class="essay">
+            <span>{t(uiText.story)}</span>
+            <p>{t(selected.essay)}</p>
+          </article>
+
+          {#if selected.photos.length}
+            <div class="gallery">
+              {#each selected.photos as photo (photo.src)}
+                <figure>
+                  <img src={photo.src} alt={t(selected.title)} />
+                  <figcaption>{t(photo.caption)}</figcaption>
+                </figure>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      {/key}
+    </aside>
+  {:else}
+    <div class="v1-status">No journeys</div>
+  {/if}
 </main>
+
+<style>
+  .v1-status {
+    display: grid;
+    grid-column: 1 / -1;
+    min-height: 100%;
+    place-items: center;
+    color: var(--muted);
+  }
+</style>

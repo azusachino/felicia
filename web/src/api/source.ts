@@ -4,12 +4,8 @@ import type { ApiJourney, ApiJourneyListItem, ApiMemento } from './types'
 
 export async function loadJourney(id: string): Promise<Journey> {
   const apiBase = import.meta.env.VITE_API_BASE || ''
-  const isProd = import.meta.env.PROD
-
-  const journeyUrl = isProd ? `/api/v1/journeys/${id}.json` : `${apiBase}/api/v1/journeys/${id}`
-  const mementosUrl = isProd
-    ? `/api/v1/journeys/${id}/mementos.json`
-    : `${apiBase}/api/v1/journeys/${id}/mementos`
+  const journeyUrl = `${apiBase}/api/v1/journeys/${id}`
+  const mementosUrl = `${apiBase}/api/v1/journeys/${id}/mementos`
 
   const [journeyRes, mementosRes] = await Promise.all([fetch(journeyUrl), fetch(mementosUrl)])
 
@@ -28,9 +24,7 @@ export async function loadJourney(id: string): Promise<Journey> {
 
 export async function loadJourneys(): Promise<Journey[]> {
   const apiBase = import.meta.env.VITE_API_BASE || ''
-  const isProd = import.meta.env.PROD
-
-  const url = isProd ? '/api/v1/journeys.json' : `${apiBase}/api/v1/journeys`
+  const url = `${apiBase}/api/v1/journeys`
   const res = await fetch(url)
   if (!res.ok) {
     throw new Error(`Failed to load journeys list: ${res.statusText}`)

@@ -57,30 +57,6 @@ describe('source API', () => {
     expect(journey.mementos).toHaveLength(5)
   })
 
-  test('loadJourney fetches detail and mementos (prod/static mode)', async () => {
-    importMeta.env.PROD = true
-
-    globalThis.fetch = mock((url: string | URL) => {
-      const urlStr = url.toString()
-      expect(urlStr).toContain('.json') // should have .json in static mode
-      expect(urlStr).not.toContain('http://localhost:8080')
-      if (urlStr.endsWith(`/api/v1/journeys/${journeyID}.json`)) {
-        return Promise.resolve(Response.json(japanSpringJourney))
-      }
-      if (urlStr.endsWith(`/api/v1/journeys/${journeyID}/mementos.json`)) {
-        return Promise.resolve(Response.json(japanSpringMementos))
-      }
-      return Promise.resolve(new Response('Not Found', { status: 404 }))
-    }) as unknown as typeof fetch
-
-    try {
-      const journey = await loadJourney(journeyID)
-      expect(journey.id).toBe('0190cbde-f300-7000-8000-111111111111')
-    } finally {
-      importMeta.env.PROD = false
-    }
-  })
-
   test('loadJourneys fetches list, then detail/mementos for each, and adapts (dev mode)', async () => {
     const listFixture = [
       {
@@ -112,45 +88,6 @@ describe('source API', () => {
     expect(journeys).toHaveLength(1)
     expect(journeys[0].id).toBe('0190cbde-f300-7000-8000-111111111111')
     expect(journeys[0].representativeDots).toEqual([])
-  })
-
-  test('loadJourneys fetches list and detail/mementos (prod/static mode)', async () => {
-    importMeta.env.PROD = true
-
-    const listFixture = [
-      {
-        id: journeyID,
-        slug: 'golden-route',
-        title: '日本ゴールデンルート',
-        memento_count: 11,
-        representative_dots: [],
-      },
-    ]
-
-    globalThis.fetch = mock((url: string | URL) => {
-      const urlStr = url.toString()
-      expect(urlStr).toContain('.json') // should have .json in static mode
-      expect(urlStr).not.toContain('http://localhost:8080')
-      if (urlStr.endsWith('/api/v1/journeys.json')) {
-        return Promise.resolve(Response.json(listFixture))
-      }
-      if (urlStr.endsWith(`/api/v1/journeys/${journeyID}.json`)) {
-        return Promise.resolve(Response.json(japanSpringJourney))
-      }
-      if (urlStr.endsWith(`/api/v1/journeys/${journeyID}/mementos.json`)) {
-        return Promise.resolve(Response.json(japanSpringMementos))
-      }
-      return Promise.resolve(new Response('Not Found', { status: 404 }))
-    }) as unknown as typeof fetch
-
-    try {
-      const journeys = await loadJourneys()
-      expect(journeys).toHaveLength(1)
-      expect(journeys[0].id).toBe('0190cbde-f300-7000-8000-111111111111')
-      expect(journeys[0].representativeDots).toEqual([])
-    } finally {
-      importMeta.env.PROD = false
-    }
   })
 
   test('loadJourney throws on non-ok response', async () => {

@@ -86,8 +86,37 @@ describe('adaptJourney', () => {
       [139.8, 35.7],
       [135.7, 35.0],
     ])
+    expect(result.routeSegments).toEqual([
+      [
+        [139.7, 35.6],
+        [139.8, 35.7],
+      ],
+      [[135.7, 35.0]],
+    ])
     expect(adaptJourney(journey(), []).route).toEqual([])
+    expect(adaptJourney(journey(), []).routeSegments).toEqual([])
     expect(result.visits).toEqual([])
+  })
+
+  test('keeps a LineString as one route segment', () => {
+    const result = adaptJourney(
+      journey({
+        gps_route: {
+          type: 'LineString',
+          coordinates: [
+            [139.7, 35.6],
+            [139.8, 35.7],
+          ],
+        },
+      }),
+      [],
+    )
+    expect(result.routeSegments).toEqual([
+      [
+        [139.7, 35.6],
+        [139.8, 35.7],
+      ],
+    ])
   })
 
   test('maps transit kind data into the existing station view model', () => {

@@ -1,11 +1,13 @@
 <script lang="ts">
   import { fade, fly } from 'svelte/transition'
+  import { onMount } from 'svelte'
+  import { loadJourneys } from '../api/source'
   import {
-    allMementos,
     kindLabel,
     uiText,
-    type Lang,
     type MementoCard,
+    type Lang,
+    type Memento,
     type Station,
     type Theme,
   } from '../data'
@@ -23,13 +25,32 @@
     memories: { ja: '記憶', en: 'Memories', zh: '回忆' },
   }
 
-  let selected: MementoCard = allMementos[0]
-  // Doubled so the shelf can auto-scroll seamlessly (translateX -50% loops).
-  const shelf: MementoCard[] = [...allMementos, ...allMementos]
+  let allMementos: MementoCard[] = []
+  let shelf: MementoCard[] = []
+  let selected: MementoCard | undefined
+  let isLoading = true
+  let error: string | null = null
 
   $: t = (value: { ja: string; en: string; zh: string }) => value[lang]
   $: stationName = (s: Station) => (lang === 'en' ? s.name : s.ja)
-  $: memento = selected.memento
+  $: memento = selected?.memento as Memento | undefined
+
+  onMount(() => {
+    loadJourneys()
+      .then((data) => {
+        allMementos = data.flatMap((journey) =>
+          journey.mementos.map((item) => ({ memento: item, journey })),
+        )
+        shelf = [...allMementos, ...allMementos]
+        selected = allMementos[0]
+      })
+      .catch((reason) => {
+        error = reason instanceof Error ? reason.message : String(reason)
+      })
+      .finally(() => {
+        isLoading = false
+      })
+  })
 
   function select(card: MementoCard) {
     selected = card
@@ -41,135 +62,143 @@
 </script>
 
 <main class="app-shell v2-shell" class:theme-light={theme === 'light'}>
-  <header class="v2-top">
-    <div class="v2-brand">
-      <p class="eyebrow">felicia</p>
-      <h1>{t(title)}</h1>
-    </div>
-    <div class="v2-controls">
-      <div class="lang-switch" role="group" aria-label="Language">
-        <button class:active={lang === 'ja'} on:click={() => (lang = 'ja')}>日本語</button>
-        <button class:active={lang === 'en'} on:click={() => (lang = 'en')}>EN</button>
-        <button class:active={lang === 'zh'} on:click={() => (lang = 'zh')}>中文</button>
+  {#if isLoading}
+    <div class="v2-status">Loading…</div>
+  {:else if error}
+    <div class="v2-status">{error}</div>
+  {:else if selected && memento}
+    <header class="v2-top">
+      <div class="v2-brand">
+        <p class="eyebrow">felicia</p>
+        <h1>{t(title)}</h1>
       </div>
-      <button
-        class="theme-toggle"
-        on:click={toggleTheme}
-        aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-      >
-        {theme === 'dark' ? '☀' : '☾'}
-      </button>
-      {#if toMap}
-        <button class="all-btn" on:click={toMap}>{t(label.map)}</button>
-      {/if}
-    </div>
-  </header>
+      <div class="v2-controls">
+        <div class="lang-switch" role="group" aria-label="Language">
+          <button class:active={lang === 'ja'} on:click={() => (lang = 'ja')}>日本語</button>
+          <button class:active={lang === 'en'} on:click={() => (lang = 'en')}>EN</button>
+          <button class:active={lang === 'zh'} on:click={() => (lang = 'zh')}>中文</button>
+        </div>
+        <button
+          class="theme-toggle"
+          on:click={toggleTheme}
+          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+        >
+          {theme === 'dark' ? '☀' : '☾'}
+        </button>
+        {#if toMap}
+          <button class="all-btn" on:click={toMap}>{t(label.map)}</button>
+        {/if}
+      </div>
+    </header>
 
-  <!-- The memento detail "page": the centre of v2. -->
-  <section class="v2-stage" aria-label="Memento detail">
-    {#key memento.id}
-      <div class="v2-detail" in:fade={{ duration: 200 }}>
-        <div class="v2-stub-col" in:fly={{ y: 14, duration: 320, delay: 40 }}>
-          <div class="stub-card {memento.kind}">
-            {#if memento.kind === 'transit' && memento.transit}
-              <div class="ticket-face">
-                <div class="ticket-line">
-                  <span>{t(memento.transit.operator)}</span>
-                  <strong>{t(memento.transit.line)}</strong>
+    <!-- The memento detail "page": the centre of v2. -->
+    <section class="v2-stage" aria-label="Memento detail">
+      {#key memento.id}
+        <div class="v2-detail" in:fade={{ duration: 200 }}>
+          <div class="v2-stub-col" in:fly={{ y: 14, duration: 320, delay: 40 }}>
+            <div class="stub-card {memento.kind}">
+              {#if memento.kind === 'transit' && memento.transit}
+                <div class="ticket-face">
+                  <div class="ticket-line">
+                    <span>{t(memento.transit.operator)}</span>
+                    <strong>{t(memento.transit.line)}</strong>
+                  </div>
+                  <div class="station-pair">
+                    <span>{stationName(memento.transit.from)}</span>
+                    <b>→</b>
+                    <span>{stationName(memento.transit.to)}</span>
+                  </div>
+                  <div class="ticket-meta">
+                    <span>{t(memento.date)}</span>
+                    <span>{memento.transit.fare}</span>
+                  </div>
                 </div>
-                <div class="station-pair">
-                  <span>{stationName(memento.transit.from)}</span>
-                  <b>→</b>
-                  <span>{stationName(memento.transit.to)}</span>
+              {:else if memento.kind === 'stamp'}
+                <div class="stamp-face">
+                  <span>御朱印</span>
+                  <strong>{t(memento.place)}</strong>
+                  <small>{t(memento.date)}</small>
                 </div>
-                <div class="ticket-meta">
-                  <span>{t(memento.date)}</span>
-                  <span>{memento.transit.fare}</span>
+              {:else}
+                <div class="goods-face">
+                  <span>{t(kindLabel.goods)}</span>
+                  <strong>{t(memento.title)}</strong>
+                  <small>{t(memento.vendor)} · {memento.price}</small>
                 </div>
+              {/if}
+            </div>
+
+            <dl class="v2-facts">
+              <div>
+                <dt>{lang === 'en' ? 'Journey' : lang === 'zh' ? '旅程' : '旅'}</dt>
+                <dd>{t(selected.journey.title)}</dd>
               </div>
-            {:else if memento.kind === 'stamp'}
-              <div class="stamp-face">
-                <span>御朱印</span>
-                <strong>{t(memento.place)}</strong>
-                <small>{t(memento.date)}</small>
+              <div>
+                <dt>{lang === 'en' ? 'Date' : lang === 'zh' ? '日期' : '日付'}</dt>
+                <dd>{t(memento.date)}</dd>
               </div>
-            {:else}
-              <div class="goods-face">
-                <span>{t(kindLabel.goods)}</span>
-                <strong>{t(memento.title)}</strong>
-                <small>{t(memento.vendor)} · {memento.price}</small>
+              <div>
+                <dt>{lang === 'en' ? 'Place' : lang === 'zh' ? '地点' : '場所'}</dt>
+                <dd>{t(memento.place)}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="v2-story-col">
+            <div class="section-head">
+              <p class="eyebrow">{t(kindLabel[memento.kind])}</p>
+              <h2>{t(memento.title)}</h2>
+            </div>
+
+            <article class="essay">
+              <span>{t(uiText.story)}</span>
+              <p>{t(memento.essay)}</p>
+            </article>
+
+            {#if memento.photos.length}
+              <div class="gallery">
+                {#each memento.photos as photo (photo.src)}
+                  <figure>
+                    <img src={photo.src} alt={t(memento.title)} />
+                    <figcaption>{t(photo.caption)}</figcaption>
+                  </figure>
+                {/each}
               </div>
             {/if}
-          </div>
 
-          <dl class="v2-facts">
-            <div>
-              <dt>{lang === 'en' ? 'Journey' : lang === 'zh' ? '旅程' : '旅'}</dt>
-              <dd>{t(selected.journey.title)}</dd>
-            </div>
-            <div>
-              <dt>{lang === 'en' ? 'Date' : lang === 'zh' ? '日期' : '日付'}</dt>
-              <dd>{t(memento.date)}</dd>
-            </div>
-            <div>
-              <dt>{lang === 'en' ? 'Place' : lang === 'zh' ? '地点' : '場所'}</dt>
-              <dd>{t(memento.place)}</dd>
-            </div>
-          </dl>
+            {#if toMap}
+              <button class="v2-onmap" on:click={toMap}>{t(label.onMap)}</button>
+            {/if}
+          </div>
         </div>
+      {/key}
+    </section>
 
-        <div class="v2-story-col">
-          <div class="section-head">
-            <p class="eyebrow">{t(kindLabel[memento.kind])}</p>
-            <h2>{t(memento.title)}</h2>
-          </div>
-
-          <article class="essay">
-            <span>{t(uiText.story)}</span>
-            <p>{t(memento.essay)}</p>
-          </article>
-
-          {#if memento.photos.length}
-            <div class="gallery">
-              {#each memento.photos as photo (photo.src)}
-                <figure>
-                  <img src={photo.src} alt={t(memento.title)} />
-                  <figcaption>{t(photo.caption)}</figcaption>
-                </figure>
-              {/each}
-            </div>
-          {/if}
-
-          {#if toMap}
-            <button class="v2-onmap" on:click={toMap}>{t(label.onMap)}</button>
-          {/if}
+    <!-- The preview carousel: the index. Auto-scrolls; pauses on hover. -->
+    <footer class="v2-carousel" aria-label="Memento shelf">
+      <p class="eyebrow v2-carousel-head">{t(label.memories)}</p>
+      <div class="v2-shelf">
+        <div class="v2-track">
+          {#each shelf as card, i (i)}
+            <button
+              class="v2-preview v2-preview--{card.memento.kind}"
+              class:active={card.memento.id === memento.id}
+              aria-hidden={i >= allMementos.length}
+              tabindex={i >= allMementos.length ? -1 : 0}
+              on:click={() => select(card)}
+            >
+              <span class="v2-preview-kind">{t(kindLabel[card.memento.kind])}</span>
+              <strong>{t(card.memento.title)}</strong>
+              <span class="v2-preview-meta">{t(card.memento.date)} · {t(card.journey.title)}</span>
+              <span class="v2-preview-place">{t(card.memento.place)}</span>
+            </button>
+          {/each}
         </div>
       </div>
-    {/key}
-  </section>
-
-  <!-- The preview carousel: the index. Auto-scrolls; pauses on hover. -->
-  <footer class="v2-carousel" aria-label="Memento shelf">
-    <p class="eyebrow v2-carousel-head">{t(label.memories)}</p>
-    <div class="v2-shelf">
-      <div class="v2-track">
-        {#each shelf as card, i (i)}
-          <button
-            class="v2-preview v2-preview--{card.memento.kind}"
-            class:active={card.memento.id === memento.id}
-            aria-hidden={i >= allMementos.length}
-            tabindex={i >= allMementos.length ? -1 : 0}
-            on:click={() => select(card)}
-          >
-            <span class="v2-preview-kind">{t(kindLabel[card.memento.kind])}</span>
-            <strong>{t(card.memento.title)}</strong>
-            <span class="v2-preview-meta">{t(card.memento.date)} · {t(card.journey.title)}</span>
-            <span class="v2-preview-place">{t(card.memento.place)}</span>
-          </button>
-        {/each}
-      </div>
-    </div>
-  </footer>
+    </footer>
+  {:else}
+    <div class="v2-status">No mementos</div>
+  {/if}
 </main>
 
 <style>
@@ -180,6 +209,13 @@
     flex-direction: column;
     height: 100%;
     overflow: hidden;
+  }
+
+  .v2-status {
+    display: grid;
+    min-height: 100%;
+    place-items: center;
+    color: var(--muted);
   }
 
   .v2-top {

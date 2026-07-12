@@ -57,6 +57,23 @@ function routeCoordinates(geometry: ApiGeoJSONGeometry | undefined): Coordinates
   )
 }
 
+function routeSegments(geometry: ApiGeoJSONGeometry | undefined): Coordinates[][] {
+  if (!geometry || !Array.isArray(geometry.coordinates)) return []
+  if (geometry.type === 'Point') return []
+  if (geometry.type === 'LineString') {
+    const segment = geometry.coordinates
+      .map(coordinate)
+      .filter((value): value is Coordinates => value !== undefined)
+    return segment.length ? [segment] : []
+  }
+  return geometry.coordinates
+    .filter((segment): segment is unknown[] => Array.isArray(segment))
+    .map((segment) =>
+      segment.map(coordinate).filter((value): value is Coordinates => value !== undefined),
+    )
+    .filter((segment) => segment.length > 0)
+}
+
 function datePart(value: string | undefined): string {
   return value?.slice(0, 10) ?? ''
 }
@@ -163,6 +180,7 @@ export function adaptJourney(apiJourney: ApiJourney, apiMementos: ApiMemento[]):
     ),
     place: localized(apiJourney.place, journeyTranslations, 'place'),
     route: routeCoordinates(apiJourney.gps_route),
+    routeSegments: routeSegments(apiJourney.gps_route),
     visits,
     mementos,
   }
