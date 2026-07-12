@@ -17,7 +17,9 @@ export async function loadJourney(id: string): Promise<Journey> {
   }
 
   const apiJourney = (await journeyRes.json()) as ApiJourney
-  const apiMementos = (await mementosRes.json()) as ApiMemento[]
+  // The API marshals empty collections as null (Go nil slices); coalesce so
+  // journeys with no mementos don't crash the adapter's iteration.
+  const apiMementos = ((await mementosRes.json()) as ApiMemento[] | null) ?? []
 
   return adaptJourney(apiJourney, apiMementos)
 }
@@ -36,7 +38,7 @@ export async function loadJourneys(): Promise<Journey[]> {
   const journeys = await Promise.all(
     items.map(async (item) => {
       const journey = await loadJourney(item.id)
-      journey.representativeDots = item.representative_dots
+      journey.representativeDots = item.representative_dots ?? []
       return journey
     }),
   )
