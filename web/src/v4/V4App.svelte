@@ -44,6 +44,7 @@
       oldest: 'Oldest',
       journeys: '旅',
       photos: 'photos',
+      photosHeading: '写真',
       loading: '読み込み中…',
       retry: '再試行',
       close: '閉じる',
@@ -56,6 +57,7 @@
       oldest: 'Oldest',
       journeys: 'journeys',
       photos: 'photos',
+      photosHeading: 'Photos',
       loading: 'Loading…',
       retry: 'Retry',
       close: 'Close',
@@ -68,6 +70,7 @@
       oldest: 'Oldest',
       journeys: '次旅程',
       photos: 'photos',
+      photosHeading: '照片',
       loading: '加载中…',
       retry: '重试',
       close: '关闭',
@@ -151,6 +154,7 @@
         {journeys}
         {activeJourneyId}
         {activeMementoId}
+        {lang}
         {theme}
         onSelect={(id) => (selectedMementoId = id)}
       />
@@ -225,6 +229,7 @@
         memento={selectedMemento}
         {lang}
         photoLabel={label.photos}
+        photosHeading={label.photosHeading}
         closeLabel={label.close}
         storyLabel={label.story}
         onClose={closeMemento}

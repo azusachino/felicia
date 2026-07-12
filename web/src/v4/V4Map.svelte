@@ -8,12 +8,14 @@
     journeys,
     activeJourneyId,
     activeMementoId,
+    lang,
     theme,
     onSelect,
   }: {
     journeys: Journey[]
     activeJourneyId: string | null
     activeMementoId: string | null
+    lang: 'ja' | 'en' | 'zh'
     theme: Theme
     onSelect: (id: string) => void
   } = $props()
@@ -91,7 +93,7 @@
     const button = document.createElement('button')
     button.type = 'button'
     button.className = 'v4-marker'
-    button.setAttribute('aria-label', `${index + 1}. ${memento.title.en}`)
+    button.setAttribute('aria-label', `${index + 1}. ${memento.title[lang]}`)
     button.innerHTML = `<span>${index + 1}</span>${
       memento.photos.length ? `<i>${memento.photos.length}</i>` : ''
     }`

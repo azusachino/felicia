@@ -6,6 +6,7 @@
     memento,
     lang,
     photoLabel,
+    photosHeading,
     closeLabel,
     storyLabel,
     onClose,
@@ -13,6 +14,7 @@
     memento: Memento
     lang: Lang
     photoLabel: string
+    photosHeading: string
     closeLabel: string
     storyLabel: string
     onClose: () => void
@@ -38,7 +40,7 @@
 
     {#if memento.photos.length}
       <section class="gallery" aria-label={photoLabel}>
-        <h3>PHOTOS</h3>
+        <h3>{photosHeading}</h3>
         <div class="gallery-grid">
           {#each memento.photos as photo, index (photo.src)}
             <figure class:tilt-left={index % 2 === 0}>
