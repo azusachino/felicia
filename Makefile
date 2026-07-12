@@ -21,7 +21,7 @@ COMPOSE ?= $(shell \
 	elif command -v docker >/dev/null 2>&1; then echo docker compose; \
 	else echo ''; fi)
 
-.PHONY: help fmt vet lint test check build validate tidy db-up db-down migrate seed dev mock-up mock-down web-install web-check docs docs-build
+.PHONY: help fmt vet lint test check build validate tidy db-up db-down migrate seed dev mock-up mock-down web-install web-check docs docs-build share share-down
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -112,3 +112,48 @@ docs: ## Live-preview docs in the browser (uv + mkdocs-material)
 
 docs-build: ## Build the static docs site into ./site
 	uv run --group docs mkdocs build
+
+# Share the running demo to a friend over an ephemeral Cloudflare tunnel.
+# Builds the SPA, brings the whole stack up under compose (db+cache+api+web),
+# migrates+seeds via the host, then fronts it all with a trycloudflare.com URL.
+# No CF account/domain needed; only /api/v1 is exposed (admin stays host-only).
+share: ## Build + serve the full stack behind a quick Cloudflare tunnel (share to a friend)
+	@test -n "$(COMPOSE)" || (echo "No container compose command found (install podman-compose or Docker Compose)" >&2; exit 1)
+	@set -e; \
+		echo ">> building SPA (web/dist)"; \
+		$(MAKE) web-build; \
+		echo ">> starting db + cache"; \
+		$(COMPOSE) -f deploy/compose.yaml up -d db cache; \
+		echo ">> waiting for db"; \
+		for i in $$(seq 1 30); do \
+			if $(COMPOSE) -f deploy/compose.yaml exec -T db pg_isready -U postgres -d felicia >/dev/null 2>&1; then break; fi; \
+			[ "$$i" = 30 ] && { echo "db not ready" >&2; exit 1; }; sleep 1; \
+		done; \
+		echo ">> migrating"; \
+		DATABASE_DSN="$(DATABASE_DSN)" $(MAKE) migrate; \
+		echo ">> building + starting api"; \
+		$(COMPOSE) -f deploy/compose.yaml up -d --build api; \
+		echo ">> waiting for api"; \
+		for i in $$(seq 1 60); do \
+			if curl --fail --silent -X POST -H 'Content-Type: application/json' -d '{"id":"0190cbde-f300-7000-8000-000000000000"}' "http://localhost:8080/api/admin/journals" >/dev/null 2>&1; then break; fi; \
+			[ "$$i" = 60 ] && { echo "api not ready" >&2; exit 1; }; sleep 1; \
+		done; \
+		echo ">> seeding"; \
+		DATABASE_DSN="$(DATABASE_DSN)" SEED_API_BASE="http://localhost:8080" $(MAKE) seed; \
+		echo ">> starting web + cloudflared"; \
+		$(COMPOSE) -f deploy/compose.yaml up -d web cloudflared; \
+		echo ">> waiting for tunnel URL"; \
+		url=""; \
+		for i in $$(seq 1 30); do \
+			url=$$($(COMPOSE) -f deploy/compose.yaml logs cloudflared 2>&1 | grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' | head -1); \
+			[ -n "$$url" ] && break; sleep 1; \
+		done; \
+		echo ""; \
+		if [ -n "$$url" ]; then echo "  share this URL:  $$url"; \
+		else echo "  tunnel URL not ready — check: $(COMPOSE) -f deploy/compose.yaml logs cloudflared"; fi; \
+		echo "  local preview:   http://localhost:8081"; \
+		echo "  stop sharing:    make share-down"
+
+share-down: ## Stop the shared stack (api, web, cloudflared); keeps db+cache+data
+	@test -n "$(COMPOSE)" || (echo "No container compose command found" >&2; exit 1)
+	$(COMPOSE) -f deploy/compose.yaml rm -sf api web cloudflared
