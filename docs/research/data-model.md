@@ -147,6 +147,8 @@ CREATE TABLE mementos (
     price_amount BIGINT,
     price_currency CHAR(3),
     kind_data JSONB NOT NULL DEFAULT '{}',
+    source_system TEXT,
+    source_external_id TEXT,
     source_ref TEXT,
     authored_fields TEXT[] NOT NULL DEFAULT '{}',
     orphaned_at TIMESTAMPTZ,
@@ -154,6 +156,7 @@ CREATE TABLE mementos (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT unique_journey_source_memento UNIQUE (journey_id, source_ref),
+    CONSTRAINT mementos_source_identity_pair CHECK ((source_system IS NULL AND source_external_id IS NULL) OR (source_system IS NOT NULL AND source_external_id IS NOT NULL)),
     CONSTRAINT valid_currency CHECK (price_currency IS NULL OR price_currency ~ '^[A-Z]{3}$')
 );
 
@@ -238,9 +241,15 @@ CREATE INDEX idx_memento_photos_memento_seq ON memento_photos(memento_id, seq);
 | `price_amount` | `bigint` | OVERRIDABLE | minor units (¥210 → 210) |
 | `price_currency`| `char(3)` | OVERRIDABLE | ISO 4217 currency code |
 | `kind_data` | `jsonb` | mixed² | kind-specific properties (transit stations, operator) |
+| `source_system` | `text` | INGESTED | external system namespace; nullable for manual mementos |
+| `source_external_id` | `text` | INGESTED | stable external identity; unique with `source_system` |
 | `source_ref` | `text` | INGESTED | immich or file reference |
 | `authored_fields` | `text[]` | — | no-clobber tracker |
 | `orphaned_at` | `timestamptz` | INGESTED | marked when source asset disappears |
+
+The normalized source identity is the durable idempotency key. `source_ref` is
+retained as a compatibility/display field while adapters migrate; source
+lookup uses `(source_system, source_external_id)` before any local UUID.
 
 ---
 

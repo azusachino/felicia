@@ -46,6 +46,27 @@ func TestUnionFieldsPreservesExistingOwnership(t *testing.T) {
 	}
 }
 
+func TestSourceIdentityFromLegacyRefKeepsNamespacedExternalID(t *testing.T) {
+	got, ok := sourceIdentityFromRef("immich:asset:asset-42")
+	if !ok {
+		t.Fatal("legacy source ref should produce a source identity")
+	}
+	if got.System != "immich" || got.ExternalID != "asset:asset-42" {
+		t.Fatalf("source identity = %+v, want immich / asset:asset-42", got)
+	}
+}
+
+func TestSourceColumnsDerivesLegacyRefForCanonicalIdentity(t *testing.T) {
+	identity := domain.SourceIdentity{System: "dawarich", ExternalID: "visit:7"}
+	system, externalID, ref := sourceColumns(&domain.Memento{SourceIdentity: &identity})
+	if system == nil || externalID == nil || ref == nil {
+		t.Fatal("canonical identity should produce all persistence columns")
+	}
+	if *system != "dawarich" || *externalID != "visit:7" || *ref != "dawarich:visit:7" {
+		t.Fatalf("source columns = %q/%q/%q", *system, *externalID, *ref)
+	}
+}
+
 func stringPtr(value string) *string {
 	return &value
 }

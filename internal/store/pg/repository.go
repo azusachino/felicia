@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -132,7 +133,18 @@ func (r *pgRepository) GetMemento(ctx context.Context, id uuid.UUID) (*domain.Me
 	if err != nil {
 		return nil, fmt.Errorf("get memento %s: %w", id, err)
 	}
-	return toDomainMemento(row.ID, row.JourneyID, row.Kind, row.Seq, row.OccurredAt, row.OccurredTz, row.GeomWkb, row.Title, row.Place, row.Vendor, row.Essay, row.PriceAmount, row.PriceCurrency, row.KindData, row.SourceRef, row.AuthoredFields, row.OrphanedAt, row.State, row.CreatedAt, row.UpdatedAt)
+	return toDomainMemento(row.ID, row.JourneyID, row.Kind, row.Seq, row.OccurredAt, row.OccurredTz, row.GeomWkb, row.Title, row.Place, row.Vendor, row.Essay, row.PriceAmount, row.PriceCurrency, row.KindData, row.SourceSystem, row.SourceExternalID, row.SourceRef, row.AuthoredFields, row.OrphanedAt, row.State, row.CreatedAt, row.UpdatedAt)
+}
+
+func (r *pgRepository) GetMementoBySourceIdentity(ctx context.Context, source domain.SourceIdentity) (*domain.Memento, error) {
+	if err := source.Validate(); err != nil {
+		return nil, fmt.Errorf("get memento by source identity: %w", err)
+	}
+	row, err := r.q.GetMementoBySourceIdentity(ctx, source.System, source.ExternalID)
+	if err != nil {
+		return nil, fmt.Errorf("get memento by source identity %s: %w", source.Ref(), err)
+	}
+	return toDomainMemento(row.ID, row.JourneyID, row.Kind, row.Seq, row.OccurredAt, row.OccurredTz, row.GeomWkb, row.Title, row.Place, row.Vendor, row.Essay, row.PriceAmount, row.PriceCurrency, row.KindData, row.SourceSystem, row.SourceExternalID, row.SourceRef, row.AuthoredFields, row.OrphanedAt, row.State, row.CreatedAt, row.UpdatedAt)
 }
 
 func (r *pgRepository) ListMementosByJourney(ctx context.Context, journeyID uuid.UUID) ([]*domain.Memento, error) {
@@ -142,7 +154,7 @@ func (r *pgRepository) ListMementosByJourney(ctx context.Context, journeyID uuid
 	}
 	var res []*domain.Memento
 	for _, row := range rows {
-		m, err := toDomainMemento(row.ID, row.JourneyID, row.Kind, row.Seq, row.OccurredAt, row.OccurredTz, row.GeomWkb, row.Title, row.Place, row.Vendor, row.Essay, row.PriceAmount, row.PriceCurrency, row.KindData, row.SourceRef, row.AuthoredFields, row.OrphanedAt, row.State, row.CreatedAt, row.UpdatedAt)
+		m, err := toDomainMemento(row.ID, row.JourneyID, row.Kind, row.Seq, row.OccurredAt, row.OccurredTz, row.GeomWkb, row.Title, row.Place, row.Vendor, row.Essay, row.PriceAmount, row.PriceCurrency, row.KindData, row.SourceSystem, row.SourceExternalID, row.SourceRef, row.AuthoredFields, row.OrphanedAt, row.State, row.CreatedAt, row.UpdatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("list mementos for journey %s: decode %s: %w", journeyID, row.ID, err)
 		}
@@ -164,26 +176,29 @@ func (r *pgRepository) UpsertMemento(ctx context.Context, memento *domain.Mement
 	if state == "" {
 		state = domain.MementoPublished
 	}
+	sourceSystem, sourceExternalID, sourceRef := sourceColumns(memento)
 
 	if err := r.q.UpsertMemento(ctx, db.UpsertMementoParams{
-		ID:             memento.ID,
-		JourneyID:      memento.JourneyID,
-		Kind:           memento.Kind,
-		Seq:            int32(memento.Seq),
-		OccurredAt:     toTimestamptz(memento.OccurredAt),
-		OccurredTz:     memento.OccurredTZ,
-		StGeomfromwkb:  geomBytes,
-		Title:          memento.Title,
-		Place:          memento.Place,
-		Vendor:         toText(memento.Vendor),
-		Essay:          toText(memento.Essay),
-		PriceAmount:    toInt8(memento.PriceAmount),
-		PriceCurrency:  toText(memento.PriceCurrency),
-		KindData:       memento.KindData,
-		SourceRef:      toText(memento.SourceRef),
-		AuthoredFields: memento.AuthoredFields,
-		OrphanedAt:     toTimestamptzPtr(memento.OrphanedAt),
-		State:          string(state),
+		ID:               memento.ID,
+		JourneyID:        memento.JourneyID,
+		Kind:             memento.Kind,
+		Seq:              int32(memento.Seq),
+		OccurredAt:       toTimestamptz(memento.OccurredAt),
+		OccurredTz:       memento.OccurredTZ,
+		StGeomfromwkb:    geomBytes,
+		Title:            memento.Title,
+		Place:            memento.Place,
+		Vendor:           toText(memento.Vendor),
+		Essay:            toText(memento.Essay),
+		PriceAmount:      toInt8(memento.PriceAmount),
+		PriceCurrency:    toText(memento.PriceCurrency),
+		KindData:         memento.KindData,
+		SourceSystem:     toText(sourceSystem),
+		SourceExternalID: toText(sourceExternalID),
+		SourceRef:        toText(sourceRef),
+		AuthoredFields:   memento.AuthoredFields,
+		OrphanedAt:       toTimestamptzPtr(memento.OrphanedAt),
+		State:            string(state),
 	}); err != nil {
 		return fmt.Errorf("upsert memento %s: %w", memento.ID, err)
 	}
@@ -218,7 +233,15 @@ func (r *pgRepository) ApplyIngestMementoPatch(ctx context.Context, patch *domai
 	if patch == nil || patch.Memento == nil {
 		return errors.New("ingest memento patch is required")
 	}
-	current, err := r.GetMemento(ctx, patch.Memento.ID)
+	identity, hasIdentity := sourceIdentity(patch.Memento)
+	var current *domain.Memento
+	var err error
+	if hasIdentity {
+		current, err = r.GetMementoBySourceIdentity(ctx, identity)
+	}
+	if !hasIdentity || errors.Is(err, pgx.ErrNoRows) {
+		current, err = r.GetMemento(ctx, patch.Memento.ID)
+	}
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("load memento ingest target %s: %w", patch.Memento.ID, err)
 	}
@@ -226,10 +249,49 @@ func (r *pgRepository) ApplyIngestMementoPatch(ctx context.Context, patch *domai
 		current = &domain.Memento{ID: patch.Memento.ID, JourneyID: patch.Memento.JourneyID, State: domain.MementoCandidateState}
 	}
 	mergeMementoFields(current, patch.Memento, patch.Fields)
+	if hasIdentity {
+		current.SourceIdentity = &identity
+		if current.SourceRef == nil {
+			ref := identity.Ref()
+			current.SourceRef = &ref
+		}
+	}
 	if current.State == "" {
 		current.State = domain.MementoCandidateState
 	}
 	return r.UpsertMemento(ctx, current)
+}
+
+func sourceIdentity(memento *domain.Memento) (domain.SourceIdentity, bool) {
+	if memento.SourceIdentity != nil && memento.SourceIdentity.Valid() {
+		return *memento.SourceIdentity, true
+	}
+	if memento.SourceRef == nil {
+		return domain.SourceIdentity{}, false
+	}
+	identity, ok := sourceIdentityFromRef(*memento.SourceRef)
+	return identity, ok
+}
+
+func sourceIdentityFromRef(ref string) (domain.SourceIdentity, bool) {
+	system, externalID, ok := strings.Cut(ref, ":")
+	if !ok || system == "" || externalID == "" {
+		return domain.SourceIdentity{}, false
+	}
+	return domain.SourceIdentity{System: system, ExternalID: externalID}, true
+}
+
+func sourceColumns(memento *domain.Memento) (system, externalID, ref *string) {
+	identity, ok := sourceIdentity(memento)
+	if !ok {
+		return nil, nil, memento.SourceRef
+	}
+	systemValue, externalValue, refValue := identity.System, identity.ExternalID, memento.SourceRef
+	if refValue == nil {
+		legacyRef := identity.Ref()
+		refValue = &legacyRef
+	}
+	return &systemValue, &externalValue, refValue
 }
 
 func mergeMementoFields(dst, src *domain.Memento, fields []string) {
@@ -530,7 +592,8 @@ func toDomainMemento(
 	occurredAt pgtype.Timestamptz, occurredTz string, geomWkb interface{},
 	title string, place string, vendor pgtype.Text, essay pgtype.Text,
 	priceAmount pgtype.Int8, priceCurrency pgtype.Text, kindData []byte,
-	sourceRef pgtype.Text, authoredFields []string, orphanedAt pgtype.Timestamptz, state string,
+	sourceSystem pgtype.Text, sourceExternalID pgtype.Text, sourceRef pgtype.Text,
+	authoredFields []string, orphanedAt pgtype.Timestamptz, state string,
 	createdAt pgtype.Timestamptz, updatedAt pgtype.Timestamptz,
 ) (*domain.Memento, error) {
 	var geom orb.Geometry
@@ -542,6 +605,12 @@ func toDomainMemento(
 			}
 			geom = g
 		}
+	}
+
+	var source *domain.SourceIdentity
+	if sourceSystem.Valid && sourceExternalID.Valid {
+		sourceValue := domain.SourceIdentity{System: sourceSystem.String, ExternalID: sourceExternalID.String}
+		source = &sourceValue
 	}
 
 	return &domain.Memento{
@@ -559,6 +628,7 @@ func toDomainMemento(
 		PriceAmount:    fromInt8(priceAmount),
 		PriceCurrency:  fromText(priceCurrency),
 		KindData:       kindData,
+		SourceIdentity: source,
 		SourceRef:      fromText(sourceRef),
 		AuthoredFields: authoredFields,
 		OrphanedAt:     fromTimestamptzPtr(orphanedAt),

@@ -215,32 +215,34 @@ func (q *Queries) GetJourneyBySlug(ctx context.Context, slug string) (GetJourney
 }
 
 const getMemento = `-- name: GetMemento :one
-SELECT id, journey_id, kind, seq, occurred_at, occurred_tz, ST_AsBinary(geom) AS geom_wkb, title, place, vendor, essay, price_amount, price_currency, kind_data, source_ref, authored_fields, orphaned_at, state, created_at, updated_at
+SELECT id, journey_id, kind, seq, occurred_at, occurred_tz, ST_AsBinary(geom) AS geom_wkb, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, created_at, updated_at
 FROM mementos
 WHERE id = $1
 `
 
 type GetMementoRow struct {
-	ID             uuid.UUID
-	JourneyID      uuid.UUID
-	Kind           string
-	Seq            int32
-	OccurredAt     pgtype.Timestamptz
-	OccurredTz     string
-	GeomWkb        interface{}
-	Title          string
-	Place          string
-	Vendor         pgtype.Text
-	Essay          pgtype.Text
-	PriceAmount    pgtype.Int8
-	PriceCurrency  pgtype.Text
-	KindData       []byte
-	SourceRef      pgtype.Text
-	AuthoredFields []string
-	OrphanedAt     pgtype.Timestamptz
-	State          string
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	ID               uuid.UUID
+	JourneyID        uuid.UUID
+	Kind             string
+	Seq              int32
+	OccurredAt       pgtype.Timestamptz
+	OccurredTz       string
+	GeomWkb          interface{}
+	Title            string
+	Place            string
+	Vendor           pgtype.Text
+	Essay            pgtype.Text
+	PriceAmount      pgtype.Int8
+	PriceCurrency    pgtype.Text
+	KindData         []byte
+	SourceSystem     pgtype.Text
+	SourceExternalID pgtype.Text
+	SourceRef        pgtype.Text
+	AuthoredFields   []string
+	OrphanedAt       pgtype.Timestamptz
+	State            string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
 }
 
 func (q *Queries) GetMemento(ctx context.Context, id uuid.UUID) (GetMementoRow, error) {
@@ -261,11 +263,32 @@ func (q *Queries) GetMemento(ctx context.Context, id uuid.UUID) (GetMementoRow, 
 		&i.PriceAmount,
 		&i.PriceCurrency,
 		&i.KindData,
+		&i.SourceSystem,
+		&i.SourceExternalID,
 		&i.SourceRef,
 		&i.AuthoredFields,
 		&i.OrphanedAt,
 		&i.State,
 		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getMementoBySourceIdentity = `-- name: GetMementoBySourceIdentity :one
+SELECT id, journey_id, kind, seq, occurred_at, occurred_tz, ST_AsBinary(geom) AS geom_wkb, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, created_at, updated_at
+FROM mementos
+WHERE source_system = $1 AND source_external_id = $2
+`
+
+func (q *Queries) GetMementoBySourceIdentity(ctx context.Context, sourceSystem string, sourceExternalID string) (GetMementoRow, error) {
+	row := q.db.QueryRow(ctx, getMementoBySourceIdentity, sourceSystem, sourceExternalID)
+	var i GetMementoRow
+	err := row.Scan(
+		&i.ID, &i.JourneyID, &i.Kind, &i.Seq, &i.OccurredAt, &i.OccurredTz,
+		&i.GeomWkb, &i.Title, &i.Place, &i.Vendor, &i.Essay, &i.PriceAmount,
+		&i.PriceCurrency, &i.KindData, &i.SourceSystem, &i.SourceExternalID,
+		&i.SourceRef, &i.AuthoredFields, &i.OrphanedAt, &i.State, &i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
@@ -353,33 +376,35 @@ func (q *Queries) ListJourneys(ctx context.Context) ([]ListJourneysRow, error) {
 }
 
 const listMementosByJourney = `-- name: ListMementosByJourney :many
-SELECT id, journey_id, kind, seq, occurred_at, occurred_tz, ST_AsBinary(geom) AS geom_wkb, title, place, vendor, essay, price_amount, price_currency, kind_data, source_ref, authored_fields, orphaned_at, state, created_at, updated_at
+SELECT id, journey_id, kind, seq, occurred_at, occurred_tz, ST_AsBinary(geom) AS geom_wkb, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, created_at, updated_at
 FROM mementos
 WHERE journey_id = $1
 ORDER BY seq ASC, occurred_at ASC
 `
 
 type ListMementosByJourneyRow struct {
-	ID             uuid.UUID
-	JourneyID      uuid.UUID
-	Kind           string
-	Seq            int32
-	OccurredAt     pgtype.Timestamptz
-	OccurredTz     string
-	GeomWkb        interface{}
-	Title          string
-	Place          string
-	Vendor         pgtype.Text
-	Essay          pgtype.Text
-	PriceAmount    pgtype.Int8
-	PriceCurrency  pgtype.Text
-	KindData       []byte
-	SourceRef      pgtype.Text
-	AuthoredFields []string
-	OrphanedAt     pgtype.Timestamptz
-	State          string
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	ID               uuid.UUID
+	JourneyID        uuid.UUID
+	Kind             string
+	Seq              int32
+	OccurredAt       pgtype.Timestamptz
+	OccurredTz       string
+	GeomWkb          interface{}
+	Title            string
+	Place            string
+	Vendor           pgtype.Text
+	Essay            pgtype.Text
+	PriceAmount      pgtype.Int8
+	PriceCurrency    pgtype.Text
+	KindData         []byte
+	SourceSystem     pgtype.Text
+	SourceExternalID pgtype.Text
+	SourceRef        pgtype.Text
+	AuthoredFields   []string
+	OrphanedAt       pgtype.Timestamptz
+	State            string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
 }
 
 func (q *Queries) ListMementosByJourney(ctx context.Context, journeyID uuid.UUID) ([]ListMementosByJourneyRow, error) {
@@ -406,6 +431,8 @@ func (q *Queries) ListMementosByJourney(ctx context.Context, journeyID uuid.UUID
 			&i.PriceAmount,
 			&i.PriceCurrency,
 			&i.KindData,
+			&i.SourceSystem,
+			&i.SourceExternalID,
 			&i.SourceRef,
 			&i.AuthoredFields,
 			&i.OrphanedAt,
@@ -630,9 +657,9 @@ func (q *Queries) UpsertJourney(ctx context.Context, arg UpsertJourneyParams) er
 
 const upsertMemento = `-- name: UpsertMemento :exec
 INSERT INTO mementos (
-    id, journey_id, kind, seq, occurred_at, occurred_tz, geom, title, place, vendor, essay, price_amount, price_currency, kind_data, source_ref, authored_fields, orphaned_at, state, created_at, updated_at
+    id, journey_id, kind, seq, occurred_at, occurred_tz, geom, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, created_at, updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, ST_GeomFromWKB($7, 4326), $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW()
+    $1, $2, $3, $4, $5, $6, ST_GeomFromWKB($7, 4326), $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, NOW(), NOW()
 ) ON CONFLICT (id) DO UPDATE SET
     kind = CASE WHEN NOT (mementos.authored_fields @> ARRAY['kind']) THEN EXCLUDED.kind ELSE mementos.kind END,
     seq = CASE WHEN NOT (mementos.authored_fields @> ARRAY['seq']) THEN EXCLUDED.seq ELSE mementos.seq END,
@@ -646,6 +673,8 @@ INSERT INTO mementos (
     price_amount = CASE WHEN NOT (mementos.authored_fields @> ARRAY['price_amount']) THEN EXCLUDED.price_amount ELSE mementos.price_amount END,
     price_currency = CASE WHEN NOT (mementos.authored_fields @> ARRAY['price_currency']) THEN EXCLUDED.price_currency ELSE mementos.price_currency END,
     kind_data = CASE WHEN NOT (mementos.authored_fields @> ARRAY['kind_data']) THEN EXCLUDED.kind_data ELSE mementos.kind_data END,
+    source_system = EXCLUDED.source_system,
+    source_external_id = EXCLUDED.source_external_id,
     source_ref = EXCLUDED.source_ref,
     orphaned_at = EXCLUDED.orphaned_at,
     state = EXCLUDED.state,
@@ -654,24 +683,26 @@ INSERT INTO mementos (
 `
 
 type UpsertMementoParams struct {
-	ID             uuid.UUID
-	JourneyID      uuid.UUID
-	Kind           string
-	Seq            int32
-	OccurredAt     pgtype.Timestamptz
-	OccurredTz     string
-	StGeomfromwkb  interface{}
-	Title          string
-	Place          string
-	Vendor         pgtype.Text
-	Essay          pgtype.Text
-	PriceAmount    pgtype.Int8
-	PriceCurrency  pgtype.Text
-	KindData       []byte
-	SourceRef      pgtype.Text
-	AuthoredFields []string
-	OrphanedAt     pgtype.Timestamptz
-	State          string
+	ID               uuid.UUID
+	JourneyID        uuid.UUID
+	Kind             string
+	Seq              int32
+	OccurredAt       pgtype.Timestamptz
+	OccurredTz       string
+	StGeomfromwkb    interface{}
+	Title            string
+	Place            string
+	Vendor           pgtype.Text
+	Essay            pgtype.Text
+	PriceAmount      pgtype.Int8
+	PriceCurrency    pgtype.Text
+	KindData         []byte
+	SourceSystem     pgtype.Text
+	SourceExternalID pgtype.Text
+	SourceRef        pgtype.Text
+	AuthoredFields   []string
+	OrphanedAt       pgtype.Timestamptz
+	State            string
 }
 
 func (q *Queries) UpsertMemento(ctx context.Context, arg UpsertMementoParams) error {
@@ -690,6 +721,8 @@ func (q *Queries) UpsertMemento(ctx context.Context, arg UpsertMementoParams) er
 		arg.PriceAmount,
 		arg.PriceCurrency,
 		arg.KindData,
+		arg.SourceSystem,
+		arg.SourceExternalID,
 		arg.SourceRef,
 		arg.AuthoredFields,
 		arg.OrphanedAt,

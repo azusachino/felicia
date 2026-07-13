@@ -112,6 +112,15 @@ func (m *mockRepository) GetMemento(_ context.Context, id uuid.UUID) (*domain.Me
 	return mem, nil
 }
 
+func (m *mockRepository) GetMementoBySourceIdentity(_ context.Context, source domain.SourceIdentity) (*domain.Memento, error) {
+	for _, mem := range m.mementos {
+		if mem.SourceIdentity != nil && *mem.SourceIdentity == source {
+			return mem, nil
+		}
+	}
+	return nil, domain.ErrNotFound
+}
+
 func (m *mockRepository) ListMementosByJourney(_ context.Context, journeyID uuid.UUID) ([]*domain.Memento, error) {
 	var list []*domain.Memento
 	for _, mem := range m.mementos {

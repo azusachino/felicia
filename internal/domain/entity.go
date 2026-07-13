@@ -53,6 +53,7 @@ type Memento struct {
 	PriceAmount    *int64          `json:"price_amount,omitempty"`
 	PriceCurrency  *string         `json:"price_currency,omitempty"`
 	KindData       json.RawMessage `json:"kind_data"` // JSONB payload
+	SourceIdentity *SourceIdentity `json:"source_identity,omitempty"`
 	SourceRef      *string         `json:"source_ref,omitempty"`
 	AuthoredFields []string        `json:"authored_fields"`
 	OrphanedAt     *time.Time      `json:"orphaned_at,omitempty"`
@@ -159,6 +160,7 @@ type Repository interface {
 
 	// Memento operations
 	GetMemento(ctx context.Context, id uuid.UUID) (*Memento, error)
+	GetMementoBySourceIdentity(ctx context.Context, source SourceIdentity) (*Memento, error)
 	ListMementosByJourney(ctx context.Context, journeyID uuid.UUID) ([]*Memento, error)
 	UpsertMemento(ctx context.Context, memento *Memento) error
 	ApplyManualMementoPatch(ctx context.Context, patch *ManualMementoPatch) error
