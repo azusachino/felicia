@@ -459,6 +459,10 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "invalid request JSON")
 		return
 	}
+	state := domain.MementoState(req.State)
+	if state == "" {
+		state = domain.MementoDraft
+	}
 
 	// 1. Template registry validation
 	tpl, ok := s.registry.Template(req.Kind)
@@ -470,7 +474,7 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	issues := domain.Validate(tpl, req.KindData)
+	issues := domain.ValidateForState(tpl, req.KindData, state)
 	if len(issues) > 0 {
 		respondJSON(w, http.StatusBadRequest, map[string]any{
 			"error":  "validation failed",
@@ -482,6 +486,13 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 	occurred, err := time.Parse(time.RFC3339, req.OccurredAt)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid occurred_at timestamp format (RFC3339)")
+		return
+	}
+	if issues := domain.ValidateOccurredTimezone(req.OccurredTZ); len(issues) > 0 {
+		respondJSON(w, http.StatusBadRequest, map[string]any{
+			"error":  "validation failed",
+			"issues": issues,
+		})
 		return
 	}
 
@@ -518,6 +529,17 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	geometryIssues := domain.ValidateMementoGeometry(tpl.Anchor, geom)
+	if req.Geom == nil && state == domain.MementoDraft {
+		geometryIssues = nil
+	}
+	if len(geometryIssues) > 0 {
+		respondJSON(w, http.StatusBadRequest, map[string]any{
+			"error":  "validation failed",
+			"issues": geometryIssues,
+		})
+		return
+	}
 
 	kindDataRaw, err := json.Marshal(req.KindData)
 	if err != nil {
@@ -544,10 +566,6 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 		OrphanedAt:    orphaned,
 	}
 
-	state := domain.MementoState(req.State)
-	if state == "" {
-		state = domain.MementoDraft
-	}
 	if err := s.repo.ApplyManualMementoPatch(r.Context(), &domain.ManualMementoPatch{
 		Memento: memento,
 		Fields: []string{

@@ -285,6 +285,7 @@ func TestServerUpsertMementoValidation(t *testing.T) {
 		"seq":         1,
 		"occurred_at": time.Now().Format(time.RFC3339),
 		"occurred_tz": "Asia/Tokyo",
+		"state":       "published",
 		"title":       "Invalid Transit",
 		"place":       "Somewhere",
 		"kind_data":   map[string]any{"line": "Yamanote Line"}, // missing 'operator', 'from', 'to'
@@ -308,6 +309,47 @@ func TestServerUpsertMementoValidation(t *testing.T) {
 	issues, ok := res["issues"].([]any)
 	if !ok || len(issues) == 0 {
 		t.Error("expected validation issues in response")
+	}
+}
+
+func TestServerAllowsIncompleteDraftButRejectsInvalidCompleteGeometry(t *testing.T) {
+	reg, err := domain.LoadRegistry(os.DirFS("../../kinds"))
+	if err != nil {
+		t.Fatalf("failed to load kinds templates: %v", err)
+	}
+	repo := newMockRepository()
+	srv := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{})
+
+	draft := map[string]any{
+		"id": uuid.New(), "kind": "live", "occurred_at": "2026-03-20T10:00:00Z",
+		"occurred_tz": "Asia/Tokyo", "state": "draft", "kind_data": map[string]any{},
+	}
+	body, _ := json.Marshal(draft)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/api/admin/mementos", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	srv.Handler().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("incomplete draft status = %d, body = %s", w.Code, w.Body)
+	}
+
+	complete := map[string]any{
+		"id": uuid.New(), "kind": "live", "state": "published",
+		"occurred_at": "2026-03-20T10:00:00Z", "occurred_tz": "Asia/Tokyo",
+		"kind_data": map[string]any{
+			"artist": "羊文学",
+			"venue":  map[string]any{"name": "日本武道館", "coords": []float64{139.7495, 35.6933}},
+			"date":   "2026-03-22T18:30:00+09:00",
+		},
+		"geom": map[string]any{"type": "Point", "coordinates": []float64{181, 35}},
+	}
+	body, _ = json.Marshal(complete)
+	w = httptest.NewRecorder()
+	req = httptest.NewRequest("POST", "/api/admin/mementos", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	srv.Handler().ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("invalid complete geometry status = %d, body = %s", w.Code, w.Body)
 	}
 }
 

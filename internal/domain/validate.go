@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"sort"
 	"time"
+
+	"github.com/paulmach/orb"
 )
 
 // Issue is a single validation failure: a machine code plus the field path it
@@ -16,11 +18,15 @@ type Issue struct {
 
 // Issue codes. Stable strings — the API and tests match on these.
 const (
-	CodeRequiredMissing = "required_missing"
-	CodeUnknownField    = "unknown_field"
-	CodeTypeMismatch    = "type_mismatch"
-	CodeAnchorMismatch  = "anchor_mismatch"
-	CodeBadCurrency     = "bad_currency"
+	CodeRequiredMissing   = "required_missing"
+	CodeUnknownField      = "unknown_field"
+	CodeTypeMismatch      = "type_mismatch"
+	CodeAnchorMismatch    = "anchor_mismatch"
+	CodeBadCurrency       = "bad_currency"
+	CodeInvalidState      = "invalid_state"
+	CodeInvalidTimezone   = "invalid_timezone"
+	CodeInvalidGeometry   = "invalid_geometry"
+	CodeInvalidCoordinate = "invalid_coordinate"
 )
 
 var (
@@ -39,13 +45,28 @@ var (
 //   - the anchor drives geometry: edge needs ≥2 resolvable coord-bearing fields,
 //     point needs exactly one.
 func Validate(tpl Template, data map[string]any) []Issue {
+	return validateTemplate(tpl, data, true)
+}
+
+// ValidateForState applies the template contract according to lifecycle state.
+// Drafts may omit required fields and an anchor while they are being edited;
+// authored and published records must be complete. All present values remain
+// type-checked in either state.
+func ValidateForState(tpl Template, data map[string]any, state MementoState) []Issue {
+	if !validMementoState(state) {
+		return []Issue{{Code: CodeInvalidState}}
+	}
+	return validateTemplate(tpl, data, state != MementoDraft)
+}
+
+func validateTemplate(tpl Template, data map[string]any, requireComplete bool) []Issue {
 	var issues []Issue
 
 	// Required present, and every present value type-checked.
 	for _, f := range tpl.Fields {
 		v, present := data[f.Name]
 		if !present || v == nil {
-			if f.Required {
+			if f.Required && requireComplete {
 				issues = append(issues, Issue{Field: f.Name, Code: CodeRequiredMissing})
 			}
 			continue
@@ -75,11 +96,11 @@ func Validate(tpl Template, data map[string]any) []Issue {
 	}
 	switch tpl.Anchor {
 	case AnchorEdge:
-		if coords < 2 {
+		if requireComplete && coords < 2 {
 			issues = append(issues, Issue{Code: CodeAnchorMismatch})
 		}
 	case AnchorPoint:
-		if coordFields > 0 && coords != 1 {
+		if requireComplete && coordFields > 0 && coords != 1 {
 			issues = append(issues, Issue{Code: CodeAnchorMismatch})
 		}
 	}
@@ -91,6 +112,56 @@ func Validate(tpl Template, data map[string]any) []Issue {
 		return issues[i].Code < issues[j].Code
 	})
 	return issues
+}
+
+// ValidateMementoGeometry checks the persisted geometry independently from
+// kind_data. This prevents malformed or out-of-range coordinates from being
+// silently converted into the zero point by an API decoder.
+func ValidateMementoGeometry(anchor Anchor, geom orb.Geometry) []Issue {
+	if geom == nil {
+		return []Issue{{Field: "geom", Code: CodeInvalidGeometry}}
+	}
+	var points []orb.Point
+	switch g := geom.(type) {
+	case orb.Point:
+		points = []orb.Point{g}
+		if anchor != AnchorPoint {
+			return []Issue{{Field: "geom", Code: CodeAnchorMismatch}}
+		}
+	case orb.LineString:
+		points = g
+		if anchor != AnchorEdge || len(g) < 2 {
+			return []Issue{{Field: "geom", Code: CodeAnchorMismatch}}
+		}
+	default:
+		return []Issue{{Field: "geom", Code: CodeInvalidGeometry}}
+	}
+	for _, point := range points {
+		if point.X() < -180 || point.X() > 180 || point.Y() < -90 || point.Y() > 90 {
+			return []Issue{{Field: "geom", Code: CodeInvalidCoordinate}}
+		}
+	}
+	return nil
+}
+
+// ValidateOccurredTimezone checks that the stored IANA timezone is usable.
+func ValidateOccurredTimezone(value string) []Issue {
+	if value == "" {
+		return []Issue{{Field: "occurred_tz", Code: CodeInvalidTimezone}}
+	}
+	if _, err := time.LoadLocation(value); err != nil {
+		return []Issue{{Field: "occurred_tz", Code: CodeInvalidTimezone}}
+	}
+	return nil
+}
+
+func validMementoState(state MementoState) bool {
+	switch state {
+	case MementoCandidateState, MementoDraft, MementoAuthored, MementoPublished, MementoArchived:
+		return true
+	default:
+		return false
+	}
 }
 
 // checkType validates a present, non-nil value against its field's type.

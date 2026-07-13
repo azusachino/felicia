@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/paulmach/orb"
 
 	"github.com/azusachino/felicia/internal/domain"
 )
@@ -12,6 +13,54 @@ import (
 // station / venue value with a resolved [lon, lat] pair.
 func coordVal(name string, lon, lat float64) map[string]any {
 	return map[string]any{"name": name, "coords": []any{lon, lat}}
+}
+
+func TestValidateForStateAllowsIncompleteDrafts(t *testing.T) {
+	reg := loadTestRegistry(t)
+	tpl, _ := reg.Template("live")
+	if got := domain.ValidateForState(tpl, map[string]any{}, domain.MementoDraft); len(got) != 0 {
+		t.Fatalf("draft issues = %+v, want none for missing editable fields", got)
+	}
+	if got := domain.ValidateForState(tpl, map[string]any{}, domain.MementoPublished); len(got) == 0 {
+		t.Fatal("published memento should require complete template data")
+	}
+	if got := domain.ValidateForState(tpl, map[string]any{}, domain.MementoState("bogus")); len(got) != 1 || got[0].Code != domain.CodeInvalidState {
+		t.Fatalf("invalid state issues = %+v", got)
+	}
+}
+
+func TestValidateMementoGeometry(t *testing.T) {
+	tests := []struct {
+		name   string
+		anchor domain.Anchor
+		geom   orb.Geometry
+		code   string
+	}{
+		{name: "point", anchor: domain.AnchorPoint, geom: orb.Point{139.7, 35.6}},
+		{name: "edge", anchor: domain.AnchorEdge, geom: orb.LineString{{139.7, 35.6}, {135.5, 34.7}}},
+		{name: "out of range", anchor: domain.AnchorPoint, geom: orb.Point{181, 35.6}, code: domain.CodeInvalidCoordinate},
+		{name: "wrong anchor", anchor: domain.AnchorPoint, geom: orb.LineString{{139.7, 35.6}, {135.5, 34.7}}, code: domain.CodeAnchorMismatch},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			issues := domain.ValidateMementoGeometry(tc.anchor, tc.geom)
+			if tc.code == "" && len(issues) != 0 {
+				t.Fatalf("issues = %+v, want none", issues)
+			}
+			if tc.code != "" && (len(issues) != 1 || issues[0].Code != tc.code) {
+				t.Fatalf("issues = %+v, want %s", issues, tc.code)
+			}
+		})
+	}
+}
+
+func TestValidateOccurredTimezone(t *testing.T) {
+	if got := domain.ValidateOccurredTimezone("Asia/Tokyo"); len(got) != 0 {
+		t.Fatalf("valid timezone issues = %+v", got)
+	}
+	if got := domain.ValidateOccurredTimezone("not/a-timezone"); len(got) != 1 || got[0].Code != domain.CodeInvalidTimezone {
+		t.Fatalf("invalid timezone issues = %+v", got)
+	}
 }
 
 func money(amount int, currency string) map[string]any {
