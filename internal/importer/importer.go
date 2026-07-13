@@ -4,6 +4,7 @@ package importer
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -40,6 +41,48 @@ type Importer struct {
 	photos  domain.PhotoSource
 	store   JourneyStore
 	epsilon float64
+}
+
+// PersistObservations records one complete canonical source response. It keeps
+// provider DTOs out of storage, compares observations through the repository,
+// and marks identities absent from the response as orphaned.
+func PersistObservations(ctx context.Context, store domain.ObservationStore, sourceSystem string, observations []domain.Observation) (*domain.ImportRun, error) {
+	run := &domain.ImportRun{SourceSystem: sourceSystem, Status: domain.ImportRunRunning, StartedAt: time.Now().UTC()}
+	if err := store.CreateImportRun(ctx, run); err != nil {
+		return nil, fmt.Errorf("start %s import: %w", sourceSystem, err)
+	}
+	fail := func(err error) (*domain.ImportRun, error) {
+		message := err.Error()
+		_ = store.FinishImportRun(ctx, run.ID, domain.ImportRunFailed, time.Now().UTC(), &message)
+		return run, err
+	}
+	seen := make([]string, 0, len(observations))
+	for _, observation := range observations {
+		if observation.Source.System != sourceSystem {
+			return fail(fmt.Errorf("observation source %q does not match run source %q", observation.Source.System, sourceSystem))
+		}
+		payload, err := json.Marshal(observation.Payload)
+		if err != nil {
+			return fail(fmt.Errorf("marshal %s observation %s: %w", observation.Kind, observation.Source.Ref(), err))
+		}
+		if err := store.RecordSourceObservation(ctx, &domain.SourceObservation{
+			RunID: run.ID, Source: observation.Source, Kind: observation.Kind,
+			ObservedAt: observation.ObservedAt, Confidence: observation.Confidence, Payload: payload,
+		}); err != nil {
+			return fail(fmt.Errorf("record %s observation %s: %w", observation.Kind, observation.Source.Ref(), err))
+		}
+		if !slices.Contains(seen, observation.Source.ExternalID) {
+			seen = append(seen, observation.Source.ExternalID)
+		}
+	}
+	if err := store.MarkMissingSourceObservations(ctx, run.ID, sourceSystem, seen); err != nil {
+		return fail(fmt.Errorf("mark missing %s observations: %w", sourceSystem, err))
+	}
+	if err := store.FinishImportRun(ctx, run.ID, domain.ImportRunSucceeded, time.Now().UTC(), nil); err != nil {
+		return nil, fmt.Errorf("finish %s import: %w", sourceSystem, err)
+	}
+	run.Status = domain.ImportRunSucceeded
+	return run, nil
 }
 
 // New builds an Importer. A non-positive epsilon falls back to DefaultEpsilon.

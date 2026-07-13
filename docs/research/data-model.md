@@ -251,6 +251,11 @@ The normalized source identity is the durable idempotency key. `source_ref` is
 retained as a compatibility/display field while adapters migrate; source
 lookup uses `(source_system, source_external_id)` before any local UUID.
 
+Import history is kept separately in `import_runs` and
+`source_observations`. The latter stores canonical JSON payloads, provenance
+identity, confidence, changed status, and orphan markers per run; it never
+stores provider DTOs or authored memento content.
+
 ---
 
 ## Places — a *derived visit* layer (not a stored table)

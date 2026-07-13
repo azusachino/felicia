@@ -1,6 +1,45 @@
 -- name: GetJournal :one
 SELECT id, created_at FROM journal WHERE id = $1;
 
+-- name: CreateImportRun :exec
+INSERT INTO import_runs (id, source_system, started_at, status, error_message)
+VALUES ($1, $2, $3, $4, $5);
+
+-- name: FinishImportRun :exec
+UPDATE import_runs
+SET status = $2, finished_at = $3, error_message = $4
+WHERE id = $1;
+
+-- name: RecordSourceObservation :exec
+INSERT INTO source_observations (
+    id, run_id, source_system, source_external_id, kind, observed_at,
+    confidence, payload, changed, orphaned_at
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8,
+    COALESCE((
+        SELECT payload IS DISTINCT FROM $8::jsonb
+        FROM source_observations
+        WHERE source_system = $3 AND source_external_id = $4
+        ORDER BY observed_at DESC, created_at DESC
+        LIMIT 1
+    ), FALSE), NULL
+)
+ON CONFLICT (run_id, source_system, source_external_id) DO UPDATE SET
+    kind = EXCLUDED.kind,
+    observed_at = EXCLUDED.observed_at,
+    confidence = EXCLUDED.confidence,
+    payload = EXCLUDED.payload,
+    changed = EXCLUDED.changed,
+    orphaned_at = NULL;
+
+-- name: MarkMissingSourceObservations :exec
+UPDATE source_observations
+SET orphaned_at = NOW()
+WHERE source_system = $2
+  AND run_id <> $1
+  AND orphaned_at IS NULL
+  AND NOT (source_external_id = ANY($3::text[]));
+
 -- name: CreateJournal :exec
 INSERT INTO journal (id, created_at) VALUES ($1, $2);
 

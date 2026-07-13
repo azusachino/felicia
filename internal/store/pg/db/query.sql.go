@@ -16,6 +16,104 @@ const createJournal = `-- name: CreateJournal :exec
 INSERT INTO journal (id, created_at) VALUES ($1, $2)
 `
 
+const createImportRun = `-- name: CreateImportRun :exec
+INSERT INTO import_runs (id, source_system, started_at, status, error_message)
+VALUES ($1, $2, $3, $4, $5)
+`
+
+type CreateImportRunParams struct {
+	ID           uuid.UUID
+	SourceSystem string
+	StartedAt    pgtype.Timestamptz
+	Status       string
+	ErrorMessage pgtype.Text
+}
+
+func (q *Queries) CreateImportRun(ctx context.Context, arg CreateImportRunParams) error {
+	_, err := q.db.Exec(ctx, createImportRun, arg.ID, arg.SourceSystem, arg.StartedAt, arg.Status, arg.ErrorMessage)
+	return err
+}
+
+const finishImportRun = `-- name: FinishImportRun :exec
+UPDATE import_runs
+SET status = $2, finished_at = $3, error_message = $4
+WHERE id = $1
+`
+
+type FinishImportRunParams struct {
+	ID           uuid.UUID
+	Status       string
+	FinishedAt   pgtype.Timestamptz
+	ErrorMessage pgtype.Text
+}
+
+func (q *Queries) FinishImportRun(ctx context.Context, arg FinishImportRunParams) error {
+	_, err := q.db.Exec(ctx, finishImportRun, arg.ID, arg.Status, arg.FinishedAt, arg.ErrorMessage)
+	return err
+}
+
+const recordSourceObservation = `-- name: RecordSourceObservation :exec
+INSERT INTO source_observations (
+    id, run_id, source_system, source_external_id, kind, observed_at,
+    confidence, payload, changed, orphaned_at
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8,
+    COALESCE((
+        SELECT payload IS DISTINCT FROM $8::jsonb
+        FROM source_observations
+        WHERE source_system = $3 AND source_external_id = $4
+        ORDER BY observed_at DESC, created_at DESC
+        LIMIT 1
+    ), FALSE), NULL
+)
+ON CONFLICT (run_id, source_system, source_external_id) DO UPDATE SET
+    kind = EXCLUDED.kind,
+    observed_at = EXCLUDED.observed_at,
+    confidence = EXCLUDED.confidence,
+    payload = EXCLUDED.payload,
+    changed = EXCLUDED.changed,
+    orphaned_at = NULL
+`
+
+type RecordSourceObservationParams struct {
+	ID               uuid.UUID
+	RunID            uuid.UUID
+	SourceSystem     string
+	SourceExternalID string
+	Kind             string
+	ObservedAt       pgtype.Timestamptz
+	Confidence       float64
+	Payload          []byte
+}
+
+func (q *Queries) RecordSourceObservation(ctx context.Context, arg RecordSourceObservationParams) error {
+	_, err := q.db.Exec(ctx, recordSourceObservation,
+		arg.ID, arg.RunID, arg.SourceSystem, arg.SourceExternalID, arg.Kind,
+		arg.ObservedAt, arg.Confidence, arg.Payload,
+	)
+	return err
+}
+
+const markMissingSourceObservations = `-- name: MarkMissingSourceObservations :exec
+UPDATE source_observations
+SET orphaned_at = NOW()
+WHERE source_system = $2
+  AND run_id <> $1
+  AND orphaned_at IS NULL
+  AND NOT (source_external_id = ANY($3::text[]))
+`
+
+type MarkMissingSourceObservationsParams struct {
+	RunID           uuid.UUID
+	SourceSystem    string
+	SeenExternalIDs []string
+}
+
+func (q *Queries) MarkMissingSourceObservations(ctx context.Context, arg MarkMissingSourceObservationsParams) error {
+	_, err := q.db.Exec(ctx, markMissingSourceObservations, arg.RunID, arg.SourceSystem, arg.SeenExternalIDs)
+	return err
+}
+
 const resetMockJournal = `-- name: ResetMockJournal :exec
 DELETE FROM journal WHERE id = $1
 `

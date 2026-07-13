@@ -3,6 +3,7 @@ package pg
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -21,6 +22,7 @@ import (
 
 // Compile-time check that pgRepository satisfies the domain contract.
 var _ domain.Repository = (*pgRepository)(nil)
+var _ domain.ObservationStore = (*pgRepository)(nil)
 
 type pgRepository struct {
 	q *db.Queries
@@ -61,6 +63,88 @@ func (r *pgRepository) ResetMockJournal(ctx context.Context, id uuid.UUID) error
 		return fmt.Errorf("reset mock journal %s: %w", id, err)
 	}
 	return nil
+}
+
+// CreateImportRun starts a durable source synchronization boundary. UUIDv7 is
+// generated here when the caller does not provide an ID so run ordering stays
+// visible in the identifier as well as in started_at.
+func (r *pgRepository) CreateImportRun(ctx context.Context, run *domain.ImportRun) error {
+	if run == nil {
+		return errors.New("import run is required")
+	}
+	if run.ID == uuid.Nil {
+		run.ID = uuid.Must(uuid.NewV7())
+	}
+	if run.Status == "" {
+		run.Status = domain.ImportRunRunning
+	}
+	if run.SourceSystem == "" {
+		return errors.New("import run source system is required")
+	}
+	if run.StartedAt.IsZero() {
+		run.StartedAt = time.Now().UTC()
+	}
+	if err := r.q.CreateImportRun(ctx, db.CreateImportRunParams{
+		ID: run.ID, SourceSystem: run.SourceSystem, StartedAt: toTimestamptz(run.StartedAt),
+		Status: string(run.Status), ErrorMessage: toText(run.ErrorMessage),
+	}); err != nil {
+		return fmt.Errorf("create import run %s: %w", run.ID, err)
+	}
+	return nil
+}
+
+func (r *pgRepository) FinishImportRun(ctx context.Context, id uuid.UUID, status domain.ImportRunStatus, finishedAt time.Time, errorMessage *string) error {
+	if !validImportRunStatus(status) || finishedAt.IsZero() {
+		return errors.New("invalid import run completion")
+	}
+	if err := r.q.FinishImportRun(ctx, db.FinishImportRunParams{
+		ID: id, Status: string(status), FinishedAt: toTimestamptz(finishedAt), ErrorMessage: toText(errorMessage),
+	}); err != nil {
+		return fmt.Errorf("finish import run %s: %w", id, err)
+	}
+	return nil
+}
+
+func (r *pgRepository) RecordSourceObservation(ctx context.Context, observation *domain.SourceObservation) error {
+	if observation == nil || !observation.Source.Valid() || observation.RunID == uuid.Nil {
+		return errors.New("source observation, run, and source identity are required")
+	}
+	if observation.Kind == "" || observation.ObservedAt.IsZero() || observation.Confidence < 0 || observation.Confidence > 1 || !json.Valid(observation.Payload) {
+		return errors.New("invalid source observation")
+	}
+	if observation.ID == uuid.Nil {
+		observation.ID = uuid.Must(uuid.NewV7())
+	}
+	if err := r.q.RecordSourceObservation(ctx, db.RecordSourceObservationParams{
+		ID: observation.ID, RunID: observation.RunID, SourceSystem: observation.Source.System,
+		SourceExternalID: observation.Source.ExternalID, Kind: string(observation.Kind),
+		ObservedAt: toTimestamptz(observation.ObservedAt), Confidence: observation.Confidence,
+		Payload: observation.Payload,
+	}); err != nil {
+		return fmt.Errorf("record source observation %s: %w", observation.ID, err)
+	}
+	return nil
+}
+
+func (r *pgRepository) MarkMissingSourceObservations(ctx context.Context, runID uuid.UUID, sourceSystem string, seenExternalIDs []string) error {
+	if runID == uuid.Nil || sourceSystem == "" {
+		return errors.New("run ID and source system are required")
+	}
+	if err := r.q.MarkMissingSourceObservations(ctx, db.MarkMissingSourceObservationsParams{
+		RunID: runID, SourceSystem: sourceSystem, SeenExternalIDs: seenExternalIDs,
+	}); err != nil {
+		return fmt.Errorf("mark missing source observations for run %s: %w", runID, err)
+	}
+	return nil
+}
+
+func validImportRunStatus(status domain.ImportRunStatus) bool {
+	switch status {
+	case domain.ImportRunRunning, domain.ImportRunSucceeded, domain.ImportRunFailed:
+		return true
+	default:
+		return false
+	}
 }
 
 // Journey operations

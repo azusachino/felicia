@@ -2,9 +2,11 @@ package domain
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/paulmach/orb"
 )
 
@@ -73,6 +75,53 @@ type Observation struct {
 	ObservedAt time.Time
 	Confidence float64
 	Payload    any
+}
+
+// ImportRunStatus describes the lifecycle of one source synchronization run.
+type ImportRunStatus string
+
+const (
+	// ImportRunRunning means source collection is in progress.
+	ImportRunRunning ImportRunStatus = "running"
+	// ImportRunSucceeded means source collection and observation persistence completed.
+	ImportRunSucceeded ImportRunStatus = "succeeded"
+	// ImportRunFailed means source collection stopped with an error.
+	ImportRunFailed ImportRunStatus = "failed"
+)
+
+// ImportRun records the durable boundary around one source synchronization.
+type ImportRun struct {
+	ID           uuid.UUID
+	SourceSystem string
+	StartedAt    time.Time
+	FinishedAt   *time.Time
+	Status       ImportRunStatus
+	ErrorMessage *string
+}
+
+// SourceObservation is a persisted canonical snapshot, never a provider DTO.
+// Rows are associated with an import run so changes and missing observations
+// can be investigated without modifying authored mementos.
+type SourceObservation struct {
+	ID         uuid.UUID
+	RunID      uuid.UUID
+	Source     SourceIdentity
+	Kind       ObservationKind
+	ObservedAt time.Time
+	Confidence float64
+	Payload    json.RawMessage
+	Changed    bool
+	OrphanedAt *time.Time
+	CreatedAt  time.Time
+}
+
+// ObservationStore is the persistence seam for import history. Implementations
+// store canonical payloads only; provider-specific DTOs stay in adapters.
+type ObservationStore interface {
+	CreateImportRun(ctx context.Context, run *ImportRun) error
+	FinishImportRun(ctx context.Context, id uuid.UUID, status ImportRunStatus, finishedAt time.Time, errorMessage *string) error
+	RecordSourceObservation(ctx context.Context, observation *SourceObservation) error
+	MarkMissingSourceObservations(ctx context.Context, runID uuid.UUID, sourceSystem string, seenExternalIDs []string) error
 }
 
 // Ingest value objects — the normalized shapes every external source is mapped

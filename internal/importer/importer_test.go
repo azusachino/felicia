@@ -44,6 +44,38 @@ type fakeStore struct {
 	upserted *domain.Journey
 }
 
+type fakeObservationStore struct {
+	run           *domain.ImportRun
+	observations  []*domain.SourceObservation
+	missingRunID  uuid.UUID
+	missingSystem string
+	seen          []string
+	finished      domain.ImportRunStatus
+}
+
+func (s *fakeObservationStore) CreateImportRun(_ context.Context, run *domain.ImportRun) error {
+	if run.ID == uuid.Nil {
+		run.ID = uuid.Must(uuid.NewV7())
+	}
+	s.run = run
+	return nil
+}
+
+func (s *fakeObservationStore) FinishImportRun(_ context.Context, _ uuid.UUID, status domain.ImportRunStatus, _ time.Time, _ *string) error {
+	s.finished = status
+	return nil
+}
+
+func (s *fakeObservationStore) RecordSourceObservation(_ context.Context, observation *domain.SourceObservation) error {
+	s.observations = append(s.observations, observation)
+	return nil
+}
+
+func (s *fakeObservationStore) MarkMissingSourceObservations(_ context.Context, runID uuid.UUID, sourceSystem string, seenExternalIDs []string) error {
+	s.missingRunID, s.missingSystem, s.seen = runID, sourceSystem, seenExternalIDs
+	return nil
+}
+
 func (s *fakeStore) GetJourney(_ context.Context, id uuid.UUID) (*domain.Journey, error) {
 	j, ok := s.journeys[id]
 	if !ok {
@@ -64,6 +96,39 @@ func newJourney(authored ...string) *domain.Journey {
 		DateStart:      time.Date(2026, 3, 20, 0, 0, 0, 0, time.UTC),
 		DateEnd:        time.Date(2026, 3, 22, 0, 0, 0, 0, time.UTC),
 		AuthoredFields: authored,
+	}
+}
+
+func TestPersistObservationsRecordsCanonicalRunAndMarksMissing(t *testing.T) {
+	store := &fakeObservationStore{}
+	observedAt := time.Date(2026, 7, 13, 0, 0, 0, 0, time.UTC)
+	run, err := PersistObservations(context.Background(), store, "immich", []domain.Observation{
+		{Kind: domain.ObservationPhoto, Source: domain.SourceIdentity{System: "immich", ExternalID: "asset-1"}, ObservedAt: observedAt, Confidence: 0.9, Payload: domain.MediaAsset{ID: "asset-1"}},
+	})
+	if err != nil {
+		t.Fatalf("PersistObservations: %v", err)
+	}
+	if run.ID == uuid.Nil || run.ID.Version() != 7 {
+		t.Fatalf("run ID = %s, want UUIDv7", run.ID)
+	}
+	if run.Status != domain.ImportRunSucceeded || store.finished != domain.ImportRunSucceeded {
+		t.Fatalf("run status = %q/%q", run.Status, store.finished)
+	}
+	if len(store.observations) != 1 || string(store.observations[0].Payload) == "" {
+		t.Fatalf("observations = %+v", store.observations)
+	}
+	if store.missingRunID != run.ID || store.missingSystem != "immich" || len(store.seen) != 1 || store.seen[0] != "asset-1" {
+		t.Fatalf("missing marker = %s/%s/%v", store.missingRunID, store.missingSystem, store.seen)
+	}
+}
+
+func TestPersistObservationsRejectsMixedSourceRun(t *testing.T) {
+	store := &fakeObservationStore{}
+	_, err := PersistObservations(context.Background(), store, "immich", []domain.Observation{{
+		Kind: domain.ObservationVisit, Source: domain.SourceIdentity{System: "dawarich", ExternalID: "visit-1"}, Payload: map[string]any{},
+	}})
+	if err == nil || store.finished != domain.ImportRunFailed {
+		t.Fatalf("error/status = %v/%q, want failed run", err, store.finished)
 	}
 }
 
