@@ -137,6 +137,14 @@ func (m *mockRepository) UpsertMemento(_ context.Context, memento *domain.Mement
 }
 
 func (m *mockRepository) ApplyManualMementoPatch(_ context.Context, patch *domain.ManualMementoPatch) error {
+	if existing, ok := m.mementos[patch.Memento.ID]; ok {
+		if patch.ExpectedRevision != nil && *patch.ExpectedRevision != existing.Revision {
+			return domain.ErrWriteConflict
+		}
+		patch.Memento.Revision = existing.Revision + 1
+	} else {
+		patch.Memento.Revision = 1
+	}
 	memento := patch.Memento
 	if patch.State != "" {
 		memento.State = patch.State
@@ -399,6 +407,29 @@ func TestServerManualMementoPatchOwnsFieldsServerSide(t *testing.T) {
 	}
 	if len(memento.AuthoredFields) == 0 {
 		t.Fatal("manual patch should record server-derived authored fields")
+	}
+}
+
+func TestServerRejectsStaleMementoRevision(t *testing.T) {
+	reg, err := domain.LoadRegistry(os.DirFS("../../kinds"))
+	if err != nil {
+		t.Fatalf("failed to load kinds templates: %v", err)
+	}
+	repo := newMockRepository()
+	mementoID := uuid.New()
+	repo.mementos[mementoID] = &domain.Memento{ID: mementoID, Revision: 3}
+	srv := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{})
+	payload := map[string]any{
+		"id": mementoID, "kind": "live", "state": "draft", "expected_revision": int64(2),
+		"occurred_at": "2026-03-20T10:00:00Z", "occurred_tz": "Asia/Tokyo", "kind_data": map[string]any{},
+	}
+	body, _ := json.Marshal(payload)
+	req := httptest.NewRequest("POST", "/api/admin/mementos", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+	if w.Code != http.StatusConflict {
+		t.Fatalf("stale revision status = %d, body = %s", w.Code, w.Body)
 	}
 }
 

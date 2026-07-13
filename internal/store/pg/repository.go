@@ -25,13 +25,14 @@ var _ domain.Repository = (*pgRepository)(nil)
 var _ domain.ObservationStore = (*pgRepository)(nil)
 
 type pgRepository struct {
-	q *db.Queries
+	q  *db.Queries
+	db db.DBTX
 }
 
 // NewRepository creates a new domain.Repository implementation backed by Postgres.
 func NewRepository(d db.DBTX) domain.Repository {
 	return &pgRepository{
-		q: db.New(d),
+		q: db.New(d), db: d,
 	}
 }
 
@@ -217,7 +218,7 @@ func (r *pgRepository) GetMemento(ctx context.Context, id uuid.UUID) (*domain.Me
 	if err != nil {
 		return nil, fmt.Errorf("get memento %s: %w", id, err)
 	}
-	return toDomainMemento(row.ID, row.JourneyID, row.Kind, row.Seq, row.OccurredAt, row.OccurredTz, row.GeomWkb, row.Title, row.Place, row.Vendor, row.Essay, row.PriceAmount, row.PriceCurrency, row.KindData, row.SourceSystem, row.SourceExternalID, row.SourceRef, row.AuthoredFields, row.OrphanedAt, row.State, row.CreatedAt, row.UpdatedAt)
+	return toDomainMemento(row.ID, row.JourneyID, row.Kind, row.Seq, row.OccurredAt, row.OccurredTz, row.GeomWkb, row.Title, row.Place, row.Vendor, row.Essay, row.PriceAmount, row.PriceCurrency, row.KindData, row.SourceSystem, row.SourceExternalID, row.SourceRef, row.AuthoredFields, row.OrphanedAt, row.State, row.Revision, row.CreatedAt, row.UpdatedAt)
 }
 
 func (r *pgRepository) GetMementoBySourceIdentity(ctx context.Context, source domain.SourceIdentity) (*domain.Memento, error) {
@@ -228,7 +229,7 @@ func (r *pgRepository) GetMementoBySourceIdentity(ctx context.Context, source do
 	if err != nil {
 		return nil, fmt.Errorf("get memento by source identity %s: %w", source.Ref(), err)
 	}
-	return toDomainMemento(row.ID, row.JourneyID, row.Kind, row.Seq, row.OccurredAt, row.OccurredTz, row.GeomWkb, row.Title, row.Place, row.Vendor, row.Essay, row.PriceAmount, row.PriceCurrency, row.KindData, row.SourceSystem, row.SourceExternalID, row.SourceRef, row.AuthoredFields, row.OrphanedAt, row.State, row.CreatedAt, row.UpdatedAt)
+	return toDomainMemento(row.ID, row.JourneyID, row.Kind, row.Seq, row.OccurredAt, row.OccurredTz, row.GeomWkb, row.Title, row.Place, row.Vendor, row.Essay, row.PriceAmount, row.PriceCurrency, row.KindData, row.SourceSystem, row.SourceExternalID, row.SourceRef, row.AuthoredFields, row.OrphanedAt, row.State, row.Revision, row.CreatedAt, row.UpdatedAt)
 }
 
 func (r *pgRepository) ListMementosByJourney(ctx context.Context, journeyID uuid.UUID) ([]*domain.Memento, error) {
@@ -238,7 +239,7 @@ func (r *pgRepository) ListMementosByJourney(ctx context.Context, journeyID uuid
 	}
 	var res []*domain.Memento
 	for _, row := range rows {
-		m, err := toDomainMemento(row.ID, row.JourneyID, row.Kind, row.Seq, row.OccurredAt, row.OccurredTz, row.GeomWkb, row.Title, row.Place, row.Vendor, row.Essay, row.PriceAmount, row.PriceCurrency, row.KindData, row.SourceSystem, row.SourceExternalID, row.SourceRef, row.AuthoredFields, row.OrphanedAt, row.State, row.CreatedAt, row.UpdatedAt)
+		m, err := toDomainMemento(row.ID, row.JourneyID, row.Kind, row.Seq, row.OccurredAt, row.OccurredTz, row.GeomWkb, row.Title, row.Place, row.Vendor, row.Essay, row.PriceAmount, row.PriceCurrency, row.KindData, row.SourceSystem, row.SourceExternalID, row.SourceRef, row.AuthoredFields, row.OrphanedAt, row.State, row.Revision, row.CreatedAt, row.UpdatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("list mementos for journey %s: decode %s: %w", journeyID, row.ID, err)
 		}
@@ -248,6 +249,10 @@ func (r *pgRepository) ListMementosByJourney(ctx context.Context, journeyID uuid
 }
 
 func (r *pgRepository) UpsertMemento(ctx context.Context, memento *domain.Memento) error {
+	return r.upsertMemento(ctx, memento, nil)
+}
+
+func (r *pgRepository) upsertMemento(ctx context.Context, memento *domain.Memento, expectedRevision *int64) error {
 	var geomBytes []byte
 	var err error
 	if memento.Geom != nil {
@@ -261,6 +266,10 @@ func (r *pgRepository) UpsertMemento(ctx context.Context, memento *domain.Mement
 		state = domain.MementoPublished
 	}
 	sourceSystem, sourceExternalID, sourceRef := sourceColumns(memento)
+	var revision *int64
+	if memento.Revision > 0 {
+		revision = &memento.Revision
+	}
 
 	if err := r.q.UpsertMemento(ctx, db.UpsertMementoParams{
 		ID:               memento.ID,
@@ -283,7 +292,12 @@ func (r *pgRepository) UpsertMemento(ctx context.Context, memento *domain.Mement
 		AuthoredFields:   memento.AuthoredFields,
 		OrphanedAt:       toTimestamptzPtr(memento.OrphanedAt),
 		State:            string(state),
+		Revision:         toInt8(revision),
+		ExpectedRevision: toInt8(expectedRevision),
 	}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ErrWriteConflict
+		}
 		return fmt.Errorf("upsert memento %s: %w", memento.ID, err)
 	}
 	return nil
@@ -308,7 +322,48 @@ func (r *pgRepository) ApplyManualMementoPatch(ctx context.Context, patch *domai
 	if patch.State != "" {
 		current.State = patch.State
 	}
-	return r.UpsertMemento(ctx, current)
+	return r.upsertMemento(ctx, current, patch.ExpectedRevision)
+}
+
+// ApplyMementoAggregate persists the authored memento and child content in a
+// single transaction. The transaction is deliberately exposed through a
+// separate interface so lightweight repositories and tests need not implement
+// PostgreSQL-specific aggregate mechanics.
+func (r *pgRepository) ApplyMementoAggregate(ctx context.Context, aggregate *domain.MementoAggregate) error {
+	if aggregate == nil || aggregate.Patch == nil || aggregate.Patch.Memento == nil {
+		return errors.New("memento aggregate is required")
+	}
+	beg, ok := r.db.(interface {
+		Begin(context.Context) (pgx.Tx, error)
+	})
+	if !ok {
+		return errors.New("repository database does not support transactions")
+	}
+	tx, err := beg.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin memento aggregate: %w", err)
+	}
+	txRepo := &pgRepository{q: db.New(tx), db: tx}
+	if err := txRepo.ApplyManualMementoPatch(ctx, aggregate.Patch); err != nil {
+		_ = tx.Rollback(ctx)
+		return fmt.Errorf("apply memento aggregate patch: %w", err)
+	}
+	for _, photo := range aggregate.Photos {
+		if err := txRepo.UpsertPhoto(ctx, photo); err != nil {
+			_ = tx.Rollback(ctx)
+			return fmt.Errorf("apply memento aggregate photo: %w", err)
+		}
+	}
+	for _, translation := range aggregate.Translations {
+		if err := txRepo.UpsertTranslation(ctx, translation); err != nil {
+			_ = tx.Rollback(ctx)
+			return fmt.Errorf("apply memento aggregate translation: %w", err)
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit memento aggregate: %w", err)
+	}
+	return nil
 }
 
 // ApplyIngestMementoPatch merges source-owned fields and preserves all
@@ -677,7 +732,7 @@ func toDomainMemento(
 	title string, place string, vendor pgtype.Text, essay pgtype.Text,
 	priceAmount pgtype.Int8, priceCurrency pgtype.Text, kindData []byte,
 	sourceSystem pgtype.Text, sourceExternalID pgtype.Text, sourceRef pgtype.Text,
-	authoredFields []string, orphanedAt pgtype.Timestamptz, state string,
+	authoredFields []string, orphanedAt pgtype.Timestamptz, state string, revision int64,
 	createdAt pgtype.Timestamptz, updatedAt pgtype.Timestamptz,
 ) (*domain.Memento, error) {
 	var geom orb.Geometry
@@ -717,6 +772,7 @@ func toDomainMemento(
 		AuthoredFields: authoredFields,
 		OrphanedAt:     fromTimestamptzPtr(orphanedAt),
 		State:          domain.MementoState(state),
+		Revision:       revision,
 		CreatedAt:      fromTimestamptz(createdAt),
 		UpdatedAt:      fromTimestamptz(updatedAt),
 	}, nil

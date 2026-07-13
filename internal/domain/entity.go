@@ -11,7 +11,10 @@ import (
 )
 
 // ErrNotFound is returned when a requested entity does not exist.
-var ErrNotFound = errors.New("entity not found")
+var (
+	ErrNotFound      = errors.New("entity not found")
+	ErrWriteConflict = errors.New("write conflict")
+)
 
 // Journal is the root container of journeys.
 type Journal struct {
@@ -58,6 +61,7 @@ type Memento struct {
 	AuthoredFields []string        `json:"authored_fields"`
 	OrphanedAt     *time.Time      `json:"orphaned_at,omitempty"`
 	State          MementoState    `json:"state"`
+	Revision       int64           `json:"revision"`
 	CreatedAt      time.Time       `json:"created_at"`
 	UpdatedAt      time.Time       `json:"updated_at"`
 }
@@ -81,9 +85,10 @@ const (
 // ManualMementoPatch is an explicit authoring operation. Fields are derived
 // by the API or authoring service; callers never submit authored_fields.
 type ManualMementoPatch struct {
-	Memento *Memento
-	Fields  []string
-	State   MementoState
+	Memento          *Memento
+	Fields           []string
+	State            MementoState
+	ExpectedRevision *int64
 }
 
 // IngestMementoPatch is an explicit source operation. Its fields are checked
@@ -91,6 +96,19 @@ type ManualMementoPatch struct {
 type IngestMementoPatch struct {
 	Memento *Memento
 	Fields  []string
+}
+
+// MementoAggregate is the atomically persisted authoring unit.
+type MementoAggregate struct {
+	Patch        *ManualMementoPatch
+	Photos       []*MementoPhoto
+	Translations []*Translation
+}
+
+// AggregateRepository persists an authored memento and its child content in
+// one transaction, rejecting stale aggregate revisions.
+type AggregateRepository interface {
+	ApplyMementoAggregate(ctx context.Context, aggregate *MementoAggregate) error
 }
 
 // Translation represents a translated string in the translations sidecar.

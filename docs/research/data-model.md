@@ -153,6 +153,7 @@ CREATE TABLE mementos (
     authored_fields TEXT[] NOT NULL DEFAULT '{}',
     orphaned_at TIMESTAMPTZ,
     state TEXT NOT NULL DEFAULT 'published', -- candidate|draft|authored|published|archived
+    revision BIGINT NOT NULL DEFAULT 1,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT unique_journey_source_memento UNIQUE (journey_id, source_ref),
@@ -246,6 +247,7 @@ CREATE INDEX idx_memento_photos_memento_seq ON memento_photos(memento_id, seq);
 | `source_ref` | `text` | INGESTED | immich or file reference |
 | `authored_fields` | `text[]` | — | no-clobber tracker |
 | `orphaned_at` | `timestamptz` | INGESTED | marked when source asset disappears |
+| `revision` | `bigint` | — | monotonic optimistic-concurrency token |
 
 The normalized source identity is the durable idempotency key. `source_ref` is
 retained as a compatibility/display field while adapters migrate; source
@@ -255,6 +257,10 @@ Import history is kept separately in `import_runs` and
 `source_observations`. The latter stores canonical JSON payloads, provenance
 identity, confidence, changed status, and orphan markers per run; it never
 stores provider DTOs or authored memento content.
+
+Mementos also carry a monotonic `revision`. Authoring writes may provide an
+expected revision and are rejected on mismatch; aggregate writes persist the
+memento, photos, and translations in one transaction.
 
 ---
 

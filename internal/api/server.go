@@ -433,24 +433,25 @@ type mementoGeom struct {
 }
 
 type upsertMementoRequest struct {
-	ID             uuid.UUID      `json:"id"`
-	JourneyID      uuid.UUID      `json:"journey_id"`
-	Kind           string         `json:"kind"`
-	Seq            int            `json:"seq"`
-	OccurredAt     string         `json:"occurred_at"` // RFC3339
-	OccurredTZ     string         `json:"occurred_tz"`
-	Geom           *mementoGeom   `json:"geom"`
-	Title          string         `json:"title"`
-	Place          string         `json:"place"`
-	Vendor         *string        `json:"vendor,omitempty"`
-	Essay          *string        `json:"essay,omitempty"`
-	PriceAmount    *int64         `json:"price_amount,omitempty"`
-	PriceCurrency  *string        `json:"price_currency,omitempty"`
-	KindData       map[string]any `json:"kind_data"`
-	SourceRef      *string        `json:"source_ref,omitempty"`
-	AuthoredFields []string       `json:"authored_fields"`
-	OrphanedAt     *string        `json:"orphaned_at,omitempty"`
-	State          string         `json:"state,omitempty"`
+	ID               uuid.UUID      `json:"id"`
+	JourneyID        uuid.UUID      `json:"journey_id"`
+	Kind             string         `json:"kind"`
+	Seq              int            `json:"seq"`
+	OccurredAt       string         `json:"occurred_at"` // RFC3339
+	OccurredTZ       string         `json:"occurred_tz"`
+	Geom             *mementoGeom   `json:"geom"`
+	Title            string         `json:"title"`
+	Place            string         `json:"place"`
+	Vendor           *string        `json:"vendor,omitempty"`
+	Essay            *string        `json:"essay,omitempty"`
+	PriceAmount      *int64         `json:"price_amount,omitempty"`
+	PriceCurrency    *string        `json:"price_currency,omitempty"`
+	KindData         map[string]any `json:"kind_data"`
+	SourceRef        *string        `json:"source_ref,omitempty"`
+	AuthoredFields   []string       `json:"authored_fields"`
+	OrphanedAt       *string        `json:"orphaned_at,omitempty"`
+	State            string         `json:"state,omitempty"`
+	ExpectedRevision *int64         `json:"expected_revision,omitempty"`
 }
 
 func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
@@ -572,8 +573,13 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 			"journey_id", "kind", "seq", "occurred_at", "occurred_tz", "geom",
 			"title", "place", "vendor", "essay", "price_amount", "price_currency", "kind_data",
 		},
-		State: state,
+		State:            state,
+		ExpectedRevision: req.ExpectedRevision,
 	}); err != nil {
+		if errors.Is(err, domain.ErrWriteConflict) {
+			respondError(w, http.StatusConflict, "memento was modified; reload before saving")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}

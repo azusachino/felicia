@@ -52,6 +52,7 @@ type Memento struct {
 	AuthoredFields   []string
 	OrphanedAt       pgtype.Timestamptz
 	State            string
+	Revision         int64
 	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
 }

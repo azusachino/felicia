@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -313,7 +314,7 @@ func (q *Queries) GetJourneyBySlug(ctx context.Context, slug string) (GetJourney
 }
 
 const getMemento = `-- name: GetMemento :one
-SELECT id, journey_id, kind, seq, occurred_at, occurred_tz, ST_AsBinary(geom) AS geom_wkb, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, created_at, updated_at
+SELECT id, journey_id, kind, seq, occurred_at, occurred_tz, ST_AsBinary(geom) AS geom_wkb, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, revision, created_at, updated_at
 FROM mementos
 WHERE id = $1
 `
@@ -339,6 +340,7 @@ type GetMementoRow struct {
 	AuthoredFields   []string
 	OrphanedAt       pgtype.Timestamptz
 	State            string
+	Revision         int64
 	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
 }
@@ -367,6 +369,7 @@ func (q *Queries) GetMemento(ctx context.Context, id uuid.UUID) (GetMementoRow, 
 		&i.AuthoredFields,
 		&i.OrphanedAt,
 		&i.State,
+		&i.Revision,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -374,7 +377,7 @@ func (q *Queries) GetMemento(ctx context.Context, id uuid.UUID) (GetMementoRow, 
 }
 
 const getMementoBySourceIdentity = `-- name: GetMementoBySourceIdentity :one
-SELECT id, journey_id, kind, seq, occurred_at, occurred_tz, ST_AsBinary(geom) AS geom_wkb, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, created_at, updated_at
+SELECT id, journey_id, kind, seq, occurred_at, occurred_tz, ST_AsBinary(geom) AS geom_wkb, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, revision, created_at, updated_at
 FROM mementos
 WHERE source_system = $1 AND source_external_id = $2
 `
@@ -386,8 +389,8 @@ func (q *Queries) GetMementoBySourceIdentity(ctx context.Context, sourceSystem s
 		&i.ID, &i.JourneyID, &i.Kind, &i.Seq, &i.OccurredAt, &i.OccurredTz,
 		&i.GeomWkb, &i.Title, &i.Place, &i.Vendor, &i.Essay, &i.PriceAmount,
 		&i.PriceCurrency, &i.KindData, &i.SourceSystem, &i.SourceExternalID,
-		&i.SourceRef, &i.AuthoredFields, &i.OrphanedAt, &i.State, &i.CreatedAt,
-		&i.UpdatedAt,
+		&i.SourceRef, &i.AuthoredFields, &i.OrphanedAt, &i.State, &i.Revision,
+		&i.CreatedAt, &i.UpdatedAt,
 	)
 	return i, err
 }
@@ -474,7 +477,7 @@ func (q *Queries) ListJourneys(ctx context.Context) ([]ListJourneysRow, error) {
 }
 
 const listMementosByJourney = `-- name: ListMementosByJourney :many
-SELECT id, journey_id, kind, seq, occurred_at, occurred_tz, ST_AsBinary(geom) AS geom_wkb, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, created_at, updated_at
+SELECT id, journey_id, kind, seq, occurred_at, occurred_tz, ST_AsBinary(geom) AS geom_wkb, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, revision, created_at, updated_at
 FROM mementos
 WHERE journey_id = $1
 ORDER BY seq ASC, occurred_at ASC
@@ -501,6 +504,7 @@ type ListMementosByJourneyRow struct {
 	AuthoredFields   []string
 	OrphanedAt       pgtype.Timestamptz
 	State            string
+	Revision         int64
 	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
 }
@@ -535,6 +539,7 @@ func (q *Queries) ListMementosByJourney(ctx context.Context, journeyID uuid.UUID
 			&i.AuthoredFields,
 			&i.OrphanedAt,
 			&i.State,
+			&i.Revision,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -755,9 +760,9 @@ func (q *Queries) UpsertJourney(ctx context.Context, arg UpsertJourneyParams) er
 
 const upsertMemento = `-- name: UpsertMemento :exec
 INSERT INTO mementos (
-    id, journey_id, kind, seq, occurred_at, occurred_tz, geom, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, created_at, updated_at
+    id, journey_id, kind, seq, occurred_at, occurred_tz, geom, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, revision, created_at, updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, ST_GeomFromWKB($7, 4326), $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, NOW(), NOW()
+    $1, $2, $3, $4, $5, $6, ST_GeomFromWKB($7, 4326), $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, COALESCE($21, 1), NOW(), NOW()
 ) ON CONFLICT (id) DO UPDATE SET
     kind = CASE WHEN NOT (mementos.authored_fields @> ARRAY['kind']) THEN EXCLUDED.kind ELSE mementos.kind END,
     seq = CASE WHEN NOT (mementos.authored_fields @> ARRAY['seq']) THEN EXCLUDED.seq ELSE mementos.seq END,
@@ -776,8 +781,10 @@ INSERT INTO mementos (
     source_ref = EXCLUDED.source_ref,
     orphaned_at = EXCLUDED.orphaned_at,
     state = EXCLUDED.state,
+    revision = mementos.revision + 1,
     authored_fields = EXCLUDED.authored_fields,
     updated_at = NOW()
+WHERE $22::bigint IS NULL OR mementos.revision = $22
 `
 
 type UpsertMementoParams struct {
@@ -801,10 +808,12 @@ type UpsertMementoParams struct {
 	AuthoredFields   []string
 	OrphanedAt       pgtype.Timestamptz
 	State            string
+	Revision         pgtype.Int8
+	ExpectedRevision pgtype.Int8
 }
 
 func (q *Queries) UpsertMemento(ctx context.Context, arg UpsertMementoParams) error {
-	_, err := q.db.Exec(ctx, upsertMemento,
+	tag, err := q.db.Exec(ctx, upsertMemento,
 		arg.ID,
 		arg.JourneyID,
 		arg.Kind,
@@ -825,8 +834,16 @@ func (q *Queries) UpsertMemento(ctx context.Context, arg UpsertMementoParams) er
 		arg.AuthoredFields,
 		arg.OrphanedAt,
 		arg.State,
+		arg.Revision,
+		arg.ExpectedRevision,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+	return nil
 }
 
 const upsertPhoto = `-- name: UpsertPhoto :exec
@@ -866,7 +883,10 @@ func (q *Queries) UpsertPhoto(ctx context.Context, arg UpsertPhotoParams) error 
 		arg.TakenAt,
 		arg.SourceRef,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 const upsertTranslation = `-- name: UpsertTranslation :exec

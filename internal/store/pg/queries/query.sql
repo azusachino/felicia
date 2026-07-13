@@ -80,12 +80,12 @@ INSERT INTO journeys (
     updated_at = NOW();
 
 -- name: GetMemento :one
-SELECT id, journey_id, kind, seq, occurred_at, occurred_tz, ST_AsBinary(geom) AS geom_wkb, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, created_at, updated_at
+SELECT id, journey_id, kind, seq, occurred_at, occurred_tz, ST_AsBinary(geom) AS geom_wkb, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, revision, created_at, updated_at
 FROM mementos
 WHERE id = $1;
 
 -- name: GetMementoBySourceIdentity :one
-SELECT id, journey_id, kind, seq, occurred_at, occurred_tz, ST_AsBinary(geom) AS geom_wkb, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, created_at, updated_at
+SELECT id, journey_id, kind, seq, occurred_at, occurred_tz, ST_AsBinary(geom) AS geom_wkb, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, revision, created_at, updated_at
 FROM mementos
 WHERE source_system = $1 AND source_external_id = $2;
 
@@ -97,9 +97,9 @@ ORDER BY seq ASC, occurred_at ASC;
 
 -- name: UpsertMemento :exec
 INSERT INTO mementos (
-    id, journey_id, kind, seq, occurred_at, occurred_tz, geom, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, created_at, updated_at
+    id, journey_id, kind, seq, occurred_at, occurred_tz, geom, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, revision, created_at, updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, ST_GeomFromWKB($7, 4326), $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, NOW(), NOW()
+    $1, $2, $3, $4, $5, $6, ST_GeomFromWKB($7, 4326), $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, COALESCE($21, 1), NOW(), NOW()
 ) ON CONFLICT (id) DO UPDATE SET
     kind = CASE WHEN NOT (mementos.authored_fields @> ARRAY['kind']) THEN EXCLUDED.kind ELSE mementos.kind END,
     seq = CASE WHEN NOT (mementos.authored_fields @> ARRAY['seq']) THEN EXCLUDED.seq ELSE mementos.seq END,
@@ -118,8 +118,10 @@ INSERT INTO mementos (
     source_ref = EXCLUDED.source_ref,
     orphaned_at = EXCLUDED.orphaned_at,
     state = EXCLUDED.state,
+    revision = mementos.revision + 1,
     authored_fields = EXCLUDED.authored_fields,
-    updated_at = NOW();
+    updated_at = NOW()
+WHERE $22::bigint IS NULL OR mementos.revision = $22;
 
 -- name: GetPhoto :one
 SELECT id, memento_id, object_key, content_hash, caption, seq, taken_at, source_ref, created_at
