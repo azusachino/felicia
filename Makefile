@@ -91,7 +91,10 @@ mock-down: ## Stop the mock upstream
 	@pkill -f scripts/mock_upstream.py && echo "mock stopped" || echo "no mock running"
 
 test-api: ## Run Python-based E2E API integration tests (requires running server)
-	python scripts/test_api.py
+	uv run python scripts/test_api.py
+
+test-features: ## Run offline Python feature-contract tests
+	uv run python -m unittest discover -s tests
 
 web-install: ## Install frontend deps (bun, from mise)
 	cd web && bun install

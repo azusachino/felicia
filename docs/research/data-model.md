@@ -19,6 +19,34 @@
 5. **Uniform memento** — one `mementos` table, `kind`-tagged, kind-specifics in `kind_data`
    jsonb. New kinds = new enum value, not new tables.
 
+6. **Canonical observation seam** — source adapters map provider DTOs into
+   `SourceIdentity`, `Observation`, `Route`, `Visit`, `MediaAsset`, and
+   `MementoCandidate` values before the write side sees them. Provenance records
+   origin and confidence; authorship remains an independent write concern.
+   (`felicia:decision:canonical-data-layer`)
+
+## Canonical data layer
+
+The persistence schema is the canonical application dataset, but source records
+first pass through a provider-neutral observation layer:
+
+```text
+provider DTO → adapter → canonical observation → ingest patch → PostgreSQL
+```
+
+`SourceIdentity{system, external_id}` is the stable identity for re-import. The
+adapter owns provider pagination, authentication, timestamp quirks, and field
+mapping. The canonical layer owns only concepts shared by the product:
+time-bounded routes and visits, media assets, location, memento candidates, and
+provenance. It does not become a runtime query or ETL language.
+
+`MementoCandidate` is intentionally not the persisted `Memento`: it contains
+source-derived suggestions, while authored title/essay/curation and publication
+state are applied by an explicit write operation. Media is broader than photos:
+the canonical kinds are image, video, audio, document, link, and provider-
+approved embed. A user-created ticket or other memento can enter through the
+same template-driven write seam without an external source identity.
+
 ## The shape at a glance
 
 ```mermaid
