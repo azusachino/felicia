@@ -41,21 +41,21 @@ INSERT INTO journeys (
     updated_at = NOW();
 
 -- name: GetMemento :one
-SELECT id, journey_id, kind, seq, occurred_at, occurred_tz, ST_AsBinary(geom) AS geom_wkb, title, place, vendor, essay, price_amount, price_currency, kind_data, source_ref, authored_fields, orphaned_at, created_at, updated_at
+SELECT id, journey_id, kind, seq, occurred_at, occurred_tz, ST_AsBinary(geom) AS geom_wkb, title, place, vendor, essay, price_amount, price_currency, kind_data, source_ref, authored_fields, orphaned_at, state, created_at, updated_at
 FROM mementos
 WHERE id = $1;
 
 -- name: ListMementosByJourney :many
-SELECT id, journey_id, kind, seq, occurred_at, occurred_tz, ST_AsBinary(geom) AS geom_wkb, title, place, vendor, essay, price_amount, price_currency, kind_data, source_ref, authored_fields, orphaned_at, created_at, updated_at
+SELECT id, journey_id, kind, seq, occurred_at, occurred_tz, ST_AsBinary(geom) AS geom_wkb, title, place, vendor, essay, price_amount, price_currency, kind_data, source_ref, authored_fields, orphaned_at, state, created_at, updated_at
 FROM mementos
 WHERE journey_id = $1
 ORDER BY seq ASC, occurred_at ASC;
 
 -- name: UpsertMemento :exec
 INSERT INTO mementos (
-    id, journey_id, kind, seq, occurred_at, occurred_tz, geom, title, place, vendor, essay, price_amount, price_currency, kind_data, source_ref, authored_fields, orphaned_at, created_at, updated_at
+    id, journey_id, kind, seq, occurred_at, occurred_tz, geom, title, place, vendor, essay, price_amount, price_currency, kind_data, source_ref, authored_fields, orphaned_at, state, created_at, updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, ST_GeomFromWKB($7, 4326), $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW(), NOW()
+    $1, $2, $3, $4, $5, $6, ST_GeomFromWKB($7, 4326), $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW()
 ) ON CONFLICT (id) DO UPDATE SET
     kind = CASE WHEN NOT (mementos.authored_fields @> ARRAY['kind']) THEN EXCLUDED.kind ELSE mementos.kind END,
     seq = CASE WHEN NOT (mementos.authored_fields @> ARRAY['seq']) THEN EXCLUDED.seq ELSE mementos.seq END,
@@ -71,6 +71,7 @@ INSERT INTO mementos (
     kind_data = CASE WHEN NOT (mementos.authored_fields @> ARRAY['kind_data']) THEN EXCLUDED.kind_data ELSE mementos.kind_data END,
     source_ref = EXCLUDED.source_ref,
     orphaned_at = EXCLUDED.orphaned_at,
+    state = EXCLUDED.state,
     authored_fields = EXCLUDED.authored_fields,
     updated_at = NOW();
 

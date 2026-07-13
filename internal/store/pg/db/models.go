@@ -49,6 +49,7 @@ type Memento struct {
 	SourceRef      pgtype.Text
 	AuthoredFields []string
 	OrphanedAt     pgtype.Timestamptz
+	State          string
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
 }

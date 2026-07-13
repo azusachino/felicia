@@ -56,8 +56,40 @@ type Memento struct {
 	SourceRef      *string         `json:"source_ref,omitempty"`
 	AuthoredFields []string        `json:"authored_fields"`
 	OrphanedAt     *time.Time      `json:"orphaned_at,omitempty"`
+	State          MementoState    `json:"state"`
 	CreatedAt      time.Time       `json:"created_at"`
 	UpdatedAt      time.Time       `json:"updated_at"`
+}
+
+// MementoState is the write/publication lifecycle of a memento.
+type MementoState string
+
+const (
+	// MementoCandidateState is a source-derived candidate awaiting authoring.
+	MementoCandidateState MementoState = "candidate"
+	// MementoDraft is an editable memento that is not yet published.
+	MementoDraft MementoState = "draft"
+	// MementoAuthored is an authored memento ready for publication review.
+	MementoAuthored MementoState = "authored"
+	// MementoPublished is visible in the public experience.
+	MementoPublished MementoState = "published"
+	// MementoArchived is retained but no longer active.
+	MementoArchived MementoState = "archived"
+)
+
+// ManualMementoPatch is an explicit authoring operation. Fields are derived
+// by the API or authoring service; callers never submit authored_fields.
+type ManualMementoPatch struct {
+	Memento *Memento
+	Fields  []string
+	State   MementoState
+}
+
+// IngestMementoPatch is an explicit source operation. Its fields are checked
+// by the importer and may never add authored ownership.
+type IngestMementoPatch struct {
+	Memento *Memento
+	Fields  []string
 }
 
 // Translation represents a translated string in the translations sidecar.
@@ -129,6 +161,8 @@ type Repository interface {
 	GetMemento(ctx context.Context, id uuid.UUID) (*Memento, error)
 	ListMementosByJourney(ctx context.Context, journeyID uuid.UUID) ([]*Memento, error)
 	UpsertMemento(ctx context.Context, memento *Memento) error
+	ApplyManualMementoPatch(ctx context.Context, patch *ManualMementoPatch) error
+	ApplyIngestMementoPatch(ctx context.Context, patch *IngestMementoPatch) error
 
 	// TransitLeg operations (authored legs, union-at-read)
 	CreateTransitLeg(ctx context.Context, leg *TransitLegInput) error

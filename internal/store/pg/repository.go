@@ -3,10 +3,13 @@ package pg
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/encoding/wkb"
@@ -129,7 +132,7 @@ func (r *pgRepository) GetMemento(ctx context.Context, id uuid.UUID) (*domain.Me
 	if err != nil {
 		return nil, fmt.Errorf("get memento %s: %w", id, err)
 	}
-	return toDomainMemento(row.ID, row.JourneyID, row.Kind, row.Seq, row.OccurredAt, row.OccurredTz, row.GeomWkb, row.Title, row.Place, row.Vendor, row.Essay, row.PriceAmount, row.PriceCurrency, row.KindData, row.SourceRef, row.AuthoredFields, row.OrphanedAt, row.CreatedAt, row.UpdatedAt)
+	return toDomainMemento(row.ID, row.JourneyID, row.Kind, row.Seq, row.OccurredAt, row.OccurredTz, row.GeomWkb, row.Title, row.Place, row.Vendor, row.Essay, row.PriceAmount, row.PriceCurrency, row.KindData, row.SourceRef, row.AuthoredFields, row.OrphanedAt, row.State, row.CreatedAt, row.UpdatedAt)
 }
 
 func (r *pgRepository) ListMementosByJourney(ctx context.Context, journeyID uuid.UUID) ([]*domain.Memento, error) {
@@ -139,7 +142,7 @@ func (r *pgRepository) ListMementosByJourney(ctx context.Context, journeyID uuid
 	}
 	var res []*domain.Memento
 	for _, row := range rows {
-		m, err := toDomainMemento(row.ID, row.JourneyID, row.Kind, row.Seq, row.OccurredAt, row.OccurredTz, row.GeomWkb, row.Title, row.Place, row.Vendor, row.Essay, row.PriceAmount, row.PriceCurrency, row.KindData, row.SourceRef, row.AuthoredFields, row.OrphanedAt, row.CreatedAt, row.UpdatedAt)
+		m, err := toDomainMemento(row.ID, row.JourneyID, row.Kind, row.Seq, row.OccurredAt, row.OccurredTz, row.GeomWkb, row.Title, row.Place, row.Vendor, row.Essay, row.PriceAmount, row.PriceCurrency, row.KindData, row.SourceRef, row.AuthoredFields, row.OrphanedAt, row.State, row.CreatedAt, row.UpdatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("list mementos for journey %s: decode %s: %w", journeyID, row.ID, err)
 		}
@@ -156,6 +159,10 @@ func (r *pgRepository) UpsertMemento(ctx context.Context, memento *domain.Mement
 		if err != nil {
 			return fmt.Errorf("upsert memento %s: marshal geom: %w", memento.ID, err)
 		}
+	}
+	state := memento.State
+	if state == "" {
+		state = domain.MementoPublished
 	}
 
 	if err := r.q.UpsertMemento(ctx, db.UpsertMementoParams{
@@ -176,10 +183,100 @@ func (r *pgRepository) UpsertMemento(ctx context.Context, memento *domain.Mement
 		SourceRef:      toText(memento.SourceRef),
 		AuthoredFields: memento.AuthoredFields,
 		OrphanedAt:     toTimestamptzPtr(memento.OrphanedAt),
+		State:          string(state),
 	}); err != nil {
 		return fmt.Errorf("upsert memento %s: %w", memento.ID, err)
 	}
 	return nil
+}
+
+// ApplyManualMementoPatch merges an explicit authoring patch with the current
+// row. The field mask, not the incoming authored_fields array, determines
+// ownership; this prevents stale clients from clearing authorship.
+func (r *pgRepository) ApplyManualMementoPatch(ctx context.Context, patch *domain.ManualMementoPatch) error {
+	if patch == nil || patch.Memento == nil {
+		return errors.New("manual memento patch is required")
+	}
+	current, err := r.GetMemento(ctx, patch.Memento.ID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("load memento patch target %s: %w", patch.Memento.ID, err)
+	}
+	if err != nil {
+		current = &domain.Memento{ID: patch.Memento.ID, JourneyID: patch.Memento.JourneyID}
+	}
+	mergeMementoFields(current, patch.Memento, patch.Fields)
+	current.AuthoredFields = unionFields(current.AuthoredFields, patch.Fields)
+	if patch.State != "" {
+		current.State = patch.State
+	}
+	return r.UpsertMemento(ctx, current)
+}
+
+// ApplyIngestMementoPatch merges source-owned fields and preserves all
+// authored ownership. Importers cannot supply or clear authored_fields.
+func (r *pgRepository) ApplyIngestMementoPatch(ctx context.Context, patch *domain.IngestMementoPatch) error {
+	if patch == nil || patch.Memento == nil {
+		return errors.New("ingest memento patch is required")
+	}
+	current, err := r.GetMemento(ctx, patch.Memento.ID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("load memento ingest target %s: %w", patch.Memento.ID, err)
+	}
+	if err != nil {
+		current = &domain.Memento{ID: patch.Memento.ID, JourneyID: patch.Memento.JourneyID, State: domain.MementoCandidateState}
+	}
+	mergeMementoFields(current, patch.Memento, patch.Fields)
+	if current.State == "" {
+		current.State = domain.MementoCandidateState
+	}
+	return r.UpsertMemento(ctx, current)
+}
+
+func mergeMementoFields(dst, src *domain.Memento, fields []string) {
+	for _, field := range fields {
+		switch field {
+		case "journey_id":
+			dst.JourneyID = src.JourneyID
+		case "kind":
+			dst.Kind = src.Kind
+		case "seq":
+			dst.Seq = src.Seq
+		case "occurred_at":
+			dst.OccurredAt = src.OccurredAt
+		case "occurred_tz":
+			dst.OccurredTZ = src.OccurredTZ
+		case "geom":
+			dst.Geom = src.Geom
+		case "title":
+			dst.Title = src.Title
+		case "place":
+			dst.Place = src.Place
+		case "vendor":
+			dst.Vendor = src.Vendor
+		case "essay":
+			dst.Essay = src.Essay
+		case "price_amount":
+			dst.PriceAmount = src.PriceAmount
+		case "price_currency":
+			dst.PriceCurrency = src.PriceCurrency
+		case "kind_data":
+			dst.KindData = src.KindData
+		case "source_ref":
+			dst.SourceRef = src.SourceRef
+		case "orphaned_at":
+			dst.OrphanedAt = src.OrphanedAt
+		}
+	}
+}
+
+func unionFields(existing, added []string) []string {
+	result := slices.Clone(existing)
+	for _, field := range added {
+		if !slices.Contains(result, field) {
+			result = append(result, field)
+		}
+	}
+	return result
 }
 
 // TransitLeg operations
@@ -433,7 +530,7 @@ func toDomainMemento(
 	occurredAt pgtype.Timestamptz, occurredTz string, geomWkb interface{},
 	title string, place string, vendor pgtype.Text, essay pgtype.Text,
 	priceAmount pgtype.Int8, priceCurrency pgtype.Text, kindData []byte,
-	sourceRef pgtype.Text, authoredFields []string, orphanedAt pgtype.Timestamptz,
+	sourceRef pgtype.Text, authoredFields []string, orphanedAt pgtype.Timestamptz, state string,
 	createdAt pgtype.Timestamptz, updatedAt pgtype.Timestamptz,
 ) (*domain.Memento, error) {
 	var geom orb.Geometry
@@ -465,6 +562,7 @@ func toDomainMemento(
 		SourceRef:      fromText(sourceRef),
 		AuthoredFields: authoredFields,
 		OrphanedAt:     fromTimestamptzPtr(orphanedAt),
+		State:          domain.MementoState(state),
 		CreatedAt:      fromTimestamptz(createdAt),
 		UpdatedAt:      fromTimestamptz(updatedAt),
 	}, nil

@@ -47,6 +47,18 @@ the canonical kinds are image, video, audio, document, link, and provider-
 approved embed. A user-created ticket or other memento can enter through the
 same template-driven write seam without an external source identity.
 
+The write seam is split by authority:
+
+```text
+ManualMementoPatch  → authored fields + lifecycle transition
+IngestMementoPatch  → source-owned fields only
+```
+
+The repository derives ownership from these operations and preserves existing
+authored values. `mementos.state` records the lifecycle; transaction and
+optimistic-concurrency guarantees are specified separately before aggregate
+writes are expanded.
+
 ## The shape at a glance
 
 ```mermaid
@@ -138,6 +150,7 @@ CREATE TABLE mementos (
     source_ref TEXT,
     authored_fields TEXT[] NOT NULL DEFAULT '{}',
     orphaned_at TIMESTAMPTZ,
+    state TEXT NOT NULL DEFAULT 'published', -- candidate|draft|authored|published|archived
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT unique_journey_source_memento UNIQUE (journey_id, source_ref),

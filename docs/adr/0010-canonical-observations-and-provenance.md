@@ -60,6 +60,18 @@ candidate into authored or published state; re-import may refresh source-owned
 fields while preserving authored values. A manual ticket starts at draft and
 does not need a source identity.
 
+The write API exposes two distinct operations:
+
+* `ManualMementoPatch` receives an explicit field mask derived by the authoring
+  service and records those fields as authored.
+* `IngestMementoPatch` receives a source-owned field mask and cannot add,
+  remove, or replace authored ownership.
+
+Neither operation accepts a caller-controlled `authored_fields` array. The
+repository merges a patch with the current row before persisting it. Optimistic
+concurrency and aggregate transactions are a follow-up task, so this first
+seam is not yet the final concurrent-write protocol.
+
 Essays remain Markdown in the first authoring slice. Rich block content is a
 follow-up decision, with Portable Text and ProseMirror/Tiptap JSON investigated
 as established structured-content options rather than storing arbitrary HTML.

@@ -127,6 +127,32 @@ func (m *mockRepository) UpsertMemento(_ context.Context, memento *domain.Mement
 	return nil
 }
 
+func (m *mockRepository) ApplyManualMementoPatch(_ context.Context, patch *domain.ManualMementoPatch) error {
+	memento := patch.Memento
+	if patch.State != "" {
+		memento.State = patch.State
+	}
+	for _, field := range patch.Fields {
+		found := false
+		for _, existing := range memento.AuthoredFields {
+			if existing == field {
+				found = true
+				break
+			}
+		}
+		if !found {
+			memento.AuthoredFields = append(memento.AuthoredFields, field)
+		}
+	}
+	m.mementos[memento.ID] = memento
+	return nil
+}
+
+func (m *mockRepository) ApplyIngestMementoPatch(_ context.Context, patch *domain.IngestMementoPatch) error {
+	m.mementos[patch.Memento.ID] = patch.Memento
+	return nil
+}
+
 func (m *mockRepository) ResetMockJournal(_ context.Context, journalID uuid.UUID) error {
 	for id, journey := range m.journeys {
 		if journey.JournalID == journalID {
@@ -273,6 +299,55 @@ func TestServerUpsertMementoValidation(t *testing.T) {
 	issues, ok := res["issues"].([]any)
 	if !ok || len(issues) == 0 {
 		t.Error("expected validation issues in response")
+	}
+}
+
+func TestServerManualMementoPatchOwnsFieldsServerSide(t *testing.T) {
+	reg, err := domain.LoadRegistry(os.DirFS("../../kinds"))
+	if err != nil {
+		t.Fatalf("failed to load kinds templates: %v", err)
+	}
+	repo := newMockRepository()
+	srv := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{})
+	journeyID := uuid.New()
+	mementoID := uuid.New()
+	payload := map[string]any{
+		"id":          mementoID,
+		"journey_id":  journeyID,
+		"kind":        "live",
+		"seq":         1,
+		"occurred_at": "2026-03-20T10:00:00Z",
+		"occurred_tz": "Asia/Tokyo",
+		"title":       "Live show",
+		"place":       "Tokyo",
+		"kind_data": map[string]any{
+			"artist": "羊文学",
+			"venue":  map[string]any{"name": "日本武道館", "coords": []float64{139.7495, 35.6933}},
+			"date":   "2026-03-22T18:30:00+09:00",
+		},
+		// This client-controlled list is intentionally ignored by the handler.
+		"authored_fields": []string{"source_ref"},
+	}
+	body, _ := json.Marshal(payload)
+	req := httptest.NewRequest("POST", "/api/admin/mementos", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", w.Code, w.Body)
+	}
+	memento := repo.mementos[mementoID]
+	if memento.State != domain.MementoDraft {
+		t.Errorf("state = %q, want draft", memento.State)
+	}
+	for _, field := range memento.AuthoredFields {
+		if field == "source_ref" {
+			t.Fatal("client must not be able to author source_ref")
+		}
+	}
+	if len(memento.AuthoredFields) == 0 {
+		t.Fatal("manual patch should record server-derived authored fields")
 	}
 }
 

@@ -450,6 +450,7 @@ type upsertMementoRequest struct {
 	SourceRef      *string        `json:"source_ref,omitempty"`
 	AuthoredFields []string       `json:"authored_fields"`
 	OrphanedAt     *string        `json:"orphaned_at,omitempty"`
+	State          string         `json:"state,omitempty"`
 }
 
 func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
@@ -457,10 +458,6 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request JSON")
 		return
-	}
-
-	if req.AuthoredFields == nil {
-		req.AuthoredFields = []string{}
 	}
 
 	// 1. Template registry validation
@@ -529,26 +526,36 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 	}
 
 	memento := &domain.Memento{
-		ID:             req.ID,
-		JourneyID:      req.JourneyID,
-		Kind:           req.Kind,
-		Seq:            req.Seq,
-		OccurredAt:     occurred,
-		OccurredTZ:     req.OccurredTZ,
-		Geom:           geom,
-		Title:          req.Title,
-		Place:          req.Place,
-		Vendor:         req.Vendor,
-		Essay:          req.Essay,
-		PriceAmount:    req.PriceAmount,
-		PriceCurrency:  req.PriceCurrency,
-		KindData:       kindDataRaw,
-		SourceRef:      req.SourceRef,
-		AuthoredFields: req.AuthoredFields,
-		OrphanedAt:     orphaned,
+		ID:            req.ID,
+		JourneyID:     req.JourneyID,
+		Kind:          req.Kind,
+		Seq:           req.Seq,
+		OccurredAt:    occurred,
+		OccurredTZ:    req.OccurredTZ,
+		Geom:          geom,
+		Title:         req.Title,
+		Place:         req.Place,
+		Vendor:        req.Vendor,
+		Essay:         req.Essay,
+		PriceAmount:   req.PriceAmount,
+		PriceCurrency: req.PriceCurrency,
+		KindData:      kindDataRaw,
+		SourceRef:     req.SourceRef,
+		OrphanedAt:    orphaned,
 	}
 
-	if err := s.repo.UpsertMemento(r.Context(), memento); err != nil {
+	state := domain.MementoState(req.State)
+	if state == "" {
+		state = domain.MementoDraft
+	}
+	if err := s.repo.ApplyManualMementoPatch(r.Context(), &domain.ManualMementoPatch{
+		Memento: memento,
+		Fields: []string{
+			"journey_id", "kind", "seq", "occurred_at", "occurred_tz", "geom",
+			"title", "place", "vendor", "essay", "price_amount", "price_currency", "kind_data",
+		},
+		State: state,
+	}); err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
