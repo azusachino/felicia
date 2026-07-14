@@ -191,6 +191,7 @@ func (r *pgRepository) UpsertJourney(ctx context.Context, journey *domain.Journe
 			return fmt.Errorf("upsert journey %s: marshal gps route: %w", journey.ID, err)
 		}
 	}
+	authoredFields := nonNilStrings(journey.AuthoredFields)
 
 	if err := r.q.UpsertJourney(ctx, db.UpsertJourneyParams{
 		ID:             journey.ID,
@@ -204,7 +205,7 @@ func (r *pgRepository) UpsertJourney(ctx context.Context, journey *domain.Journe
 		DateStart:      toDate(journey.DateStart),
 		DateEnd:        toDate(journey.DateEnd),
 		StGeomfromwkb:  gpsRouteBytes,
-		AuthoredFields: journey.AuthoredFields,
+		AuthoredFields: authoredFields,
 	}); err != nil {
 		return fmt.Errorf("upsert journey %s: %w", journey.ID, err)
 	}
@@ -263,6 +264,7 @@ func (r *pgRepository) upsertMemento(ctx context.Context, memento *domain.Mement
 	}
 	state := mementoStateOrDefault(memento.State)
 	sourceSystem, sourceExternalID, sourceRef := sourceColumns(memento)
+	authoredFields := nonNilStrings(memento.AuthoredFields)
 	var revision *int64
 	if memento.Revision > 0 {
 		revision = &memento.Revision
@@ -286,7 +288,7 @@ func (r *pgRepository) upsertMemento(ctx context.Context, memento *domain.Mement
 		SourceSystem:     toText(sourceSystem),
 		SourceExternalID: toText(sourceExternalID),
 		SourceRef:        toText(sourceRef),
-		AuthoredFields:   memento.AuthoredFields,
+		AuthoredFields:   authoredFields,
 		OrphanedAt:       toTimestamptzPtr(memento.OrphanedAt),
 		State:            string(state),
 		Revision:         toInt8(revision),
@@ -298,6 +300,13 @@ func (r *pgRepository) upsertMemento(ctx context.Context, memento *domain.Mement
 		return fmt.Errorf("upsert memento %s: %w", memento.ID, err)
 	}
 	return nil
+}
+
+func nonNilStrings(values []string) []string {
+	if values == nil {
+		return []string{}
+	}
+	return values
 }
 
 func mementoStateOrDefault(state domain.MementoState) domain.MementoState {
