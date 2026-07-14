@@ -26,6 +26,7 @@
             postgresqlPackages.postgis
             gnumake
             sqlc
+            uv
           ];
         };
       });

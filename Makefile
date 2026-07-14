@@ -3,6 +3,7 @@
 # (golangci-lint, goose) come from the nix flake; NIX_RUN prefixes those so
 # targets work both inside `nix develop` and outside it.
 NIX_RUN := $(if $(IN_NIX_SHELL),,nix develop --command )
+UV_RUN  := $(if $(IN_NIX_SHELL),uv,nix develop --command uv)
 GO      ?= go
 
 # Whether any Go sources exist yet. The skeleton has none during the research
@@ -29,10 +30,10 @@ help: ## List targets
 		awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-13s\033[0m %s\n", $$1, $$2}'
 
 fmt: ## Format Go and frontend code
-	uv run python scripts/format.py
+	$(UV_RUN) run python scripts/format.py
 
 fmt-check: ## Check Go and frontend formatting without modifying files
-	uv run python scripts/format.py --check
+	$(UV_RUN) run python scripts/format.py --check
 
 vet: ## Run go vet
 	@if [ -z "$(GO_FILES)" ]; then echo "vet: no Go packages yet, skipping"; else set -e; for module in $(GO_MODULES); do (cd $$module && $(GO) vet $$( $(GO) list ./... | grep -v '/node_modules/' )); done; fi
@@ -67,7 +68,7 @@ migrate: ## Apply DB migrations (goose, from nix) — needs DATABASE_DSN
 	$(NIX_RUN)goose -dir migrations postgres "$(DATABASE_DSN)" up
 
 seed: ## Seed the database with sample data (uv run, psycopg) — needs DATABASE_DSN
-	uv run --group dev python scripts/seed.py
+	$(UV_RUN) run --group dev python scripts/seed.py
 
 dev: ## Start the complete local stack, seed mock data, and serve the web app
 	@set -e; \
@@ -89,19 +90,19 @@ dev: ## Start the complete local stack, seed mock data, and serve the web app
 		cd apps/web-public && bun run dev
 
 mock-up: ## Start the mock Dawarich+Immich upstream in the background (:8099)
-	nohup uv run python scripts/mock_upstream.py > /tmp/felicia-mock.log 2>&1 & echo "mock up on :8099 (log: /tmp/felicia-mock.log)"
+	nohup $(UV_RUN) run python scripts/mock_upstream.py > /tmp/felicia-mock.log 2>&1 & echo "mock up on :8099 (log: /tmp/felicia-mock.log)"
 
 mock-down: ## Stop the mock upstream
 	@pkill -f scripts/mock_upstream.py && echo "mock stopped" || echo "no mock running"
 
 test-api: ## Run Python-based E2E API integration tests (requires running server)
-	uv run python scripts/test_api.py
+	$(UV_RUN) run python scripts/test_api.py
 
 test-workflow: ## Run full journey workflow against disposable SQLite
-	uv run python scripts/test_journey_workflow.py --start-server
+	$(UV_RUN) run python scripts/test_journey_workflow.py --start-server
 
 test-features: ## Run offline Python feature-contract tests
-	uv run python -m unittest discover -s tests
+	$(UV_RUN) run python -m unittest discover -s tests
 
 web-install: ## Install frontend deps (bun, from mise)
 	cd apps/web-public && bun install
@@ -118,10 +119,10 @@ web-check: ## Frontend typecheck + lint + format check
 # Docs preview (uv-managed env, isolated from Go/bun). Binds 0.0.0.0 so it is
 # reachable over SSH — forward with `ssh -L 8000:localhost:8000 <host>`.
 docs: ## Live-preview docs in the browser (uv + mkdocs-material)
-	uv run --group docs mkdocs serve -a 0.0.0.0:8000
+	$(UV_RUN) run --group docs mkdocs serve -a 0.0.0.0:8000
 
 docs-build: ## Build the static docs site into ./site
-	uv run --group docs mkdocs build
+	$(UV_RUN) run --group docs mkdocs build
 
 # Share the running demo to a friend over an ephemeral Cloudflare tunnel.
 # Builds the SPA, brings the whole stack up under compose (db+cache+api+web),
