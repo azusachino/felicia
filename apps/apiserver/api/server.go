@@ -7,7 +7,10 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"net"
 	"net/http"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -32,13 +35,28 @@ type Server struct {
 	logger                *slog.Logger
 	importer              *importer.Importer // may be nil when no sources are configured
 	transitSegmentLengthM float64
+	requestTimeout        time.Duration
+	maxBodyBytes          int64
+	allowedOrigin         string
+	rateLimiter           *clientRateLimiter
 }
 
 const defaultTransitSegmentLengthM = 100000
+const (
+	defaultRequestTimeout = 30 * time.Second
+	defaultMaxBodyBytes   = 2 << 20
+	defaultRatePerSecond  = 1
+	defaultRateBurst      = 20
+)
 
 // RouteConfig controls the route-curation values used by HTTP handlers.
 type RouteConfig struct {
 	TransitSegmentLengthM float64
+	RequestTimeout        time.Duration
+	MaxBodyBytes          int64
+	AllowedOrigin         string
+	RatePerSecond         float64
+	RateBurst             int
 }
 
 // NewServer creates a new API server instance. A nil logger falls back to
@@ -50,6 +68,18 @@ func NewServer(repo domain.Repository, registry *domain.Registry, cache *CacheMa
 	if routeConfig.TransitSegmentLengthM <= 0 {
 		routeConfig.TransitSegmentLengthM = defaultTransitSegmentLengthM
 	}
+	if routeConfig.RequestTimeout <= 0 {
+		routeConfig.RequestTimeout = defaultRequestTimeout
+	}
+	if routeConfig.MaxBodyBytes <= 0 {
+		routeConfig.MaxBodyBytes = defaultMaxBodyBytes
+	}
+	if routeConfig.RatePerSecond <= 0 {
+		routeConfig.RatePerSecond = defaultRatePerSecond
+	}
+	if routeConfig.RateBurst <= 0 {
+		routeConfig.RateBurst = defaultRateBurst
+	}
 	return &Server{
 		repo:                  repo,
 		journeyWriter:         journeyruntime.New(repo),
@@ -59,6 +89,10 @@ func NewServer(repo domain.Repository, registry *domain.Registry, cache *CacheMa
 		logger:                logger,
 		importer:              imp,
 		transitSegmentLengthM: routeConfig.TransitSegmentLengthM,
+		requestTimeout:        routeConfig.RequestTimeout,
+		maxBodyBytes:          routeConfig.MaxBodyBytes,
+		allowedOrigin:         routeConfig.AllowedOrigin,
+		rateLimiter:           newClientRateLimiter(routeConfig.RatePerSecond, routeConfig.RateBurst),
 	}
 }
 
@@ -87,9 +121,18 @@ func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 func (s *Server) Handler() http.Handler {
 	r := chi.NewRouter()
 
+	r.Use(middleware.RequestID)
+	r.Use(responseRequestID)
 	r.Use(requestLogger(s.logger))
 	r.Use(middleware.Recoverer)
+	r.Use(middleware.Timeout(s.requestTimeout))
+	r.Use(securityHeaders)
+	r.Use(s.bodyLimit)
+	r.Use(s.cors)
+	r.Use(s.rateLimit)
 	r.Use(middleware.AllowContentType("application/json"))
+	r.Get("/healthz", s.handleHealth)
+	r.Get("/readyz", s.handleReady)
 
 	// Public Read-Only Query API (Valkey Cached)
 	r.Route("/api/v1", func(r chi.Router) {
@@ -120,6 +163,137 @@ func (s *Server) Handler() http.Handler {
 	})
 
 	return r
+}
+
+func responseRequestID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestID := middleware.GetReqID(r.Context())
+		if requestID == "" {
+			requestID = uuid.NewString()
+		}
+		w.Header().Set("X-Request-ID", requestID)
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (s *Server) bodyLimit(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.maxBodyBytes > 0 && r.Body != nil {
+			r.Body = http.MaxBytesReader(w, r.Body, s.maxBodyBytes)
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (s *Server) cors(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.allowedOrigin == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		origin := r.Header.Get("Origin")
+		if origin != "" && origin == s.allowedOrigin {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Add("Vary", "Origin")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Request-ID")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		}
+		if r.Method == http.MethodOptions {
+			if origin == s.allowedOrigin {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+			respondError(w, http.StatusForbidden, "origin is not allowed")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "no-referrer")
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (s *Server) rateLimit(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/healthz" || r.URL.Path == "/readyz" || s.rateLimiter.allow(clientAddress(r)) {
+			next.ServeHTTP(w, r)
+			return
+		}
+		w.Header().Set("Retry-After", "1")
+		respondError(w, http.StatusTooManyRequests, "rate limit exceeded")
+	})
+}
+
+func clientAddress(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err == nil {
+		return host
+	}
+	return strings.TrimSpace(r.RemoteAddr)
+}
+
+func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
+	respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
+	if _, err := s.repo.ListJourneys(r.Context()); err != nil {
+		respondError(w, http.StatusServiceUnavailable, "database is not ready")
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]string{"status": "ready"})
+}
+
+type clientRateLimiter struct {
+	mu         sync.Mutex
+	clients    map[string]*rateBucket
+	ratePerSec float64
+	burst      float64
+	maxClients int
+}
+
+type rateBucket struct {
+	tokens float64
+	last   time.Time
+}
+
+func newClientRateLimiter(ratePerSecond float64, burst int) *clientRateLimiter {
+	return &clientRateLimiter{
+		clients:    make(map[string]*rateBucket),
+		ratePerSec: ratePerSecond,
+		burst:      float64(burst),
+		maxClients: 10000,
+	}
+}
+
+func (l *clientRateLimiter) allow(client string) bool {
+	now := time.Now()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	bucket, ok := l.clients[client]
+	if !ok {
+		if len(l.clients) >= l.maxClients {
+			for key := range l.clients {
+				delete(l.clients, key)
+				break
+			}
+		}
+		bucket = &rateBucket{tokens: l.burst, last: now}
+		l.clients[client] = bucket
+	}
+	bucket.tokens = math.Min(l.burst, bucket.tokens+now.Sub(bucket.last).Seconds()*l.ratePerSec)
+	bucket.last = now
+	if bucket.tokens < 1 {
+		return false
+	}
+	bucket.tokens--
+	return true
 }
 
 type createTransitLegRequest struct {
