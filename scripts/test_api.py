@@ -9,7 +9,7 @@ BASE_URL = "http://localhost:8080"
 DATA = json.loads((Path(__file__).with_name("data.json")).read_text())
 EXPECTED_JOURNEYS = len(DATA["journeys"])
 EXPECTED_MEMENTOS = len(DATA["journeys"][0]["mementos"])
-EXPECTED_ADDITIONAL_MEMENTOS = 2
+EXPECTED_ADDITIONAL_MEMENTOS = 3
 
 def request(path, method="GET", data=None):
     url = f"{BASE_URL}{path}"
@@ -235,6 +235,60 @@ def test_memento_revision_conflict():
     assert status == 200, f"Expected update without lock 200, got {status} ({body})"
     print("✓ Optimistic concurrency and stale revision conflict OK")
 
+def test_memento_boundary_validation():
+    print("Testing memento geometry, timezone, and draft boundaries...")
+    journey_id = "0190cbde-f300-7000-8000-111111111111"
+    live_data = {
+        "artist": "羊文学",
+        "venue": {"name": "日本武道館", "coords": [139.7495, 35.6933]},
+        "date": "2026-03-22T18:30:00+09:00",
+    }
+
+    invalid_coordinate = {
+        "id": "0190cbde-f300-7000-8000-c11111111111",
+        "journey_id": journey_id,
+        "kind": "live",
+        "seq": 9,
+        "state": "published",
+        "occurred_at": "2026-03-20T10:00:00Z",
+        "occurred_tz": "Asia/Tokyo",
+        "geom": {"type": "Point", "coordinates": [181, 35]},
+        "kind_data": live_data,
+    }
+    status, body = request("/api/admin/mementos", method="POST", data=invalid_coordinate)
+    assert status == 400, f"Expected invalid coordinate 400, got {status} ({body})"
+    assert "invalid_coordinate" in [issue["Code"] for issue in body.get("issues", [])]
+
+    wrong_anchor = dict(invalid_coordinate)
+    wrong_anchor["id"] = "0190cbde-f300-7000-8000-c22222222222"
+    wrong_anchor["geom"] = {
+        "type": "LineString",
+        "coordinates": [[139.7, 35.6], [139.8, 35.7]],
+    }
+    status, body = request("/api/admin/mementos", method="POST", data=wrong_anchor)
+    assert status == 400, f"Expected anchor mismatch 400, got {status} ({body})"
+    assert "anchor_mismatch" in [issue["Code"] for issue in body.get("issues", [])]
+
+    invalid_timezone = dict(invalid_coordinate)
+    invalid_timezone["id"] = "0190cbde-f300-7000-8000-c33333333333"
+    invalid_timezone["geom"] = {"type": "Point", "coordinates": [139.7495, 35.6933]}
+    invalid_timezone["occurred_tz"] = "not/a-timezone"
+    status, body = request("/api/admin/mementos", method="POST", data=invalid_timezone)
+    assert status == 400, f"Expected invalid timezone 400, got {status} ({body})"
+    assert "invalid_timezone" in [issue["Code"] for issue in body.get("issues", [])]
+
+    draft = {
+        "id": "0190cbde-f300-7000-8000-c44444444444",
+        "journey_id": journey_id,
+        "kind": "live",
+        "seq": 9,
+        "state": "draft",
+        "kind_data": {},
+    }
+    status, body = request("/api/admin/mementos", method="POST", data=draft)
+    assert status == 200, f"Expected incomplete draft 200, got {status} ({body})"
+    print("✓ Memento boundary validation OK")
+
 def test_translations():
     print("Testing translation endpoints...")
     memento_id = "0190cbde-f300-7000-8000-a01000000001"
@@ -298,6 +352,7 @@ def main():
         test_memento_validation()
         test_memento_lifecycle()
         test_memento_revision_conflict()
+        test_memento_boundary_validation()
         test_translations()
         test_public_apis()
         print("🎉 All API E2E tests passed successfully!")
