@@ -22,14 +22,17 @@ COMPOSE ?= $(shell \
 	elif command -v docker >/dev/null 2>&1; then echo docker compose; \
 	else echo ''; fi)
 
-.PHONY: help fmt vet lint test check build validate tidy db-up db-down migrate seed dev test-workflow mock-up mock-down web-install web-check docs docs-build share share-down
+.PHONY: help fmt fmt-check vet lint test check build validate tidy db-up db-down migrate seed dev test-workflow mock-up mock-down web-install web-check docs docs-build share share-down
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
 		awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-13s\033[0m %s\n", $$1, $$2}'
 
-fmt: ## Format Go code
-	@if [ -z "$(GO_FILES)" ]; then echo "fmt: no Go packages yet, skipping"; else set -e; for module in $(GO_MODULES); do (cd $$module && $(GO) fmt $$( $(GO) list ./... | grep -v '/node_modules/' )); done; fi
+fmt: ## Format Go and frontend code
+	uv run python scripts/format.py
+
+fmt-check: ## Check Go and frontend formatting without modifying files
+	uv run python scripts/format.py --check
 
 vet: ## Run go vet
 	@if [ -z "$(GO_FILES)" ]; then echo "vet: no Go packages yet, skipping"; else set -e; for module in $(GO_MODULES); do (cd $$module && $(GO) vet $$( $(GO) list ./... | grep -v '/node_modules/' )); done; fi
@@ -40,7 +43,7 @@ lint: ## Lint Go (golangci-lint, from nix)
 test: ## Run Go tests with race detector + coverage
 	@if [ -z "$(GO_FILES)" ]; then echo "test: no Go packages yet, skipping"; else set -e; for module in $(GO_MODULES); do (cd $$module && $(GO) test -race -cover $$( $(GO) list ./... | grep -v '/node_modules/' )); done; fi
 
-check: fmt vet lint test test-features ## Pre-commit gate
+check: fmt-check vet lint test test-features ## Pre-commit gate
 
 build: ## Build all binaries
 	@if [ -z "$(GO_FILES)" ]; then echo "build: no Go packages yet, skipping"; else set -e; for module in $(GO_MODULES); do (cd $$module && $(GO) build $$( $(GO) list ./... | grep -v '/node_modules/' )); done; fi

@@ -32,7 +32,7 @@ func TestPgWriteSideIntegration(t *testing.T) {
 	if err := pool.Ping(ctx); err != nil {
 		t.Fatalf("failed to ping database: %v", err)
 	}
-	_, err = pool.Exec(ctx, "TRUNCATE TABLE journal, import_runs CASCADE")
+	_, err = pool.Exec(ctx, "TRUNCATE TABLE tb_journal, tb_import_runs CASCADE")
 	if err != nil {
 		t.Fatalf("failed to clean integration tables: %v", err)
 	}
@@ -104,7 +104,7 @@ func TestPgWriteSideIntegration(t *testing.T) {
 		t.Fatalf("source identity was not persisted: %#v", fetched.SourceIdentity)
 	}
 	var mementoCount int
-	if err := pool.QueryRow(ctx, "SELECT count(*) FROM mementos WHERE source_system = $1 AND source_external_id = $2", identity.System, identity.ExternalID).Scan(&mementoCount); err != nil {
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM tb_mementos WHERE source_system = $1 AND source_external_id = $2", identity.System, identity.ExternalID).Scan(&mementoCount); err != nil {
 		t.Fatalf("count source mementos: %v", err)
 	}
 	if mementoCount != 1 {
@@ -125,7 +125,7 @@ func TestPgWriteSideIntegration(t *testing.T) {
 		t.Fatalf("second observation run: %v", err)
 	}
 	var orphanedAt *time.Time
-	if err := pool.QueryRow(ctx, "SELECT orphaned_at FROM source_observations WHERE run_id = $1 AND source_external_id = $2", firstRun.ID, "observation-1").Scan(&orphanedAt); err != nil {
+	if err := pool.QueryRow(ctx, "SELECT orphaned_at FROM tb_source_observations WHERE run_id = $1 AND source_external_id = $2", firstRun.ID, "observation-1").Scan(&orphanedAt); err != nil {
 		t.Fatalf("load orphaned observation: %v", err)
 	}
 	if orphanedAt == nil {
@@ -146,7 +146,7 @@ func TestPgWriteSideIntegration(t *testing.T) {
 		t.Fatal("expected mixed-source observation run to fail")
 	}
 	var status string
-	if err := pool.QueryRow(ctx, "SELECT status FROM import_runs WHERE source_system = $1 ORDER BY started_at DESC LIMIT 1", "integration").Scan(&status); err != nil {
+	if err := pool.QueryRow(ctx, "SELECT status FROM tb_import_runs WHERE source_system = $1 ORDER BY started_at DESC LIMIT 1", "integration").Scan(&status); err != nil {
 		t.Fatalf("load failed import status: %v", err)
 	}
 	if status != string(domain.ImportRunFailed) {

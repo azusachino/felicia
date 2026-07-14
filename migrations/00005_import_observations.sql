@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
-CREATE TABLE import_runs (
+CREATE TABLE tb_import_runs (
     id UUID PRIMARY KEY DEFAULT generate_uuid_v7(),
     source_system TEXT NOT NULL,
     started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -9,9 +9,9 @@ CREATE TABLE import_runs (
     error_message TEXT
 );
 
-CREATE TABLE source_observations (
+CREATE TABLE tb_source_observations (
     id UUID PRIMARY KEY DEFAULT generate_uuid_v7(),
-    run_id UUID NOT NULL REFERENCES import_runs(id) ON DELETE CASCADE,
+    run_id UUID NOT NULL REFERENCES tb_import_runs(id) ON DELETE CASCADE,
     source_system TEXT NOT NULL,
     source_external_id TEXT NOT NULL,
     kind TEXT NOT NULL,
@@ -26,11 +26,11 @@ CREATE TABLE source_observations (
 );
 
 CREATE INDEX source_observations_identity_idx
-    ON source_observations (source_system, source_external_id, observed_at DESC);
+    ON tb_source_observations (source_system, source_external_id, observed_at DESC);
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE IF EXISTS source_observations;
-DROP TABLE IF EXISTS import_runs;
+DROP TABLE IF EXISTS tb_source_observations;
+DROP TABLE IF EXISTS tb_import_runs;
 -- +goose StatementEnd

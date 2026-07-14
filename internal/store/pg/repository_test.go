@@ -28,7 +28,7 @@ func TestPgRepositoryIntegration(t *testing.T) {
 	defer pool.Close()
 
 	// Clean up old test data to ensure a reproducible run
-	_, _ = pool.Exec(ctx, "TRUNCATE TABLE journal CASCADE")
+	_, _ = pool.Exec(ctx, "TRUNCATE TABLE tb_journal CASCADE")
 
 	repo := pg.NewRepository(pool)
 
@@ -181,7 +181,7 @@ func TestPgTransitLegsAndRoute(t *testing.T) {
 	}
 	defer pool.Close()
 
-	_, _ = pool.Exec(ctx, "TRUNCATE TABLE journal CASCADE")
+	_, _ = pool.Exec(ctx, "TRUNCATE TABLE tb_journal CASCADE")
 	repo := pg.NewRepository(pool)
 
 	journal := &domain.Journal{ID: uuid.New(), CreatedAt: time.Now().UTC().Truncate(time.Microsecond)}
