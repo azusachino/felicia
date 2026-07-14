@@ -129,7 +129,7 @@ def disposable_server(port: int):
     with tempfile.TemporaryDirectory(prefix="felicia-workflow-") as temp_dir:
         api_bin = os.path.join(temp_dir, "felicia-api")
         database_path = os.path.join(temp_dir, "felicia.sqlite")
-        subprocess.run(["go", "build", "-o", api_bin, "./cmd/api"], check=True)
+        subprocess.run(["go", "build", "-o", api_bin, "./apps/apiserver/cmd/api"], check=True)
         environment = {
             **os.environ,
             "DATABASE_DRIVER": "sqlite",

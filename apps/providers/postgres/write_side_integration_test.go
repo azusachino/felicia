@@ -1,4 +1,4 @@
-package pg_test
+package postgres_test
 
 import (
 	"context"
@@ -12,8 +12,8 @@ import (
 	"github.com/paulmach/orb"
 
 	"github.com/azusachino/felicia/apps/core/domain"
+	"github.com/azusachino/felicia/apps/providers/postgres"
 	"github.com/azusachino/felicia/apps/runtime/importer"
-	"github.com/azusachino/felicia/internal/store/pg"
 )
 
 func TestPgWriteSideIntegration(t *testing.T) {
@@ -37,7 +37,7 @@ func TestPgWriteSideIntegration(t *testing.T) {
 		t.Fatalf("failed to clean integration tables: %v", err)
 	}
 
-	repo := pg.NewRepository(pool)
+	repo := postgres.NewRepository(pool)
 	journal := &domain.Journal{ID: mustUUIDv7(t), CreatedAt: time.Now().UTC()}
 	if err := repo.CreateJournal(ctx, journal); err != nil {
 		t.Fatalf("create journal: %v", err)

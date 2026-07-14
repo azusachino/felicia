@@ -12,7 +12,7 @@ GO_FILES := $(shell find . -name '*.go' -not -path './vendor/*' -not -path './.g
 
 # Every Go module must be checked; the root module alone does not traverse the
 # independent workspace modules.
-GO_MODULES = . apps/core apps/runtime apps/providers apps/apiserver
+GO_MODULES = apps/core apps/runtime apps/providers apps/apiserver
 
 DATABASE_DSN ?= postgres://postgres:password@localhost:5432/felicia?sslmode=disable
 PORT ?= 8080
@@ -75,7 +75,7 @@ dev: ## Start the complete local stack, seed mock data, and serve the web app
 		$(MAKE) db-up; \
 		DATABASE_DSN="$(DATABASE_DSN)" $(MAKE) migrate; \
 		api_bin="/tmp/felicia-api-$$$$"; \
-		go build -o "$$api_bin" ./cmd/api; \
+		go build -o "$$api_bin" ./apps/apiserver/cmd/api; \
 		DATABASE_DRIVER=postgres DATABASE_DSN="$(DATABASE_DSN)" PORT="$(PORT)" CACHE_ADDR="$(CACHE_ADDR)" "$$api_bin" & \
 		api_pid=$$!; \
 		cleanup() { kill $$api_pid 2>/dev/null || true; rm -f "$$api_bin"; }; \

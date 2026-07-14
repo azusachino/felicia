@@ -1,4 +1,4 @@
-package pg_test
+package postgres_test
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/paulmach/orb"
 
 	"github.com/azusachino/felicia/apps/core/domain"
-	"github.com/azusachino/felicia/internal/store/pg"
+	"github.com/azusachino/felicia/apps/providers/postgres"
 )
 
 func TestPgRepositoryIntegration(t *testing.T) {
@@ -30,7 +30,7 @@ func TestPgRepositoryIntegration(t *testing.T) {
 	// Clean up old test data to ensure a reproducible run
 	_, _ = pool.Exec(ctx, "TRUNCATE TABLE tb_journal CASCADE")
 
-	repo := pg.NewRepository(pool)
+	repo := postgres.NewRepository(pool)
 
 	// 1. Create a Journal
 	journal := &domain.Journal{
@@ -182,7 +182,7 @@ func TestPgTransitLegsAndRoute(t *testing.T) {
 	defer pool.Close()
 
 	_, _ = pool.Exec(ctx, "TRUNCATE TABLE tb_journal CASCADE")
-	repo := pg.NewRepository(pool)
+	repo := postgres.NewRepository(pool)
 
 	journal := &domain.Journal{ID: uuid.New(), CreatedAt: time.Now().UTC().Truncate(time.Microsecond)}
 	if err := repo.CreateJournal(ctx, journal); err != nil {

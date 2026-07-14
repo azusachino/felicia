@@ -37,7 +37,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version-file: apps/core/go.mod
 
       - name: Install Nix (golangci-lint, goose from the flake)
         uses: cachix/install-nix-action@v30

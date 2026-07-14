@@ -1,5 +1,5 @@
-// Package pg implements the PostgreSQL 18 database store repository.
-package pg
+// Package postgres implements the PostgreSQL 18 database store repository.
+package postgres
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 	"github.com/paulmach/orb/encoding/wkb"
 
 	"github.com/azusachino/felicia/apps/core/domain"
-	"github.com/azusachino/felicia/internal/store/pg/db"
+	"github.com/azusachino/felicia/apps/providers/postgres/db"
 )
 
 // Compile-time check that pgRepository satisfies the domain contract.

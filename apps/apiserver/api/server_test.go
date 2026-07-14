@@ -5,20 +5,34 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/paulmach/orb"
 
+	"github.com/azusachino/felicia/apps/apiserver/api"
+	"github.com/azusachino/felicia/apps/core"
 	"github.com/azusachino/felicia/apps/core/domain"
 	"github.com/azusachino/felicia/apps/runtime/importer"
-	"github.com/azusachino/felicia/internal/api"
 )
+
+func loadKinds(t *testing.T) *domain.Registry {
+	t.Helper()
+	subFS, err := fs.Sub(core.KindsFS, "kinds")
+	if err != nil {
+		t.Fatalf("failed to locate embedded kinds: %v", err)
+	}
+	reg, err := domain.LoadRegistry(subFS)
+	if err != nil {
+		t.Fatalf("failed to load kinds templates: %v", err)
+	}
+	return reg
+}
 
 type fakeTrackSource struct {
 	routes []domain.Route
@@ -225,10 +239,7 @@ func (m *mockRepository) UpsertPhoto(_ context.Context, photo *domain.MementoPho
 }
 
 func TestServerGetTemplates(t *testing.T) {
-	reg, err := domain.LoadRegistry(os.DirFS("../../kinds"))
-	if err != nil {
-		t.Fatalf("failed to load kinds templates: %v", err)
-	}
+	reg := loadKinds(t)
 
 	repo := newMockRepository()
 	srv := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{})
@@ -253,10 +264,7 @@ func TestServerGetTemplates(t *testing.T) {
 }
 
 func TestServerUpsertMementoValidation(t *testing.T) {
-	reg, err := domain.LoadRegistry(os.DirFS("../../kinds"))
-	if err != nil {
-		t.Fatalf("failed to load kinds templates: %v", err)
-	}
+	reg := loadKinds(t)
 
 	repo := newMockRepository()
 	srv := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{})
@@ -298,10 +306,7 @@ func TestServerUpsertMementoValidation(t *testing.T) {
 }
 
 func TestServerAllowsIncompleteDraftButRejectsInvalidCompleteGeometry(t *testing.T) {
-	reg, err := domain.LoadRegistry(os.DirFS("../../kinds"))
-	if err != nil {
-		t.Fatalf("failed to load kinds templates: %v", err)
-	}
+	reg := loadKinds(t)
 	repo := newMockRepository()
 	srv := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{})
 
@@ -338,10 +343,7 @@ func TestServerAllowsIncompleteDraftButRejectsInvalidCompleteGeometry(t *testing
 }
 
 func TestServerManualMementoPatchOwnsFieldsServerSide(t *testing.T) {
-	reg, err := domain.LoadRegistry(os.DirFS("../../kinds"))
-	if err != nil {
-		t.Fatalf("failed to load kinds templates: %v", err)
-	}
+	reg := loadKinds(t)
 	repo := newMockRepository()
 	srv := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{})
 	journeyID := uuid.New()
@@ -387,10 +389,7 @@ func TestServerManualMementoPatchOwnsFieldsServerSide(t *testing.T) {
 }
 
 func TestServerRejectsStaleMementoRevision(t *testing.T) {
-	reg, err := domain.LoadRegistry(os.DirFS("../../kinds"))
-	if err != nil {
-		t.Fatalf("failed to load kinds templates: %v", err)
-	}
+	reg := loadKinds(t)
 	repo := newMockRepository()
 	mementoID := uuid.New()
 	repo.mementos[mementoID] = &domain.Memento{ID: mementoID, Revision: 3}
@@ -410,10 +409,7 @@ func TestServerRejectsStaleMementoRevision(t *testing.T) {
 }
 
 func TestServerIngestEndpoints(t *testing.T) {
-	reg, err := domain.LoadRegistry(os.DirFS("../../kinds"))
-	if err != nil {
-		t.Fatalf("failed to load kinds templates: %v", err)
-	}
+	reg := loadKinds(t)
 	repo := newMockRepository()
 	jid := uuid.New()
 	repo.journeys[jid] = &domain.Journey{
@@ -463,7 +459,7 @@ func TestServerIngestEndpoints(t *testing.T) {
 }
 
 func TestServerIngestNotConfigured(t *testing.T) {
-	reg, _ := domain.LoadRegistry(os.DirFS("../../kinds"))
+	reg := loadKinds(t)
 	repo := newMockRepository()
 	// nil importer -> ingest endpoints are unavailable.
 	handler := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{}).Handler()

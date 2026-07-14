@@ -1,5 +1,5 @@
-// Package felicia is the root package hosting embedded templates.
-package felicia
+// Package core hosts the canonical domain model and embedded kind templates.
+package core
 
 import "embed"
 
