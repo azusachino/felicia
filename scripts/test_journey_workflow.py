@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 """Exercise the complete authoring-to-public journey workflow over HTTP."""
 
+import argparse
 import json
 import os
+import subprocess
 import sys
+import tempfile
+import time
 import urllib.error
 import urllib.request
+from contextlib import contextmanager
 
 
 BASE_URL = os.getenv("API_BASE", "http://localhost:8080")
@@ -14,6 +19,17 @@ JOURNEY_ID = "0190cbde-f300-7000-8000-d22222222222"
 MEMENTO_ID = "0190cbde-f300-7000-8000-d33333333333"
 PHOTO_ID = "0190cbde-f300-7000-8000-d44444444444"
 TRANSLATION_ID = "0190cbde-f300-7000-8000-d55555555555"
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--start-server",
+        action="store_true",
+        help="build and run the API against a disposable SQLite database",
+    )
+    parser.add_argument("--port", type=int, default=18080)
+    return parser.parse_args()
 
 
 def request(path: str, method: str = "GET", payload: dict | None = None):
@@ -43,7 +59,7 @@ def post(path: str, payload: dict):
     return body
 
 
-def main() -> None:
+def run_workflow() -> None:
     post(f"/api/admin/journals", {"id": JOURNAL_ID})
     post(
         "/api/admin/journeys",
@@ -121,9 +137,60 @@ def main() -> None:
     print("full journey workflow passed")
 
 
+@contextmanager
+def disposable_server(port: int):
+    global BASE_URL
+    with tempfile.TemporaryDirectory(prefix="felicia-workflow-") as temp_dir:
+        api_bin = os.path.join(temp_dir, "felicia-api")
+        database_path = os.path.join(temp_dir, "felicia.sqlite")
+        subprocess.run(["go", "build", "-o", api_bin, "./cmd/api"], check=True)
+        environment = {
+            **os.environ,
+            "DATABASE_DRIVER": "sqlite",
+            "DATABASE_PATH": database_path,
+            "CACHE_ADDR": "",
+            "PORT": str(port),
+        }
+        server = subprocess.Popen(
+            [api_bin],
+            env=environment,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        try:
+            BASE_URL = f"http://localhost:{port}"
+            for _ in range(30):
+                try:
+                    request(
+                        "/api/admin/journals",
+                        "POST",
+                        {"id": JOURNAL_ID},
+                    )
+                    break
+                except (OSError, urllib.error.URLError):
+                    time.sleep(1)
+            else:
+                stderr = server.stderr.read() if server.stderr else ""
+                raise RuntimeError(f"API did not become ready:\n{stderr}")
+            yield
+        finally:
+            server.terminate()
+            try:
+                server.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                server.kill()
+                server.wait()
+
+
 if __name__ == "__main__":
     try:
-        main()
-    except (AssertionError, OSError, urllib.error.URLError) as exc:
+        arguments = parse_args()
+        if arguments.start_server:
+            with disposable_server(arguments.port):
+                run_workflow()
+        else:
+            run_workflow()
+    except (AssertionError, OSError, RuntimeError, urllib.error.URLError) as exc:
         print(f"workflow failed: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc

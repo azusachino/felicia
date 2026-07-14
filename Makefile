@@ -94,21 +94,7 @@ test-api: ## Run Python-based E2E API integration tests (requires running server
 	uv run python scripts/test_api.py
 
 test-workflow: ## Run full journey workflow against disposable SQLite
-	@set -e; \
-		db_path="/tmp/felicia-workflow-$$$$.sqlite"; \
-		api_bin="/tmp/felicia-workflow-api-$$$$"; \
-		port="18080"; \
-		cleanup() { kill "$$api_pid" 2>/dev/null || true; rm -f "$$api_bin" "$$db_path"; }; \
-		trap cleanup EXIT INT TERM; \
-		go build -o "$$api_bin" ./cmd/api; \
-		DATABASE_DRIVER=sqlite DATABASE_PATH="$$db_path" CACHE_ADDR= PORT="$$port" "$$api_bin" >/tmp/felicia-workflow-api.log 2>&1 & \
-		api_pid=$$!; \
-		for attempt in $$(seq 1 30); do \
-			if curl --fail --silent -X POST -H 'Content-Type: application/json' -d '{"id":"0190cbde-f300-7000-8000-d11111111111"}' "http://localhost:$$port/api/admin/journals" >/dev/null; then break; fi; \
-			if [ "$$attempt" = 30 ]; then cat /tmp/felicia-workflow-api.log >&2; exit 1; fi; \
-			sleep 1; \
-		done; \
-		API_BASE="http://localhost:$$port" uv run python scripts/test_journey_workflow.py
+	uv run python scripts/test_journey_workflow.py --start-server
 
 test-features: ## Run offline Python feature-contract tests
 	uv run python -m unittest discover -s tests
