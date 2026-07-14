@@ -16,8 +16,8 @@ import (
 	"github.com/paulmach/orb"
 
 	"github.com/azusachino/felicia/apps/core/domain"
+	"github.com/azusachino/felicia/apps/runtime/importer"
 	"github.com/azusachino/felicia/internal/api"
-	"github.com/azusachino/felicia/internal/importer"
 )
 
 type fakeTrackSource struct {
