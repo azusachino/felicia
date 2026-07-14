@@ -1,14 +1,14 @@
 # Setup — felicia
 
-> For collaborators. The repository contains the working Go workspace, SQLite workflow, and
-> frontend checks. North star: [`direction.md`](direction.md).
+> For collaborators. The repository contains the working Go workspace, SQLite-first workflow,
+> optional PostgreSQL provider, and frontend checks. North star: [`direction.md`](direction.md).
 
 ## Prerequisites
 
 - **mise** — language runtimes. `mise install` reads `mise.toml` (go 1.26, bun 1.3) and
   shims them onto `PATH`. Use mise for runtimes _only_.
 - **nix** (flakes enabled) — system tools. `nix develop` enters a shell with
-  golangci-lint, goose, sqlc, uv, and **Postgres 18 + PostGIS**. You usually don't need to enter it
+  golangci-lint, goose, sqlc, uv, and **Postgres 18 + PostGIS** tooling. You usually don't need to enter it
   manually: `make` wraps Nix tools via `NIX_RUN` and `UV_RUN` automatically.
 
 ## Common commands
@@ -39,7 +39,12 @@ ssh -L 8000:localhost:8000 <host>
 
 `make docs-build` writes the static site to `./site` (gitignored).
 
-## Database Container (when implementation starts)
+## Database providers
+
+SQLite is the default for local development. See [Database development](development/database.md)
+for configuration precedence and the PostgreSQL test-database safety rules.
+
+## PostgreSQL Container
 
 - **Linux Dev Runtime (Podman Compose):**
   The database (PostgreSQL 18 + PostGIS) runs inside a container using **Podman** and `podman-compose`. The Go application itself runs **locally** on the host.
@@ -52,12 +57,12 @@ ssh -L 8000:localhost:8000 <host>
 - **Migrations:**
   `make migrate` applies `migrations/` with goose (needs `DATABASE_DSN`).
 
-## Configuration (when implementation starts)
+## Configuration
 
 - Copy `.env.example` → `.env` (gitignored). **Secrets via env only**: `DATABASE_DSN`,
   `WAYPOINTS_IMMICH_API_KEY`, `WAYPOINTS_DAWARICH_API_KEY`, `ANTHROPIC_API_KEY`, storage
   credentials.
-- Non-secret settings live in `waypoints.toml`.
+- Non-secret settings live in optional `felicia.toml`; environment variables override file values.
 
 ## Conventions
 

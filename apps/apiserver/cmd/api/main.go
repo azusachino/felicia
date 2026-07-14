@@ -10,15 +10,15 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/azusachino/felicia"
+	"github.com/azusachino/felicia/apps/apiserver/api"
+	"github.com/azusachino/felicia/apps/apiserver/config"
+	"github.com/azusachino/felicia/apps/core"
 	"github.com/azusachino/felicia/apps/core/domain"
+	"github.com/azusachino/felicia/apps/providers/dawarich"
+	"github.com/azusachino/felicia/apps/providers/immich"
+	"github.com/azusachino/felicia/apps/providers/postgres"
 	"github.com/azusachino/felicia/apps/providers/sqlite"
 	"github.com/azusachino/felicia/apps/runtime/importer"
-	"github.com/azusachino/felicia/internal/api"
-	"github.com/azusachino/felicia/internal/config"
-	"github.com/azusachino/felicia/internal/dawarich"
-	"github.com/azusachino/felicia/internal/immich"
-	"github.com/azusachino/felicia/internal/store/pg"
 )
 
 func main() {
@@ -36,7 +36,7 @@ func run(logger *slog.Logger) error {
 	}
 
 	// 1. Load kind templates registry from embedded filesystem first
-	subFS, err := fs.Sub(felicia.KindsFS, "kinds")
+	subFS, err := fs.Sub(core.KindsFS, "kinds")
 	if err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func run(logger *slog.Logger) error {
 		if err != nil {
 			return err
 		}
-		repo, closeRepository = pg.NewRepository(pool), pool.Close
+		repo, closeRepository = postgres.NewRepository(pool), pool.Close
 	}
 	defer closeRepository()
 

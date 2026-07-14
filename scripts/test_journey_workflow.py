@@ -25,9 +25,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--start-server",
         action="store_true",
-        help="build and run the API against a disposable SQLite database",
+        help="build and run the API against the selected database",
     )
     parser.add_argument("--port", type=int, default=18080)
+    parser.add_argument("--database-driver", choices=("sqlite", "postgres"), default="sqlite")
+    parser.add_argument("--database-path", default="", help="SQLite database path")
+    parser.add_argument("--database-dsn", default="", help="PostgreSQL test database DSN")
     return parser.parse_args()
 
 
@@ -59,7 +62,7 @@ def post(path: str, payload: dict):
 
 
 def run_workflow() -> None:
-    post(f"/api/admin/journals", {"id": JOURNAL_ID})
+    post("/api/admin/journals", {"id": JOURNAL_ID})
     post(
         "/api/admin/journeys",
         {
@@ -124,19 +127,25 @@ def run_workflow() -> None:
 
 
 @contextmanager
-def disposable_server(port: int):
+def disposable_server(port: int, driver: str, database_path: str, database_dsn: str):
     global BASE_URL
     with tempfile.TemporaryDirectory(prefix="felicia-workflow-") as temp_dir:
         api_bin = os.path.join(temp_dir, "felicia-api")
-        database_path = os.path.join(temp_dir, "felicia.sqlite")
-        subprocess.run(["go", "build", "-o", api_bin, "./cmd/api"], check=True)
+        if driver == "sqlite":
+            database_path = database_path or os.path.join(temp_dir, "felicia.db")
+        elif not database_dsn:
+            raise RuntimeError("--database-dsn or FELICIA_TEST_DATABASE_DSN is required for postgres")
+        subprocess.run(["go", "build", "-o", api_bin, "./apps/apiserver/cmd/api"], check=True)
         environment = {
             **os.environ,
-            "DATABASE_DRIVER": "sqlite",
-            "DATABASE_PATH": database_path,
+            "DATABASE_DRIVER": driver,
             "CACHE_ADDR": "",
             "PORT": str(port),
         }
+        if driver == "sqlite":
+            environment["DATABASE_PATH"] = database_path
+        else:
+            environment["DATABASE_DSN"] = database_dsn
         server = subprocess.Popen(
             [api_bin],
             env=environment,
@@ -173,7 +182,8 @@ if __name__ == "__main__":
     try:
         arguments = parse_args()
         if arguments.start_server:
-            with disposable_server(arguments.port):
+            database_dsn = arguments.database_dsn or os.getenv("FELICIA_TEST_DATABASE_DSN", "")
+            with disposable_server(arguments.port, arguments.database_driver, arguments.database_path, database_dsn):
                 run_workflow()
         else:
             run_workflow()

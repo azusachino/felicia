@@ -1,4 +1,4 @@
-package pg
+package postgres
 
 import (
 	"testing"
@@ -73,6 +73,16 @@ func TestMementoStateOrDefaultIsNonVisible(t *testing.T) {
 	}
 	if got := mementoStateOrDefault(domain.MementoPublished); got != domain.MementoPublished {
 		t.Fatalf("explicit state = %q, want published", got)
+	}
+}
+
+func TestNonNilStringsNormalizesDatabaseArrayInputs(t *testing.T) {
+	if got := nonNilStrings(nil); got == nil || len(got) != 0 {
+		t.Fatalf("nil input normalized to %#v, want non-nil empty slice", got)
+	}
+	values := []string{"title"}
+	if got := nonNilStrings(values); &got[0] != &values[0] || len(got) != 1 {
+		t.Fatalf("non-nil input was not preserved: %#v", got)
 	}
 }
 

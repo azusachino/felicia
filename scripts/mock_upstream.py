@@ -3,7 +3,7 @@
 
 Stdlib only (matches scripts/test_api.py) — no external deps. Serves
 fixture-backed, auth-checked, *paginated* responses so the real Go clients
-(internal/dawarich, internal/immich) can be driven offline over HTTP.
+(apps/providers/dawarich, apps/providers/immich) can be driven offline over HTTP.
 
 Pagination is forced to one item per page so the clients must walk
 X-Total-Pages (Dawarich) / nextPage (Immich).

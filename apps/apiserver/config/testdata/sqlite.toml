@@ -1,0 +1,6 @@
+[database]
+driver = "sqlite"
+path = "journal.db"
+
+[server]
+port = "8181"

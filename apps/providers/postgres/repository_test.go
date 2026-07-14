@@ -1,43 +1,32 @@
-package pg_test
+package postgres_test
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/paulmach/orb"
 
 	"github.com/azusachino/felicia/apps/core/domain"
-	"github.com/azusachino/felicia/internal/store/pg"
+	"github.com/azusachino/felicia/apps/providers/postgres"
 )
 
 func TestPgRepositoryIntegration(t *testing.T) {
-	dsn := os.Getenv("DATABASE_DSN")
-	if dsn == "" {
-		t.Skip("DATABASE_DSN environment variable not set, skipping integration test")
-	}
-
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		t.Fatalf("failed to connect to database: %v", err)
-	}
-	defer pool.Close()
+	pool := testPool(t)
 
 	// Clean up old test data to ensure a reproducible run
 	_, _ = pool.Exec(ctx, "TRUNCATE TABLE tb_journal CASCADE")
 
-	repo := pg.NewRepository(pool)
+	repo := postgres.NewRepository(pool)
 
 	// 1. Create a Journal
 	journal := &domain.Journal{
 		ID:        uuid.New(),
 		CreatedAt: time.Now().UTC().Truncate(time.Microsecond),
 	}
-	err = repo.CreateJournal(ctx, journal)
+	err := repo.CreateJournal(ctx, journal)
 	if err != nil {
 		t.Fatalf("failed to create journal: %v", err)
 	}
@@ -169,20 +158,11 @@ func TestPgRepositoryIntegration(t *testing.T) {
 }
 
 func TestPgTransitLegsAndRoute(t *testing.T) {
-	dsn := os.Getenv("DATABASE_DSN")
-	if dsn == "" {
-		t.Skip("DATABASE_DSN environment variable not set, skipping integration test")
-	}
-
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		t.Fatalf("failed to connect to database: %v", err)
-	}
-	defer pool.Close()
+	pool := testPool(t)
 
 	_, _ = pool.Exec(ctx, "TRUNCATE TABLE tb_journal CASCADE")
-	repo := pg.NewRepository(pool)
+	repo := postgres.NewRepository(pool)
 
 	journal := &domain.Journal{ID: uuid.New(), CreatedAt: time.Now().UTC().Truncate(time.Microsecond)}
 	if err := repo.CreateJournal(ctx, journal); err != nil {

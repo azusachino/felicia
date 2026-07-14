@@ -14,8 +14,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/paulmach/orb"
 
-	"github.com/azusachino/felicia/internal/publication"
-	"github.com/azusachino/felicia/internal/store/pg"
+	"github.com/azusachino/felicia/apps/apiserver/publication"
+	"github.com/azusachino/felicia/apps/providers/postgres"
 )
 
 type geoJSONGeometry struct {
@@ -93,7 +93,7 @@ func run() error {
 	}
 	defer pool.Close()
 
-	repo := pg.NewRepository(pool)
+	repo := postgres.NewRepository(pool)
 
 	slog.Info("starting static site compilation", "out_dir", *outDir)
 

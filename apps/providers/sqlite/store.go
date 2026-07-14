@@ -41,9 +41,21 @@ func Open(path string) (*Repository, error) {
 		return nil, fmt.Errorf("open sqlite: %w", err)
 	}
 	r := &Repository{db: db}
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
 	if _, err := db.ExecContext(context.Background(), "PRAGMA foreign_keys = ON"); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("enable sqlite foreign keys: %w", err)
+	}
+	if _, err := db.ExecContext(context.Background(), "PRAGMA busy_timeout = 5000"); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("set sqlite busy timeout: %w", err)
+	}
+	if path != ":memory:" {
+		if _, err := db.ExecContext(context.Background(), "PRAGMA journal_mode = WAL"); err != nil {
+			_ = db.Close()
+			return nil, fmt.Errorf("enable sqlite WAL: %w", err)
+		}
 	}
 	schema, err := schemaFS.ReadFile("schema.sql")
 	if err != nil {

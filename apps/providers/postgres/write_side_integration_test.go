@@ -1,43 +1,28 @@
-package pg_test
+package postgres_test
 
 import (
 	"context"
 	"encoding/json"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/paulmach/orb"
 
 	"github.com/azusachino/felicia/apps/core/domain"
+	"github.com/azusachino/felicia/apps/providers/postgres"
 	"github.com/azusachino/felicia/apps/runtime/importer"
-	"github.com/azusachino/felicia/internal/store/pg"
 )
 
 func TestPgWriteSideIntegration(t *testing.T) {
-	dsn := os.Getenv("DATABASE_DSN")
-	if dsn == "" {
-		t.Skip("DATABASE_DSN environment variable not set, skipping integration test")
-	}
-
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		t.Fatalf("failed to connect to database: %v", err)
-	}
-	defer pool.Close()
-
-	if err := pool.Ping(ctx); err != nil {
-		t.Fatalf("failed to ping database: %v", err)
-	}
-	_, err = pool.Exec(ctx, "TRUNCATE TABLE tb_journal, tb_import_runs CASCADE")
+	pool := testPool(t)
+	_, err := pool.Exec(ctx, "TRUNCATE TABLE tb_journal, tb_import_runs CASCADE")
 	if err != nil {
 		t.Fatalf("failed to clean integration tables: %v", err)
 	}
 
-	repo := pg.NewRepository(pool)
+	repo := postgres.NewRepository(pool)
 	journal := &domain.Journal{ID: mustUUIDv7(t), CreatedAt: time.Now().UTC()}
 	if err := repo.CreateJournal(ctx, journal); err != nil {
 		t.Fatalf("create journal: %v", err)

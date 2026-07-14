@@ -2,11 +2,11 @@ version: "2"
 sql:
   - engine: "postgresql"
     schema: "migrations/"
-    queries: "internal/store/pg/queries/"
+    queries: "apps/providers/postgres/queries/"
     gen:
       go:
         package: "db"
-        out: "internal/store/pg/db"
+        out: "apps/providers/postgres/db"
         sql_package: "pgx/v5"
         overrides:
           - db_type: uuid

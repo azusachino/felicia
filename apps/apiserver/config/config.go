@@ -16,7 +16,7 @@ import (
 const (
 	defaultPort               = "8080"
 	defaultDatabaseDriver     = "sqlite"
-	defaultDatabasePath       = "felicia.sqlite"
+	defaultDatabasePath       = "felicia.db"
 	defaultCacheAddr          = "localhost:6379"
 	defaultRDPEpsilon         = 0.0001
 	defaultTransitSegmentLenM = 100000
@@ -46,16 +46,22 @@ type Config struct {
 // applies environment overrides.
 func LoadFromEnv() (Config, error) {
 	path := defaultConfigPath
+	required := false
 	if configured, ok := os.LookupEnv("FELICIA_CONFIG"); ok {
 		path = configured
+		required = configured != ""
 	}
-	return Load(path, os.LookupEnv)
+	return load(path, os.LookupEnv, required)
 }
 
 // Load reads an optional TOML file and applies environment overrides from
 // lookup. FELICIA_* variables take precedence over their legacy unprefixed
 // equivalents so existing local scripts continue to work.
 func Load(path string, lookup func(string) (string, bool)) (Config, error) {
+	return load(path, lookup, false)
+}
+
+func load(path string, lookup func(string) (string, bool), required bool) (Config, error) {
 	k := koanf.New(".")
 	if err := k.Load(confmap.Provider(defaults(), "."), nil); err != nil {
 		return Config{}, fmt.Errorf("load defaults: %w", err)
@@ -67,6 +73,8 @@ func Load(path string, lookup func(string) (string, bool)) (Config, error) {
 			}
 		} else if !errors.Is(err, os.ErrNotExist) {
 			return Config{}, fmt.Errorf("stat config %s: %w", path, err)
+		} else if required {
+			return Config{}, fmt.Errorf("config %s: %w", path, err)
 		}
 	}
 	if err := k.Load(confmap.Provider(environmentOverrides(lookup), "."), nil); err != nil {

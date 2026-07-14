@@ -38,12 +38,12 @@ where you author _essays / photo curation / animation_. The importer is **field-
 
 ```
 apps/{apiserver,core,providers,runtime,web-admin,web-public}
-cmd/{api,build}  internal/{api,store/pg,immich,dawarich}
 migrations/  scripts/  deploy/  docs/
 ```
 
 `apps/core` is the pure domain and port layer (no I/O). `apps/runtime` owns use cases,
 `apps/providers` owns persistence implementations, and API adapters depend on runtime ports.
+The root Go module has been retired; all Go code is built through `go.work`.
 
 ## Build, Run & Test
 

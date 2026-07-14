@@ -1,10 +1,11 @@
 package manualyaml
 
 import (
-	"os"
+	"io/fs"
 	"strings"
 	"testing"
 
+	"github.com/azusachino/felicia/apps/core"
 	"github.com/azusachino/felicia/apps/core/domain"
 )
 
@@ -42,7 +43,11 @@ records:
 	if !ok || candidate.Kind != "goods" || candidate.Source != got.Source {
 		t.Fatalf("candidate = %#v", got.Payload)
 	}
-	registry, err := domain.LoadRegistry(os.DirFS("../../kinds"))
+	kinds, err := fs.Sub(core.KindsFS, "kinds")
+	if err != nil {
+		t.Fatalf("KindsFS: %v", err)
+	}
+	registry, err := domain.LoadRegistry(kinds)
 	if err != nil {
 		t.Fatalf("LoadRegistry: %v", err)
 	}
