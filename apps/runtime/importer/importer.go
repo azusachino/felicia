@@ -15,6 +15,7 @@ import (
 	"github.com/paulmach/orb/simplify"
 
 	"github.com/azusachino/felicia/apps/core/domain"
+	"github.com/azusachino/felicia/apps/core/ports"
 )
 
 // DefaultEpsilon is the RDP simplification tolerance (~10m at these latitudes),
@@ -29,10 +30,7 @@ var (
 
 // JourneyStore is the narrow slice of the repository the importer needs. The
 // full domain.Repository satisfies it.
-type JourneyStore interface {
-	GetJourney(ctx context.Context, id uuid.UUID) (*domain.Journey, error)
-	UpsertJourney(ctx context.Context, journey *domain.Journey) error
-}
+type JourneyStore = ports.JourneySyncStore
 
 // Importer joins the track and photo sources to the journey store. Either source
 // may be nil; the matching Sync* method then returns ErrNo{Track,Photo}Source.
@@ -46,7 +44,7 @@ type Importer struct {
 // PersistObservations records one complete canonical source response. It keeps
 // provider DTOs out of storage, compares observations through the repository,
 // and marks identities absent from the response as orphaned.
-func PersistObservations(ctx context.Context, store domain.ObservationStore, sourceSystem string, observations []domain.Observation) (*domain.ImportRun, error) {
+func PersistObservations(ctx context.Context, store ports.ObservationStore, sourceSystem string, observations []domain.Observation) (*domain.ImportRun, error) {
 	run := &domain.ImportRun{SourceSystem: sourceSystem, Status: domain.ImportRunRunning, StartedAt: time.Now().UTC()}
 	if err := store.CreateImportRun(ctx, run); err != nil {
 		return nil, fmt.Errorf("start %s import: %w", sourceSystem, err)
