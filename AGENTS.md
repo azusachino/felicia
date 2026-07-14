@@ -38,7 +38,7 @@ where you author _essays / photo curation / animation_. The importer is **field-
 
 ```
 apps/{apiserver,core,providers,runtime,web-admin,web-public}
-cmd/{api,build}  internal/{api,store/pg,immich,dawarich}
+cmd/{api,build}  internal/{api,store/pg,immich,dawarich} *(transitional; see ADR 0020)*
 migrations/  scripts/  deploy/  docs/
 ```
 

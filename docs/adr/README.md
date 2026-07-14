@@ -18,3 +18,4 @@ This directory stores the immutable records of design and architecture choices m
 | [0017](0017-sqlite-first-storage.md)                | SQLite-First Storage with Optional PostgreSQL | 2026-07-14 | Accepted |
 | [0018](0018-api-runtime-separation.md)              | API Transport and Runtime Separation          | 2026-07-14 | Accepted |
 | [0019](0019-authored-content-and-system-locales.md) | Authored Content and System Locales           | 2026-07-14 | Accepted |
+| [0020](0020-root-module-retirement.md)              | Retire the Transitional Root Go Module        | 2026-07-14 | Accepted |
