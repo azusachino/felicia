@@ -9,6 +9,7 @@ BASE_URL = "http://localhost:8080"
 DATA = json.loads((Path(__file__).with_name("data.json")).read_text())
 EXPECTED_JOURNEYS = len(DATA["journeys"])
 EXPECTED_MEMENTOS = len(DATA["journeys"][0]["mementos"])
+EXPECTED_ADDITIONAL_MEMENTOS = 2
 
 def request(path, method="GET", data=None):
     url = f"{BASE_URL}{path}"
@@ -140,6 +141,57 @@ def test_memento_validation():
     assert body.get("status") == "ok", "Expected status ok response"
     print("✓ Memento validation accepted valid input correctly")
 
+def test_memento_lifecycle():
+    print("Testing memento lifecycle and optimistic revision...")
+    memento_id = "0190cbde-f300-7000-8000-b99999999999"
+    journey_id = "0190cbde-f300-7000-8000-111111111111"
+
+    draft = {
+        "id": memento_id,
+        "journey_id": journey_id,
+        "kind": "live",
+        "seq": 8,
+        "state": "draft",
+        "kind_data": {"artist": "羊文学"},
+    }
+    status, body = request("/api/admin/mementos", method="POST", data=draft)
+    assert status == 200, f"Expected incomplete draft to save, got {status} ({body})"
+
+    status, body = request(f"/api/admin/mementos/{memento_id}")
+    assert status == 200, f"Expected draft GET 200, got {status}"
+    assert body["state"] == "draft", f"Expected draft state, got {body.get('state')}"
+    assert body["revision"] == 1, f"Expected initial revision 1, got {body.get('revision')}"
+
+    incomplete_publish = dict(draft)
+    incomplete_publish["state"] = "published"
+    incomplete_publish["expected_revision"] = 1
+    status, body = request("/api/admin/mementos", method="POST", data=incomplete_publish)
+    assert status == 400, f"Expected incomplete publish 400, got {status}"
+    codes = [issue["Code"] for issue in body.get("issues", [])]
+    assert "required_missing" in codes, f"Expected required_missing issue, got {body}"
+
+    published = {
+        **draft,
+        "state": "published",
+        "expected_revision": 1,
+        "occurred_at": "2026-03-20T10:00:00Z",
+        "occurred_tz": "Asia/Tokyo",
+        "geom": {"type": "Point", "coordinates": [139.7495, 35.6933]},
+        "kind_data": {
+            "artist": "羊文学",
+            "venue": {"name": "日本武道館", "coords": [139.7495, 35.6933]},
+            "date": "2026-03-22T18:30:00+09:00",
+        },
+    }
+    status, body = request("/api/admin/mementos", method="POST", data=published)
+    assert status == 200, f"Expected complete publish 200, got {status} ({body})"
+
+    status, body = request(f"/api/admin/mementos/{memento_id}")
+    assert status == 200, f"Expected published GET 200, got {status}"
+    assert body["state"] == "published", f"Expected published state, got {body.get('state')}"
+    assert body["revision"] == 2, f"Expected revision 2, got {body.get('revision')}"
+    print("✓ Memento lifecycle and optimistic revision OK")
+
 def test_translations():
     print("Testing translation endpoints...")
     memento_id = "0190cbde-f300-7000-8000-a01000000001"
@@ -184,12 +236,13 @@ def test_public_apis():
     # 4. Get mementos by slug
     status, mementos_slug = request("/api/v1/journeys/golden-route/mementos")
     assert status == 200, f"Expected 200, got {status}"
-    assert len(mementos_slug) == EXPECTED_MEMENTOS + 1, f"Expected {EXPECTED_MEMENTOS + 1} mementos, got {len(mementos_slug)}"
+    expected_mementos = EXPECTED_MEMENTOS + EXPECTED_ADDITIONAL_MEMENTOS
+    assert len(mementos_slug) == expected_mementos, f"Expected {expected_mementos} mementos, got {len(mementos_slug)}"
     
     # 5. Get mementos by UUID (dual lookup)
     status, mementos_uuid = request(f"/api/v1/journeys/{j1_id}/mementos")
     assert status == 200, f"Expected 200, got {status}"
-    assert len(mementos_uuid) == EXPECTED_MEMENTOS + 1
+    assert len(mementos_uuid) == expected_mementos
     
     print("✓ Public APIs (slug & UUID lookup) OK")
 
@@ -200,6 +253,7 @@ def main():
         test_journeys()
         test_mementos_list()
         test_memento_validation()
+        test_memento_lifecycle()
         test_translations()
         test_public_apis()
         print("🎉 All API E2E tests passed successfully!")
