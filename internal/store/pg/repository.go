@@ -16,7 +16,7 @@ import (
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/encoding/wkb"
 
-	"github.com/azusachino/felicia/internal/domain"
+	"github.com/azusachino/felicia/apps/core/domain"
 	"github.com/azusachino/felicia/internal/store/pg/db"
 )
 

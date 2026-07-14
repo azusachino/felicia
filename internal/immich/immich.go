@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/azusachino/felicia/internal/domain"
+	"github.com/azusachino/felicia/apps/core/domain"
 )
 
 // Doer is the subset of *http.Client the client needs; injectable for tests.

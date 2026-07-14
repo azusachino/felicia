@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/azusachino/felicia/internal/domain"
+	"github.com/azusachino/felicia/apps/core/domain"
 )
 
 func TestLoadMapsManualYAMLToCanonicalObservations(t *testing.T) {

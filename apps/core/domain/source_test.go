@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/azusachino/felicia/internal/domain"
+	"github.com/azusachino/felicia/apps/core/domain"
 )
 
 func TestSourceIdentity(t *testing.T) {

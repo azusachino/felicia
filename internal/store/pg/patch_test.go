@@ -3,7 +3,7 @@ package pg
 import (
 	"testing"
 
-	"github.com/azusachino/felicia/internal/domain"
+	"github.com/azusachino/felicia/apps/core/domain"
 )
 
 func TestMergeMementoFieldsDoesNotTouchUnmaskedAuthoredValues(t *testing.T) {

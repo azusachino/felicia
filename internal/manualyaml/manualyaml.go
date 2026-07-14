@@ -10,7 +10,7 @@ import (
 	"github.com/paulmach/orb"
 	"gopkg.in/yaml.v3"
 
-	"github.com/azusachino/felicia/internal/domain"
+	"github.com/azusachino/felicia/apps/core/domain"
 )
 
 type document struct {

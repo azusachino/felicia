@@ -15,7 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/paulmach/orb"
 
-	"github.com/azusachino/felicia/internal/domain"
+	"github.com/azusachino/felicia/apps/core/domain"
 	"github.com/azusachino/felicia/internal/publication"
 	"github.com/azusachino/felicia/internal/store/pg"
 )

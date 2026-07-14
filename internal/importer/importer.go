@@ -14,7 +14,7 @@ import (
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/simplify"
 
-	"github.com/azusachino/felicia/internal/domain"
+	"github.com/azusachino/felicia/apps/core/domain"
 )
 
 // DefaultEpsilon is the RDP simplification tolerance (~10m at these latitudes),
