@@ -70,7 +70,7 @@ FELICIA_TEST_DATABASE_DSN='postgres://postgres:password@localhost:5432/felicia?s
 PostgreSQL tests require `FELICIA_TEST_DATABASE_DSN`, not ordinary
 `DATABASE_DSN`. The test database must be disposable: integration tests clean
 tables before exercising provider behavior. Tests also verify that Goose
-migrations have reached version 7 or later.
+migrations have reached version 8 or later.
 
 The repository contract suite runs against both providers. Provider-specific
 features, such as PostGIS route acceleration, remain in PostgreSQL-specific

@@ -31,8 +31,8 @@ func testPool(t *testing.T) *pgxpool.Pool {
 	if err := pool.QueryRow(ctx, "SELECT COALESCE(MAX(version_id), 0) FROM goose_db_version").Scan(&version); err != nil {
 		t.Fatalf("check PostgreSQL migrations: %v (run make migrate against %s)", err, testDatabaseDSNEnv)
 	}
-	if version < 7 {
-		t.Fatalf("PostgreSQL migrations are incomplete: got version %d, want at least 7", version)
+	if version < 8 {
+		t.Fatalf("PostgreSQL migrations are incomplete: got version %d, want at least 8", version)
 	}
 	return pool
 }
