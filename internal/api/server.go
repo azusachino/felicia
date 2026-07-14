@@ -18,12 +18,16 @@ import (
 
 	"github.com/azusachino/felicia/apps/core/domain"
 	"github.com/azusachino/felicia/apps/runtime/importer"
+	journeyruntime "github.com/azusachino/felicia/apps/runtime/journey"
+	mementoruntime "github.com/azusachino/felicia/apps/runtime/memento"
 	"github.com/azusachino/felicia/internal/publication"
 )
 
 // Server represents the API server.
 type Server struct {
 	repo                  domain.Repository
+	journeyWriter         *journeyruntime.Service
+	mementoWriter         *mementoruntime.Service
 	registry              *domain.Registry
 	cache                 *CacheManager
 	logger                *slog.Logger
@@ -49,6 +53,8 @@ func NewServer(repo domain.Repository, registry *domain.Registry, cache *CacheMa
 	}
 	return &Server{
 		repo:                  repo,
+		journeyWriter:         journeyruntime.New(repo),
+		mementoWriter:         mementoruntime.New(repo),
 		registry:              registry,
 		cache:                 cache,
 		logger:                logger,
@@ -386,7 +392,7 @@ func (s *Server) handleUpsertJourney(w http.ResponseWriter, r *http.Request) {
 		AuthoredFields: req.AuthoredFields,
 	}
 
-	if err := s.repo.UpsertJourney(r.Context(), journey); err != nil {
+	if err := s.journeyWriter.Save(r.Context(), journey); err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -582,7 +588,7 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 		OrphanedAt:    orphaned,
 	}
 
-	if err := s.repo.ApplyManualMementoPatch(r.Context(), &domain.ManualMementoPatch{
+	if err := s.mementoWriter.ApplyManualPatch(r.Context(), &domain.ManualMementoPatch{
 		Memento: memento,
 		Fields: []string{
 			"journey_id", "kind", "seq", "occurred_at", "occurred_tz", "geom",
