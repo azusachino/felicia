@@ -7,7 +7,7 @@ import (
 
 	"github.com/paulmach/orb"
 
-	"github.com/azusachino/felicia/internal/domain"
+	"github.com/azusachino/felicia/apps/core/domain"
 )
 
 // trackFeatureCollection is the minimal GeoJSON shape of GET /api/v1/tracks.

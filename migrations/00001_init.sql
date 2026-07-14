@@ -41,14 +41,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql VOLATILE;
 
-CREATE TABLE journal (
+CREATE TABLE tb_journal (
     id UUID PRIMARY KEY DEFAULT generate_uuid_v7(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE journeys (
+CREATE TABLE tb_journeys (
     id UUID PRIMARY KEY DEFAULT generate_uuid_v7(),
-    journal_id UUID NOT NULL REFERENCES journal(id) ON DELETE CASCADE,
+    journal_id UUID NOT NULL REFERENCES tb_journal(id) ON DELETE CASCADE,
     slug TEXT NOT NULL UNIQUE,
     source_ref TEXT,
     title TEXT NOT NULL,
@@ -64,9 +64,9 @@ CREATE TABLE journeys (
     CONSTRAINT unique_journal_source UNIQUE (journal_id, source_ref)
 );
 
-CREATE TABLE mementos (
+CREATE TABLE tb_mementos (
     id UUID PRIMARY KEY DEFAULT generate_uuid_v7(),
-    journey_id UUID NOT NULL REFERENCES journeys(id) ON DELETE CASCADE,
+    journey_id UUID NOT NULL REFERENCES tb_journeys(id) ON DELETE CASCADE,
     kind TEXT NOT NULL,
     seq INT NOT NULL,
     occurred_at TIMESTAMPTZ NOT NULL,
@@ -88,21 +88,9 @@ CREATE TABLE mementos (
     CONSTRAINT valid_currency CHECK (price_currency IS NULL OR price_currency ~ '^[A-Z]{3}$')
 );
 
-CREATE TABLE translations (
+CREATE TABLE tb_memento_photos (
     id UUID PRIMARY KEY DEFAULT generate_uuid_v7(),
-    owner_type TEXT NOT NULL CHECK (owner_type IN ('journey', 'memento', 'photo')),
-    owner_id UUID NOT NULL,
-    lang TEXT NOT NULL CHECK (lang IN ('en', 'zh')),
-    field TEXT NOT NULL,
-    value TEXT NOT NULL,
-    provenance TEXT NOT NULL CHECK (provenance IN ('machine', 'authored')),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT unique_translation UNIQUE (owner_type, owner_id, lang, field)
-);
-
-CREATE TABLE memento_photos (
-    id UUID PRIMARY KEY DEFAULT generate_uuid_v7(),
-    memento_id UUID NOT NULL REFERENCES mementos(id) ON DELETE CASCADE,
+    memento_id UUID NOT NULL REFERENCES tb_mementos(id) ON DELETE CASCADE,
     object_key TEXT NOT NULL,
     content_hash TEXT NOT NULL,
     caption TEXT,
@@ -114,12 +102,12 @@ CREATE TABLE memento_photos (
     CONSTRAINT unique_memento_photo_hash UNIQUE (memento_id, content_hash)
 );
 
-CREATE INDEX idx_journeys_gps_route ON journeys USING GIST(gps_route);
-CREATE INDEX idx_mementos_geom ON mementos USING GIST(geom);
-CREATE INDEX idx_mementos_journey_seq ON mementos(journey_id, seq);
-CREATE INDEX idx_mementos_kind ON mementos(kind);
-CREATE INDEX idx_mementos_occurred ON mementos(occurred_at DESC);
-CREATE INDEX idx_memento_photos_memento_seq ON memento_photos(memento_id, seq);
+CREATE INDEX idx_journeys_gps_route ON tb_journeys USING GIST(gps_route);
+CREATE INDEX idx_mementos_geom ON tb_mementos USING GIST(geom);
+CREATE INDEX idx_mementos_journey_seq ON tb_mementos(journey_id, seq);
+CREATE INDEX idx_mementos_kind ON tb_mementos(kind);
+CREATE INDEX idx_mementos_occurred ON tb_mementos(occurred_at DESC);
+CREATE INDEX idx_memento_photos_memento_seq ON tb_memento_photos(memento_id, seq);
 -- +goose StatementEnd
 
 -- +goose Down
@@ -131,11 +119,10 @@ DROP INDEX IF EXISTS idx_mementos_journey_seq;
 DROP INDEX IF EXISTS idx_mementos_geom;
 DROP INDEX IF EXISTS idx_journeys_gps_route;
 
-DROP TABLE IF EXISTS memento_photos;
-DROP TABLE IF EXISTS translations;
-DROP TABLE IF EXISTS mementos;
-DROP TABLE IF EXISTS journeys;
-DROP TABLE IF EXISTS journal;
+DROP TABLE IF EXISTS tb_memento_photos;
+DROP TABLE IF EXISTS tb_mementos;
+DROP TABLE IF EXISTS tb_journeys;
+DROP TABLE IF EXISTS tb_journal;
 
 DROP FUNCTION IF EXISTS generate_uuid_v7();
 -- +goose StatementEnd

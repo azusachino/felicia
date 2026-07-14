@@ -3,10 +3,10 @@
 These tracks are downloaded for the private local seed only. They are not
 uploaded by the seed script or the application.
 
-| File | Source | Status | Points | Use |
-| --- | --- | --- | ---: | --- |
-| `narita-express.gpx` | [OSM trace 12082027](https://www.openstreetmap.org/trace/12082027) | PUBLIC | 573 | `golden-route` route geometry |
-| `miyazaki-kagoshima.gpx` | [OSM trace 12298359](https://www.openstreetmap.org/trace/12298359) | PUBLIC | 98 | `kyushu` route geometry |
+| File                     | Source                                                             | Status | Points | Use                           |
+| ------------------------ | ------------------------------------------------------------------ | ------ | -----: | ----------------------------- |
+| `narita-express.gpx`     | [OSM trace 12082027](https://www.openstreetmap.org/trace/12082027) | PUBLIC |    573 | `golden-route` route geometry |
+| `miyazaki-kagoshima.gpx` | [OSM trace 12298359](https://www.openstreetmap.org/trace/12298359) | PUBLIC |     98 | `kyushu` route geometry       |
 
 OpenStreetMap attribution and licensing information:
 

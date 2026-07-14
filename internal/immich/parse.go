@@ -7,7 +7,7 @@ import (
 
 	"github.com/paulmach/orb"
 
-	"github.com/azusachino/felicia/internal/domain"
+	"github.com/azusachino/felicia/apps/core/domain"
 )
 
 // searchResponse is the subset of Immich SearchResponseDto we consume.

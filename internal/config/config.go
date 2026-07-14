@@ -15,6 +15,8 @@ import (
 
 const (
 	defaultPort               = "8080"
+	defaultDatabaseDriver     = "sqlite"
+	defaultDatabasePath       = "felicia.sqlite"
 	defaultCacheAddr          = "localhost:6379"
 	defaultRDPEpsilon         = 0.0001
 	defaultTransitSegmentLenM = 100000
@@ -29,7 +31,9 @@ type SourceConfig struct {
 
 // Config is the complete runtime configuration for the local API server.
 type Config struct {
+	DatabaseDriver     string       `koanf:"database.driver"`
 	DatabaseDSN        string       `koanf:"database.dsn"`
+	DatabasePath       string       `koanf:"database.path"`
 	Port               string       `koanf:"server.port"`
 	CacheAddr          string       `koanf:"cache.addr"`
 	Dawarich           SourceConfig `koanf:"dawarich"`
@@ -70,7 +74,9 @@ func Load(path string, lookup func(string) (string, bool)) (Config, error) {
 	}
 
 	cfg := Config{
+		DatabaseDriver:     k.String("database.driver"),
 		DatabaseDSN:        k.String("database.dsn"),
+		DatabasePath:       k.String("database.path"),
 		Port:               k.String("server.port"),
 		CacheAddr:          k.String("cache.addr"),
 		Dawarich:           SourceConfig{URL: k.String("dawarich.url"), APIKey: k.String("dawarich.api_key")},
@@ -86,8 +92,14 @@ func Load(path string, lookup func(string) (string, bool)) (Config, error) {
 
 // Validate checks the values that would make the API unsafe or inoperable.
 func (c Config) Validate() error {
-	if c.DatabaseDSN == "" {
-		return errors.New("DATABASE_DSN environment variable is required")
+	if c.DatabaseDriver != "sqlite" && c.DatabaseDriver != "postgres" {
+		return fmt.Errorf("database driver must be sqlite or postgres, got %q", c.DatabaseDriver)
+	}
+	if c.DatabaseDriver == "sqlite" && c.DatabasePath == "" {
+		return errors.New("database path is required for sqlite")
+	}
+	if c.DatabaseDriver == "postgres" && c.DatabaseDSN == "" {
+		return errors.New("DATABASE_DSN environment variable is required for postgres")
 	}
 	if c.Port == "" {
 		return errors.New("server port is required")
@@ -103,8 +115,9 @@ func (c Config) Validate() error {
 
 func defaults() map[string]any {
 	return map[string]any{
-		"server": map[string]any{"port": defaultPort},
-		"cache":  map[string]any{"addr": defaultCacheAddr},
+		"database": map[string]any{"driver": defaultDatabaseDriver, "path": defaultDatabasePath},
+		"server":   map[string]any{"port": defaultPort},
+		"cache":    map[string]any{"addr": defaultCacheAddr},
 		"ingest": map[string]any{
 			"rdp_epsilon":              defaultRDPEpsilon,
 			"transit_segment_length_m": defaultTransitSegmentLenM,
@@ -123,6 +136,8 @@ func environmentOverrides(lookup func(string) (string, bool)) map[string]any {
 		}
 	}
 	set("database.dsn", "FELICIA_DATABASE_DSN", "DATABASE_DSN")
+	set("database.driver", "FELICIA_DATABASE_DRIVER", "DATABASE_DRIVER")
+	set("database.path", "FELICIA_DATABASE_PATH", "DATABASE_PATH")
 	set("server.port", "FELICIA_PORT", "PORT")
 	set("cache.addr", "FELICIA_CACHE_ADDR", "CACHE_ADDR")
 	set("dawarich.url", "FELICIA_DAWARICH_URL", "DAWARICH_URL")

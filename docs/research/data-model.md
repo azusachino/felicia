@@ -2,7 +2,7 @@
 
 > 2026-07-09. The **stable** backend schema — designed once, meant not to be rebuilt from
 > zero. Derives from the decisions in [`backend-stack.md`](backend-stack.md) (D1–D8), the plan revision in [`backend-plan-revision.md`](backend-plan-revision.md), and
-> supersedes the ticket-era ER in [`archive/design.md`](../archive/design.md) §4. 
+> supersedes the ticket-era ER in [`archive/design.md`](../archive/design.md) §4.
 > It defines the DDL schema strictly for **PostgreSQL 18 + PostGIS**.
 
 ## Design invariants (why this is stable)
@@ -18,6 +18,46 @@
    and translations add a **language axis**; the importer never clobbers authored work.
 5. **Uniform memento** — one `mementos` table, `kind`-tagged, kind-specifics in `kind_data`
    jsonb. New kinds = new enum value, not new tables.
+
+6. **Canonical observation seam** — source adapters map provider DTOs into
+   `SourceIdentity`, `Observation`, `Route`, `Visit`, `MediaAsset`, and
+   `MementoCandidate` values before the write side sees them. Provenance records
+   origin and confidence; authorship remains an independent write concern.
+   (`felicia:decision:canonical-data-layer`)
+
+## Canonical data layer
+
+The persistence schema is the canonical application dataset, but source records
+first pass through a provider-neutral observation layer:
+
+```text
+provider DTO → adapter → canonical observation → ingest patch → PostgreSQL
+```
+
+`SourceIdentity{system, external_id}` is the stable identity for re-import. The
+adapter owns provider pagination, authentication, timestamp quirks, and field
+mapping. The canonical layer owns only concepts shared by the product:
+time-bounded routes and visits, media assets, location, memento candidates, and
+provenance. It does not become a runtime query or ETL language.
+
+`MementoCandidate` is intentionally not the persisted `Memento`: it contains
+source-derived suggestions, while authored title/essay/curation and publication
+state are applied by an explicit write operation. Media is broader than photos:
+the canonical kinds are image, video, audio, document, link, and provider-
+approved embed. A user-created ticket or other memento can enter through the
+same template-driven write seam without an external source identity.
+
+The write seam is split by authority:
+
+```text
+ManualMementoPatch  → authored fields + lifecycle transition
+IngestMementoPatch  → source-owned fields only
+```
+
+The repository derives ownership from these operations and preserves existing
+authored values. `mementos.state` records the lifecycle; transaction and
+optimistic-concurrency guarantees are specified separately before aggregate
+writes are expanded.
 
 ## The shape at a glance
 
@@ -107,12 +147,17 @@ CREATE TABLE mementos (
     price_amount BIGINT,
     price_currency CHAR(3),
     kind_data JSONB NOT NULL DEFAULT '{}',
+    source_system TEXT,
+    source_external_id TEXT,
     source_ref TEXT,
     authored_fields TEXT[] NOT NULL DEFAULT '{}',
     orphaned_at TIMESTAMPTZ,
+    state TEXT NOT NULL DEFAULT 'published', -- candidate|draft|authored|published|archived
+    revision BIGINT NOT NULL DEFAULT 1,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT unique_journey_source_memento UNIQUE (journey_id, source_ref),
+    CONSTRAINT mementos_source_identity_pair CHECK ((source_system IS NULL AND source_external_id IS NULL) OR (source_system IS NOT NULL AND source_external_id IS NOT NULL)),
     CONSTRAINT valid_currency CHECK (price_currency IS NULL OR price_currency ~ '^[A-Z]{3}$')
 );
 
@@ -157,61 +202,77 @@ CREATE INDEX idx_memento_photos_memento_seq ON memento_photos(memento_id, seq);
 
 ### `journal` — the root (one row)
 
-| Column | PG Type | Notes |
-| --- | --- | --- |
-| `id` | `uuid pk` | the single root; FKs hang off it |
-| `created_at` | `timestamptz` | |
+| Column       | PG Type       | Notes                            |
+| ------------ | ------------- | -------------------------------- |
+| `id`         | `uuid pk`     | the single root; FKs hang off it |
+| `created_at` | `timestamptz` |                                  |
 
 ### `journeys`
 
-| Column | PG Type | Class | Notes |
-| --- | --- | --- | --- |
-| `id` | `uuid pk` | — | |
-| `journal_id` | `uuid` | — | references `journal.id` |
-| `slug` | `text` | identity | `<yyyy>-<mm>-<slugify(name)>` (computed once, in URLs) |
-| `source_ref` | `text` | INGESTED | e.g. `immich-album:<uuid>` |
-| `title` | `text` | AUTHORED | primary-lang (ja); en/zh in `translations` |
-| `place` | `text` | OVERRIDABLE | primary-lang summary of the region |
-| `country` | `varchar(3)` | OVERRIDABLE | ISO country code |
-| `region` | `text` | OVERRIDABLE | |
-| `date_start` | `date` | OVERRIDABLE | min asset capture date |
-| `date_end` | `date` | OVERRIDABLE | max asset capture date |
-| `gps_route` | `geometry` | INGESTED | simplified passive track |
-| `authored_fields` | `text[]` | — | no-clobber tracker |
+| Column            | PG Type      | Class       | Notes                                                  |
+| ----------------- | ------------ | ----------- | ------------------------------------------------------ |
+| `id`              | `uuid pk`    | —           |                                                        |
+| `journal_id`      | `uuid`       | —           | references `journal.id`                                |
+| `slug`            | `text`       | identity    | `<yyyy>-<mm>-<slugify(name)>` (computed once, in URLs) |
+| `source_ref`      | `text`       | INGESTED    | e.g. `immich-album:<uuid>`                             |
+| `title`           | `text`       | AUTHORED    | primary-lang (ja); en/zh in `translations`             |
+| `place`           | `text`       | OVERRIDABLE | primary-lang summary of the region                     |
+| `country`         | `varchar(3)` | OVERRIDABLE | ISO country code                                       |
+| `region`          | `text`       | OVERRIDABLE |                                                        |
+| `date_start`      | `date`       | OVERRIDABLE | min asset capture date                                 |
+| `date_end`        | `date`       | OVERRIDABLE | max asset capture date                                 |
+| `gps_route`       | `geometry`   | INGESTED    | simplified passive track                               |
+| `authored_fields` | `text[]`     | —           | no-clobber tracker                                     |
 
 ### `mementos`
 
-| Column | PG Type | Class | Notes |
-| --- | --- | --- | --- |
-| `id` | `uuid pk` | — | |
-| `journey_id` | `uuid` | — | references `journeys.id` |
-| `kind` | `text` | OVERRIDABLE | enum: `ticket \| transit \| goods \| stamp \| receipt \| souvenir` |
-| `seq` | `int` | OVERRIDABLE | chronological default sequence |
-| `occurred_at` | `timestamptz` | OVERRIDABLE | resolved timestamp |
-| `occurred_tz` | `text` | OVERRIDABLE | IANA tz identifier |
-| `geom` | `geometry` | INGESTED¹ | Point (goods/stamp) or LineString (transit) |
-| `title` | `text` | AUTHORED | primary-lang (ja) |
-| `place` | `text` | OVERRIDABLE | primary-lang |
-| `vendor` | `text` | OVERRIDABLE | |
-| `essay` | `text` | AUTHORED | primary-lang markdown |
-| `price_amount` | `bigint` | OVERRIDABLE | minor units (¥210 → 210) |
-| `price_currency`| `char(3)` | OVERRIDABLE | ISO 4217 currency code |
-| `kind_data` | `jsonb` | mixed² | kind-specific properties (transit stations, operator) |
-| `source_ref` | `text` | INGESTED | immich or file reference |
-| `authored_fields` | `text[]` | — | no-clobber tracker |
-| `orphaned_at` | `timestamptz` | INGESTED | marked when source asset disappears |
+| Column               | PG Type       | Class       | Notes                                                              |
+| -------------------- | ------------- | ----------- | ------------------------------------------------------------------ |
+| `id`                 | `uuid pk`     | —           |                                                                    |
+| `journey_id`         | `uuid`        | —           | references `journeys.id`                                           |
+| `kind`               | `text`        | OVERRIDABLE | enum: `ticket \| transit \| goods \| stamp \| receipt \| souvenir` |
+| `seq`                | `int`         | OVERRIDABLE | chronological default sequence                                     |
+| `occurred_at`        | `timestamptz` | OVERRIDABLE | resolved timestamp                                                 |
+| `occurred_tz`        | `text`        | OVERRIDABLE | IANA tz identifier                                                 |
+| `geom`               | `geometry`    | INGESTED¹   | Point (goods/stamp) or LineString (transit)                        |
+| `title`              | `text`        | AUTHORED    | primary-lang (ja)                                                  |
+| `place`              | `text`        | OVERRIDABLE | primary-lang                                                       |
+| `vendor`             | `text`        | OVERRIDABLE |                                                                    |
+| `essay`              | `text`        | AUTHORED    | primary-lang markdown                                              |
+| `price_amount`       | `bigint`      | OVERRIDABLE | minor units (¥210 → 210)                                           |
+| `price_currency`     | `char(3)`     | OVERRIDABLE | ISO 4217 currency code                                             |
+| `kind_data`          | `jsonb`       | mixed²      | kind-specific properties (transit stations, operator)              |
+| `source_system`      | `text`        | INGESTED    | external system namespace; nullable for manual mementos            |
+| `source_external_id` | `text`        | INGESTED    | stable external identity; unique with `source_system`              |
+| `source_ref`         | `text`        | INGESTED    | immich or file reference                                           |
+| `authored_fields`    | `text[]`      | —           | no-clobber tracker                                                 |
+| `orphaned_at`        | `timestamptz` | INGESTED    | marked when source asset disappears                                |
+| `revision`           | `bigint`      | —           | monotonic optimistic-concurrency token                             |
+
+The normalized source identity is the durable idempotency key. `source_ref` is
+retained as a compatibility/display field while adapters migrate; source
+lookup uses `(source_system, source_external_id)` before any local UUID.
+
+Import history is kept separately in `import_runs` and
+`source_observations`. The latter stores canonical JSON payloads, provenance
+identity, confidence, changed status, and orphan markers per run; it never
+stores provider DTOs or authored memento content.
+
+Mementos also carry a monotonic `revision`. Authoring writes may provide an
+expected revision and are rejected on mismatch; aggregate writes persist the
+memento, photos, and translations in one transaction.
 
 ---
 
-## Places — a *derived visit* layer (not a stored table)
+## Places — a _derived visit_ layer (not a stored table)
 
 Two frontends group mementos by **place** — the techo landing's city dots and the
 detail's "several memories at one place" — yet there is deliberately **no `places` table**. A
-place is a **derived visit**, computed the way Dawarich and Google Timeline both do it: a *stay*,
+place is a **derived visit**, computed the way Dawarich and Google Timeline both do it: a _stay_,
 detected by dwell-time + spatial clustering over the track, reverse-geocoded to a name.
 
 - **Source of truth.** Dawarich already runs this pipeline (`points → tracks → visits @ places →
-  trips`). When the track is Dawarich's, **consume its `visits`/`places`** rather than
+trips`). When the track is Dawarich's, **consume its `visits`/`places`** rather than
   re-deriving. For a plain GPX import (no Dawarich)
   a dwell-time clustering fallback produces the same `Visit` shape **at the edge** — the core
   stays generic over the normalized shape.
@@ -224,11 +285,11 @@ detected by dwell-time + spatial clustering over the track, reverse-geocoded to 
 
 ## Provenance map (three classes × language)
 
-| Class | Importer | Admin | Fields |
-| --- | --- | --- | --- |
-| **INGESTED** | always writes | read-only | `source_ref`, `gps_route`, point `geom`, `object_key`, `content_hash`, `taken_at`, `orphaned_at` |
-| **OVERRIDABLE** | writes **until** the field name is in `authored_fields` | editable | `kind`, `occurred_at`, `occurred_tz`, `place`, `vendor`, `price_*`, `seq`, journey `country/region/date_*` |
-| **AUTHORED** | never writes | owns | `title`, `essay`, `caption`, photo selection/order, transit-leg `geom`, en/zh `translations(authored)` |
+| Class           | Importer                                                | Admin     | Fields                                                                                                     |
+| --------------- | ------------------------------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------- |
+| **INGESTED**    | always writes                                           | read-only | `source_ref`, `gps_route`, point `geom`, `object_key`, `content_hash`, `taken_at`, `orphaned_at`           |
+| **OVERRIDABLE** | writes **until** the field name is in `authored_fields` | editable  | `kind`, `occurred_at`, `occurred_tz`, `place`, `vendor`, `price_*`, `seq`, journey `country/region/date_*` |
+| **AUTHORED**    | never writes                                            | owns      | `title`, `essay`, `caption`, photo selection/order, transit-leg `geom`, en/zh `translations(authored)`     |
 
 ### Upsert and Translation Merge Rules
 

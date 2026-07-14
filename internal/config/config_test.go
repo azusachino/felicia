@@ -45,17 +45,17 @@ transit_segment_length_m = 200000
 	}
 }
 
-func TestLoadUsesDefaultsAndRequiresDatabaseDSN(t *testing.T) {
-	cfg, err := Load("", lookup(map[string]string{"DATABASE_DSN": "postgres://dev"}))
+func TestLoadUsesSQLiteDefaults(t *testing.T) {
+	cfg, err := Load("", lookup(nil))
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if cfg.Port != defaultPort || cfg.CacheAddr != defaultCacheAddr || cfg.RDPEpsilon != defaultRDPEpsilon || cfg.TransitSegmentLenM != defaultTransitSegmentLenM {
+	if cfg.DatabaseDriver != defaultDatabaseDriver || cfg.DatabasePath != defaultDatabasePath || cfg.Port != defaultPort || cfg.CacheAddr != defaultCacheAddr || cfg.RDPEpsilon != defaultRDPEpsilon || cfg.TransitSegmentLenM != defaultTransitSegmentLenM {
 		t.Errorf("unexpected defaults: %+v", cfg)
 	}
 
-	if _, err := Load("", lookup(nil)); err == nil {
-		t.Error("expected missing DATABASE_DSN error")
+	if _, err := Load("", lookup(map[string]string{"DATABASE_DRIVER": "postgres"})); err == nil {
+		t.Error("expected postgres without DATABASE_DSN to fail")
 	}
 }
 

@@ -73,18 +73,18 @@ BrightCoding writeup:
   because there's no separate admin app.
 - The map **auto-fits bounds** to show all currently-filtered markers.
 - Collections (itineraries) with start/end dates get a dedicated **trip map
-  + chronological timeline view** — v0.10 specifically added "chronologically
-  accurate map and timeline view showing adventures in the right order,"
-  i.e. only inside a dated collection does browsing become time-ordered; the
-  top-level view is filter-driven, not date-driven.
+  - chronological timeline view** — v0.10 specifically added "chronologically
+    accurate map and timeline view showing adventures in the right order,"
+    i.e. only inside a dated collection does browsing become time-ordered; the
+    top-level view is filter-driven, not date-driven.
 - Three view modes are offered for a collection: itinerary list, map view,
   calendar view — not one fused index+map+detail like liuaaron.
 
 So AdventureLog's default mental model is "map of everywhere I've been /
 want to go," filtered; felicia's is "map of one journey," walked
 chronologically. felicia's index-rail-drives-camera pairing (click entry →
-map flies to it, ordered by date) is closer to AdventureLog's *per-collection
-itinerary view* than to its top-level location browser. Worth noting for
+map flies to it, ordered by date) is closer to AdventureLog's _per-collection
+itinerary view_ than to its top-level location browser. Worth noting for
 later: AdventureLog treats "browse everything" and "walk one trip
 chronologically" as two different views: felicia's public site is
 single-journey-at-a-time by design (each journey is its own route), so this
@@ -142,7 +142,7 @@ Model shape (per docs/changelog; not verified against Django source):
   vendor lock-in — matches felicia's self-hosted-first instinct.
 - **Backend:** Django + Django REST Framework, PostGIS via `postgis/postgis`
   Docker image. This is the one big stack divergence from felicia (Go, not
-  Django) — the pivot story is instructive though: the project *started*
+  Django) — the pivot story is instructive though: the project _started_
   frontend-only with SvelteKit doing its own persistence (browser
   localStorage), then hit a wall on file handling and durable multi-device
   storage and pivoted to a real backend (July 2024) specifically for

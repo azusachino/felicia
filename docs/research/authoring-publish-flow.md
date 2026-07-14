@@ -1,8 +1,8 @@
 # Research — the authoring → publish flow
 
-> 2026-06-19. The product-side flow, sketched against the MVP: *import a track, curate the
+> 2026-06-19. The product-side flow, sketched against the MVP: _import a track, curate the
 > places that mattered, author each into a memento (ticket / goods / words), publish a subset
-> to the public.* This note tightens that into the **E (authoring) half** of the A+E model and
+> to the public._ This note tightens that into the **E (authoring) half** of the A+E model and
 > nails the **public/private boundary** — the piece not yet written down. Outcome ADR:
 > `felicia:decision:authoring-publish-flow`. Research-stage — flow vocabulary, not a spec.
 > Sits beside [`saas-dataflow.md`](saas-dataflow.md), [`source-connectors.md`](source-connectors.md),
@@ -33,7 +33,7 @@ auto-ingest connectors ([source-connectors](source-connectors.md), the **A** hal
 
 ## Three things the naive reading gets wrong
 
-### 1. The user *curates*, doesn't *place*
+### 1. The user _curates_, doesn't _place_
 
 "Select points on the GPX" sounds like dropping pins by hand. The leverage is the inverse: the
 importer **proposes** candidate mementos from the photo×track timestamp join, and the user
@@ -46,23 +46,23 @@ manual case.
 
 Two memento kinds need no track at all:
 
-- **Transit tickets** *are* route segments (edge-anchored) — a pure rail trip can assemble its
+- **Transit tickets** _are_ route segments (edge-anchored) — a pure rail trip can assemble its
   line from authored legs with zero GPX ([transit-tickets](transit-tickets.md)).
 - **Back-fillable goods** — the object outlives the moment; its when/where is authored later
   ([mementos-not-tickets](mementos-not-tickets.md)).
 
 So a journey must be able to exist **track-only**, **legs-only**, or a **mix**. "Import GPX
-first" is the *common* path, not the *required* one.
+first" is the _common_ path, not the _required_ one.
 
 ### 3. "Open to public" is a boundary, not a switch
 
-Publishing exposes a *bounded subset*, governed by the privacy invariant
+Publishing exposes a _bounded subset_, governed by the privacy invariant
 (`.claude/rules/config.md`):
 
-| Public — the artifact | Private — never served |
-| --- | --- |
-| essay, curated gallery, designed stub | photo originals |
-| the *shape* of the route | raw GPS precision, EXIF, exact timestamps |
+| Public — the artifact                 | Private — never served                    |
+| ------------------------------------- | ----------------------------------------- |
+| essay, curated gallery, designed stub | photo originals                           |
+| the _shape_ of the route              | raw GPS precision, EXIF, exact timestamps |
 
 Granularity, three nested levels:
 
@@ -83,7 +83,7 @@ the field-scoped importer guarantees a re-import **never clobbers** the words au
 - Curate UI: a review queue of proposed candidates (accept / merge / reject) vs. a map-first
   "pins to confirm" surface — which feels less like data entry?
 - Publish unit: journey-at-once vs. memento-by-memento drip.
-- Public route fidelity: how aggressively to simplify/snap so the line reads well *and* leaks
+- Public route fidelity: how aggressively to simplify/snap so the line reads well _and_ leaks
   no precise GPS (ties to the §2 privacy invariant).
 - Where authoring lives during research: Notion ([notion-to-stack](notion-to-stack.md)) vs. an
   in-stack admin app — the flow above is agnostic, but the curate/snap assists are the trigger

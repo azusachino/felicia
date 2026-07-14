@@ -1,0 +1,488 @@
+@import "tailwindcss";
+
+/* techo (v3) palette as Tailwind theme tokens → bg-paper-1, text-terracotta,
+   font-mincho, … (felicia:decision:techo-paper-v3). */
+@theme {
+  --color-paper-0: #fbf7ee;
+  --color-paper-1: #fdf9f0;
+  --color-paper-2: #f3ecdb;
+  --color-paper-3: #efe7d5;
+  --color-ink: #3a2f1c;
+  --color-ink-soft: #5a4622;
+  --color-ink-faint: #7a5c30;
+  --color-terracotta: #b45f26;
+  --font-mincho: "Zen Old Mincho", serif;
+  --font-spectral: "Spectral", serif;
+}
+
+:root {
+  color: #f8fafc;
+  background: #08090d;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* Theme tokens: dark is default; .theme-light overrides. The warm paper stubs
+   (ticket / stamp / goods faces) are physical objects and stay warm in both. */
+.app-shell {
+  --bg: #09090b;
+  --text: #fafafa;
+  --text-soft: #d4d4d8;
+  --muted: #a1a1aa;
+  --faint: #71717a;
+  --border: rgba(255, 255, 255, 0.1);
+  --hover: rgba(255, 255, 255, 0.04);
+  --card: rgba(255, 255, 255, 0.04);
+  --chip-bg: #18181b;
+  --chip-border: #52525b;
+  --accent-ink: #fdba74;
+  --ctrl-bg: rgba(15, 23, 42, 0.82);
+  --ctrl-invert: 1;
+}
+
+.app-shell.theme-light {
+  --bg: #f7f5f0;
+  --text: #1c1917;
+  --text-soft: #292524;
+  --muted: #57534e;
+  --faint: #78716c;
+  --border: rgba(0, 0, 0, 0.1);
+  --hover: rgba(0, 0, 0, 0.035);
+  --card: rgba(0, 0, 0, 0.03);
+  --chip-bg: #ffffff;
+  --chip-border: #d6d3d1;
+  --accent-ink: #ea580c;
+  --ctrl-bg: rgba(255, 255, 255, 0.92);
+  --ctrl-invert: 0;
+}
+
+.maplibregl-ctrl-group {
+  background: var(--ctrl-bg) !important;
+  border: 1px solid var(--border) !important;
+}
+
+.maplibregl-ctrl button {
+  filter: invert(var(--ctrl-invert));
+}
+
+.app-shell {
+  @apply grid h-full grid-cols-[320px_minmax(0,1fr)_420px];
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Index rail --------------------------------------------------------------- */
+
+.index-rail {
+  @apply flex flex-col gap-4 overflow-y-auto px-5 py-6;
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+}
+
+.rail-toolbar {
+  @apply flex items-center justify-between gap-2;
+}
+
+.lang-switch {
+  @apply flex rounded-md p-0.5;
+  border: 1px solid var(--border);
+}
+
+.lang-switch button {
+  @apply rounded px-2.5 py-1 text-xs font-semibold;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+}
+
+.lang-switch button.active {
+  @apply bg-orange-400 text-zinc-950;
+}
+
+.theme-toggle {
+  @apply flex h-8 w-8 items-center justify-center rounded-md text-sm;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border);
+}
+
+.theme-toggle:hover {
+  background: var(--hover);
+}
+
+.eyebrow {
+  @apply m-0 text-[0.68rem] font-semibold uppercase tracking-[0.18em];
+  color: var(--accent-ink);
+}
+
+.rail-head {
+  @apply flex flex-col gap-2 pb-4;
+  border-bottom: 1px solid var(--border);
+}
+
+.rail-head-row {
+  @apply flex items-center justify-between gap-2;
+}
+
+.rail-head h1 {
+  @apply m-0 text-lg font-semibold leading-tight;
+  color: var(--text);
+}
+
+.all-btn {
+  @apply rounded-md px-2.5 py-1 text-xs font-semibold;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--border);
+}
+
+.all-btn:hover {
+  background: var(--hover);
+}
+
+.journey-list {
+  @apply m-0 flex list-none flex-col gap-2 p-0;
+}
+
+.journey-item {
+  @apply flex w-full flex-col gap-0.5 rounded-lg p-3 text-left transition;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.journey-item:hover {
+  background: var(--hover);
+  border-color: var(--border);
+}
+
+.journey-item.active {
+  @apply bg-orange-400/10;
+  border-color: rgba(253, 186, 116, 0.6);
+}
+
+.journey-item-title {
+  @apply text-sm font-semibold;
+  color: var(--text);
+}
+
+.journey-item-meta {
+  @apply text-xs;
+  color: var(--muted);
+}
+
+.journey-item-count {
+  @apply mt-0.5 text-[0.68rem] font-bold uppercase tracking-[0.16em];
+  color: var(--faint);
+}
+
+.timeline {
+  @apply m-0 mt-2 mb-1 flex list-none flex-col gap-2 p-0 pl-3;
+  margin-left: 1.1rem;
+  border-left: 1px solid var(--border);
+}
+
+.timeline-item {
+  @apply flex w-full items-start gap-3 rounded-lg p-3 text-left transition;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.timeline-item:hover {
+  background: var(--hover);
+  border-color: var(--border);
+}
+
+.timeline-item.active {
+  @apply bg-orange-400/10;
+  border-color: rgba(253, 186, 116, 0.6);
+}
+
+.timeline-glyph {
+  @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sm font-black;
+  background: var(--chip-bg);
+  border: 2px solid var(--chip-border);
+  color: var(--text);
+}
+
+.timeline-glyph--transit {
+  @apply rounded-full;
+}
+
+.timeline-glyph--stamp {
+  border-color: rgba(248, 113, 113, 0.7);
+  color: #ef4444;
+}
+
+.timeline-item.active .timeline-glyph {
+  @apply border-orange-300 bg-orange-400 text-zinc-950;
+}
+
+.timeline-body {
+  @apply flex min-w-0 flex-col gap-0.5;
+}
+
+.timeline-date {
+  @apply text-xs font-semibold tracking-wide;
+  color: var(--accent-ink);
+}
+
+.timeline-body strong {
+  @apply truncate text-sm font-semibold;
+  color: var(--text);
+}
+
+.timeline-place {
+  @apply truncate text-xs;
+  color: var(--faint);
+}
+
+/* Map --------------------------------------------------------------------- */
+
+.map-stage {
+  @apply relative overflow-hidden;
+}
+
+.map-canvas {
+  @apply absolute inset-0;
+}
+
+/* Detail panel ------------------------------------------------------------ */
+
+.detail-panel {
+  @apply relative z-20 overflow-y-auto px-6 py-6 shadow-2xl;
+  background: var(--bg);
+  border-left: 1px solid var(--border);
+}
+
+.detail-inner {
+  @apply flex min-h-full flex-col gap-5;
+}
+
+.section-head {
+  @apply flex flex-col gap-2;
+}
+
+.section-head h2 {
+  @apply m-0 text-2xl font-semibold tracking-normal;
+  color: var(--text);
+}
+
+/* Paper stubs (warm in both themes) --------------------------------------- */
+
+.stub-card {
+  @apply relative w-full overflow-hidden rounded-lg p-0 text-left shadow-2xl transition;
+  border: 0;
+}
+
+.stub-card:hover {
+  transform: translateY(-2px);
+}
+
+.ticket-face,
+.goods-face,
+.stamp-face {
+  @apply min-h-48 p-6;
+}
+
+.ticket-face {
+  background: linear-gradient(135deg, #f8e7bb, #eeb46a);
+  color: #241203;
+}
+
+.ticket-line {
+  @apply flex items-start justify-between gap-3 border-b border-black/20 pb-3 text-sm uppercase tracking-[0.16em];
+}
+
+.ticket-line strong {
+  @apply text-right text-base tracking-normal;
+}
+
+.station-pair {
+  @apply my-7 flex items-center gap-2 text-3xl font-black leading-tight;
+}
+
+/* Stations share the row evenly and wrap rather than overflow the ticket —
+   English names (Kumamoto, Sapporo) are far longer than the JP kanji. */
+.station-pair span {
+  @apply min-w-0 flex-1;
+  overflow-wrap: anywhere;
+}
+
+.station-pair span:first-child {
+  @apply text-left;
+}
+
+.station-pair span:last-child {
+  @apply text-right;
+}
+
+.station-pair b {
+  @apply flex-none;
+}
+
+.ticket-meta {
+  @apply flex justify-between border-t border-black/20 pt-3 font-semibold;
+}
+
+.goods-face {
+  background: linear-gradient(135deg, #fef3c7, #fb7185 48%, #7c3aed);
+  color: #241203;
+}
+
+.goods-face span,
+.stamp-face span {
+  @apply text-xs font-bold uppercase tracking-[0.2em] opacity-80;
+}
+
+.goods-face strong,
+.stamp-face strong {
+  @apply mt-10 block text-3xl font-black leading-tight;
+}
+
+.goods-face small,
+.stamp-face small {
+  @apply mt-5 block text-sm font-semibold opacity-80;
+}
+
+.stamp-face {
+  background: #f4efe7;
+  color: #2a1710;
+}
+
+.stamp-face strong {
+  @apply border-y-4 border-red-700 py-5 text-center text-red-800;
+}
+
+/* Essay + gallery --------------------------------------------------------- */
+
+.essay {
+  @apply rounded-lg p-5;
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+
+.essay span {
+  @apply text-xs font-bold uppercase tracking-[0.18em];
+  color: var(--faint);
+}
+
+.essay p {
+  @apply m-0 mt-3 text-base leading-7;
+  color: var(--text-soft);
+}
+
+.gallery figure {
+  @apply m-0 overflow-hidden rounded-lg;
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+
+.gallery img {
+  @apply block aspect-[4/3] w-full object-cover;
+}
+
+.gallery figcaption {
+  @apply px-4 py-3 text-sm;
+  color: var(--muted);
+}
+
+/* Map markers (read on both dark + light tiles) --------------------------- */
+
+.map-marker {
+  @apply flex h-10 w-10 items-center justify-center rounded-md border-2 border-zinc-400 bg-zinc-950/90 text-sm font-black text-zinc-200 shadow-xl transition;
+}
+
+.map-marker:hover,
+.map-marker.is-active {
+  @apply border-orange-300 bg-orange-400 text-zinc-950;
+  transform: translateY(-4px) scale(1.08);
+}
+
+.map-marker--transit {
+  @apply rounded-full;
+}
+
+.map-marker--stamp {
+  @apply border-red-300;
+}
+
+/* v3 (techo) place markers — created imperatively, so styled globally. A place
+   groups ≥1 mementos; the count badge shows when it holds several. */
+.v3-mark {
+  @apply relative flex h-9 w-9 items-center justify-center rounded-full border-2 font-mono text-sm font-bold shadow-lg transition;
+  border-color: var(--color-terracotta);
+  background: var(--color-paper-0);
+  color: var(--color-terracotta);
+}
+
+.v3-mark:hover {
+  transform: scale(1.1);
+}
+
+.v3-mark.is-active {
+  background: var(--color-terracotta);
+  color: #fff;
+}
+
+.v3-mark-count {
+  @apply absolute flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[0.6rem] font-bold leading-none text-white;
+  top: -0.35rem;
+  right: -0.35rem;
+  background: var(--color-ink);
+}
+
+@media (max-width: 1000px) {
+  body {
+    overflow: auto;
+  }
+
+  .app-shell {
+    @apply block h-auto min-h-full;
+  }
+
+  .index-rail {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .map-stage {
+    @apply h-[62vh] min-h-[520px];
+  }
+
+  .detail-panel {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+}

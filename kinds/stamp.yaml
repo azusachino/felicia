@@ -2,6 +2,6 @@ kind: stamp
 anchor: point
 stub: stamp
 fields:
-  - { name: name, type: text, required: true, translatable: true }
-  - { name: shrine_or_temple, type: text, required: false, translatable: true }
+  - { name: name, type: text, required: true }
+  - { name: shrine_or_temple, type: text, required: false }
   - { name: deity, type: text, required: false }

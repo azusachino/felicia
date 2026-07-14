@@ -9,13 +9,11 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/paulmach/orb"
 
-	"github.com/azusachino/felicia/internal/domain"
 	"github.com/azusachino/felicia/internal/publication"
 	"github.com/azusachino/felicia/internal/store/pg"
 )
@@ -38,7 +36,6 @@ type staticJourney struct {
 	DateEnd        string           `json:"date_end"`
 	GPSRoute       *geoJSONGeometry `json:"gps_route,omitempty"`
 	AuthoredFields []string         `json:"authored_fields"`
-	Translations   translationMap   `json:"translations,omitempty"`
 }
 
 type staticMemento struct {
@@ -58,7 +55,6 @@ type staticMemento struct {
 	KindData      map[string]any   `json:"kind_data,omitempty"`
 	SourceRef     *string          `json:"source_ref,omitempty"`
 	Photos        []staticPhoto    `json:"photos,omitempty"`
-	Translations  translationMap   `json:"translations,omitempty"`
 }
 
 type staticPhoto struct {
@@ -70,33 +66,6 @@ type staticPhoto struct {
 	Seq         int     `json:"seq"`
 	TakenAt     *string `json:"taken_at,omitempty"`
 	SourceRef   *string `json:"source_ref,omitempty"`
-}
-
-type translationMap map[string]map[string]any
-
-func buildTranslationMap(translations []*domain.Translation) translationMap {
-	m := make(translationMap)
-	for _, t := range translations {
-		if _, ok := m[t.Lang]; !ok {
-			m[t.Lang] = make(map[string]any)
-		}
-		if strings.HasPrefix(t.Field, "kind_data.") {
-			parts := strings.Split(t.Field, ".")
-			if len(parts) == 2 {
-				kindDataMap, ok := m[t.Lang]["kind_data"].(map[string]any)
-				if !ok {
-					kindDataMap = make(map[string]any)
-					m[t.Lang]["kind_data"] = kindDataMap
-				}
-				kindDataMap[parts[1]] = t.Value
-			} else {
-				m[t.Lang][t.Field] = t.Value
-			}
-		} else {
-			m[t.Lang][t.Field] = t.Value
-		}
-	}
-	return m
 }
 
 func main() {
@@ -142,11 +111,6 @@ func run() error {
 
 	var staticJourneyList []publication.JourneyListItem
 	for _, j := range journeys {
-		trans, err := repo.ListTranslations(ctx, "journey", j.ID)
-		if err != nil {
-			return fmt.Errorf("failed to list translations for journey %s: %w", j.ID, err)
-		}
-
 		gpsGeom := toGeoJSONGeometry(j.GPSRoute)
 		sj := staticJourney{
 			ID:             j.ID.String(),
@@ -161,7 +125,6 @@ func run() error {
 			DateEnd:        j.DateEnd.Format("2006-01-02"),
 			GPSRoute:       gpsGeom,
 			AuthoredFields: j.AuthoredFields,
-			Translations:   buildTranslationMap(trans),
 		}
 		// 2. Fetch mementos for this journey
 		mementos, err := repo.ListMementosByJourney(ctx, j.ID)
@@ -171,11 +134,6 @@ func run() error {
 
 		var staticMementos []staticMemento
 		for _, m := range mementos {
-			mTrans, err := repo.ListTranslations(ctx, "memento", m.ID)
-			if err != nil {
-				return fmt.Errorf("failed to list translations for memento %s: %w", m.ID, err)
-			}
-
 			photos, err := repo.ListPhotosByMemento(ctx, m.ID)
 			if err != nil {
 				return fmt.Errorf("failed to list photos for memento %s: %w", m.ID, err)
@@ -225,7 +183,6 @@ func run() error {
 				KindData:      kindData,
 				SourceRef:     m.SourceRef,
 				Photos:        sPhotos,
-				Translations:  buildTranslationMap(mTrans),
 			}
 			staticMementos = append(staticMementos, sm)
 		}

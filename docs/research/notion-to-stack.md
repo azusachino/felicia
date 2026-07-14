@@ -2,14 +2,14 @@
 
 > 2026-06-15. The [Notion prototype](notion-prototype.md) is back-of-house only; it leaves
 > the **moat untested** (map · designed stub · animation). This note draws the bridge: how
-> Notion content crosses to our stack, and *what the first real build should be* — the moat,
+> Notion content crosses to our stack, and _what the first real build should be_ — the moat,
 > not the CRUD. Research-stage sequencing, not a spec. Under
 > `felicia:decision:notion-schema-sandbox`.
 
 ## The trap to avoid
 
 The tempting first build is the part Notion already does well: trip/memento CRUD + an
-authoring UI. **Don't.** Notion *is* that, for free, indefinitely. Rebuilding it first spends
+authoring UI. **Don't.** Notion _is_ that, for free, indefinitely. Rebuilding it first spends
 months re-creating a back-office while the thing that makes felicia worth existing — the
 map-indexed, stub-rendered, animated scrapbook — stays unproven.
 
@@ -18,7 +18,7 @@ map-indexed, stub-rendered, animated scrapbook — stays unproven.
 
 ## Step 1 — the moat spike (the real first build)
 
-The smallest thing that tests what Notion *can't*, now as a web MVP: Svelte + TypeScript UI,
+The smallest thing that tests what Notion _can't_, now as a web MVP: Svelte + TypeScript UI,
 Tailwind styling, and MapLibre GL for the map. This keeps the liuaaron-shaped front-of-house
 from the [teardown](liuaaron-teardown.md):
 
@@ -28,12 +28,12 @@ from the [teardown](liuaaron-teardown.md):
 - **One memento** rendered **template-first** as a designed stub (pick the `goods` kind — the
   fuwamiku — since it's the furthest from a "ticket" and the best taste test).
 - **One open-animation** on click → essay + gallery.
-If that one screen feels like the artifact, the moat is real and the model survives contact.
-If it doesn't, we learned it for the price of one page, not a product.
+  If that one screen feels like the artifact, the moat is real and the model survives contact.
+  If it doesn't, we learned it for the price of one page, not a product.
 
 ## Step 2 — the data bridge (Notion → Memento-creation seam)
 
-Notion is the *source*, our importer is the *sink* — and it's the **same Memento-creation
+Notion is the _source_, our importer is the _sink_ — and it's the **same Memento-creation
 seam** as every other source ([mementos-not-tickets](mementos-not-tickets.md)). So a
 `notion` source is just one more interface impl behind that seam:
 
@@ -48,7 +48,7 @@ Notion API ──▶ notionSource (impl) ──▶ Memento-creation seam ──�
   returns structured pages + stable enough file URLs to re-fetch. Re-fetch each file →
   resize + **EXIF-strip** → R2 (the privacy invariant, free at the boundary).
 - **Field-scoped, re-runnable.** Same rule as the importer everywhere: a re-pull never
-  overwrites fields authored on our side. Early on there *are* no authored-on-our-side
+  overwrites fields authored on our side. Early on there _are_ no authored-on-our-side
   fields (Notion holds them), so this is trivial — and it stays correct when authoring later
   moves onto our stack.
 - **Notion → model mapping** is 1:1 (that's why we built the template to the ER): Trip→Trip,

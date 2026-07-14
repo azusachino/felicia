@@ -1,7 +1,7 @@
 # felicia — Direction
 
 > **Stage: research.** Deliberately unhurried (~6-month horizon). This doc is the light
-> north star — *what felicia is* and *which way we're pointed* — not a spec. Detailed
+> north star — _what felicia is_ and _which way we're pointed_ — not a spec. Detailed
 > design thinking is parked in `archive/` and drawn on when we choose to move
 > to the spec stage. Exploration lives in `research/`.
 
@@ -16,7 +16,7 @@ gallery. The map is the index; the mementos are the stories.
 
 > **Memento, not ticket.** Physical tickets are dying and the anchor often isn't a ticket
 > anyway, so the click-target generalizes: `Ticket → Memento` with a `kind`
-> (ticket · goods · receipt · souvenir · stamp · …), and the stub is *rendered from data*,
+> (ticket · goods · receipt · souvenir · stamp · …), and the stub is _rendered from data_,
 > template-first, not scanned. Full reasoning:
 > [`research/mementos-not-tickets.md`](research/mementos-not-tickets.md)
 > (ADR `felicia:decision:memento-not-ticket`).
@@ -28,7 +28,7 @@ path:
 
 - **Build the personal artifact first** — a beautiful journal for one author (you). This
   is the liuaaron model and it's the right first goal.
-- **Keep the seams swappable** so a future product pivot is *additive, not a rewrite*.
+- **Keep the seams swappable** so a future product pivot is _additive, not a rewrite_.
   "Product-ready" means **clean seams, not built features** — we do not build product
   surface now.
 - The reasoning (and the competitive reality — Polarsteps already owns this space) is in
@@ -48,7 +48,7 @@ thing built — still research, not locked.
 
 1. **Sources behind interfaces** — route source and photo source are interfaces; the pure
    core imports no source-specific types. Swapping a GPS/photo source never reaches the core.
-2. **Trigger-agnostic importer** — the import *logic* is a plain callable, not glued to CLI
+2. **Trigger-agnostic importer** — the import _logic_ is a plain callable, not glued to CLI
    arg-parsing, so a future background sync or HTTP handler reuses it.
 3. **A single journal/account root** — everything hangs off one root entity even though
    there's exactly one. Multi-tenant later = "add a second root," not "reshape every table."
@@ -62,7 +62,7 @@ Companion mobile app · OAuth photo providers (Google/Apple Photos) · backgroun
 
 ## The shape we keep believing in
 
-These are *leanings*, not locks — they survive into the spec stage unless research unseats
+These are _leanings_, not locks — they survive into the spec stage unless research unseats
 them. Detail in [`archive/design.md`](archive/design.md).
 
 - **Engine:** a pure importer core (join photos + GPS on timestamp, cluster waypoints,
@@ -83,8 +83,8 @@ them. Detail in [`archive/design.md`](archive/design.md).
   with a per-trip **GPX/GeoJSON file**. Open: is manual route input good enough, or is
   "no track" common enough to need the photo-trail fallback? (see saas-dataflow,
   product-vs-personal)
-- **Stub rendering** — *resolved* to **template-first** (rendered from data; photographed
-  stub is the bonus), per mementos-not-tickets. Still open: *which* `kind` forms ship first
+- **Stub rendering** — _resolved_ to **template-first** (rendered from data; photographed
+  stub is the bonus), per mementos-not-tickets. Still open: _which_ `kind` forms ship first
   and how much design each earns.
 - **Ticket-open animation** — flip vs. shared-element morph vs. tear/unfold; prototype later.
 - **I18n shape** — how much of the first demo/spec is translated vs. just architected for

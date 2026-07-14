@@ -20,6 +20,8 @@ coverage.*
 # Docs (mkdocs build output + uv env; uv.lock is committed)
 /site/
 .venv/
+__pycache__/
+*.py[cod]
 
 # OS / editor
 .DS_Store

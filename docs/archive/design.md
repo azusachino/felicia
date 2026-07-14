@@ -54,16 +54,16 @@ flowchart TB
   pg --> api
 ```
 
-| Layer | Choice | Notes |
-| --- | --- | --- |
-| **Backend** | Go API (REST/JSON) | strong TDD story; single binary |
-| **DB** | Postgres + PostGIS | relational + real geo (route lines, points, bbox) |
-| **Object storage** | **S3-compatible interface; R2 backend** | coded to an `ObjectStore` interface — R2/MinIO/B2 swappable by config |
-| **Frontend** | SPA, Vite + Mapbox GL | public map site + a separate admin app |
-| **Host** | Raspberry Pi, docker-compose | self-hosted, sovereign |
-| **Public exposure** | Cloudflare Tunnel | no open ports on the home network |
-| **Photo source** | self-hosted Immich (API) | a ticket stub is just a geotagged photo |
-| **Route source** | self-hosted Dawarich + Overland (iOS) | passive phone logging; multi-day; Watch can't |
+| Layer               | Choice                                  | Notes                                                                 |
+| ------------------- | --------------------------------------- | --------------------------------------------------------------------- |
+| **Backend**         | Go API (REST/JSON)                      | strong TDD story; single binary                                       |
+| **DB**              | Postgres + PostGIS                      | relational + real geo (route lines, points, bbox)                     |
+| **Object storage**  | **S3-compatible interface; R2 backend** | coded to an `ObjectStore` interface — R2/MinIO/B2 swappable by config |
+| **Frontend**        | SPA, Vite + Mapbox GL                   | public map site + a separate admin app                                |
+| **Host**            | Raspberry Pi, docker-compose            | self-hosted, sovereign                                                |
+| **Public exposure** | Cloudflare Tunnel                       | no open ports on the home network                                     |
+| **Photo source**    | self-hosted Immich (API)                | a ticket stub is just a geotagged photo                               |
+| **Route source**    | self-hosted Dawarich + Overland (iOS)   | passive phone logging; multi-day; Watch can't                         |
 
 **Why not the Watch for routes:** Apple Watch GPS lasts hours, not multi-day trips. A
 passive iPhone logger (significant-location-change) feeding **Dawarich** runs for days on
@@ -80,7 +80,7 @@ Two halves, different jobs:
   **photos/tickets + EXIF** from an Immich album, runs **vision-LLM OCR** on ticket images
   to pre-fill `type / vendor / price / datetime`, derives **waypoints** by clustering, then
   upserts the DB and uploads resized images.
-- **E — admin UI (authorship):** where *you* write the **essay**, curate & order the
+- **E — admin UI (authorship):** where _you_ write the **essay**, curate & order the
   **extra photos** (drag-drop upload **or** an Immich picker), polish titles, and choose the
   ticket's open-**animation**.
 
@@ -166,17 +166,17 @@ erDiagram
 
 ## 5. Source-of-truth & the no-clobber rule
 
-**Postgres is canonical.** Because both the importer *and* the admin UI write to it, fields
+**Postgres is canonical.** Because both the importer _and_ the admin UI write to it, fields
 are split by **provenance** and the importer is **field-scoped** — it touches only what it
 owns and never overwrites what you authored. Re-import is always non-destructive.
 
-| Field group | Owner | Examples |
-| --- | --- | --- |
+| Field group  | Owner              | Examples                                                                                       |
+| ------------ | ------------------ | ---------------------------------------------------------------------------------------------- |
 | **Ingested** | `waypoints import` | `route`, `stub_image`, `location`, `occurred_at`, `type`, OCR'd `vendor`/`price`, `source_ref` |
-| **Authored** | admin UI (you) | `title`, `essay`, `animation`, photo selection & order, `summary` |
+| **Authored** | admin UI (you)     | `title`, `essay`, `animation`, photo selection & order, `summary`                              |
 
 **Backup / versioning:** a one-way `waypoints export` dumps DB → YAML into git on
-commit/schedule. Git is a *versioned backup*, not the live store — so a wiped Pi means
+commit/schedule. Git is a _versioned backup_, not the live store — so a wiped Pi means
 "restore DB, re-import," not data loss.
 
 ```mermaid
@@ -241,13 +241,13 @@ Locked (see asobi `felicia:decision:*` for full ADRs):
 - **source-of-truth** — Postgres canonical; field-scoped importer; `export` → git backup.
 - **content-model** — Journey → Ticket → {essay, extra photos, open-animation}; ticket is the click target.
 - **storage** — code to an `ObjectStore` (S3-compatible) interface; **R2** is the current backend; MinIO/B2 swappable by config.
-- **stub-rendering** *(2026-06-12)* — type-templates (HTML/CSS per ticket type) filled from structured fields; photographed stub as fallback. (liuaaron renders all tickets as components — see [teardown](../research/liuaaron-teardown.md).)
-- **track-ingest** *(2026-06-12)* — **live**: Overland (iOS) / OwnTracks (Android) post to Dawarich mid-trip through an authenticated Cloudflare Tunnel hostname (Access service token + API key). Not buffer-at-home.
-- **ticket-time-place** *(2026-06-12)* — stub capture is mixed (in-the-moment or hotel/home batch), so: `occurred_at` = OCR datetime > photo EXIF; `location` = route-snap at `occurred_at` > photo EXIF (importer-spec §9).
-- **route-geometry** *(2026-06-12)* — `MultiLineString`, segments split on time gap > 60 min or jump > 50 km (nights, flights stay honest gaps). ([spec-gaps](spec-gaps.md) B2)
-- **immich-marker** *(2026-06-12)* — ticket stubs marked with Immich **tag `ticket`**, not favorite. (spec-gaps A1)
-- **admin-auth** *(2026-06-12)* — **Cloudflare Access** on the admin hostname; API verifies the Access JWT on `/api/admin/*`; no app-level auth. (spec-gaps D4)
-- **field-classes** *(2026-06-12)* — provenance is **three** classes: INGESTED / OVERRIDABLE (importer writes until human edits, tracked per-row in `authored_fields`) / AUTHORED. Replaces the two-class table above where they conflict. (spec-gaps B1, importer-spec §7)
+- **stub-rendering** _(2026-06-12)_ — type-templates (HTML/CSS per ticket type) filled from structured fields; photographed stub as fallback. (liuaaron renders all tickets as components — see [teardown](../research/liuaaron-teardown.md).)
+- **track-ingest** _(2026-06-12)_ — **live**: Overland (iOS) / OwnTracks (Android) post to Dawarich mid-trip through an authenticated Cloudflare Tunnel hostname (Access service token + API key). Not buffer-at-home.
+- **ticket-time-place** _(2026-06-12)_ — stub capture is mixed (in-the-moment or hotel/home batch), so: `occurred_at` = OCR datetime > photo EXIF; `location` = route-snap at `occurred_at` > photo EXIF (importer-spec §9).
+- **route-geometry** _(2026-06-12)_ — `MultiLineString`, segments split on time gap > 60 min or jump > 50 km (nights, flights stay honest gaps). ([spec-gaps](spec-gaps.md) B2)
+- **immich-marker** _(2026-06-12)_ — ticket stubs marked with Immich **tag `ticket`**, not favorite. (spec-gaps A1)
+- **admin-auth** _(2026-06-12)_ — **Cloudflare Access** on the admin hostname; API verifies the Access JWT on `/api/admin/*`; no app-level auth. (spec-gaps D4)
+- **field-classes** _(2026-06-12)_ — provenance is **three** classes: INGESTED / OVERRIDABLE (importer writes until human edits, tracked per-row in `authored_fields`) / AUTHORED. Replaces the two-class table above where they conflict. (spec-gaps B1, importer-spec §7)
 
 **Open:**
 

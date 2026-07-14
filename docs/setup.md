@@ -1,17 +1,15 @@
 # Setup — felicia
 
-> For collaborators. **Stage: research** — there's no application code yet, so this is the
-> toolchain you need to build docs, run the (skipped-until-it-exists) gate, and be ready
-> when the first Go package lands. North star: [`direction.md`](direction.md).
+> For collaborators. The repository contains the working Go workspace, SQLite workflow, and
+> frontend checks. North star: [`direction.md`](direction.md).
 
 ## Prerequisites
 
 - **mise** — language runtimes. `mise install` reads `mise.toml` (go 1.26, bun 1.3) and
-  shims them onto `PATH`. Use mise for runtimes *only*.
+  shims them onto `PATH`. Use mise for runtimes _only_.
 - **nix** (flakes enabled) — system tools. `nix develop` enters a shell with
-  golangci-lint, goose, and **Postgres 18 + PostGIS**. You usually don't need to enter it
-  manually: `make` wraps nix tools via `NIX_RUN` automatically.
-- **uv** — used only for the docs preview (isolated Python env; never touches Go/bun).
+  golangci-lint, goose, sqlc, uv, and **Postgres 18 + PostGIS**. You usually don't need to enter it
+  manually: `make` wraps Nix tools via `NIX_RUN` and `UV_RUN` automatically.
 
 ## Common commands
 
@@ -20,12 +18,12 @@ mise install        # runtimes (go, bun)
 nix develop         # optional: enter the system-tool shell
 make help           # list targets
 make docs           # live-preview the docs (see below)
-make check          # fmt + vet + lint + test   — before commit (no-ops until Go exists)
+make check          # formatting + vet + lint + tests — before commit
 make validate       # check + build             — before PR
 ```
 
-`make check` / `make validate` skip all Go targets cleanly while the tree has no `.go`
-files, so the gate is green during the research stage.
+`make check` covers every Go workspace module, UV feature-contract tests, and repository
+formatting. `make web-check` adds frontend type, lint, and formatting checks.
 
 ## Preview the docs
 

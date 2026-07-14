@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/paulmach/orb"
 
-	"github.com/azusachino/felicia/internal/domain"
+	"github.com/azusachino/felicia/apps/core/domain"
 	"github.com/azusachino/felicia/internal/store/pg"
 )
 
@@ -28,7 +28,7 @@ func TestPgRepositoryIntegration(t *testing.T) {
 	defer pool.Close()
 
 	// Clean up old test data to ensure a reproducible run
-	_, _ = pool.Exec(ctx, "TRUNCATE TABLE journal CASCADE")
+	_, _ = pool.Exec(ctx, "TRUNCATE TABLE tb_journal CASCADE")
 
 	repo := pg.NewRepository(pool)
 
@@ -166,50 +166,6 @@ func TestPgRepositoryIntegration(t *testing.T) {
 		t.Errorf("expected photo object key %s, got %s", photo.ObjectKey, fetchedPhoto.ObjectKey)
 	}
 
-	// 5. Upsert and List Translations
-	trans := &domain.Translation{
-		ID:         uuid.New(),
-		OwnerType:  "memento",
-		OwnerID:    memento.ID,
-		Lang:       "en",
-		Field:      "title",
-		Value:      "Tokyo Station Ticket",
-		Provenance: "machine",
-	}
-	err = repo.UpsertTranslation(ctx, trans)
-	if err != nil {
-		t.Fatalf("failed to upsert translation: %v", err)
-	}
-
-	// Test No-Clobber for translations:
-	// A. Human edits translation value
-	trans.Value = "Tokyo Station Admission Ticket (Human)"
-	trans.Provenance = "authored"
-	err = repo.UpsertTranslation(ctx, trans)
-	if err != nil {
-		t.Fatalf("failed to update translation: %v", err)
-	}
-
-	// B. Importer tries to overwrite it with machine translation
-	trans2 := *trans
-	trans2.Value = "Tokyo Station Ticket (Machine)"
-	trans2.Provenance = "machine"
-	err = repo.UpsertTranslation(ctx, &trans2)
-	if err != nil {
-		t.Fatalf("failed to upsert translation: %v", err)
-	}
-
-	// C. Fetch and assert the value is protected
-	translations, err := repo.ListTranslations(ctx, "memento", memento.ID)
-	if err != nil {
-		t.Fatalf("failed to list translations: %v", err)
-	}
-	if len(translations) != 1 {
-		t.Fatalf("expected 1 translation, got %d", len(translations))
-	}
-	if translations[0].Value != "Tokyo Station Admission Ticket (Human)" {
-		t.Errorf("expected translation value to be protected, got: %s", translations[0].Value)
-	}
 }
 
 func TestPgTransitLegsAndRoute(t *testing.T) {
@@ -225,7 +181,7 @@ func TestPgTransitLegsAndRoute(t *testing.T) {
 	}
 	defer pool.Close()
 
-	_, _ = pool.Exec(ctx, "TRUNCATE TABLE journal CASCADE")
+	_, _ = pool.Exec(ctx, "TRUNCATE TABLE tb_journal CASCADE")
 	repo := pg.NewRepository(pool)
 
 	journal := &domain.Journal{ID: uuid.New(), CreatedAt: time.Now().UTC().Truncate(time.Microsecond)}

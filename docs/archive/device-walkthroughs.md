@@ -1,7 +1,7 @@
 # Device-set walkthroughs — felicia
 
 > Per-trip rituals by **device kit**. [`research/ingestion-workflows.md`](../research/ingestion-workflows.md)
-> compared *approaches* (A–E); this maps the chosen **A+E** loop onto the devices you
+> compared _approaches_ (A–E); this maps the chosen **A+E** loop onto the devices you
 > actually carry. Decisions baked in (2026-06-12): **live track ingest** through the
 > Cloudflare Tunnel, **template-rendered stubs with photo fallback**, **mixed stub
 > capture** handled by precedence rules (OCR datetime > EXIF; location snapped to route).
@@ -157,7 +157,7 @@ Forgot the logger / battery died / privacy day. The pipeline degrades instead of
 failing:
 
 - **No track at all** → the importer synthesizes a **photo-trail** route from geotagged
-  photos in time order (sparse but honest), only when *no* track source is configured —
+  photos in time order (sparse but honest), only when _no_ track source is configured —
   never as a silent fallback (spec §10).
 - **Partial track** → Dawarich covers what it has; gaps stay gaps (see the open
   per-day-segments question, design §8).

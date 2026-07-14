@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -16,14 +15,18 @@ import (
 	"github.com/google/uuid"
 	"github.com/paulmach/orb"
 
-	"github.com/azusachino/felicia/internal/domain"
-	"github.com/azusachino/felicia/internal/importer"
+	"github.com/azusachino/felicia/apps/core/domain"
+	"github.com/azusachino/felicia/apps/runtime/importer"
+	journeyruntime "github.com/azusachino/felicia/apps/runtime/journey"
+	mementoruntime "github.com/azusachino/felicia/apps/runtime/memento"
 	"github.com/azusachino/felicia/internal/publication"
 )
 
 // Server represents the API server.
 type Server struct {
 	repo                  domain.Repository
+	journeyWriter         *journeyruntime.Service
+	mementoWriter         *mementoruntime.Service
 	registry              *domain.Registry
 	cache                 *CacheManager
 	logger                *slog.Logger
@@ -49,6 +52,8 @@ func NewServer(repo domain.Repository, registry *domain.Registry, cache *CacheMa
 	}
 	return &Server{
 		repo:                  repo,
+		journeyWriter:         journeyruntime.New(repo),
+		mementoWriter:         mementoruntime.New(repo),
 		registry:              registry,
 		cache:                 cache,
 		logger:                logger,
@@ -107,8 +112,6 @@ func (s *Server) Handler() http.Handler {
 		r.Get("/mementos/{id}", s.handleGetMemento)
 		r.Post("/mementos", s.handleUpsertMemento)
 		r.Post("/photos", s.handleUpsertPhoto)
-		r.Get("/mementos/{id}/translations", s.handleListTranslations)
-		r.Post("/translations", s.handleUpsertTranslation)
 
 		// Ingest triggers (auto-seed from the configured sources)
 		r.Post("/journeys/{id}/sync-route", s.handleSyncRoute)
@@ -386,7 +389,7 @@ func (s *Server) handleUpsertJourney(w http.ResponseWriter, r *http.Request) {
 		AuthoredFields: req.AuthoredFields,
 	}
 
-	if err := s.repo.UpsertJourney(r.Context(), journey); err != nil {
+	if err := s.journeyWriter.Save(r.Context(), journey); err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -433,23 +436,25 @@ type mementoGeom struct {
 }
 
 type upsertMementoRequest struct {
-	ID             uuid.UUID      `json:"id"`
-	JourneyID      uuid.UUID      `json:"journey_id"`
-	Kind           string         `json:"kind"`
-	Seq            int            `json:"seq"`
-	OccurredAt     string         `json:"occurred_at"` // RFC3339
-	OccurredTZ     string         `json:"occurred_tz"`
-	Geom           *mementoGeom   `json:"geom"`
-	Title          string         `json:"title"`
-	Place          string         `json:"place"`
-	Vendor         *string        `json:"vendor,omitempty"`
-	Essay          *string        `json:"essay,omitempty"`
-	PriceAmount    *int64         `json:"price_amount,omitempty"`
-	PriceCurrency  *string        `json:"price_currency,omitempty"`
-	KindData       map[string]any `json:"kind_data"`
-	SourceRef      *string        `json:"source_ref,omitempty"`
-	AuthoredFields []string       `json:"authored_fields"`
-	OrphanedAt     *string        `json:"orphaned_at,omitempty"`
+	ID               uuid.UUID      `json:"id"`
+	JourneyID        uuid.UUID      `json:"journey_id"`
+	Kind             string         `json:"kind"`
+	Seq              int            `json:"seq"`
+	OccurredAt       string         `json:"occurred_at"` // RFC3339
+	OccurredTZ       string         `json:"occurred_tz"`
+	Geom             *mementoGeom   `json:"geom"`
+	Title            string         `json:"title"`
+	Place            string         `json:"place"`
+	Vendor           *string        `json:"vendor,omitempty"`
+	Essay            *string        `json:"essay,omitempty"`
+	PriceAmount      *int64         `json:"price_amount,omitempty"`
+	PriceCurrency    *string        `json:"price_currency,omitempty"`
+	KindData         map[string]any `json:"kind_data"`
+	SourceRef        *string        `json:"source_ref,omitempty"`
+	AuthoredFields   []string       `json:"authored_fields"`
+	OrphanedAt       *string        `json:"orphaned_at,omitempty"`
+	State            string         `json:"state,omitempty"`
+	ExpectedRevision *int64         `json:"expected_revision,omitempty"`
 }
 
 func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
@@ -458,9 +463,9 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "invalid request JSON")
 		return
 	}
-
-	if req.AuthoredFields == nil {
-		req.AuthoredFields = []string{}
+	state := domain.MementoState(req.State)
+	if state == "" {
+		state = domain.MementoDraft
 	}
 
 	// 1. Template registry validation
@@ -473,7 +478,7 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	issues := domain.Validate(tpl, req.KindData)
+	issues := domain.ValidateForState(tpl, req.KindData, state)
 	if len(issues) > 0 {
 		respondJSON(w, http.StatusBadRequest, map[string]any{
 			"error":  "validation failed",
@@ -482,9 +487,31 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	occurred, err := time.Parse(time.RFC3339, req.OccurredAt)
-	if err != nil {
-		respondError(w, http.StatusBadRequest, "invalid occurred_at timestamp format (RFC3339)")
+	var occurred time.Time
+	if req.OccurredAt != "" {
+		var parseErr error
+		occurred, parseErr = time.Parse(time.RFC3339, req.OccurredAt)
+		if parseErr != nil {
+			respondError(w, http.StatusBadRequest, "invalid occurred_at timestamp format (RFC3339)")
+			return
+		}
+	} else if state != domain.MementoDraft {
+		respondError(w, http.StatusBadRequest, "occurred_at is required outside draft state")
+		return
+	}
+	if req.OccurredTZ != "" {
+		if issues := domain.ValidateOccurredTimezone(req.OccurredTZ); len(issues) > 0 {
+			respondJSON(w, http.StatusBadRequest, map[string]any{
+				"error":  "validation failed",
+				"issues": issues,
+			})
+			return
+		}
+	} else if state != domain.MementoDraft {
+		respondJSON(w, http.StatusBadRequest, map[string]any{
+			"error":  "validation failed",
+			"issues": []domain.Issue{{Field: "occurred_tz", Code: domain.CodeInvalidTimezone}},
+		})
 		return
 	}
 
@@ -521,6 +548,17 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	geometryIssues := domain.ValidateMementoGeometry(tpl.Anchor, geom)
+	if req.Geom == nil && state == domain.MementoDraft {
+		geometryIssues = nil
+	}
+	if len(geometryIssues) > 0 {
+		respondJSON(w, http.StatusBadRequest, map[string]any{
+			"error":  "validation failed",
+			"issues": geometryIssues,
+		})
+		return
+	}
 
 	kindDataRaw, err := json.Marshal(req.KindData)
 	if err != nil {
@@ -529,26 +567,37 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 	}
 
 	memento := &domain.Memento{
-		ID:             req.ID,
-		JourneyID:      req.JourneyID,
-		Kind:           req.Kind,
-		Seq:            req.Seq,
-		OccurredAt:     occurred,
-		OccurredTZ:     req.OccurredTZ,
-		Geom:           geom,
-		Title:          req.Title,
-		Place:          req.Place,
-		Vendor:         req.Vendor,
-		Essay:          req.Essay,
-		PriceAmount:    req.PriceAmount,
-		PriceCurrency:  req.PriceCurrency,
-		KindData:       kindDataRaw,
-		SourceRef:      req.SourceRef,
-		AuthoredFields: req.AuthoredFields,
-		OrphanedAt:     orphaned,
+		ID:            req.ID,
+		JourneyID:     req.JourneyID,
+		Kind:          req.Kind,
+		Seq:           req.Seq,
+		OccurredAt:    occurred,
+		OccurredTZ:    req.OccurredTZ,
+		Geom:          geom,
+		Title:         req.Title,
+		Place:         req.Place,
+		Vendor:        req.Vendor,
+		Essay:         req.Essay,
+		PriceAmount:   req.PriceAmount,
+		PriceCurrency: req.PriceCurrency,
+		KindData:      kindDataRaw,
+		SourceRef:     req.SourceRef,
+		OrphanedAt:    orphaned,
 	}
 
-	if err := s.repo.UpsertMemento(r.Context(), memento); err != nil {
+	if err := s.mementoWriter.ApplyManualPatch(r.Context(), &domain.ManualMementoPatch{
+		Memento: memento,
+		Fields: []string{
+			"journey_id", "kind", "seq", "occurred_at", "occurred_tz", "geom",
+			"title", "place", "vendor", "essay", "price_amount", "price_currency", "kind_data",
+		},
+		State:            state,
+		ExpectedRevision: req.ExpectedRevision,
+	}); err != nil {
+		if errors.Is(err, domain.ErrWriteConflict) {
+			respondError(w, http.StatusConflict, "memento was modified; reload before saving")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -589,59 +638,6 @@ func (s *Server) handleUpsertPhoto(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.repo.UpsertPhoto(r.Context(), photo); err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	s.cache.InvalidateAll(r.Context())
-	respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-}
-
-// Translation handlers (Admin)
-
-func (s *Server) handleListTranslations(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
-	id, err := uuid.Parse(idStr)
-	if err != nil {
-		respondError(w, http.StatusBadRequest, "invalid memento UUID")
-		return
-	}
-	ts, err := s.repo.ListTranslations(r.Context(), "memento", id)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	respondJSON(w, http.StatusOK, ts)
-}
-
-type upsertTranslationRequest struct {
-	ID         uuid.UUID `json:"id"`
-	OwnerType  string    `json:"owner_type"`
-	OwnerID    uuid.UUID `json:"owner_id"`
-	Lang       string    `json:"lang"`
-	Field      string    `json:"field"`
-	Value      string    `json:"value"`
-	Provenance string    `json:"provenance"`
-}
-
-func (s *Server) handleUpsertTranslation(w http.ResponseWriter, r *http.Request) {
-	var req upsertTranslationRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request JSON")
-		return
-	}
-
-	translation := &domain.Translation{
-		ID:         req.ID,
-		OwnerType:  req.OwnerType,
-		OwnerID:    req.OwnerID,
-		Lang:       req.Lang,
-		Field:      req.Field,
-		Value:      req.Value,
-		Provenance: req.Provenance,
-	}
-
-	if err := s.repo.UpsertTranslation(r.Context(), translation); err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -813,19 +809,18 @@ func (s *Server) handleGetPublicJourneys(w http.ResponseWriter, r *http.Request)
 }
 
 type publicJourney struct {
-	ID             uuid.UUID                 `json:"id"`
-	JournalID      uuid.UUID                 `json:"journal_id"`
-	Slug           string                    `json:"slug"`
-	SourceRef      *string                   `json:"source_ref,omitempty"`
-	Title          string                    `json:"title"`
-	Place          string                    `json:"place"`
-	Country        *string                   `json:"country,omitempty"`
-	Region         *string                   `json:"region,omitempty"`
-	DateStart      string                    `json:"date_start"`
-	DateEnd        string                    `json:"date_end"`
-	GPSRoute       *geoJSONGeom              `json:"gps_route,omitempty"`
-	AuthoredFields []string                  `json:"authored_fields"`
-	Translations   map[string]map[string]any `json:"translations,omitempty"`
+	ID             uuid.UUID    `json:"id"`
+	JournalID      uuid.UUID    `json:"journal_id"`
+	Slug           string       `json:"slug"`
+	SourceRef      *string      `json:"source_ref,omitempty"`
+	Title          string       `json:"title"`
+	Place          string       `json:"place"`
+	Country        *string      `json:"country,omitempty"`
+	Region         *string      `json:"region,omitempty"`
+	DateStart      string       `json:"date_start"`
+	DateEnd        string       `json:"date_end"`
+	GPSRoute       *geoJSONGeom `json:"gps_route,omitempty"`
+	AuthoredFields []string     `json:"authored_fields"`
 }
 
 func (s *Server) handleGetPublicJourneyDetails(w http.ResponseWriter, r *http.Request) {
@@ -849,12 +844,6 @@ func (s *Server) handleGetPublicJourneyDetails(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	trans, err := s.repo.ListTranslations(r.Context(), "journey", j.ID)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
 	pj := publicJourney{
 		ID:             j.ID,
 		JournalID:      j.JournalID,
@@ -868,7 +857,6 @@ func (s *Server) handleGetPublicJourneyDetails(w http.ResponseWriter, r *http.Re
 		DateEnd:        j.DateEnd.Format("2006-01-02"),
 		GPSRoute:       toGeoJSON(j.GPSRoute),
 		AuthoredFields: j.AuthoredFields,
-		Translations:   buildAPITranslationMap(trans),
 	}
 
 	jsonData, err := json.Marshal(pj)
@@ -880,23 +868,22 @@ func (s *Server) handleGetPublicJourneyDetails(w http.ResponseWriter, r *http.Re
 }
 
 type publicMemento struct {
-	ID            uuid.UUID                 `json:"id"`
-	JourneyID     uuid.UUID                 `json:"journey_id"`
-	Kind          string                    `json:"kind"`
-	Seq           int                       `json:"seq"`
-	OccurredAt    string                    `json:"occurred_at"`
-	OccurredTZ    string                    `json:"occurred_tz"`
-	Geom          *geoJSONGeom              `json:"geom,omitempty"`
-	Title         string                    `json:"title"`
-	Place         string                    `json:"place"`
-	Vendor        *string                   `json:"vendor,omitempty"`
-	Essay         *string                   `json:"essay,omitempty"`
-	PriceAmount   *int64                    `json:"price_amount,omitempty"`
-	PriceCurrency *string                   `json:"price_currency,omitempty"`
-	KindData      json.RawMessage           `json:"kind_data,omitempty"`
-	SourceRef     *string                   `json:"source_ref,omitempty"`
-	Photos        []publicPhoto             `json:"photos,omitempty"`
-	Translations  map[string]map[string]any `json:"translations,omitempty"`
+	ID            uuid.UUID       `json:"id"`
+	JourneyID     uuid.UUID       `json:"journey_id"`
+	Kind          string          `json:"kind"`
+	Seq           int             `json:"seq"`
+	OccurredAt    string          `json:"occurred_at"`
+	OccurredTZ    string          `json:"occurred_tz"`
+	Geom          *geoJSONGeom    `json:"geom,omitempty"`
+	Title         string          `json:"title"`
+	Place         string          `json:"place"`
+	Vendor        *string         `json:"vendor,omitempty"`
+	Essay         *string         `json:"essay,omitempty"`
+	PriceAmount   *int64          `json:"price_amount,omitempty"`
+	PriceCurrency *string         `json:"price_currency,omitempty"`
+	KindData      json.RawMessage `json:"kind_data,omitempty"`
+	SourceRef     *string         `json:"source_ref,omitempty"`
+	Photos        []publicPhoto   `json:"photos,omitempty"`
 }
 
 type publicPhoto struct {
@@ -939,12 +926,6 @@ func (s *Server) handleGetPublicMementos(w http.ResponseWriter, r *http.Request)
 
 	var list []publicMemento
 	for _, m := range mementos {
-		mTrans, err := s.repo.ListTranslations(r.Context(), "memento", m.ID)
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-
 		photos, err := s.repo.ListPhotosByMemento(r.Context(), m.ID)
 		if err != nil {
 			respondError(w, http.StatusInternalServerError, err.Error())
@@ -992,7 +973,6 @@ func (s *Server) handleGetPublicMementos(w http.ResponseWriter, r *http.Request)
 			KindData:      kindData,
 			SourceRef:     m.SourceRef,
 			Photos:        sPhotos,
-			Translations:  buildAPITranslationMap(mTrans),
 		})
 	}
 
@@ -1052,31 +1032,6 @@ func toGeoJSON(geom orb.Geometry) *geoJSONGeom {
 	default:
 		return nil
 	}
-}
-
-func buildAPITranslationMap(translations []*domain.Translation) map[string]map[string]any {
-	m := make(map[string]map[string]any)
-	for _, t := range translations {
-		if _, ok := m[t.Lang]; !ok {
-			m[t.Lang] = make(map[string]any)
-		}
-		if strings.HasPrefix(t.Field, "kind_data.") {
-			parts := strings.Split(t.Field, ".")
-			if len(parts) == 2 {
-				kindDataMap, ok := m[t.Lang]["kind_data"].(map[string]any)
-				if !ok {
-					kindDataMap = make(map[string]any)
-					m[t.Lang]["kind_data"] = kindDataMap
-				}
-				kindDataMap[parts[1]] = t.Value
-			} else {
-				m[t.Lang][t.Field] = t.Value
-			}
-		} else {
-			m[t.Lang][t.Field] = t.Value
-		}
-	}
-	return m
 }
 
 // Helper responders

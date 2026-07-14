@@ -2,7 +2,7 @@
 
 > The spec for the ingestion tool. It is the contract the **TDD tests are derived from**.
 > Reads on top of [`design.md`](./design.md); see §3 (A+E loop), §4 (data model), §5
-> (no-clobber rule) there. Go signatures below are *sketches to pin shapes*, not final code.
+> (no-clobber rule) there. Go signatures below are _sketches to pin shapes_, not final code.
 >
 > Status: **spec** — review before we write the first failing tests.
 > **Amendments pending fold-in:** [`spec-gaps.md`](spec-gaps.md) resolves every known
@@ -247,11 +247,11 @@ Match existing rows by **`SourceRef`** (ingested) or `Slug` (journey).
 Fields come in **three classes** (not two — see [`spec-gaps.md`](spec-gaps.md) B1; the
 old ingested/authored split couldn't express "OCR pre-fill that a human may correct"):
 
-| Class | Importer | Admin UI | Examples |
-| --- | --- | --- | --- |
-| **INGESTED** | always writes | read-only | route, stub_image, source_ref, taken_at, location |
-| **OVERRIDABLE** | writes until human edits | editable | ticket type/vendor/price/occurred_at, waypoint name, ticket seq, journey country/region/dates |
-| **AUTHORED** | never writes | owns | title, essay, summary, animation, captions, photo selection/order |
+| Class           | Importer                 | Admin UI  | Examples                                                                                      |
+| --------------- | ------------------------ | --------- | --------------------------------------------------------------------------------------------- |
+| **INGESTED**    | always writes            | read-only | route, stub_image, source_ref, taken_at, location                                             |
+| **OVERRIDABLE** | writes until human edits | editable  | ticket type/vendor/price/occurred_at, waypoint name, ticket seq, journey country/region/dates |
+| **AUTHORED**    | never writes             | owns      | title, essay, summary, animation, captions, photo selection/order                             |
 
 - **Insert** (no match): write all INGESTED + OVERRIDABLE fields; AUTHORED fields take
   defaults (empty essay/title, default animation).
@@ -260,10 +260,10 @@ old ingested/authored split couldn't express "OCR pre-fill that a human may corr
   human edits that field). **Never** write AUTHORED fields.
 - **Deletion policy (v1):** assets removed from the source are **not** deleted from the DB
   (conservative — avoids nuking an authored entry behind a since-deleted Immich asset).
-  Set `orphaned_at` for admin review; clear it if the asset reappears. *(revisit later)*
+  Set `orphaned_at` for admin review; clear it if the asset reappears. _(revisit later)_
 
 The `Patch` types encode the AUTHORED ban structurally: a `TicketPatch` simply **has no**
-`Essay`/`Title`/`Animation` fields, so the upsert *cannot* touch them. The OVERRIDABLE
+`Essay`/`Title`/`Animation` fields, so the upsert _cannot_ touch them. The OVERRIDABLE
 filter is enforced in the repository against `authored_fields` — one code path, both impls
 (`pg`, `memrepo`).
 
@@ -310,7 +310,7 @@ ingested fields refreshed.
 - **`--dry-run`** prints the full plan (inserts/updates/uploads/skips) and writes nothing —
   the safe default to recommend in docs.
 - **No silent fallback:** if a route source is configured but unreachable, error — don't
-  quietly degrade to photo-trail. Photo-trail is only used when *no* track source is
+  quietly degrade to photo-trail. Photo-trail is only used when _no_ track source is
   configured/provided.
 
 ---

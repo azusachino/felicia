@@ -1,29 +1,33 @@
 # ADR 0008: PostgreSQL 18 & SSG Compiler Model
 
-* **Status:** Accepted
-* **Date:** 2026-07-09
-* **Decisions:** `felicia:decision:pg18-ssg-compiler`
+- **Status:** Accepted
+- **Date:** 2026-07-09
+- **Decisions:** `felicia:decision:pg18-ssg-compiler`
 
 ## Context
-We need to support a single-user workflow where the author uploads data and publishes a personal version of *felicia* as a data-driven static site (similar to `yihong0618/running_page`). We must choose the canonical database architecture for this system, balancing robust spatial features with local portability.
+
+We need to support a single-user workflow where the author uploads data and publishes a personal version of _felicia_ as a data-driven static site (similar to `yihong0618/running_page`). We must choose the canonical database architecture for this system, balancing robust spatial features with local portability.
 
 ## Decision
-We decided to adopt **PostgreSQL 18 + PostGIS** as the sole database engine of *felicia* for data storage and spatial operations. There is no fallback database (such as SQLite3). The static site compiler and local admin server connect directly to PostgreSQL 18 + PostGIS.
+
+We decided to adopt **PostgreSQL 18 + PostGIS** as the sole database engine of _felicia_ for data storage and spatial operations. There is no fallback database (such as SQLite3). The static site compiler and local admin server connect directly to PostgreSQL 18 + PostGIS.
 
 Implementation details:
+
 1. **Database Engine (PostgreSQL 18 + PostGIS):**
-   * PostgreSQL 18 with the PostGIS extension is the sole database engine.
-   * All spatial joins, coordinates snapping, and route simplifications leverage native PostGIS database-layer calculations (`ST_Collect`, `ST_Simplify`, `ST_DWithin`).
+   - PostgreSQL 18 with the PostGIS extension is the sole database engine.
+   - All spatial joins, coordinates snapping, and route simplifications leverage native PostGIS database-layer calculations (`ST_Collect`, `ST_Simplify`, `ST_DWithin`).
 2. **Static Compiler Output (`felicia build`):**
-   * The compiler queries the PostgreSQL 18 + PostGIS database and exports the public-facing view as a fully static website in `dist/`:
-     * Generates static JSON files representing the API route trees (e.g. `/api/v1/journeys.json`).
-     * Exports resized and EXIF-stripped image derivatives.
-     * Emits the compiled Vite Svelte SPA.
+   - The compiler queries the PostgreSQL 18 + PostGIS database and exports the public-facing view as a fully static website in `dist/`:
+     - Generates static JSON files representing the API route trees (e.g. `/api/v1/journeys.json`).
+     - Exports resized and EXIF-stripped image derivatives.
+     - Emits the compiled Vite Svelte SPA.
 3. **Local Admin UI (`localhost`):**
-   * The author runs the Go CLI locally (`felicia admin`). This starts a local web server on `localhost:8080` talking to the configured PostgreSQL 18 database.
-   * The author opens their local browser to curate trips, write essays, and configure stubs.
+   - The author runs the Go CLI locally (`felicia admin`). This starts a local web server on `localhost:8080` talking to the configured PostgreSQL 18 database.
+   - The author opens their local browser to curate trips, write essays, and configure stubs.
 
 ## Consequences
-* **Database Alignment:** The system utilizes PostgreSQL 18 + PostGIS exclusively, ensuring full compatibility with production spatial engines and standard SQL/JSON features.
-* **Zero Hosting Cost for Reader:** The public-facing site is fully static and hosted on free CDN tiers (Cloudflare Pages, GitHub Pages).
-* **Simplified Core:** By avoiding a secondary database engine (SQLite3), we eliminate duplicate DDL migrations, repository translation layers, and custom Go-memory spatial logic.
+
+- **Database Alignment:** The system utilizes PostgreSQL 18 + PostGIS exclusively, ensuring full compatibility with production spatial engines and standard SQL/JSON features.
+- **Zero Hosting Cost for Reader:** The public-facing site is fully static and hosted on free CDN tiers (Cloudflare Pages, GitHub Pages).
+- **Simplified Core:** By avoiding a secondary database engine (SQLite3), we eliminate duplicate DDL migrations, repository translation layers, and custom Go-memory spatial logic.

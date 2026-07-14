@@ -7,7 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/paulmach/orb"
 
-	"github.com/azusachino/felicia/internal/domain"
+	"github.com/azusachino/felicia/apps/core/domain"
 )
 
 func TestNewJourneyListItem(t *testing.T) {

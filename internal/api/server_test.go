@@ -15,9 +15,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/paulmach/orb"
 
+	"github.com/azusachino/felicia/apps/core/domain"
+	"github.com/azusachino/felicia/apps/runtime/importer"
 	"github.com/azusachino/felicia/internal/api"
-	"github.com/azusachino/felicia/internal/domain"
-	"github.com/azusachino/felicia/internal/importer"
 )
 
 type fakeTrackSource struct {
@@ -50,7 +50,6 @@ type mockRepository struct {
 	journeys     map[uuid.UUID]*domain.Journey
 	mementos     map[uuid.UUID]*domain.Memento
 	photos       map[uuid.UUID]*domain.MementoPhoto
-	translations []*domain.Translation
 	transitLegs  []*domain.TransitLeg
 	createdLeg   *domain.TransitLegInput
 	displayRoute orb.MultiLineString
@@ -59,10 +58,9 @@ type mockRepository struct {
 
 func newMockRepository() *mockRepository {
 	return &mockRepository{
-		journeys:     make(map[uuid.UUID]*domain.Journey),
-		mementos:     make(map[uuid.UUID]*domain.Memento),
-		photos:       make(map[uuid.UUID]*domain.MementoPhoto),
-		translations: []*domain.Translation{},
+		journeys: make(map[uuid.UUID]*domain.Journey),
+		mementos: make(map[uuid.UUID]*domain.Memento),
+		photos:   make(map[uuid.UUID]*domain.MementoPhoto),
 	}
 }
 
@@ -112,6 +110,15 @@ func (m *mockRepository) GetMemento(_ context.Context, id uuid.UUID) (*domain.Me
 	return mem, nil
 }
 
+func (m *mockRepository) GetMementoBySourceIdentity(_ context.Context, source domain.SourceIdentity) (*domain.Memento, error) {
+	for _, mem := range m.mementos {
+		if mem.SourceIdentity != nil && *mem.SourceIdentity == source {
+			return mem, nil
+		}
+	}
+	return nil, domain.ErrNotFound
+}
+
 func (m *mockRepository) ListMementosByJourney(_ context.Context, journeyID uuid.UUID) ([]*domain.Memento, error) {
 	var list []*domain.Memento
 	for _, mem := range m.mementos {
@@ -124,6 +131,40 @@ func (m *mockRepository) ListMementosByJourney(_ context.Context, journeyID uuid
 
 func (m *mockRepository) UpsertMemento(_ context.Context, memento *domain.Memento) error {
 	m.mementos[memento.ID] = memento
+	return nil
+}
+
+func (m *mockRepository) ApplyManualMementoPatch(_ context.Context, patch *domain.ManualMementoPatch) error {
+	if existing, ok := m.mementos[patch.Memento.ID]; ok {
+		if patch.ExpectedRevision != nil && *patch.ExpectedRevision != existing.Revision {
+			return domain.ErrWriteConflict
+		}
+		patch.Memento.Revision = existing.Revision + 1
+	} else {
+		patch.Memento.Revision = 1
+	}
+	memento := patch.Memento
+	if patch.State != "" {
+		memento.State = patch.State
+	}
+	for _, field := range patch.Fields {
+		found := false
+		for _, existing := range memento.AuthoredFields {
+			if existing == field {
+				found = true
+				break
+			}
+		}
+		if !found {
+			memento.AuthoredFields = append(memento.AuthoredFields, field)
+		}
+	}
+	m.mementos[memento.ID] = memento
+	return nil
+}
+
+func (m *mockRepository) ApplyIngestMementoPatch(_ context.Context, patch *domain.IngestMementoPatch) error {
+	m.mementos[patch.Memento.ID] = patch.Memento
 	return nil
 }
 
@@ -183,27 +224,6 @@ func (m *mockRepository) UpsertPhoto(_ context.Context, photo *domain.MementoPho
 	return nil
 }
 
-func (m *mockRepository) ListTranslations(_ context.Context, ownerType string, ownerID uuid.UUID) ([]*domain.Translation, error) {
-	var list []*domain.Translation
-	for _, t := range m.translations {
-		if t.OwnerType == ownerType && t.OwnerID == ownerID {
-			list = append(list, t)
-		}
-	}
-	return list, nil
-}
-
-func (m *mockRepository) UpsertTranslation(_ context.Context, translation *domain.Translation) error {
-	for i, t := range m.translations {
-		if t.OwnerType == translation.OwnerType && t.OwnerID == translation.OwnerID && t.Lang == translation.Lang && t.Field == translation.Field {
-			m.translations[i] = translation
-			return nil
-		}
-	}
-	m.translations = append(m.translations, translation)
-	return nil
-}
-
 func TestServerGetTemplates(t *testing.T) {
 	reg, err := domain.LoadRegistry(os.DirFS("../../kinds"))
 	if err != nil {
@@ -250,6 +270,7 @@ func TestServerUpsertMementoValidation(t *testing.T) {
 		"seq":         1,
 		"occurred_at": time.Now().Format(time.RFC3339),
 		"occurred_tz": "Asia/Tokyo",
+		"state":       "published",
 		"title":       "Invalid Transit",
 		"place":       "Somewhere",
 		"kind_data":   map[string]any{"line": "Yamanote Line"}, // missing 'operator', 'from', 'to'
@@ -273,6 +294,118 @@ func TestServerUpsertMementoValidation(t *testing.T) {
 	issues, ok := res["issues"].([]any)
 	if !ok || len(issues) == 0 {
 		t.Error("expected validation issues in response")
+	}
+}
+
+func TestServerAllowsIncompleteDraftButRejectsInvalidCompleteGeometry(t *testing.T) {
+	reg, err := domain.LoadRegistry(os.DirFS("../../kinds"))
+	if err != nil {
+		t.Fatalf("failed to load kinds templates: %v", err)
+	}
+	repo := newMockRepository()
+	srv := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{})
+
+	draft := map[string]any{
+		"id": uuid.New(), "kind": "live", "state": "draft", "kind_data": map[string]any{},
+	}
+	body, _ := json.Marshal(draft)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/api/admin/mementos", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	srv.Handler().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("incomplete draft status = %d, body = %s", w.Code, w.Body)
+	}
+
+	complete := map[string]any{
+		"id": uuid.New(), "kind": "live", "state": "published",
+		"occurred_at": "2026-03-20T10:00:00Z", "occurred_tz": "Asia/Tokyo",
+		"kind_data": map[string]any{
+			"artist": "羊文学",
+			"venue":  map[string]any{"name": "日本武道館", "coords": []float64{139.7495, 35.6933}},
+			"date":   "2026-03-22T18:30:00+09:00",
+		},
+		"geom": map[string]any{"type": "Point", "coordinates": []float64{181, 35}},
+	}
+	body, _ = json.Marshal(complete)
+	w = httptest.NewRecorder()
+	req = httptest.NewRequest("POST", "/api/admin/mementos", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	srv.Handler().ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("invalid complete geometry status = %d, body = %s", w.Code, w.Body)
+	}
+}
+
+func TestServerManualMementoPatchOwnsFieldsServerSide(t *testing.T) {
+	reg, err := domain.LoadRegistry(os.DirFS("../../kinds"))
+	if err != nil {
+		t.Fatalf("failed to load kinds templates: %v", err)
+	}
+	repo := newMockRepository()
+	srv := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{})
+	journeyID := uuid.New()
+	mementoID := uuid.New()
+	payload := map[string]any{
+		"id":          mementoID,
+		"journey_id":  journeyID,
+		"kind":        "live",
+		"seq":         1,
+		"occurred_at": "2026-03-20T10:00:00Z",
+		"occurred_tz": "Asia/Tokyo",
+		"title":       "Live show",
+		"place":       "Tokyo",
+		"kind_data": map[string]any{
+			"artist": "羊文学",
+			"venue":  map[string]any{"name": "日本武道館", "coords": []float64{139.7495, 35.6933}},
+			"date":   "2026-03-22T18:30:00+09:00",
+		},
+		// This client-controlled list is intentionally ignored by the handler.
+		"authored_fields": []string{"source_ref"},
+	}
+	body, _ := json.Marshal(payload)
+	req := httptest.NewRequest("POST", "/api/admin/mementos", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", w.Code, w.Body)
+	}
+	memento := repo.mementos[mementoID]
+	if memento.State != domain.MementoDraft {
+		t.Errorf("state = %q, want draft", memento.State)
+	}
+	for _, field := range memento.AuthoredFields {
+		if field == "source_ref" {
+			t.Fatal("client must not be able to author source_ref")
+		}
+	}
+	if len(memento.AuthoredFields) == 0 {
+		t.Fatal("manual patch should record server-derived authored fields")
+	}
+}
+
+func TestServerRejectsStaleMementoRevision(t *testing.T) {
+	reg, err := domain.LoadRegistry(os.DirFS("../../kinds"))
+	if err != nil {
+		t.Fatalf("failed to load kinds templates: %v", err)
+	}
+	repo := newMockRepository()
+	mementoID := uuid.New()
+	repo.mementos[mementoID] = &domain.Memento{ID: mementoID, Revision: 3}
+	srv := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{})
+	payload := map[string]any{
+		"id": mementoID, "kind": "live", "state": "draft", "expected_revision": int64(2),
+		"occurred_at": "2026-03-20T10:00:00Z", "occurred_tz": "Asia/Tokyo", "kind_data": map[string]any{},
+	}
+	body, _ := json.Marshal(payload)
+	req := httptest.NewRequest("POST", "/api/admin/mementos", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(w, req)
+	if w.Code != http.StatusConflict {
+		t.Fatalf("stale revision status = %d, body = %s", w.Code, w.Body)
 	}
 }
 

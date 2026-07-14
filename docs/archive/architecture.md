@@ -5,21 +5,21 @@ source-of-truth rule) is in [`design.md`](design.md); this is the structural ori
 
 ## Components
 
-| Component | Path | Role |
-| --- | --- | --- |
-| `waypoints` CLI | `cmd/waypoints` | ingestion: import / sync / export / validate |
-| API server | `cmd/api` | reads DB, serves data to the SPAs |
-| Domain | `internal/domain` | pure entities + value types (TDD core) |
-| Geo | `internal/geo` | LineString, Point, simplify, cluster |
-| Sources | `internal/{exif,gpx,immich,dawarich,ocr}` | interface impls for photos, track, OCR |
-| Importer | `internal/importer` | pipeline + field-scoped Patch types |
-| Store | `internal/store/{pg,memrepo}` | Repository (Postgres canonical, memory for tests) |
-| Object store | `internal/objectstore` | S3-compatible upload + image processing |
-| Config | `internal/config` | TOML + env loading |
-| Migrations | `migrations/` | PostGIS schema (goose) |
-| Frontends | `web/{public,admin}` | Vite + Mapbox SPAs (bun workspace) |
-| Deploy | `deploy/` | docker-compose, Dockerfiles, Cloudflare Tunnel |
-| Content | `content/trips/` | `waypoints export` YAML backups (versioned) |
+| Component       | Path                                      | Role                                              |
+| --------------- | ----------------------------------------- | ------------------------------------------------- |
+| `waypoints` CLI | `cmd/waypoints`                           | ingestion: import / sync / export / validate      |
+| API server      | `cmd/api`                                 | reads DB, serves data to the SPAs                 |
+| Domain          | `internal/domain`                         | pure entities + value types (TDD core)            |
+| Geo             | `internal/geo`                            | LineString, Point, simplify, cluster              |
+| Sources         | `internal/{exif,gpx,immich,dawarich,ocr}` | interface impls for photos, track, OCR            |
+| Importer        | `internal/importer`                       | pipeline + field-scoped Patch types               |
+| Store           | `internal/store/{pg,memrepo}`             | Repository (Postgres canonical, memory for tests) |
+| Object store    | `internal/objectstore`                    | S3-compatible upload + image processing           |
+| Config          | `internal/config`                         | TOML + env loading                                |
+| Migrations      | `migrations/`                             | PostGIS schema (goose)                            |
+| Frontends       | `web/{public,admin}`                      | Vite + Mapbox SPAs (bun workspace)                |
+| Deploy          | `deploy/`                                 | docker-compose, Dockerfiles, Cloudflare Tunnel    |
+| Content         | `content/trips/`                          | `waypoints export` YAML backups (versioned)       |
 
 ## Data flow
 

@@ -2,7 +2,7 @@ kind: goods
 anchor: point
 stub: goods
 fields:
-  - { name: name, type: text, required: true, translatable: true }
-  - { name: shop, type: text, required: false, translatable: true }
+  - { name: name, type: text, required: true }
+  - { name: shop, type: text, required: false }
   - { name: price, type: money, required: false }
   - { name: manufacturer, type: text, required: false }

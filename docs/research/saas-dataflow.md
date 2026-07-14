@@ -10,7 +10,7 @@
 > **Updated 2026-06-14:** the "ticket" here generalizes to **memento** (`kind`-tagged) —
 > see [`mementos-not-tickets.md`](mementos-not-tickets.md). The flow below is unchanged in
 > shape; the stub-creation step (3) just accepts more sources (Wallet `.pkpass`, email,
-> goods-photo + vision-LLM) behind the *same seam*, and `TICKET` below is now `MEMENTO`.
+> goods-photo + vision-LLM) behind the _same seam_, and `TICKET` below is now `MEMENTO`.
 
 > **Updated 2026-06-23:** the active MVP UI stack is **Svelte + TypeScript + Tailwind**.
 > **Updated 2026-07-01:** the map renderer is **MapLibre GL** for token-free OSS local demos.
@@ -119,7 +119,7 @@ Everything hangs off `USER` — that's the single account root from
 
 **Manual input and passive auto-ingest are two source implementations behind the same
 Memento-creation seam.** Both end at the same place: an image in storage + an OCR'd draft +
-a route on the trip. So the simple local path *is* the core; the old Immich/Dawarich passive
+a route on the trip. So the simple local path _is_ the core; the old Immich/Dawarich passive
 pipeline becomes a **power feature bolted on later** as a second source. We're not
 discarding the archived design — we're inverting which half ships first, and the
 swappable-seam bet from `direction.md` is exactly what makes that cheap.

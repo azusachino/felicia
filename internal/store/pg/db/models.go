@@ -32,25 +32,29 @@ type Journey struct {
 }
 
 type Memento struct {
-	ID             uuid.UUID
-	JourneyID      uuid.UUID
-	Kind           string
-	Seq            int32
-	OccurredAt     pgtype.Timestamptz
-	OccurredTz     string
-	Geom           interface{}
-	Title          string
-	Place          string
-	Vendor         pgtype.Text
-	Essay          pgtype.Text
-	PriceAmount    pgtype.Int8
-	PriceCurrency  pgtype.Text
-	KindData       []byte
-	SourceRef      pgtype.Text
-	AuthoredFields []string
-	OrphanedAt     pgtype.Timestamptz
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
+	ID               uuid.UUID
+	JourneyID        uuid.UUID
+	Kind             string
+	Seq              int32
+	OccurredAt       pgtype.Timestamptz
+	OccurredTz       string
+	Geom             interface{}
+	Title            string
+	Place            string
+	Vendor           pgtype.Text
+	Essay            pgtype.Text
+	PriceAmount      pgtype.Int8
+	PriceCurrency    pgtype.Text
+	KindData         []byte
+	SourceSystem     pgtype.Text
+	SourceExternalID pgtype.Text
+	SourceRef        pgtype.Text
+	AuthoredFields   []string
+	OrphanedAt       pgtype.Timestamptz
+	State            string
+	Revision         int64
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
 }
 
 type MementoPhoto struct {
@@ -73,15 +77,4 @@ type TransitLeg struct {
 	DestLabel   pgtype.Text
 	Geom        interface{}
 	CreatedAt   pgtype.Timestamptz
-}
-
-type Translation struct {
-	ID         uuid.UUID
-	OwnerType  string
-	OwnerID    uuid.UUID
-	Lang       string
-	Field      string
-	Value      string
-	Provenance string
-	UpdatedAt  pgtype.Timestamptz
 }

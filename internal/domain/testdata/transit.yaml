@@ -1,9 +1,0 @@
-kind: transit
-anchor: edge
-stub: transit
-fields:
-  - { name: operator, type: text, required: true, translatable: true }
-  - { name: line, type: text, required: false, translatable: true }
-  - { name: from, type: station, required: true }
-  - { name: to, type: station, required: true }
-  - { name: fare, type: money, required: false }
