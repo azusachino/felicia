@@ -192,6 +192,49 @@ def test_memento_lifecycle():
     assert body["revision"] == 2, f"Expected revision 2, got {body.get('revision')}"
     print("✓ Memento lifecycle and optimistic revision OK")
 
+def test_memento_revision_conflict():
+    print("Testing optimistic concurrency and stale revision conflict...")
+    memento_id = "0190cbde-f300-7000-8000-b99999999999"
+    status, body = request(f"/api/admin/mementos/{memento_id}")
+    assert status == 200, f"Expected lifecycle memento GET 200, got {status}"
+    revision = body["revision"]
+
+    update = {
+        "id": memento_id,
+        "journey_id": "0190cbde-f300-7000-8000-111111111111",
+        "kind": "live",
+        "seq": 8,
+        "state": "published",
+        "expected_revision": revision,
+        "occurred_at": "2026-03-20T10:00:00Z",
+        "occurred_tz": "Asia/Tokyo",
+        "geom": {"type": "Point", "coordinates": [139.7495, 35.6933]},
+        "title": "Live show, revised",
+        "place": "Tokyo",
+        "kind_data": {
+            "artist": "羊文学",
+            "venue": {"name": "日本武道館", "coords": [139.7495, 35.6933]},
+            "date": "2026-03-22T18:30:00+09:00",
+        },
+    }
+    status, body = request("/api/admin/mementos", method="POST", data=update)
+    assert status == 200, f"Expected revision update 200, got {status} ({body})"
+
+    status, body = request(f"/api/admin/mementos/{memento_id}")
+    assert status == 200, f"Expected updated memento GET 200, got {status}"
+    assert body["revision"] == revision + 1, f"Expected revision {revision + 1}, got {body.get('revision')}"
+
+    status, body = request("/api/admin/mementos", method="POST", data=update)
+    assert status == 409, f"Expected stale revision 409, got {status} ({body})"
+    assert body.get("error") == "memento was modified; reload before saving", f"Unexpected conflict body: {body}"
+
+    unlocked = dict(update)
+    unlocked.pop("expected_revision")
+    unlocked["title"] = "Live show, unlocked update"
+    status, body = request("/api/admin/mementos", method="POST", data=unlocked)
+    assert status == 200, f"Expected update without lock 200, got {status} ({body})"
+    print("✓ Optimistic concurrency and stale revision conflict OK")
+
 def test_translations():
     print("Testing translation endpoints...")
     memento_id = "0190cbde-f300-7000-8000-a01000000001"
@@ -254,6 +297,7 @@ def main():
         test_mementos_list()
         test_memento_validation()
         test_memento_lifecycle()
+        test_memento_revision_conflict()
         test_translations()
         test_public_apis()
         print("🎉 All API E2E tests passed successfully!")
