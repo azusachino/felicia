@@ -2,6 +2,7 @@ arrange:
   - index.md
   - direction.md
   - setup.md
+  - development
   - adr
   - research
   - archive

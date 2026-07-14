@@ -53,6 +53,9 @@ jobs:
       - name: Check (fmt, vet, lint, race tests)
         run: make check
 
+      - name: SQLite journey workflow
+        run: make test-workflow
+
   frontend:
     name: Frontend (make web-check)
     runs-on: ubuntu-latest
