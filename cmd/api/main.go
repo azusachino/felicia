@@ -12,6 +12,7 @@ import (
 
 	"github.com/azusachino/felicia"
 	"github.com/azusachino/felicia/apps/core/domain"
+	"github.com/azusachino/felicia/apps/providers/sqlite"
 	"github.com/azusachino/felicia/apps/runtime/importer"
 	"github.com/azusachino/felicia/internal/api"
 	"github.com/azusachino/felicia/internal/config"
@@ -48,15 +49,26 @@ func run(logger *slog.Logger) error {
 
 	ctx := context.Background()
 
-	// 2. Initialize PostgreSQL 18 connection pool
-	pool, err := pgxpool.New(ctx, cfg.DatabaseDSN)
-	if err != nil {
-		return err
+	// 2. Initialize the configured provider. SQLite is the local default;
+	// PostgreSQL remains available for deployments that need PostGIS.
+	var repo domain.Repository
+	var closeRepository func()
+	if cfg.DatabaseDriver == "sqlite" {
+		store, err := sqlite.Open(cfg.DatabasePath)
+		if err != nil {
+			return err
+		}
+		repo, closeRepository = store, func() { _ = store.Close() }
+	} else {
+		pool, err := pgxpool.New(ctx, cfg.DatabaseDSN)
+		if err != nil {
+			return err
+		}
+		repo, closeRepository = pg.NewRepository(pool), pool.Close
 	}
-	defer pool.Close()
+	defer closeRepository()
 
 	// 3. Create repository and server
-	repo := pg.NewRepository(pool)
 
 	// Ingest sources are optional; the ingest endpoints return 503 when unset.
 	// Point source URLs at a live instance or the mock (scripts/mock_upstream.py).
