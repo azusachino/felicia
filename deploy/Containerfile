@@ -3,9 +3,13 @@ FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
 
-# Copy dependency manifests
-COPY go.mod go.sum ./
-RUN go mod download
+# Copy workspace and dependency manifests
+COPY go.work go.work.sum ./
+COPY apps/core/go.mod apps/core/go.sum apps/core/
+COPY apps/runtime/go.mod apps/runtime/go.sum apps/runtime/
+COPY apps/providers/go.mod apps/providers/go.sum apps/providers/
+COPY apps/apiserver/go.mod apps/apiserver/go.sum apps/apiserver/
+RUN for module in apps/core apps/runtime apps/providers apps/apiserver; do cd "$module" && go mod download && cd /app; done
 
 # Copy source code
 COPY . .
