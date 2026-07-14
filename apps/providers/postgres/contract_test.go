@@ -24,8 +24,5 @@ func TestRepositoryContract(t *testing.T) {
 	}
 	defer pool.Close()
 
-	if _, err := pool.Exec(ctx, "TRUNCATE TABLE tb_journal CASCADE"); err != nil {
-		t.Fatalf("reset postgres test database: %v", err)
-	}
 	contract.Run(t, postgres.NewRepository(pool))
 }

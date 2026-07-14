@@ -4,6 +4,7 @@ package contract
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -26,7 +27,7 @@ func Run(t *testing.T, repo domain.Repository) {
 	journey := &domain.Journey{
 		ID:        mustUUID(t),
 		JournalID: journal.ID,
-		Slug:      "contract-journey",
+		Slug:      fmt.Sprintf("contract-%s", mustUUID(t)),
 		Title:     "Contract journey",
 		Place:     "Tokyo",
 		DateStart: time.Date(2026, 3, 20, 0, 0, 0, 0, time.UTC),
