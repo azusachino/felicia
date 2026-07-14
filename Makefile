@@ -9,7 +9,7 @@ GO      ?= go
 # phase, so Go targets no-op cleanly until the first package is written.
 GO_FILES := $(shell find . -name '*.go' -not -path './vendor/*' -not -path './.git/*' -not -path '*/node_modules/*' -print -quit 2>/dev/null)
 
-# Real module packages, excluding stray Go files vendored inside web/node_modules.
+# Real module packages, excluding stray Go files vendored inside apps/web-public/node_modules.
 GO_PKGS = $(shell $(GO) list ./... | grep -v /node_modules/)
 
 DATABASE_DSN ?= postgres://postgres:password@localhost:5432/felicia?sslmode=disable
@@ -81,8 +81,8 @@ dev: ## Start the complete local stack, seed mock data, and serve the web app
 			sleep 1; \
 		done; \
 		DATABASE_DSN="$(DATABASE_DSN)" SEED_API_BASE="http://localhost:$(PORT)" $(MAKE) seed; \
-		if [ ! -d web/node_modules ]; then $(MAKE) web-install; fi; \
-		cd web && bun run dev
+		if [ ! -d apps/web-public/node_modules ]; then $(MAKE) web-install; fi; \
+		cd apps/web-public && bun run dev
 
 mock-up: ## Start the mock Dawarich+Immich upstream in the background (:8099)
 	nohup uv run python scripts/mock_upstream.py > /tmp/felicia-mock.log 2>&1 & echo "mock up on :8099 (log: /tmp/felicia-mock.log)"
@@ -97,16 +97,16 @@ test-features: ## Run offline Python feature-contract tests
 	uv run python -m unittest discover -s tests
 
 web-install: ## Install frontend deps (bun, from mise)
-	cd web && bun install
+	cd apps/web-public && bun install
 
 web-dev: ## Run frontend dev server (bun + vite)
-	cd web && bun run dev
+	cd apps/web-public && bun run dev
 
 web-build: ## Build frontend for production (bun + vite)
-	cd web && bun run build
+	cd apps/web-public && bun run build
 
 web-check: ## Frontend typecheck + lint + format check
-	cd web && bun run check
+	cd apps/web-public && bun run check
 
 # Docs preview (uv-managed env, isolated from Go/bun). Binds 0.0.0.0 so it is
 # reachable over SSH — forward with `ssh -L 8000:localhost:8000 <host>`.

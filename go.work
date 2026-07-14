@@ -1,0 +1,9 @@
+go 1.26
+
+use (
+	.
+	./apps/apiserver
+	./apps/core
+	./apps/providers
+	./apps/runtime
+)
