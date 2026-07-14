@@ -8,11 +8,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+const testDatabaseDSNEnv = "FELICIA_TEST_DATABASE_DSN"
+
 func testPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
-	dsn := os.Getenv("FELICIA_TEST_DATABASE_DSN")
+	dsn := os.Getenv(testDatabaseDSNEnv)
 	if dsn == "" {
-		t.Skip("FELICIA_TEST_DATABASE_DSN is not set; skipping PostgreSQL integration test")
+		t.Skip(testDatabaseDSNEnv + " is not set; skipping PostgreSQL integration test")
 	}
 
 	ctx := context.Background()
@@ -27,7 +29,7 @@ func testPool(t *testing.T) *pgxpool.Pool {
 
 	var version int64
 	if err := pool.QueryRow(ctx, "SELECT COALESCE(MAX(version_id), 0) FROM goose_db_version").Scan(&version); err != nil {
-		t.Fatalf("check PostgreSQL migrations: %v (run make migrate against FELICIA_TEST_DATABASE_DSN)", err)
+		t.Fatalf("check PostgreSQL migrations: %v (run make migrate against %s)", err, testDatabaseDSNEnv)
 	}
 	if version < 7 {
 		t.Fatalf("PostgreSQL migrations are incomplete: got version %d, want at least 7", version)
