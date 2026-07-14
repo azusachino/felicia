@@ -23,7 +23,7 @@ COMPOSE ?= $(shell \
 	elif command -v docker >/dev/null 2>&1; then echo docker compose; \
 	else echo ''; fi)
 
-.PHONY: help fmt fmt-check vet lint test check build validate tidy db-up db-down migrate seed dev test-workflow mock-up mock-down web-install web-check docs docs-build share share-down
+.PHONY: help fmt fmt-check vet lint test test-sqlite test-postgres check build validate tidy db-up db-down migrate seed dev dev-sqlite dev-postgres test-workflow test-workflow-postgres mock-up mock-down web-install web-check docs docs-build share share-down
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -70,7 +70,13 @@ migrate: ## Apply DB migrations (goose, from nix) — needs DATABASE_DSN
 seed: ## Seed the database with sample data (uv run, psycopg) — needs DATABASE_DSN
 	$(UV_RUN) run --group dev python scripts/seed.py
 
-dev: ## Start the complete local stack, seed mock data, and serve the web app
+dev: ## Start the local API with SQLite
+	$(MAKE) dev-sqlite
+
+dev-sqlite: ## Start the API locally with the default SQLite provider
+	DATABASE_DRIVER=sqlite DATABASE_PATH="$${DATABASE_PATH:-felicia.db}" PORT="$(PORT)" CACHE_ADDR="$(CACHE_ADDR)" $(GO) run ./apps/apiserver/cmd/api
+
+dev-postgres: ## Start the PostgreSQL-backed local stack, seed data, and serve the web app
 	@set -e; \
 		$(MAKE) db-up; \
 		DATABASE_DSN="$(DATABASE_DSN)" $(MAKE) migrate; \
@@ -100,6 +106,19 @@ test-api: ## Run Python-based E2E API integration tests (requires running server
 
 test-workflow: ## Run full journey workflow against disposable SQLite
 	$(UV_RUN) run python scripts/test_journey_workflow.py --start-server
+
+test-workflow-postgres: ## Run full journey workflow against disposable PostgreSQL
+	@test -n "$(FELICIA_TEST_DATABASE_DSN)" || (echo "FELICIA_TEST_DATABASE_DSN is required" >&2; exit 1)
+	DATABASE_DSN="$(FELICIA_TEST_DATABASE_DSN)" $(MAKE) migrate
+	FELICIA_TEST_DATABASE_DSN="$(FELICIA_TEST_DATABASE_DSN)" $(UV_RUN) run python scripts/test_journey_workflow.py --start-server --database-driver postgres
+
+test-sqlite: ## Run all tests with SQLite as the only enabled provider
+	DATABASE_DSN= FELICIA_TEST_DATABASE_DSN= $(MAKE) test
+
+test-postgres: ## Run PostgreSQL tests against the disposable test database
+	@test -n "$(FELICIA_TEST_DATABASE_DSN)" || (echo "FELICIA_TEST_DATABASE_DSN is required" >&2; exit 1)
+	DATABASE_DSN="$(FELICIA_TEST_DATABASE_DSN)" $(MAKE) migrate
+	DATABASE_DSN= FELICIA_TEST_DATABASE_DSN="$(FELICIA_TEST_DATABASE_DSN)" $(MAKE) test
 
 test-features: ## Run offline Python feature-contract tests
 	$(UV_RUN) run python -m unittest discover -s tests
