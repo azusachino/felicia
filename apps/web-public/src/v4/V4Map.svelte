@@ -94,9 +94,7 @@
     button.type = "button"
     button.className = "v4-marker"
     button.setAttribute("aria-label", `${index + 1}. ${memento.title[lang]}`)
-    button.innerHTML = `<span>${index + 1}</span>${
-      memento.photos.length ? `<i>${memento.photos.length}</i>` : ""
-    }`
+    button.innerHTML = `<span>${index + 1}</span>${memento.photos.length ? `<i>${memento.photos.length}</i>` : ""}`
     button.addEventListener("click", (event) => {
       event.stopPropagation()
       onSelect(memento.id)
@@ -124,9 +122,7 @@
 
   function syncMarkers() {
     markers.forEach((marker, id) => {
-      const ownerJourney = journeys.find((journey) =>
-        journey.mementos.some((item) => item.id === id),
-      )
+      const ownerJourney = journeys.find((journey) => journey.mementos.some((item) => item.id === id))
       marker.getElement().classList.toggle("is-active", id === activeMementoId)
       marker.getElement().classList.toggle("is-dimmed", ownerJourney?.id !== activeJourneyId)
     })

@@ -92,9 +92,7 @@ describe("source API", () => {
 
   test("loadJourneys tolerates null mementos and representative_dots (empty journey)", async () => {
     const bareID = "f02ed764-5a4a-41c1-8553-3a283832c7d7"
-    const listFixture = [
-      { id: bareID, slug: "bare-2026", title: "空路", memento_count: 0, representative_dots: null },
-    ]
+    const listFixture = [{ id: bareID, slug: "bare-2026", title: "空路", memento_count: 0, representative_dots: null }]
 
     globalThis.fetch = mock((url: string | URL) => {
       const urlStr = url.toString()
@@ -118,17 +116,13 @@ describe("source API", () => {
   })
 
   test("loadJourney throws on non-ok response", async () => {
-    globalThis.fetch = mock(() =>
-      Promise.resolve(new Response("Error", { status: 500 })),
-    ) as unknown as typeof fetch
+    globalThis.fetch = mock(() => Promise.resolve(new Response("Error", { status: 500 }))) as unknown as typeof fetch
 
     expect(loadJourney(journeyID)).rejects.toThrow()
   })
 
   test("loadJourneys throws on non-ok response", async () => {
-    globalThis.fetch = mock(() =>
-      Promise.resolve(new Response("Error", { status: 500 })),
-    ) as unknown as typeof fetch
+    globalThis.fetch = mock(() => Promise.resolve(new Response("Error", { status: 500 }))) as unknown as typeof fetch
 
     expect(loadJourneys()).rejects.toThrow()
   })

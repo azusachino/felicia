@@ -2,7 +2,7 @@
 
 > 2026-07-09. The **stable** backend schema — designed once, meant not to be rebuilt from
 > zero. Derives from the decisions in [`backend-stack.md`](backend-stack.md) (D1–D8), the plan revision in [`backend-plan-revision.md`](backend-plan-revision.md), and
-> supersedes the ticket-era ER in [`archive/design.md`](../archive/design.md) §4. 
+> supersedes the ticket-era ER in [`archive/design.md`](../archive/design.md) §4.
 > It defines the DDL schema strictly for **PostgreSQL 18 + PostGIS**.
 
 ## Design invariants (why this is stable)
@@ -202,52 +202,52 @@ CREATE INDEX idx_memento_photos_memento_seq ON memento_photos(memento_id, seq);
 
 ### `journal` — the root (one row)
 
-| Column | PG Type | Notes |
-| --- | --- | --- |
-| `id` | `uuid pk` | the single root; FKs hang off it |
-| `created_at` | `timestamptz` | |
+| Column       | PG Type       | Notes                            |
+| ------------ | ------------- | -------------------------------- |
+| `id`         | `uuid pk`     | the single root; FKs hang off it |
+| `created_at` | `timestamptz` |                                  |
 
 ### `journeys`
 
-| Column | PG Type | Class | Notes |
-| --- | --- | --- | --- |
-| `id` | `uuid pk` | — | |
-| `journal_id` | `uuid` | — | references `journal.id` |
-| `slug` | `text` | identity | `<yyyy>-<mm>-<slugify(name)>` (computed once, in URLs) |
-| `source_ref` | `text` | INGESTED | e.g. `immich-album:<uuid>` |
-| `title` | `text` | AUTHORED | primary-lang (ja); en/zh in `translations` |
-| `place` | `text` | OVERRIDABLE | primary-lang summary of the region |
-| `country` | `varchar(3)` | OVERRIDABLE | ISO country code |
-| `region` | `text` | OVERRIDABLE | |
-| `date_start` | `date` | OVERRIDABLE | min asset capture date |
-| `date_end` | `date` | OVERRIDABLE | max asset capture date |
-| `gps_route` | `geometry` | INGESTED | simplified passive track |
-| `authored_fields` | `text[]` | — | no-clobber tracker |
+| Column            | PG Type      | Class       | Notes                                                  |
+| ----------------- | ------------ | ----------- | ------------------------------------------------------ |
+| `id`              | `uuid pk`    | —           |                                                        |
+| `journal_id`      | `uuid`       | —           | references `journal.id`                                |
+| `slug`            | `text`       | identity    | `<yyyy>-<mm>-<slugify(name)>` (computed once, in URLs) |
+| `source_ref`      | `text`       | INGESTED    | e.g. `immich-album:<uuid>`                             |
+| `title`           | `text`       | AUTHORED    | primary-lang (ja); en/zh in `translations`             |
+| `place`           | `text`       | OVERRIDABLE | primary-lang summary of the region                     |
+| `country`         | `varchar(3)` | OVERRIDABLE | ISO country code                                       |
+| `region`          | `text`       | OVERRIDABLE |                                                        |
+| `date_start`      | `date`       | OVERRIDABLE | min asset capture date                                 |
+| `date_end`        | `date`       | OVERRIDABLE | max asset capture date                                 |
+| `gps_route`       | `geometry`   | INGESTED    | simplified passive track                               |
+| `authored_fields` | `text[]`     | —           | no-clobber tracker                                     |
 
 ### `mementos`
 
-| Column | PG Type | Class | Notes |
-| --- | --- | --- | --- |
-| `id` | `uuid pk` | — | |
-| `journey_id` | `uuid` | — | references `journeys.id` |
-| `kind` | `text` | OVERRIDABLE | enum: `ticket \| transit \| goods \| stamp \| receipt \| souvenir` |
-| `seq` | `int` | OVERRIDABLE | chronological default sequence |
-| `occurred_at` | `timestamptz` | OVERRIDABLE | resolved timestamp |
-| `occurred_tz` | `text` | OVERRIDABLE | IANA tz identifier |
-| `geom` | `geometry` | INGESTED¹ | Point (goods/stamp) or LineString (transit) |
-| `title` | `text` | AUTHORED | primary-lang (ja) |
-| `place` | `text` | OVERRIDABLE | primary-lang |
-| `vendor` | `text` | OVERRIDABLE | |
-| `essay` | `text` | AUTHORED | primary-lang markdown |
-| `price_amount` | `bigint` | OVERRIDABLE | minor units (¥210 → 210) |
-| `price_currency`| `char(3)` | OVERRIDABLE | ISO 4217 currency code |
-| `kind_data` | `jsonb` | mixed² | kind-specific properties (transit stations, operator) |
-| `source_system` | `text` | INGESTED | external system namespace; nullable for manual mementos |
-| `source_external_id` | `text` | INGESTED | stable external identity; unique with `source_system` |
-| `source_ref` | `text` | INGESTED | immich or file reference |
-| `authored_fields` | `text[]` | — | no-clobber tracker |
-| `orphaned_at` | `timestamptz` | INGESTED | marked when source asset disappears |
-| `revision` | `bigint` | — | monotonic optimistic-concurrency token |
+| Column               | PG Type       | Class       | Notes                                                              |
+| -------------------- | ------------- | ----------- | ------------------------------------------------------------------ |
+| `id`                 | `uuid pk`     | —           |                                                                    |
+| `journey_id`         | `uuid`        | —           | references `journeys.id`                                           |
+| `kind`               | `text`        | OVERRIDABLE | enum: `ticket \| transit \| goods \| stamp \| receipt \| souvenir` |
+| `seq`                | `int`         | OVERRIDABLE | chronological default sequence                                     |
+| `occurred_at`        | `timestamptz` | OVERRIDABLE | resolved timestamp                                                 |
+| `occurred_tz`        | `text`        | OVERRIDABLE | IANA tz identifier                                                 |
+| `geom`               | `geometry`    | INGESTED¹   | Point (goods/stamp) or LineString (transit)                        |
+| `title`              | `text`        | AUTHORED    | primary-lang (ja)                                                  |
+| `place`              | `text`        | OVERRIDABLE | primary-lang                                                       |
+| `vendor`             | `text`        | OVERRIDABLE |                                                                    |
+| `essay`              | `text`        | AUTHORED    | primary-lang markdown                                              |
+| `price_amount`       | `bigint`      | OVERRIDABLE | minor units (¥210 → 210)                                           |
+| `price_currency`     | `char(3)`     | OVERRIDABLE | ISO 4217 currency code                                             |
+| `kind_data`          | `jsonb`       | mixed²      | kind-specific properties (transit stations, operator)              |
+| `source_system`      | `text`        | INGESTED    | external system namespace; nullable for manual mementos            |
+| `source_external_id` | `text`        | INGESTED    | stable external identity; unique with `source_system`              |
+| `source_ref`         | `text`        | INGESTED    | immich or file reference                                           |
+| `authored_fields`    | `text[]`      | —           | no-clobber tracker                                                 |
+| `orphaned_at`        | `timestamptz` | INGESTED    | marked when source asset disappears                                |
+| `revision`           | `bigint`      | —           | monotonic optimistic-concurrency token                             |
 
 The normalized source identity is the durable idempotency key. `source_ref` is
 retained as a compatibility/display field while adapters migrate; source
@@ -264,15 +264,15 @@ memento, photos, and translations in one transaction.
 
 ---
 
-## Places — a *derived visit* layer (not a stored table)
+## Places — a _derived visit_ layer (not a stored table)
 
 Two frontends group mementos by **place** — the techo landing's city dots and the
 detail's "several memories at one place" — yet there is deliberately **no `places` table**. A
-place is a **derived visit**, computed the way Dawarich and Google Timeline both do it: a *stay*,
+place is a **derived visit**, computed the way Dawarich and Google Timeline both do it: a _stay_,
 detected by dwell-time + spatial clustering over the track, reverse-geocoded to a name.
 
 - **Source of truth.** Dawarich already runs this pipeline (`points → tracks → visits @ places →
-  trips`). When the track is Dawarich's, **consume its `visits`/`places`** rather than
+trips`). When the track is Dawarich's, **consume its `visits`/`places`** rather than
   re-deriving. For a plain GPX import (no Dawarich)
   a dwell-time clustering fallback produces the same `Visit` shape **at the edge** — the core
   stays generic over the normalized shape.
@@ -285,11 +285,11 @@ detected by dwell-time + spatial clustering over the track, reverse-geocoded to 
 
 ## Provenance map (three classes × language)
 
-| Class | Importer | Admin | Fields |
-| --- | --- | --- | --- |
-| **INGESTED** | always writes | read-only | `source_ref`, `gps_route`, point `geom`, `object_key`, `content_hash`, `taken_at`, `orphaned_at` |
-| **OVERRIDABLE** | writes **until** the field name is in `authored_fields` | editable | `kind`, `occurred_at`, `occurred_tz`, `place`, `vendor`, `price_*`, `seq`, journey `country/region/date_*` |
-| **AUTHORED** | never writes | owns | `title`, `essay`, `caption`, photo selection/order, transit-leg `geom`, en/zh `translations(authored)` |
+| Class           | Importer                                                | Admin     | Fields                                                                                                     |
+| --------------- | ------------------------------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------- |
+| **INGESTED**    | always writes                                           | read-only | `source_ref`, `gps_route`, point `geom`, `object_key`, `content_hash`, `taken_at`, `orphaned_at`           |
+| **OVERRIDABLE** | writes **until** the field name is in `authored_fields` | editable  | `kind`, `occurred_at`, `occurred_tz`, `place`, `vendor`, `price_*`, `seq`, journey `country/region/date_*` |
+| **AUTHORED**    | never writes                                            | owns      | `title`, `essay`, `caption`, photo selection/order, transit-leg `geom`, en/zh `translations(authored)`     |
 
 ### Upsert and Translation Merge Rules
 

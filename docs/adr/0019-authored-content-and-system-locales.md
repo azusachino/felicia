@@ -1,8 +1,8 @@
 # ADR 0019: Authored Content and System Locales
 
-* **Status:** Accepted
-* **Date:** 2026-07-14
-* **Supersedes:** ADR 0011 and the translatable-field portion of ADR 0006
+- **Status:** Accepted
+- **Date:** 2026-07-14
+- **Supersedes:** ADR 0011 and the translatable-field portion of ADR 0006
 
 ## Context
 
@@ -26,8 +26,8 @@ language, then Japanese as the fallback.
 
 ## Consequences
 
-* The write model has no translation sidecar or translation provenance.
-* Locale coverage is testable as a catalog completeness problem.
-* User-authored content has one source of truth and no language-axis merge rules.
-* Deliberately authored alternate-language content, if ever needed, must be a
+- The write model has no translation sidecar or translation provenance.
+- Locale coverage is testable as a catalog completeness problem.
+- User-authored content has one source of truth and no language-axis merge rules.
+- Deliberately authored alternate-language content, if ever needed, must be a
   new explicit content model decision rather than an inferred translation.

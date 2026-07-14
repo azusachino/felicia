@@ -11,12 +11,7 @@ function authored(canonical: string | undefined): L {
 }
 
 function coordinate(value: unknown): Coordinates | undefined {
-  if (
-    Array.isArray(value) &&
-    value.length >= 2 &&
-    typeof value[0] === "number" &&
-    typeof value[1] === "number"
-  ) {
+  if (Array.isArray(value) && value.length >= 2 && typeof value[0] === "number" && typeof value[1] === "number") {
     return [value[0], value[1]]
   }
   return undefined
@@ -35,31 +30,21 @@ function routeCoordinates(geometry: ApiGeoJSONGeometry | undefined): Coordinates
   if (!geometry || !Array.isArray(geometry.coordinates)) return []
   if (geometry.type === "Point") return []
   if (geometry.type === "LineString") {
-    return geometry.coordinates
-      .map(coordinate)
-      .filter((value): value is Coordinates => value !== undefined)
+    return geometry.coordinates.map(coordinate).filter((value): value is Coordinates => value !== undefined)
   }
-  return geometry.coordinates.flatMap((segment) =>
-    Array.isArray(segment)
-      ? segment.map(coordinate).filter((value): value is Coordinates => value !== undefined)
-      : [],
-  )
+  return geometry.coordinates.flatMap((segment) => (Array.isArray(segment) ? segment.map(coordinate).filter((value): value is Coordinates => value !== undefined) : []))
 }
 
 function routeSegments(geometry: ApiGeoJSONGeometry | undefined): Coordinates[][] {
   if (!geometry || !Array.isArray(geometry.coordinates)) return []
   if (geometry.type === "Point") return []
   if (geometry.type === "LineString") {
-    const segment = geometry.coordinates
-      .map(coordinate)
-      .filter((value): value is Coordinates => value !== undefined)
+    const segment = geometry.coordinates.map(coordinate).filter((value): value is Coordinates => value !== undefined)
     return segment.length ? [segment] : []
   }
   return geometry.coordinates
     .filter((segment): segment is unknown[] => Array.isArray(segment))
-    .map((segment) =>
-      segment.map(coordinate).filter((value): value is Coordinates => value !== undefined),
-    )
+    .map((segment) => segment.map(coordinate).filter((value): value is Coordinates => value !== undefined))
     .filter((segment) => segment.length > 0)
 }
 
@@ -78,9 +63,7 @@ function kind(value: string): MementoKind {
 }
 
 function objectValue(value: unknown): Record<string, unknown> | undefined {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : undefined
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined
 }
 
 function stringValue(value: unknown): string | undefined {
@@ -94,11 +77,7 @@ function station(value: unknown, fallback: Coordinates): Station {
   return { name, ja: name, coords }
 }
 
-function transitData(
-  apiMemento: ApiMemento,
-  title: L,
-  fallback: Coordinates,
-): Memento["transit"] | undefined {
+function transitData(apiMemento: ApiMemento, title: L, fallback: Coordinates): Memento["transit"] | undefined {
   if (apiMemento.kind !== "transit") return undefined
   const data = objectValue(apiMemento.kind_data)
   if (!data) return undefined

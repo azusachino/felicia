@@ -40,12 +40,12 @@ venueNameKo: "성산일출봉", price: "5,000", date: "2026-01-10",
 time: "12:36:54", ticketId: "A3-2025052500185", paymentMethod: "카드발매"
 ```
 
-The venue photo sits *inside* the ticket art (`/images/seongsan-ilchulbong.png`).
+The venue photo sits _inside_ the ticket art (`/images/seongsan-ilchulbong.png`).
 
 ### Detail view & shell
 
 Clicking a ticket opens a **paper-toned panel**: the rendered ticket on top, the title,
-a short *italic essay paragraph*, then a `PHOTOS` section with **polaroid-style**
+a short _italic essay paragraph_, then a `PHOTOS` section with **polaroid-style**
 framed images. The shell is a sidebar listing journeys (`Jeju`, `Hokkaido`) with
 country + date range, each ticket row showing a **photo count badge**, and a
 `Newest ⇄ Oldest` sort toggle.
@@ -54,7 +54,7 @@ country + date range, each ticket row showing a **photo count badge**, and a
 
 1. **Content model validated** — journey → tickets → essay + photos matches what we
    designed; the photo-count badge and sort toggle are cheap wins to keep.
-2. **Stub rendering fork** — the reference's crispness comes from *rendered* tickets,
+2. **Stub rendering fork** — the reference's crispness comes from _rendered_ tickets,
    not photographed ones. Decision (2026-06-12): **type-templates filled from OCR'd
    fields, photo fallback** — crisp + animatable without per-ticket coding
    (see design §6/§8).

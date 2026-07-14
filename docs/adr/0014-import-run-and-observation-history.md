@@ -1,8 +1,8 @@
 # ADR 0014: Persist Import Runs and Canonical Observation History
 
-* **Status:** Accepted
-* **Date:** 2026-07-13
-* **Related:** ADR 0010, ADR 0012, `felicia:write-side-stability:task-5`
+- **Status:** Accepted
+- **Date:** 2026-07-13
+- **Related:** ADR 0010, ADR 0012, `felicia:write-side-stability:task-5`
 
 ## Decision
 
@@ -23,9 +23,9 @@ Felicia tables.
 
 ## Consequences
 
-* Re-import changes and source disappearance are inspectable independently of
+- Re-import changes and source disappearance are inspectable independently of
   authored content.
-* The canonical payload is explicit JSON and can evolve with observation kind
+- The canonical payload is explicit JSON and can evolve with observation kind
   versioning without persisting provider response shapes.
-* Run finalization and orphan marking are separate operations until aggregate
+- Run finalization and orphan marking are separate operations until aggregate
   transaction/concurrency work is completed in task 6.

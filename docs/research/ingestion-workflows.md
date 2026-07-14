@@ -1,6 +1,6 @@
 # Ingestion Workflows — comparing approaches
 
-> The question this doc helps you answer: **"After a trip, what do *I* actually do to
+> The question this doc helps you answer: **"After a trip, what do _I_ actually do to
 > get it onto the map — and what does the system do for me?"**
 >
 > Everything downstream (the web app, map renderer, and eventual Go/Postgres persistence)
@@ -53,11 +53,11 @@ flowchart LR
 
 The approaches differ on three axes:
 
-| Axis | Options |
-| --- | --- |
-| **Route source** | self-hosted location server · on-device app export · synthesized from photos · drawn by hand |
-| **Photo source** | Immich API (auto) · manual file drop |
-| **Ticket metadata** | vision-LLM pre-fills (you confirm) · you type it in YAML · you type it in a web form |
+| Axis                | Options                                                                                      |
+| ------------------- | -------------------------------------------------------------------------------------------- |
+| **Route source**    | self-hosted location server · on-device app export · synthesized from photos · drawn by hand |
+| **Photo source**    | Immich API (auto) · manual file drop                                                         |
+| **Ticket metadata** | vision-LLM pre-fills (you confirm) · you type it in YAML · you type it in a web form         |
 
 ---
 
@@ -66,7 +66,7 @@ The approaches differ on three axes:
 **Bundle:** Immich (photos) + Dawarich (route) + vision-LLM (ticket OCR) + object storage.
 Two self-hosted sources on the Pi; the importer joins them on timestamp.
 
-### What *you* do per trip
+### What _you_ do per trip
 
 1. Travel. Phone passively logs location to Dawarich (battery-cheap; lasts days).
 2. Photos auto-sync to Immich; you make an album `Jeju 2026` and ⭐/tag the ticket shots.
@@ -107,9 +107,9 @@ sequenceDiagram
 ## Approach B — On-device track, no extra server
 
 **Bundle:** Immich (photos) + **Arc app** GPX export (route) + vision-LLM + object storage.
-Only *one* self-hosted source. The route arrives as a file you drop in the trip folder.
+Only _one_ self-hosted source. The route arrives as a file you drop in the trip folder.
 
-### What *you* do per trip
+### What _you_ do per trip
 
 1. Travel. **Arc** logs your route on-device (low battery, no server).
 2. Photos → Immich as usual; album + ⭐ tickets.
@@ -143,10 +143,10 @@ flowchart TD
 
 ## Approach C — Minimal: photo-trail only
 
-**Bundle:** Immich only. **No GPS tooling at all.** The route is *synthesized* by connecting
+**Bundle:** Immich only. **No GPS tooling at all.** The route is _synthesized_ by connecting
 your geotagged photos in time order.
 
-### What *you* do per trip
+### What _you_ do per trip
 
 1. Travel + shoot photos (they're geotagged automatically).
 2. Album + ⭐ tickets in Immich.
@@ -176,7 +176,7 @@ flowchart LR
 **Bundle:** You assemble each trip folder by hand — copy images in, write all YAML yourself.
 The importer only validates, uploads, and inserts. Maximum control, maximum toil.
 
-### What *you* do per trip
+### What _you_ do per trip
 
 1. Copy chosen photos/ticket scans into `content/trips/2026-01-jeju/`.
 2. Hand-write `trip.yaml` + `tickets.yaml` (every field, every coordinate).
@@ -202,7 +202,7 @@ flowchart TD
 **Bundle:** a Svelte authoring app: log in, create a trip, drag-drop GPX + memento images,
 fill metadata in forms. The DB is the source of truth; no content repo.
 
-### What *you* do per trip
+### What _you_ do per trip
 
 1. Open the web app and log in.
 2. Create trip; drag-drop GPX and images; type metadata in forms; save.
@@ -229,16 +229,16 @@ sequenceDiagram
 
 ## Side-by-side
 
-| | A. Self-hosted auto | B. On-device track | C. Photo-trail | D. Manual files | E. Admin UI |
-| --- | --- | --- | --- | --- | --- |
-| **Per-trip effort** | tag album → 2 cmds | tag + export GPX → 2 cmds | tag album → 2 cmds | write all YAML | fill web forms |
-| **Route quality** | ★★★ true track | ★★★ true track | ★ sparse/jumpy | ★★★ if you add GPX | ★★★ if you upload GPX |
-| **Ticket metadata** | LLM pre-fills | LLM pre-fills | LLM pre-fills | you type | you type (forms) |
-| **New deps to run** | Immich + Dawarich | Immich (+ Arc app) | Immich | none | none |
-| **Sovereignty** | full | full | full | full | full |
-| **Versioned history** | ✅ git | ✅ git | ✅ git | ✅ git | ❌ DB only |
-| **Build cost** | high | med-high | med | low | high (frontend) |
-| **TDD fit** | ★★★ | ★★★ | ★★★ | ★★★ | ★★ |
+|                       | A. Self-hosted auto | B. On-device track        | C. Photo-trail     | D. Manual files    | E. Admin UI           |
+| --------------------- | ------------------- | ------------------------- | ------------------ | ------------------ | --------------------- |
+| **Per-trip effort**   | tag album → 2 cmds  | tag + export GPX → 2 cmds | tag album → 2 cmds | write all YAML     | fill web forms        |
+| **Route quality**     | ★★★ true track      | ★★★ true track            | ★ sparse/jumpy     | ★★★ if you add GPX | ★★★ if you upload GPX |
+| **Ticket metadata**   | LLM pre-fills       | LLM pre-fills             | LLM pre-fills      | you type           | you type (forms)      |
+| **New deps to run**   | Immich + Dawarich   | Immich (+ Arc app)        | Immich             | none               | none                  |
+| **Sovereignty**       | full                | full                      | full               | full               | full                  |
+| **Versioned history** | ✅ git              | ✅ git                    | ✅ git             | ✅ git             | ❌ DB only            |
+| **Build cost**        | high                | med-high                  | med                | low                | high (frontend)       |
+| **TDD fit**           | ★★★                 | ★★★                       | ★★★                | ★★★                | ★★                    |
 
 ---
 
@@ -251,8 +251,8 @@ flowchart LR
   C --> A["A. + self-hosted location server"]
 ```
 
-The importer's **internal contract is identical** across A–D — they only swap the *route
-provider* and the *photo provider* behind interfaces. So we can ship **D first** (smallest,
+The importer's **internal contract is identical** across A–D — they only swap the _route
+provider_ and the _photo provider_ behind interfaces. So we can ship **D first** (smallest,
 fully testable), then add the Immich provider (→C), then a track provider (→A or B) as later
 milestones — no rewrites, just new implementations of the same Go interfaces. E is a
 different branch (DB-first, big frontend) and would be additive, not foundational.
@@ -268,7 +268,7 @@ different branch (DB-first, big frontend) and would be additive, not foundationa
 - **Track source** decides A-vs-B: **Dawarich+Overland** (server, auto) vs **Arc** (on-device,
   one manual export). **Storage**: **R2** (CDN'd via your tunnel edge) vs **MinIO** (on-Pi).
 
-Open the two screenshots alongside this and tell me which workflow *feels* right to live
+Open the two screenshots alongside this and tell me which workflow _feels_ right to live
 with after every trip — that instinct matters more than the build cost.
 
 ---

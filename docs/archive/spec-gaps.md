@@ -61,11 +61,11 @@ The two-class model (ingested/authored) is broken: the spec itself says waypoint
 `Name` is "ingested, **editable**" — under two classes, re-import clobbers your edit.
 And OCR fields are explicitly "pre-filled **for confirmation**". Classes:
 
-| Class | Importer | Admin UI | Examples |
-| --- | --- | --- | --- |
-| **INGESTED** | always writes | read-only | route, stub_image, source_ref, taken_at, location |
-| **OVERRIDABLE** | writes **until human edits** | editable | ticket type/vendor/price/occurred_at, waypoint name, ticket seq, journey country/region/dates |
-| **AUTHORED** | never writes (absent from Patch types) | owns | title, essay, summary, animation, captions, photo selection/order |
+| Class           | Importer                               | Admin UI  | Examples                                                                                      |
+| --------------- | -------------------------------------- | --------- | --------------------------------------------------------------------------------------------- |
+| **INGESTED**    | always writes                          | read-only | route, stub_image, source_ref, taken_at, location                                             |
+| **OVERRIDABLE** | writes **until human edits**           | editable  | ticket type/vendor/price/occurred_at, waypoint name, ticket seq, journey country/region/dates |
+| **AUTHORED**    | never writes (absent from Patch types) | owns      | title, essay, summary, animation, captions, photo selection/order                             |
 
 Mechanism: every row carries `authored_fields text[] NOT NULL DEFAULT '{}'`. The
 admin API appends the column name when a human edits an OVERRIDABLE field. The
@@ -116,10 +116,10 @@ One vision call per ticket image; structured output, temperature 0. Schema:
 {
   "type": "receipt|transit|admission|null",
   "vendor": "string|null",
-  "price": {"amount": 5000, "currency": "KRW"},
+  "price": { "amount": 5000, "currency": "KRW" },
   "occurred_at": "2026-01-10T12:36:54",
-  "confidence": {"type": 0.97, "vendor": 0.92, "price": 0.99, "occurred_at": 0.85},
-  "extra": {"venue_name_local": "성산일출봉", "ticket_no": "A3-2025052500185"}
+  "confidence": { "type": 0.97, "vendor": 0.92, "price": 0.99, "occurred_at": 0.85 },
+  "extra": { "venue_name_local": "성산일출봉", "ticket_no": "A3-2025052500185" }
 }
 ```
 
@@ -186,7 +186,7 @@ reference ships). Full precision stays DB-only. One knob: `api.coord_decimals = 
 ### D3. Public read API — PROPOSED
 
 - `GET /api/journeys` → `[{slug, title, summary, country, date_start, date_end,
-  bbox, ticket_count}]`, sorted `date_end` desc (SPA's `Newest ⇄ Oldest` flips client-side).
+bbox, ticket_count}]`, sorted `date_end` desc (SPA's `Newest ⇄ Oldest` flips client-side).
 - `GET /api/journeys/{slug}` → journey + route (GeoJSON MultiLineString, rounded) +
   waypoints + tickets (template fields incl. `extra`, image URLs on
   `storage.public_base_url`) + photos.
@@ -205,20 +205,20 @@ passwords or sessions. Same story at home and on the road.
 
 ```yaml
 journey:
-  slug: 2026-01-jeju        # required — identity for YAML-sourced trips (A2)
-  title: "Jeju"             # AUTHORED (sync seeds it from the album name)
+  slug: 2026-01-jeju # required — identity for YAML-sourced trips (A2)
+  title: "Jeju" # AUTHORED (sync seeds it from the album name)
   country: KR
   date_start: 2026-01-09
   date_end: 2026-01-12
 route:
-  source: gpx               # gpx | dawarich | photo-trail
+  source: gpx # gpx | dawarich | photo-trail
   gpx: track/jeju.gpx
 tickets:
-  - source_ref: "file:tickets/seongsan.jpg"   # or "immich:<asset-uuid>"
+  - source_ref: "file:tickets/seongsan.jpg" # or "immich:<asset-uuid>"
     type: admission
     vendor: "성산일출봉"
-    price: {amount: 5000, currency: KRW}
-    occurred_at: 2026-01-10T12:36:54+09:00    # tz explicit in YAML
+    price: { amount: 5000, currency: KRW }
+    occurred_at: 2026-01-10T12:36:54+09:00 # tz explicit in YAML
     photos:
       - source_ref: "file:photos/crater.jpg"
 ```

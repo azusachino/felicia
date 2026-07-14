@@ -1,9 +1,9 @@
 # ADR 0010: Canonical Observations Between Sources and Writes
 
-* **Status:** Accepted
-* **Date:** 2026-07-13
-* **Decisions:** `felicia:decision:canonical-data-layer`
-* **Related:** `felicia:decision:go-quality-observability`
+- **Status:** Accepted
+- **Date:** 2026-07-13
+- **Decisions:** `felicia:decision:canonical-data-layer`
+- **Related:** `felicia:decision:go-quality-observability`
 
 ## Context
 
@@ -29,15 +29,15 @@ provider DTO → source adapter → canonical observation → ingest patch → r
 
 The canonical layer owns these concepts:
 
-| Concept | Meaning |
-| --- | --- |
-| `SourceIdentity` | Stable `(system, external_id)` key for idempotent re-import |
-| `Observation` | Envelope containing kind, source, observation time, confidence, and canonical payload |
-| `Route` | Time-bounded normalized track segment |
-| `Visit` | Time-bounded normalized place candidate |
-| `MediaAsset` | Normalized image, video, audio, document, link, or approved embed with optional coordinate and checksum |
-| `MementoCandidate` | Normalized memento suggestion before authored fields and publication state are applied |
-| `Provenance` | Origin, observation time, and confidence metadata attached to canonical data |
+| Concept            | Meaning                                                                                                 |
+| ------------------ | ------------------------------------------------------------------------------------------------------- |
+| `SourceIdentity`   | Stable `(system, external_id)` key for idempotent re-import                                             |
+| `Observation`      | Envelope containing kind, source, observation time, confidence, and canonical payload                   |
+| `Route`            | Time-bounded normalized track segment                                                                   |
+| `Visit`            | Time-bounded normalized place candidate                                                                 |
+| `MediaAsset`       | Normalized image, video, audio, document, link, or approved embed with optional coordinate and checksum |
+| `MementoCandidate` | Normalized memento suggestion before authored fields and publication state are applied                  |
+| `Provenance`       | Origin, observation time, and confidence metadata attached to canonical data                            |
 
 Provider-specific DTOs, pagination, authentication, field names, and recovery
 behavior remain inside the adapter packages. The canonical layer contains no
@@ -62,9 +62,9 @@ does not need a source identity.
 
 The write API exposes two distinct operations:
 
-* `ManualMementoPatch` receives an explicit field mask derived by the authoring
+- `ManualMementoPatch` receives an explicit field mask derived by the authoring
   service and records those fields as authored.
-* `IngestMementoPatch` receives a source-owned field mask and cannot add,
+- `IngestMementoPatch` receives a source-owned field mask and cannot add,
   remove, or replace authored ownership.
 
 Neither operation accepts a caller-controlled `authored_fields` array. The
@@ -82,24 +82,24 @@ changed?” through explicit ingest and authoring operations.
 
 ## Consequences
 
-* A new source implements an adapter into canonical shapes rather than changing
+- A new source implements an adapter into canonical shapes rather than changing
   persistence or public projections.
-* A new memento kind remains a template concern; it does not require a new
+- A new memento kind remains a template concern; it does not require a new
   source adapter or table.
-* Source identity becomes the future idempotency key, replacing ambiguous
+- Source identity becomes the future idempotency key, replacing ambiguous
   nullable `source_ref` behavior.
-* The abstraction is intentionally small. A third-source spike must validate
+- The abstraction is intentionally small. A third-source spike must validate
   it before adding generic orchestration or configurable mappings.
-* Canonicalization and future ingest writes follow the Go quality and
+- Canonicalization and future ingest writes follow the Go quality and
   observability baseline in ADR 0011.
-* Existing `SourceRef` fields remain a compatibility seam during migration;
+- Existing `SourceRef` fields remain a compatibility seam during migration;
   new write-side work should use `SourceIdentity` and `Provenance`.
 
 ## Rejected alternatives
 
-* **Provider DTOs in the repository:** couples storage and domain behavior to
+- **Provider DTOs in the repository:** couples storage and domain behavior to
   external API versions.
-* **Generic runtime mapping DSL:** encodes product assembly as configuration
+- **Generic runtime mapping DSL:** encodes product assembly as configuration
   before there is evidence that the mappings genuinely rhyme.
-* **One large universal event type:** loses compile-time meaning and encourages
+- **One large universal event type:** loses compile-time meaning and encourages
   provider-specific payloads to leak into the core.

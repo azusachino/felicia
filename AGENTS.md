@@ -12,8 +12,8 @@ memento animates it open into an **essay** and a **photo gallery**. The map is t
 mementos are the stories. (`kind`-tagged; physical tickets are dying, so stubs are rendered
 from data — see `docs/research/mementos-not-tickets.md`.)
 
-North star: [`docs/direction.md`](docs/direction.md) (direction: *personal now,
-product-ready*). Earlier design/spec drafts are parked in [`docs/archive/`](docs/archive/).
+North star: [`docs/direction.md`](docs/direction.md) (direction: _personal now,
+product-ready_). Earlier design/spec drafts are parked in [`docs/archive/`](docs/archive/).
 Status: **research stage** — flow is research → spec → TDD → implementation, unhurried
 (~6-month horizon).
 
@@ -30,8 +30,8 @@ Status: **research stage** — flow is research → spec → TDD → implementat
   (passive iPhone GPS track, via API); joined on timestamp. Vision-LLM (Claude) pre-fills
   ticket metadata for confirmation.
 
-**Authoring model (A+E):** an auto-ingest pipeline seeds *ingested* fields; an admin UI is
-where you author *essays / photo curation / animation*. The importer is **field-scoped** and
+**Authoring model (A+E):** an auto-ingest pipeline seeds _ingested_ fields; an admin UI is
+where you author _essays / photo curation / animation_. The importer is **field-scoped** and
 **never overwrites authored fields** — re-import is always safe (see design §5).
 
 ### Current layout
@@ -41,6 +41,7 @@ apps/{apiserver,core,providers,runtime,web-admin,web-public}
 cmd/{api,build}  internal/{api,store/pg,immich,dawarich}
 migrations/  scripts/  deploy/  docs/
 ```
+
 `apps/core` is the pure domain and port layer (no I/O). `apps/runtime` owns use cases,
 `apps/providers` owns persistence implementations, and API adapters depend on runtime ports.
 
@@ -50,16 +51,16 @@ All daily operations go through `make <target>`. **Tools:** runtimes (go, bun) f
 (`mise install`); system tools (golangci-lint, goose, postgres/postgis) from the **nix flake**
 (`nix develop`, or `make` wraps them via `NIX_RUN`).
 
-| Target | Does |
-| --- | --- |
-| `make fmt` | format Go |
-| `make vet` | `go vet ./...` |
-| `make lint` | `golangci-lint run` (nix) |
-| `make test` | `go test -race -cover ./...` |
-| `make check` | fmt + vet + lint + test — **before commit** |
-| `make build` | build all binaries |
+| Target          | Does                                                                             |
+| --------------- | -------------------------------------------------------------------------------- |
+| `make fmt`      | format Go                                                                        |
+| `make vet`      | `go vet ./...`                                                                   |
+| `make lint`     | `golangci-lint run` (nix)                                                        |
+| `make test`     | `go test -race -cover ./...`                                                     |
+| `make check`    | fmt + vet + lint + test — **before commit**                                      |
+| `make build`    | build all binaries                                                               |
 | `make validate` | check + build — **before PR** (frontend + migration smoke join once those exist) |
-| `make migrate` | `goose up` (needs `DATABASE_DSN`) |
+| `make migrate`  | `goose up` (needs `DATABASE_DSN`)                                                |
 
 ## Coding Conventions
 
@@ -71,7 +72,7 @@ All daily operations go through `make <target>`. **Tools:** runtimes (go, bun) f
 
 ## Key Files & Entry Points
 
-- `docs/direction.md` — research-stage north star: the idea + *personal-now / product-ready* direction.
+- `docs/direction.md` — research-stage north star: the idea + _personal-now / product-ready_ direction.
 - `docs/research/` — exploration trail (workflows, liuaaron teardown, product-vs-personal,
   mementos-not-tickets, notion-prototype, notion-to-stack, source-connectors, transit-tickets,
   authoring-publish-flow, ux-restyle, memento-arrangement, reader-admin-surfaces,

@@ -57,10 +57,7 @@ describe("adaptJourney", () => {
       zh: "スマートコーヒー レシート",
     })
     expect(result.visits).toHaveLength(1)
-    expect(result.mementos.map((item) => item.visitId)).toEqual([
-      result.visits[0].id,
-      result.visits[0].id,
-    ])
+    expect(result.mementos.map((item) => item.visitId)).toEqual([result.visits[0].id, result.visits[0].id])
     expect(result.mementos[0].price).toBe("JPY 1,200")
   })
 

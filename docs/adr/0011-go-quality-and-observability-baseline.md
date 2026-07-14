@@ -1,8 +1,8 @@
 # ADR 0011: Go Quality and Observability Baseline
 
-* **Status:** Accepted
-* **Date:** 2026-07-13
-* **Decisions:** `felicia:decision:go-quality-observability`
+- **Status:** Accepted
+- **Date:** 2026-07-13
+- **Decisions:** `felicia:decision:go-quality-observability`
 
 ## Context
 
@@ -36,9 +36,9 @@ to justify a migration.
 
 ## Consequences
 
-* Every future connector and write operation has the same review and diagnostic
+- Every future connector and write operation has the same review and diagnostic
   expectations.
-* Unit tests cover canonicalization and write semantics; feature tests exercise
+- Unit tests cover canonicalization and write semantics; feature tests exercise
   the seeded API contract through `uv run`.
-* Metrics add a small amount of boundary code, but make failed or partial
+- Metrics add a small amount of boundary code, but make failed or partial
   ingestion visible without exposing private travel data.

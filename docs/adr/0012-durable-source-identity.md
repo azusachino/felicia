@@ -1,8 +1,8 @@
 # ADR 0012: Durable Source Identity for Idempotent Ingest
 
-* **Status:** Accepted
-* **Date:** 2026-07-13
-* **Related:** ADR 0010, `felicia:write-side-stability:task-3`
+- **Status:** Accepted
+- **Date:** 2026-07-13
+- **Related:** ADR 0010, `felicia:write-side-stability:task-3`
 
 ## Decision
 
@@ -22,10 +22,10 @@ is never part of the manual authored field mask.
 
 ## Consequences
 
-* Re-import idempotency no longer depends on provider-generated Felicia UUIDs.
-* A source identity must be globally unique across journeys for memento-level
+- Re-import idempotency no longer depends on provider-generated Felicia UUIDs.
+- A source identity must be globally unique across journeys for memento-level
   synchronization.
-* Legacy adapter refs remain readable while adapters migrate to
+- Legacy adapter refs remain readable while adapters migrate to
   `domain.SourceIdentity`.
-* Multi-source reconciliation and identity collision policy remain follow-up
+- Multi-source reconciliation and identity collision policy remain follow-up
   work; a collision is currently rejected by the database constraint.

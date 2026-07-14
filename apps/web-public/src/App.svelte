@@ -15,9 +15,7 @@
   const Active = $derived(active.component)
 
   // lang/theme are shared across designs so switching keeps your reading state.
-  let lang: Lang = $state(
-    resolveLocale(localStorage.getItem("felicia.locale") ?? navigator.language),
-  )
+  let lang: Lang = $state(resolveLocale(localStorage.getItem("felicia.locale") ?? navigator.language))
   let theme: Theme = $state("dark")
 
   $effect(() => localStorage.setItem("felicia.locale", lang))
@@ -31,13 +29,7 @@
 
 <nav class="design-switcher" aria-label={message(lang, "system.design")}>
   {#each designs as design (design.id)}
-    <button
-      type="button"
-      class="design-switcher__btn"
-      class:active={design.id === active.id}
-      aria-pressed={design.id === active.id}
-      onclick={() => select(design)}
-    >
+    <button type="button" class="design-switcher__btn" class:active={design.id === active.id} aria-pressed={design.id === active.id} onclick={() => select(design)}>
       {message(lang, design.labelKey)}
     </button>
   {/each}

@@ -1,8 +1,8 @@
 # ADR 0015: Transactional Memento Aggregates with Revisions
 
-* **Status:** Accepted
-* **Date:** 2026-07-13
-* **Related:** ADR 0010, `felicia:write-side-stability:task-6`
+- **Status:** Accepted
+- **Date:** 2026-07-13
+- **Related:** ADR 0010, `felicia:write-side-stability:task-6`
 
 ## Decision
 
@@ -18,8 +18,8 @@ the memento change as well.
 
 ## Consequences
 
-* API clients receive HTTP 409 for stale authoring writes and must reload.
-* Memento and media cannot be partially committed through the
+- API clients receive HTTP 409 for stale authoring writes and must reload.
+- Memento and media cannot be partially committed through the
   aggregate seam.
-* Import and aggregate orchestration remain separate until broader workflow
+- Import and aggregate orchestration remain separate until broader workflow
   transaction boundaries are needed.

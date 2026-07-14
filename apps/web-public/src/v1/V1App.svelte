@@ -3,17 +3,7 @@
   import { onMount, tick } from "svelte"
   import { fade, fly } from "svelte/transition"
   import { loadJourneys } from "../api/source"
-  import {
-    kindLabel,
-    uiText,
-    type Coordinates,
-    type Journey,
-    type L,
-    type Lang,
-    type Memento,
-    type Station,
-    type Theme,
-  } from "../data"
+  import { kindLabel, uiText, type Coordinates, type Journey, type L, type Lang, type Memento, type Station, type Theme } from "../data"
   import { message, type MessageKey } from "../i18n/catalog"
 
   // v1 — the liuaaron-aligned map reader: journey index rail -> map hero ->
@@ -287,11 +277,7 @@
           <button class:active={lang === "en"} on:click={() => (lang = "en")}>EN</button>
           <button class:active={lang === "zh"} on:click={() => (lang = "zh")}>中文</button>
         </div>
-        <button
-          class="theme-toggle"
-          on:click={toggleTheme}
-          aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-        >
+        <button class="theme-toggle" on:click={toggleTheme} aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}>
           {theme === "dark" ? "☀" : "☾"}
         </button>
       </div>
@@ -312,11 +298,7 @@
       <ol class="journey-list" aria-label="Journeys">
         {#each journeys as journey (journey.id)}
           <li>
-            <button
-              class="journey-item"
-              class:active={journey.id === selectedJourneyId}
-              on:click={() => selectJourney(journey)}
-            >
+            <button class="journey-item" class:active={journey.id === selectedJourneyId} on:click={() => selectJourney(journey)}>
               <span class="journey-item-title">{t(journey.title)}</span>
               <span class="journey-item-meta">{t(journey.dates)} · {t(journey.place)}</span>
               <span class="journey-item-count">{countLabel(journey.mementos.length)}</span>
@@ -326,11 +308,7 @@
               <ol class="timeline" aria-label="Mementos in order">
                 {#each journey.mementos as memento, index (memento.id)}
                   <li>
-                    <button
-                      class="timeline-item"
-                      class:active={memento.id === selected.id}
-                      on:click={() => selectMemento(memento)}
-                    >
+                    <button class="timeline-item" class:active={memento.id === selected.id} on:click={() => selectMemento(memento)}>
                       <span class="timeline-glyph timeline-glyph--{memento.kind}">{index + 1}</span>
                       <span class="timeline-body">
                         <span class="timeline-date">{t(memento.date)}</span>

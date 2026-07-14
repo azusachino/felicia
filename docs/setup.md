@@ -6,7 +6,7 @@
 ## Prerequisites
 
 - **mise** — language runtimes. `mise install` reads `mise.toml` (go 1.26, bun 1.3) and
-  shims them onto `PATH`. Use mise for runtimes *only*.
+  shims them onto `PATH`. Use mise for runtimes _only_.
 - **nix** (flakes enabled) — system tools. `nix develop` enters a shell with
   golangci-lint, goose, sqlc, uv, and **Postgres 18 + PostGIS**. You usually don't need to enter it
   manually: `make` wraps Nix tools via `NIX_RUN` and `UV_RUN` automatically.

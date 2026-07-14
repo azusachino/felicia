@@ -2,16 +2,7 @@
   import { fade, fly } from "svelte/transition"
   import { onMount } from "svelte"
   import { loadJourneys } from "../api/source"
-  import {
-    kindLabel,
-    uiText,
-    type MementoCard,
-    type L,
-    type Lang,
-    type Memento,
-    type Station,
-    type Theme,
-  } from "../data"
+  import { kindLabel, uiText, type MementoCard, type L, type Lang, type Memento, type Station, type Theme } from "../data"
   import { message, type MessageKey } from "../i18n/catalog"
 
   // v2 — memento-first front door. The detailed memento "page" is the centre;
@@ -40,9 +31,7 @@
   onMount(() => {
     loadJourneys()
       .then((data) => {
-        allMementos = data.flatMap((journey) =>
-          journey.mementos.map((item) => ({ memento: item, journey })),
-        )
+        allMementos = data.flatMap((journey) => journey.mementos.map((item) => ({ memento: item, journey })))
         shelf = [...allMementos, ...allMementos]
         selected = allMementos[0]
       })
@@ -80,11 +69,7 @@
           <button class:active={lang === "en"} on:click={() => (lang = "en")}>EN</button>
           <button class:active={lang === "zh"} on:click={() => (lang = "zh")}>中文</button>
         </div>
-        <button
-          class="theme-toggle"
-          on:click={toggleTheme}
-          aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-        >
+        <button class="theme-toggle" on:click={toggleTheme} aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}>
           {theme === "dark" ? "☀" : "☾"}
         </button>
         {#if toMap}

@@ -14,7 +14,7 @@ Read against `web/src/App.tsx` + `index.css` as they stand:
 ### Structural / UX
 
 1. **Dead entry state.** `isCollapsed` initializes `true`, so on load the side panel is
-   translated fully off-screen — and its reopen button is anchored *to the panel*
+   translated fully off-screen — and its reopen button is anchored _to the panel_
    (`left: -50px`), so it rides off-screen too. The **welcome view and the memento
    quick-list are unreachable on first load**. The only way in is clicking a ~32px marker you
    have to already know is there. "The map is the index" ships with **no visible index**.
@@ -23,7 +23,7 @@ Read against `web/src/App.tsx` + `index.css` as they stand:
    behaves like a physical object being opened.
 3. **Scaffolding leaks into the product.** A `TSX Prototype` badge in the header and an
    **"Add Ticket"** floating action button — the latter directly contradicts the decided
-   *memento, not ticket* vocabulary (`felicia:decision:memento-not-ticket`).
+   _memento, not ticket_ vocabulary (`felicia:decision:memento-not-ticket`).
 
 ### Visual identity
 
@@ -33,7 +33,7 @@ Read against `web/src/App.tsx` + `index.css` as they stand:
    pink, `kind-goods #eab308`, `kind-transit #06b6d4` cyan). A cool SaaS palette fighting a
    warm paper object; it reads as two apps.
 5. **Flat markers.** Every kind renders the same 32×44 icon-badge; only the glyph changes.
-   The "collectible stub" identity that makes the reference sing doesn't exist *on the map*.
+   The "collectible stub" identity that makes the reference sing doesn't exist _on the map_.
 6. **Justified essays.** `.essay-text { text-align: justify }` produces rivers and ragged
    inter-word spacing on a narrow measure — degrading the one thing the detail view exists
    for: reading.
@@ -46,7 +46,7 @@ The engineering is solid. The gaps are **object-ness** (stubs don't feel like th
 ### Identity: warm paper is the system (high confidence)
 
 Extend the JR ticket's material language to **every `kind`**, and delete the Tailwind badge
-palette. On the dark map, each memento is a *designed paper object*:
+palette. On the dark map, each memento is a _designed paper object_:
 
 - **ticket** — admission stock (the reference's Jeju/UNESCO look; perforated stub).
 - **transit** — the existing きっぷ magnetic ticket (keep as-is; it's the exemplar).
@@ -73,7 +73,7 @@ viewport, not to the panel that slides away.
 ### Essay typography (high confidence)
 
 Drop `justify` → ragged-right. Widen the reading measure, raise leading (~1.7 is fine),
-consider a serif for essay body to lean *travel book* over *dashboard* (ties to the layout
+consider a serif for essay body to lean _travel book_ over _dashboard_ (ties to the layout
 fork below).
 
 ## Open forks — your call
@@ -81,26 +81,26 @@ fork below).
 These are genuine taste decisions, left undecided (asked 2026-07-02, author away):
 
 1. **Layout / navigation model.**
-   - *Index rail + detail* — left rail lists journeys → mementos (photo-count badge, sort
+   - _Index rail + detail_ — left rail lists journeys → mementos (photo-count badge, sort
      toggle), map center, paper detail panel. Proven (this is liuaaron); fixes the dead entry
      structurally.
-   - *Map-first, fixed entry* — keep the single right glass panel over a full-bleed map, but
+   - _Map-first, fixed entry_ — keep the single right glass panel over a full-bleed map, but
      land on a journey-overview card + a viewport-anchored index toggle. Smallest change;
      keeps the map the hero. **(current lean)**
-   - *Immersive scrollytelling* — scroll drives the camera along the route; mementos surface
+   - _Immersive scrollytelling_ — scroll drives the camera along the route; mementos surface
      as reached. Cinematic; biggest build.
 
 2. **Signature open interaction.**
-   - *Shared-element morph* — the map stub grows into the full stub in the detail view; one
+   - _Shared-element morph_ — the map stub grows into the full stub in the detail view; one
      continuous object. Best reinforces map-as-index. **(current lean)**
-   - *Tear / unfold* — perforated stub tears along its dashed line to reveal the essay.
+   - _Tear / unfold_ — perforated stub tears along its dashed line to reveal the essay.
      Tactile; thematically perfect for "warm paper is the system."
-   - *Flip* — front (stub face) → back (essay + photos). Cheapest to do well.
+   - _Flip_ — front (stub face) → back (essay + photos). Cheapest to do well.
 
 ## Implications & next step
 
 - No app code yet — this stays research. When the two forks settle, promote a **frontend
-  style spec** (design tokens, per-kind stub anatomy, motion spec) and *then* refactor `web/`.
+  style spec** (design tokens, per-kind stub anatomy, motion spec) and _then_ refactor `web/`.
 - The refactor is mostly `index.css` (tokens + per-kind stub CSS) + `App.tsx` entry-state and
   scaffolding removal; the domain model and map wiring are sound.
 - Candidate ADR once forks settle: `felicia:decision:frontend-style` — "warm paper as the

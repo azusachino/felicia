@@ -5,8 +5,7 @@
   import { loadJourneys } from "../api/source"
   import type { Journey, Lang, Memento, Theme } from "../data"
 
-  let { lang = $bindable("ja"), theme = $bindable("dark") }: { lang?: Lang; theme?: Theme } =
-    $props()
+  let { lang = $bindable("ja"), theme = $bindable("dark") }: { lang?: Lang; theme?: Theme } = $props()
   let journeys = $state<Journey[]>([])
   let newestFirst = $state(true)
   let isLoading = $state(true)
@@ -29,12 +28,8 @@
         }),
       })),
   )
-  const activeJourney = $derived(
-    journeys.find((journey) => journey.id === activeJourneyId) ?? journeys[0] ?? null,
-  )
-  const selectedMemento = $derived(
-    activeJourney?.mementos.find((memento) => memento.id === selectedMementoId) ?? null,
-  )
+  const activeJourney = $derived(journeys.find((journey) => journey.id === activeJourneyId) ?? journeys[0] ?? null)
+  const selectedMemento = $derived(activeJourney?.mementos.find((memento) => memento.id === selectedMementoId) ?? null)
 
   const ui = {
     ja: {
@@ -150,14 +145,7 @@
     </div>
   {:else if orderedJourneys.length}
     <div class="map-surface" aria-hidden="true">
-      <V4Map
-        {journeys}
-        {activeJourneyId}
-        {activeMementoId}
-        {lang}
-        {theme}
-        onSelect={(id) => (selectedMementoId = id)}
-      />
+      <V4Map {journeys} {activeJourneyId} {activeMementoId} {lang} {theme} onSelect={(id) => (selectedMementoId = id)} />
     </div>
 
     <header class="hero">
@@ -171,29 +159,14 @@
         <a href="mailto:hello@example.com" aria-label="Email">✉</a>
       </nav>
       <div class="sort" role="group" aria-label="Sort journeys">
-        <button
-          type="button"
-          class:active={newestFirst}
-          aria-pressed={newestFirst}
-          onclick={() => (newestFirst = true)}>{label.newest}</button
-        >
-        <button
-          type="button"
-          class:active={!newestFirst}
-          aria-pressed={!newestFirst}
-          onclick={() => (newestFirst = false)}>{label.oldest}</button
-        >
+        <button type="button" class:active={newestFirst} aria-pressed={newestFirst} onclick={() => (newestFirst = true)}>{label.newest}</button>
+        <button type="button" class:active={!newestFirst} aria-pressed={!newestFirst} onclick={() => (newestFirst = false)}>{label.oldest}</button>
       </div>
     </header>
 
     <div class="journey-stream">
       {#each orderedJourneys as entry (entry.journey.id)}
-        <section
-          class:active={entry.journey.id === activeJourneyId}
-          class="journey-section"
-          use:observeJourney={entry.journey}
-          data-journey-id={entry.journey.id}
-        >
+        <section class:active={entry.journey.id === activeJourneyId} class="journey-section" use:observeJourney={entry.journey} data-journey-id={entry.journey.id}>
           <header class="journey-heading">
             <p class="journey-number">
               {String(orderedJourneys.indexOf(entry) + 1).padStart(2, "0")}
@@ -204,19 +177,8 @@
 
           <div class="stub-field" aria-label={t(entry.journey.title)}>
             {#each entry.mementos as memento (memento.id)}
-              <div
-                class:active={memento.id === activeMementoId}
-                class="memento-entry"
-                data-journey-id={entry.journey.id}
-                use:observeMemento={memento}
-              >
-                <V4Stub
-                  {memento}
-                  {lang}
-                  photoLabel={label.photos}
-                  selected={memento.id === selectedMementoId}
-                  onSelect={() => selectMemento(memento, entry.journey.id)}
-                />
+              <div class:active={memento.id === activeMementoId} class="memento-entry" data-journey-id={entry.journey.id} use:observeMemento={memento}>
+                <V4Stub {memento} {lang} photoLabel={label.photos} selected={memento.id === selectedMementoId} onSelect={() => selectMemento(memento, entry.journey.id)} />
               </div>
             {/each}
           </div>
@@ -225,15 +187,7 @@
     </div>
 
     {#if selectedMemento}
-      <V4Detail
-        memento={selectedMemento}
-        {lang}
-        photoLabel={label.photos}
-        photosHeading={label.photosHeading}
-        closeLabel={label.close}
-        storyLabel={label.story}
-        onClose={closeMemento}
-      />
+      <V4Detail memento={selectedMemento} {lang} photoLabel={label.photos} photosHeading={label.photosHeading} closeLabel={label.close} storyLabel={label.story} onClose={closeMemento} />
     {/if}
   {:else}
     <div class="status">{label.journeys}: 0</div>

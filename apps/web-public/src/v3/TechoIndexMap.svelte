@@ -52,10 +52,7 @@
 
   function fitWorld() {
     if (!map) return
-    const coords = journeys.flatMap((journey) => [
-      ...journey.route,
-      ...journey.visits.map((visit) => visit.coords),
-    ])
+    const coords = journeys.flatMap((journey) => [...journey.route, ...journey.visits.map((visit) => visit.coords)])
     if (!coords.length) return
     const bounds = new maplibregl.LngLatBounds(coords[0], coords[0])
     coords.forEach((coord) => bounds.extend(coord))

@@ -2,7 +2,7 @@
 
 > 2026-06-19. felicia needs a **ticket creator**: a manual authoring path where the user enters
 > a transit ticket — from→to, date, line, fare — and gets a memento back. MVP scope: **Japan
-> Rail + Tokyo Metro**. This note records why transit is a *distinct shape* (edge-anchored, not
+> Rail + Tokyo Metro**. This note records why transit is a _distinct shape_ (edge-anchored, not
 > point-anchored) and how it folds into the existing model. Outcome ADR:
 > `felicia:decision:transit-ticket-creator`. Research-stage — model vocabulary, not a spec.
 > Sits beside [`mementos-not-tickets.md`](mementos-not-tickets.md),
@@ -15,7 +15,7 @@ IC-card travel (Suica / Pasmo / ICOCA) and e-tickets leave **no scannable stub**
 shrinking supply. Transit is the sharpest case: you took the train, but there's often nothing
 to photograph or OCR. So transit is **authored by hand** — the **E** (essay/author) half of
 the A+E model, the manual sibling of the [auto-ingest connectors](source-connectors.md). Both
-land through the *same* Memento-creation seam.
+land through the _same_ Memento-creation seam.
 
 ## The structural twist: transit is edge-anchored
 
@@ -26,7 +26,7 @@ point memento:   • (one place)            ticket | stamp | goods
 transit memento: •──────▶• (from → to)    kind: transit
 ```
 
-This isn't a cosmetic field difference — it changes what the memento *is* on the map:
+This isn't a cosmetic field difference — it changes what the memento _is_ on the map:
 
 > **A transit leg renders as a segment of the journey route.** The amber line stops being only
 > a passive Dawarich track — for a rail trip the legs the user authors **are** the route.
@@ -46,7 +46,7 @@ Transit memento
   from       Station { name; coords }
   to         Station { name; coords }
   date       2026-05-11  (+ optional time)
-  fare       ¥… 
+  fare       ¥…
   + shared memento fields: serial, essay, photo gallery, open-animation
 ```
 
@@ -77,7 +77,7 @@ date [____]   fare [¥____]
 ```
 
 Because it produces the same shape, a JR/Metro **ticket photo** pulled via Immich + vision-LLM
-could later *pre-fill* this exact form — the manual creator and the connector converge on one
+could later _pre-fill_ this exact form — the manual creator and the connector converge on one
 transit memento. Manual first (no artifact to rely on); enrichment is the bonus, mirroring the
 goods-photo logic in [`mementos-not-tickets.md`](mementos-not-tickets.md).
 

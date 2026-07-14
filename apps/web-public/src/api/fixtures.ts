@@ -30,9 +30,7 @@ export async function loadGoldenRouteFixture(): Promise<{
   journey: ApiJourney
   mementos: ApiMemento[]
 }> {
-  const scenario = (await Bun.file(
-    new URL("../../../../scripts/data.json", import.meta.url),
-  ).json()) as Scenario
+  const scenario = (await Bun.file(new URL("../../../../scripts/data.json", import.meta.url)).json()) as Scenario
   const source = scenario.journeys[0]
   const journey: ApiJourney = {
     id: source.id,

@@ -1,8 +1,8 @@
 # ADR 0013: Lifecycle-Aware Write-Boundary Validation
 
-* **Status:** Accepted
-* **Date:** 2026-07-13
-* **Related:** ADR 0010, `felicia:write-side-stability:task-4`
+- **Status:** Accepted
+- **Date:** 2026-07-13
+- **Related:** ADR 0010, `felicia:write-side-stability:task-4`
 
 ## Decision
 
@@ -19,8 +19,8 @@ patch.
 
 ## Consequences
 
-* Incomplete authoring work can be saved as a draft without weakening checks
+- Incomplete authoring work can be saved as a draft without weakening checks
   on complete records.
-* Invalid coordinates and timezone identifiers fail before persistence.
-* Rich media/embed policy and template version negotiation remain separate
+- Invalid coordinates and timezone identifiers fail before persistence.
+- Rich media/embed policy and template version negotiation remain separate
   concerns until those payloads have a concrete write endpoint.

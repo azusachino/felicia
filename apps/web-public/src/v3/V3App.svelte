@@ -13,8 +13,7 @@
   // (map is the index — felicia:decision:map-first-landing), and opening a place
   // reveals its memories (a place holds several) as paper cards with essay +
   // gallery. Styled with Tailwind (felicia:decision:techo-paper-v3).
-  let { lang = $bindable("ja"), theme = $bindable("dark") }: { lang?: Lang; theme?: Theme } =
-    $props()
+  let { lang = $bindable("ja"), theme = $bindable("dark") }: { lang?: Lang; theme?: Theme } = $props()
 
   let journeys = $state<Journey[]>([])
   let isLoading = $state(true)
@@ -98,20 +97,13 @@
     })),
   )
 
-  const selectedPlace = $derived(
-    placeGroups.find((group) => group.key === selectedPlaceKey) ?? null,
-  )
+  const selectedPlace = $derived(placeGroups.find((group) => group.key === selectedPlaceKey) ?? null)
 
   const selectedMemento = $derived(selectedJourney?.mementos[selectedMementoIndex] ?? null)
 
   const transitPairs = $derived.by(() => {
     if (!selectedJourney) return []
-    return selectedJourney.mementos
-      .filter((memento) => memento.transit)
-      .map(
-        (memento) =>
-          [memento.transit!.from.coords, memento.transit!.to.coords] as [Coordinates, Coordinates],
-      )
+    return selectedJourney.mementos.filter((memento) => memento.transit).map((memento) => [memento.transit!.from.coords, memento.transit!.to.coords] as [Coordinates, Coordinates])
   })
 
   function selectJourneyById(id: string) {
@@ -187,12 +179,7 @@
   }
 
   // Washi tape texture: a small fixed palette cycled by card index.
-  const washiColors = [
-    "rgba(200, 120, 60, 0.35)",
-    "rgba(120, 150, 108, 0.35)",
-    "rgba(120, 138, 188, 0.32)",
-    "rgba(196, 150, 88, 0.35)",
-  ]
+  const washiColors = ["rgba(200, 120, 60, 0.35)", "rgba(120, 150, 108, 0.35)", "rgba(120, 138, 188, 0.32)", "rgba(196, 150, 88, 0.35)"]
   const washiRotations = [-4, 3, -2, 5]
 
   const years = $derived.by(() => {
@@ -221,9 +208,7 @@
   }
 
   function kindSummary(journey: Journey): string {
-    return Array.from(new Set(journey.mementos.map((memento) => t(kindLabel[memento.kind])))).join(
-      " · ",
-    )
+    return Array.from(new Set(journey.mementos.map((memento) => t(kindLabel[memento.kind])))).join(" · ")
   }
 
   function kindDetails(memento: Memento): [string, string][] {
@@ -289,52 +274,28 @@
           <!-- Map page skeleton -->
           <section class="techo-page techo-page--map" aria-label="Journey map loading">
             <div class="map-grid skeleton-pulse"></div>
-            <p
-              class="map-caption skeleton-pulse"
-              style="width: 70%; height: 0.8rem; border-radius: 0.2rem; background: var(--paper-3);"
-            ></p>
+            <p class="map-caption skeleton-pulse" style="width: 70%; height: 0.8rem; border-radius: 0.2rem; background: var(--paper-3);"></p>
           </section>
 
           <!-- Index page skeleton -->
           <section class="techo-page techo-page--index" aria-label="Journal index loading">
             <header class="index-header">
               <div>
-                <p
-                  class="brand-mark skeleton-pulse"
-                  style="width: 6rem; height: 1.1rem; border-radius: 0.2rem; background: var(--paper-2);"
-                ></p>
-                <p
-                  class="brand-tagline skeleton-pulse"
-                  style="width: 8rem; height: 0.9rem; border-radius: 0.2rem; background: var(--paper-2); margin-top: 0.5rem;"
-                ></p>
+                <p class="brand-mark skeleton-pulse" style="width: 6rem; height: 1.1rem; border-radius: 0.2rem; background: var(--paper-2);"></p>
+                <p class="brand-tagline skeleton-pulse" style="width: 8rem; height: 0.9rem; border-radius: 0.2rem; background: var(--paper-2); margin-top: 0.5rem;"></p>
               </div>
-              <p
-                class="season-caption skeleton-pulse"
-                style="width: 5rem; height: 0.8rem; border-radius: 0.2rem; background: var(--paper-2);"
-              ></p>
+              <p class="season-caption skeleton-pulse" style="width: 5rem; height: 0.8rem; border-radius: 0.2rem; background: var(--paper-2);"></p>
             </header>
 
             <div class="year-row" style="margin-top: 2rem;">
-              <div
-                class="skeleton-pulse"
-                style="width: 5rem; height: 2.4rem; border-radius: 0.2rem; background: var(--paper-2);"
-              ></div>
-              <div
-                class="skeleton-pulse"
-                style="width: 4rem; height: 0.8rem; border-radius: 0.2rem; background: var(--paper-2);"
-              ></div>
+              <div class="skeleton-pulse" style="width: 5rem; height: 2.4rem; border-radius: 0.2rem; background: var(--paper-2);"></div>
+              <div class="skeleton-pulse" style="width: 4rem; height: 0.8rem; border-radius: 0.2rem; background: var(--paper-2);"></div>
             </div>
 
-            <div
-              class="journey-cards"
-              style="margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.9rem;"
-            >
+            <div class="journey-cards" style="margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.9rem;">
               {#each [0, 1] as i (i)}
                 <div class="skeleton-card">
-                  <div
-                    class="skeleton-line skeleton-line--title skeleton-pulse"
-                    style="margin-top: 0.5rem;"
-                  ></div>
+                  <div class="skeleton-line skeleton-line--title skeleton-pulse" style="margin-top: 0.5rem;"></div>
                   <div class="skeleton-line skeleton-line--date skeleton-pulse"></div>
                   <div class="card-divider"></div>
                   <div class="skeleton-line skeleton-line--place skeleton-pulse"></div>
@@ -361,21 +322,14 @@
             <div class="empty-container">
               <h2 class="error-title">旅の記録がありません</h2>
               <p class="empty-text">
-                現在、この手帳には記録された旅がありません。<br />There are no journeys recorded in
-                this journal.
+                現在、この手帳には記録された旅がありません。<br />There are no journeys recorded in this journal.
               </p>
             </div>
           </section>
         {:else}
           <section class="techo-page techo-page--map" aria-label="Journey map">
             <div class="map-grid">
-              <TechoIndexMap
-                {journeys}
-                selectedJourneyId={selectedJourney?.id ?? null}
-                {lang}
-                {theme}
-                onSelect={selectJourneyById}
-              />
+              <TechoIndexMap {journeys} selectedJourneyId={selectedJourney?.id ?? null} {lang} {theme} onSelect={selectJourneyById} />
             </div>
             <p class="map-caption">{t(mapCaption)}</p>
           </section>
@@ -397,20 +351,8 @@
             <ol class="journey-cards">
               {#each journeys as journey, index (journey.id)}
                 <li>
-                  <button
-                    type="button"
-                    class="journey-card"
-                    class:selected={index === selectedIndex}
-                    onclick={() => openJourney(index)}
-                    aria-label={`${t(journey.title)} — ${t(openCta)}`}
-                  >
-                    <span
-                      class="washi-tape"
-                      style="background:{washiColors[
-                        index % washiColors.length
-                      ]}; transform: translate(-50%, -55%) rotate({washiRotations[
-                        index % washiRotations.length
-                      ]}deg)"
+                  <button type="button" class="journey-card" class:selected={index === selectedIndex} onclick={() => openJourney(index)} aria-label={`${t(journey.title)} — ${t(openCta)}`}>
+                    <span class="washi-tape" style="background:{washiColors[index % washiColors.length]}; transform: translate(-50%, -55%) rotate({washiRotations[index % washiRotations.length]}deg)"
                     ></span>
                     {#if index === selectedIndex}
                       <span class="selected-badge">{t(selectedBadge)}</span>
@@ -435,12 +377,7 @@
 
         <nav class="year-tabs" aria-label="Years">
           {#each years as year (year)}
-            <button
-              type="button"
-              class="year-tab cursor-pointer border border-solid focus:outline-none"
-              class:active={year === activeYear}
-              onclick={() => selectYear(year)}
-            >
+            <button type="button" class="year-tab cursor-pointer border border-solid focus:outline-none" class:active={year === activeYear} onclick={() => selectYear(year)}>
               {year}
             </button>
           {/each}
@@ -450,18 +387,8 @@
   {:else}
     <!-- View 2: the journey on a real map; mementos cluster by place, opening a
          place reveals its memories. -->
-    <section
-      class="relative h-full w-full overflow-hidden bg-paper-2"
-      aria-label={t(selectedJourney.title)}
-    >
-      <TripMap
-        places={mapPlaces}
-        route={selectedJourney.route}
-        transit={transitPairs}
-        activeKey={selectedPlaceKey}
-        {theme}
-        onSelect={selectPlace}
-      />
+    <section class="relative h-full w-full overflow-hidden bg-paper-2" aria-label={t(selectedJourney.title)}>
+      <TripMap places={mapPlaces} route={selectedJourney.route} transit={transitPairs} activeKey={selectedPlaceKey} {theme} onSelect={selectPlace} />
 
       <header class="pointer-events-none absolute left-6 top-6 z-10 flex items-start gap-3">
         <div class="pointer-events-auto rounded-lg bg-paper-1/95 px-4 py-3 shadow-lg backdrop-blur">
@@ -475,12 +402,7 @@
         </div>
       </header>
 
-      <button
-        type="button"
-        class="detail-back pointer-events-auto"
-        onclick={backToLanding}
-        aria-label={t(backLabel)}
-      >
+      <button type="button" class="detail-back pointer-events-auto" onclick={backToLanding} aria-label={t(backLabel)}>
         <span aria-hidden="true">←</span>
         {t(backLabel)}
       </button>
@@ -510,9 +432,7 @@
             </button>
           </div>
 
-          <div
-            class="flex items-center justify-between border-b border-dashed border-black/15 pb-3"
-          >
+          <div class="flex items-center justify-between border-b border-dashed border-black/15 pb-3">
             <button
               type="button"
               class="flex items-center gap-1 font-mono text-xs text-ink-soft disabled:opacity-30 disabled:cursor-not-allowed hover:text-terracotta transition cursor-pointer bg-transparent border-none p-0 focus:outline-none"
@@ -550,9 +470,7 @@
             {#if selectedMemento.kindData}
               {@const details = kindDetails(selectedMemento)}
               {#if details.length}
-                <dl
-                  class="mt-4 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 border-t border-black/10 pt-4 text-xs"
-                >
+                <dl class="mt-4 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 border-t border-black/10 pt-4 text-xs">
                   {#each details as [label, value] (label)}
                     <dt class="font-mono uppercase tracking-wide text-ink-faint">{label}</dt>
                     <dd class="m-0 text-ink-soft">{value}</dd>
@@ -564,12 +482,7 @@
               <div class="mt-4 flex flex-col gap-3">
                 {#each selectedMemento.photos as photo (photo.src)}
                   <figure class="m-0 overflow-hidden rounded-md border border-black/5">
-                    <img
-                      src={photo.src}
-                      alt={t(selectedMemento.title)}
-                      class="block aspect-[4/3] w-full object-cover"
-                      onerror={onPhotoError}
-                    />
+                    <img src={photo.src} alt={t(selectedMemento.title)} class="block aspect-[4/3] w-full object-cover" onerror={onPhotoError} />
                     <figcaption class="px-3 py-2 text-xs text-ink-soft">
                       {t(photo.caption)}
                     </figcaption>
@@ -695,9 +608,7 @@
     height: calc(100% - 2rem);
     min-height: 26rem;
     border-radius: 0.4rem;
-    background-image:
-      repeating-linear-gradient(0deg, transparent, transparent 39px, var(--hairline) 40px),
-      repeating-linear-gradient(90deg, transparent, transparent 39px, var(--hairline) 40px);
+    background-image: repeating-linear-gradient(0deg, transparent, transparent 39px, var(--hairline) 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, var(--hairline) 40px);
     background-color: rgba(251, 247, 238, 0.35);
     opacity: 0.92;
   }

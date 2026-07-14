@@ -1,9 +1,9 @@
 # ADR 0011: System-Only Internationalization
 
-* **Status:** Superseded by ADR 0019
-* **Date:** 2026-07-11
-* **Decisions:** `felicia:decision:system-only-i18n`
-* **Supersedes:** ADR 0004
+- **Status:** Superseded by ADR 0019
+- **Date:** 2026-07-11
+- **Decisions:** `felicia:decision:system-only-i18n`
+- **Supersedes:** ADR 0004
 
 ## Context
 
@@ -35,10 +35,10 @@ Internationalization applies only to system-owned interface text:
 
 ## Consequences
 
-* The UI can switch languages without changing the journal's voice.
-* Fixtures and seeds need one authored content representation, reducing
+- The UI can switch languages without changing the journal's voice.
+- Fixtures and seeds need one authored content representation, reducing
   duplication and drift.
-* Clients need a system UI dictionary with a fallback order, independent of
+- Clients need a system UI dictionary with a fallback order, independent of
   journey and memento data.
-* Deliberately authored translations may be added later as content, but they
+- Deliberately authored translations may be added later as content, but they
   are never inferred merely from the selected UI language.

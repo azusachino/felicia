@@ -32,14 +32,14 @@ gantt
 
 ---
 
-## M0 — Spec freeze *(now → late Jun)*
+## M0 — Spec freeze _(now → late Jun)_
 
 The gate before the first failing test. No code until this closes.
 
 1. User reviews the **PROPOSED** items in `spec-gaps.md` (A2–A5, B3, B5–B7, C1–C5,
    D1–D3, E1) — veto or accept; silence = accept at freeze.
 2. Execute the **fold-in checklist** (bottom of `spec-gaps.md`): merge resolutions
-   into `importer-spec.md` / `design.md`; mark the register *frozen*.
+   into `importer-spec.md` / `design.md`; mark the register _frozen_.
 3. Pick the module path; re-init `go.mod`; lay the package skeleton
    (`cmd/waypoints`, `internal/{domain,geo,exif,gpx,importer,store/memrepo,…}`,
    empty files only).
@@ -47,7 +47,7 @@ The gate before the first failing test. No code until this closes.
 **Exit:** checklist fully checked; one frozen spec with zero "TBD"s; `make check`
 green on the empty skeleton.
 
-## M1 — Importer TDD pure core *(Jul)*
+## M1 — Importer TDD pure core _(Jul)_
 
 Red → green, one at a time, **no network, no DB, no clock** — fixtures only
 (`internal/importer/testdata/`). Order (smallest → biggest):
@@ -69,7 +69,7 @@ Red → green, one at a time, **no network, no DB, no clock** — fixtures only
 **Exit:** all green under `go test -race`; `internal/domain` + `internal/geo` have
 no I/O imports; fixtures committed.
 
-## M2 — Schema & Postgres repository *(Aug)*
+## M2 — Schema & Postgres repository _(Aug)_
 
 - goose migrations: 4 tables + PostGIS `MultiLineString`/`Point` columns,
   `authored_fields text[]`, `orphaned_at`, unique indexes per C1.
@@ -80,7 +80,7 @@ no I/O imports; fixtures committed.
 **Exit:** `make migrate` from a clean DB; contract suite green on both impls;
 wipe-DB → re-migrate → re-import (memrepo fixture) proves the projection rebuilds.
 
-## M3 — Manual path end-to-end (workflow D) *(Aug → Sep)*
+## M3 — Manual path end-to-end (workflow D) _(Aug → Sep)_
 
 - `fsphotos` PhotoSource (local folder, JPEG/PNG); `trip.yaml` per E1 +
   `waypoints validate` against an in-repo JSON Schema.
@@ -94,7 +94,7 @@ wipe-DB → re-migrate → re-import (memrepo fixture) proves the projection reb
 **Exit:** golden e2e — sample trip folder → DB rows + objects; `export` output
 matches `golden/<slug>.yaml`; the spike screenshot looks like the reference.
 
-## M4 — Live sources + home infra *(Sep → Oct)*
+## M4 — Live sources + home infra _(Sep → Oct)_
 
 Code: `immich.Client` (album, **tag `ticket`**, preview-JPEG download — A1/A5),
 `dawarich.Client` (date-range pull), `anthropic.OCR` (recorded fixtures; one opt-in
@@ -108,7 +108,7 @@ Immich/Dawarich versions and record their fixtures from those versions.
 **Exit:** a real (or replayed) trip imports end-to-end from home services with one
 command; re-import is a no-op.
 
-## M5 — Read API *(Oct)*
+## M5 — Read API _(Oct)_
 
 - `cmd/api`: `GET /api/journeys`, `GET /api/journeys/{slug}` per D3; 4-decimal
   public rounding (D2); ETag/Cache-Control off `updated_at`.
@@ -118,7 +118,7 @@ command; re-import is a no-op.
 **Exit:** integration tests against seeded PostGIS; deployed on the Pi behind the
 tunnel; public JSON visible from outside.
 
-## M6 — Public SPA *(Oct → Nov)*
+## M6 — Public SPA _(Oct → Nov)_
 
 - Dark map, orange MultiLineString segments, ticket markers, journey sidebar with
   photo-count badges + `Newest ⇄ Oldest` (cheap wins from the teardown).
@@ -130,7 +130,7 @@ tunnel; public JSON visible from outside.
 **Exit:** public site live with ≥1 real journey; animation decision closed;
 Lighthouse sanity on mobile.
 
-## M7 — Admin SPA *(Nov → Dec)*
+## M7 — Admin SPA _(Nov → Dec)_
 
 - Access-gated app: essay editor, photo curation (drag-drop upload **and** Immich
   picker), animation picker, OVERRIDABLE-field editing wired to `authored_fields`,
@@ -139,7 +139,7 @@ Lighthouse sanity on mobile.
 **Exit:** the full A+E loop on a fresh trip — import, author, publish — without
 touching SQL or the filesystem.
 
-## M8 — Hardening & ops *(Dec)*
+## M8 — Hardening & ops _(Dec)_
 
 - `deploy/` compose for everything; scheduled `pg_dump` + `waypoints export` to git.
 - Privacy zones configured (D1) and verified against a home-containing track.
@@ -163,14 +163,14 @@ into "use it every trip".
 
 ## Risks & mitigations
 
-| Risk | Mitigation |
-| --- | --- |
-| Immich/Dawarich API drift | pin versions (M4), recorded fixtures, interface seams |
-| OCR quality/cost | confidence ≥ 0.6 or null; `--no-ocr` path; recorded fixtures keep tests free |
-| HEIC / cgo on the Pi | sidestepped — Immich preview JPEGs (A5), pure-Go imaging |
-| Public ingest endpoint (live tracking) | Access service token + API key; only Dawarich exposed; M8 drill checks policy |
-| Frontend scope creep (animations) | M6 timebox; per-ticket enum keeps them additive |
-| Solo-project stall | walking-skeleton spike in M3 for early visible payoff; exit criteria keep milestones small |
+| Risk                                   | Mitigation                                                                                 |
+| -------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Immich/Dawarich API drift              | pin versions (M4), recorded fixtures, interface seams                                      |
+| OCR quality/cost                       | confidence ≥ 0.6 or null; `--no-ocr` path; recorded fixtures keep tests free               |
+| HEIC / cgo on the Pi                   | sidestepped — Immich preview JPEGs (A5), pure-Go imaging                                   |
+| Public ingest endpoint (live tracking) | Access service token + API key; only Dawarich exposed; M8 drill checks policy              |
+| Frontend scope creep (animations)      | M6 timebox; per-ticket enum keeps them additive                                            |
+| Solo-project stall                     | walking-skeleton spike in M3 for early visible payoff; exit criteria keep milestones small |
 
 ## Open decisions
 

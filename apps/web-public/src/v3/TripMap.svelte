@@ -87,9 +87,7 @@
     button.type = "button"
     button.className = "v3-mark"
     button.setAttribute("aria-label", `Place ${place.seq}`)
-    button.innerHTML = `<span>${place.seq}</span>${
-      place.count > 1 ? `<i class="v3-mark-count">${place.count}</i>` : ""
-    }`
+    button.innerHTML = `<span>${place.seq}</span>${place.count > 1 ? `<i class="v3-mark-count">${place.count}</i>` : ""}`
     button.addEventListener("click", (e) => {
       e.stopPropagation()
       onSelect(place.key)
@@ -102,9 +100,7 @@
     markers.forEach((marker) => marker.remove())
     markers.clear()
     for (const place of places) {
-      const marker = new maplibregl.Marker({ element: markerElement(place), anchor: "center" })
-        .setLngLat(place.coords)
-        .addTo(map)
+      const marker = new maplibregl.Marker({ element: markerElement(place), anchor: "center" }).setLngLat(place.coords).addTo(map)
       markers.set(place.key, marker)
     }
     syncActive()
