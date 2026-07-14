@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { Lang, Memento } from '../data'
-  import { templateFor } from './stubs'
+  import type { Lang, Memento } from "../data"
+  import { templateFor } from "./stubs"
 
   let {
     memento,
@@ -20,12 +20,12 @@
   const template = $derived(templateFor(memento.kind))
 
   function stationName(station: { name: string; ja: string }) {
-    return lang === 'en' ? station.name : station.ja
+    return lang === "en" ? station.name : station.ja
   }
 
   function kindValue(key: string) {
     const value = memento.kindData?.[key]
-    return typeof value === 'string' ? value : ''
+    return typeof value === "string" ? value : ""
   }
 </script>
 
@@ -33,11 +33,11 @@
   class="stub"
   class:selected
   class:photo-fallback={!template}
-  class:stub-transit={memento.kind === 'transit'}
-  class:stub-stamp={memento.kind === 'stamp'}
-  class:stub-goods={memento.kind === 'goods'}
-  class:stub-receipt={memento.kind === 'receipt'}
-  class:stub-souvenir={memento.kind === 'souvenir'}
+  class:stub-transit={memento.kind === "transit"}
+  class:stub-stamp={memento.kind === "stamp"}
+  class:stub-goods={memento.kind === "goods"}
+  class:stub-receipt={memento.kind === "receipt"}
+  class:stub-souvenir={memento.kind === "souvenir"}
   aria-label={t(memento.title)}
   onclick={onSelect}
 >
@@ -48,36 +48,36 @@
       <strong>{t(memento.title)}</strong>
       <small>{t(memento.place)}</small>
     </div>
-  {:else if memento.kind === 'transit' && memento.transit}
+  {:else if memento.kind === "transit" && memento.transit}
     <div class="ticket-side">
       <span>{t(memento.date)}</span>
-      <strong>{kindValue('operator') || t(memento.transit.operator)}</strong>
-      <small>{kindValue('line') || t(memento.transit.line)}</small>
+      <strong>{kindValue("operator") || t(memento.transit.operator)}</strong>
+      <small>{kindValue("line") || t(memento.transit.line)}</small>
     </div>
     <div class="ticket-main">
       <span class="ticket-label">{template?.label}</span>
       <strong>{stationName(memento.transit.from)} → {stationName(memento.transit.to)}</strong>
       <small>{memento.transit.fare}</small>
     </div>
-  {:else if memento.kind === 'stamp'}
+  {:else if memento.kind === "stamp"}
     <div class="stamp-mark">印</div>
     <div class="stamp-copy">
       <span>{t(memento.place)}</span>
       <strong>{t(memento.title)}</strong>
       <small>{t(memento.date)}</small>
     </div>
-  {:else if memento.kind === 'goods'}
+  {:else if memento.kind === "goods"}
     <div class="tag-hole"></div>
     <span class="tag-kind">{template?.label}</span>
     <strong>{t(memento.title)}</strong>
     <small>{t(memento.vendor)} · {memento.price}</small>
-  {:else if memento.kind === 'receipt'}
+  {:else if memento.kind === "receipt"}
     <span class="receipt-vendor">{t(memento.vendor)}</span>
     <strong>{t(memento.title)}</strong>
     <div class="receipt-rule"></div>
     <small>{t(memento.date)} · {memento.price}</small>
   {:else}
-    <span class="card-kind">{template?.label ?? 'memento'}</span>
+    <span class="card-kind">{template?.label ?? "memento"}</span>
     <strong>{t(memento.title)}</strong>
     <small>{t(memento.place)} · {t(memento.date)}</small>
   {/if}

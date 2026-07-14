@@ -1,11 +1,9 @@
-import type { Coordinates, MementoKind } from '../data'
+import type { Coordinates, MementoKind } from "../data"
 
 export interface ApiGeoJSONGeometry {
-  type: 'Point' | 'LineString' | 'MultiLineString'
+  type: "Point" | "LineString" | "MultiLineString"
   coordinates: unknown
 }
-
-export type ApiTranslationMap = Record<string, Record<string, unknown>>
 
 export interface ApiJourneyListItem {
   id: string
@@ -28,7 +26,6 @@ export interface ApiJourney {
   date_end: string
   gps_route?: ApiGeoJSONGeometry
   authored_fields: string[]
-  translations?: ApiTranslationMap
 }
 
 export interface ApiMementoPhoto {
@@ -59,7 +56,6 @@ export interface ApiMemento {
   kind_data?: Record<string, unknown>
   source_ref?: string
   photos?: ApiMementoPhoto[]
-  translations?: ApiTranslationMap
 }
 
 export interface ApiJourneyPayload {

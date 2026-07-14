@@ -58,17 +58,6 @@ CREATE TABLE IF NOT EXISTS tb_memento_photos (
   created_at TEXT NOT NULL,
   UNIQUE (memento_id, content_hash)
 );
-CREATE TABLE IF NOT EXISTS tb_translations (
-  id TEXT PRIMARY KEY,
-  owner_type TEXT NOT NULL,
-  owner_id TEXT NOT NULL,
-  lang TEXT NOT NULL,
-  field TEXT NOT NULL,
-  value TEXT NOT NULL,
-  provenance TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  UNIQUE (owner_type, owner_id, lang, field)
-);
 CREATE TABLE IF NOT EXISTS tb_transit_legs (
   id TEXT PRIMARY KEY,
   journey_id TEXT NOT NULL REFERENCES tb_journeys(id) ON DELETE CASCADE,

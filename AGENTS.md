@@ -19,12 +19,12 @@ Status: **research stage** — flow is research → spec → TDD → implementat
 
 ## Tech Stack & Architecture
 
-- **Backend:** Go 1.26 — a `waypoints` ingestion CLI + an HTTP API server.
-- **DB:** Postgres + PostGIS (relational + geo; canonical source of truth).
+- **Backend:** Go 1.26 — API, runtime, provider, and core modules in one `go.work` workspace.
+- **DB:** SQLite is the local-first provider; PostgreSQL remains supported for deployments that need it.
 - **Object storage:** S3-compatible interface; **R2** backend (MinIO/B2 swappable by config).
 - **Frontend:** Vite + MapLibre GL SPAs — public site + admin authoring app (bun workspace).
-- **I18n:** support at least Japanese, English, and Chinese; Japanese is the primary/default
-  near-term language while the author is in Japan.
+- **Locales:** static system UI catalogs support Japanese, English, and Chinese. Authored content
+  has no translation sidecar and is rendered exactly as entered.
 - **Host:** Raspberry Pi (docker-compose) behind a **Cloudflare Tunnel** (no open ports).
 - **Ingestion sources (self-hosted):** Immich (photos/ticket stubs, via API) + Dawarich
   (passive iPhone GPS track, via API); joined on timestamp. Vision-LLM (Claude) pre-fills
@@ -34,14 +34,15 @@ Status: **research stage** — flow is research → spec → TDD → implementat
 where you author *essays / photo curation / animation*. The importer is **field-scoped** and
 **never overwrites authored fields** — re-import is always safe (see design §5).
 
-### Planned layout
+### Current layout
 
 ```
-cmd/{waypoints,api}        internal/{domain,geo,exif,gpx,immich,dawarich,ocr,
-migrations/  content/trips/   importer,store/{pg,memrepo},objectstore,config,api}
-web/{public,admin}  deploy/  docs/
+apps/{apiserver,core,providers,runtime,web-admin,web-public}
+cmd/{api,build}  internal/{api,store/pg,immich,dawarich}
+migrations/  scripts/  deploy/  docs/
 ```
-`internal/domain` is the pure TDD core (no I/O). Every external source is an interface impl.
+`apps/core` is the pure domain and port layer (no I/O). `apps/runtime` owns use cases,
+`apps/providers` owns persistence implementations, and API adapters depend on runtime ports.
 
 ## Build, Run & Test
 

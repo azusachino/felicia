@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { Lang, Memento } from '../data'
-  import V4Stub from './V4Stub.svelte'
+  import type { Lang, Memento } from "../data"
+  import V4Stub from "./V4Stub.svelte"
 
   let {
     memento,
@@ -124,14 +124,14 @@
 
   .detail-heading h2 {
     margin: 0.55rem 0 0;
-    font-family: 'Zen Old Mincho', Georgia, serif;
+    font-family: "Zen Old Mincho", Georgia, serif;
     font-size: clamp(1.5rem, 4vw, 2.1rem);
     line-height: 1.15;
   }
 
   .essay p {
     margin: 0.65rem 0 0;
-    font-family: 'Zen Old Mincho', Georgia, serif;
+    font-family: "Zen Old Mincho", Georgia, serif;
     font-size: 1.05rem;
     font-style: italic;
     line-height: 1.8;
@@ -171,7 +171,7 @@
   figcaption {
     margin-top: 0.5rem;
     color: #6f6256;
-    font-family: 'Zen Old Mincho', Georgia, serif;
+    font-family: "Zen Old Mincho", Georgia, serif;
     font-size: 0.78rem;
     line-height: 1.4;
   }

@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/azusachino/felicia/apps/core/domain"
 )
 
@@ -56,6 +58,27 @@ func TestObservationEnvelopeKeepsCanonicalPayload(t *testing.T) {
 	}
 }
 
+func TestObservationSupportsMediaKindsAndMemoryLinks(t *testing.T) {
+	link := domain.MemoryLink{EntityType: "memento", EntityID: mustUUID(t), Relation: "attached_to"}
+	for _, kind := range []domain.MediaKind{
+		domain.MediaImage,
+		domain.MediaVideo,
+		domain.MediaAudio,
+		domain.MediaDocument,
+		domain.MediaLink,
+		domain.MediaEmbed,
+	} {
+		t.Run(string(kind), func(t *testing.T) {
+			asset := domain.MediaAsset{ID: string(kind) + "-1", Kind: kind, URI: "https://example.com/item", MemoryLinks: []domain.MemoryLink{link}}
+			observation := domain.Observation{Kind: domain.ObservationMedia, Payload: asset}
+			got, ok := observation.Payload.(domain.MediaAsset)
+			if !ok || got.Kind != kind || len(got.MemoryLinks) != 1 {
+				t.Fatalf("observation = %#v, want %s media linked to memory", observation, kind)
+			}
+		})
+	}
+}
+
 func TestMementoCandidateSeparatesCandidateFromAuthorship(t *testing.T) {
 	candidate := domain.MementoCandidate{
 		Source: domain.SourceIdentity{System: "manual", ExternalID: "note-1"},
@@ -85,4 +108,13 @@ func TestMediaAssetSupportsExternalEmbedWithoutRawHTML(t *testing.T) {
 	if asset.URI != "" {
 		t.Fatal("canonical embed assets must not require raw HTML")
 	}
+}
+
+func mustUUID(t *testing.T) uuid.UUID {
+	t.Helper()
+	id, err := uuid.NewV7()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return id
 }

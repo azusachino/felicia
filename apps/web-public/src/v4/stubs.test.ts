@@ -1,18 +1,18 @@
-import { describe, expect, test } from 'bun:test'
-import { stubTemplates, templateFor } from './stubs'
+import { describe, expect, test } from "bun:test"
+import { stubTemplates, templateFor } from "./stubs"
 
-describe('memento stub registry', () => {
-  test('registers every supported memento kind', () => {
+describe("memento stub registry", () => {
+  test("registers every supported memento kind", () => {
     expect(Object.keys(stubTemplates).sort()).toEqual([
-      'goods',
-      'receipt',
-      'souvenir',
-      'stamp',
-      'transit',
+      "goods",
+      "receipt",
+      "souvenir",
+      "stamp",
+      "transit",
     ])
   })
 
-  test('returns no template for an unknown kind so the caller can use a photo fallback', () => {
-    expect(templateFor('live')).toBeUndefined()
+  test("returns no template for an unknown kind so the caller can use a photo fallback", () => {
+    expect(templateFor("live")).toBeUndefined()
   })
 })

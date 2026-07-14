@@ -100,27 +100,14 @@ type IngestMementoPatch struct {
 
 // MementoAggregate is the atomically persisted authoring unit.
 type MementoAggregate struct {
-	Patch        *ManualMementoPatch
-	Photos       []*MementoPhoto
-	Translations []*Translation
+	Patch  *ManualMementoPatch
+	Photos []*MementoPhoto
 }
 
 // AggregateRepository persists an authored memento and its child content in
 // one transaction, rejecting stale aggregate revisions.
 type AggregateRepository interface {
 	ApplyMementoAggregate(ctx context.Context, aggregate *MementoAggregate) error
-}
-
-// Translation represents a translated string in the translations sidecar.
-type Translation struct {
-	ID         uuid.UUID `json:"id"`
-	OwnerType  string    `json:"owner_type"` // 'journey', 'memento', 'photo'
-	OwnerID    uuid.UUID `json:"owner_id"`
-	Lang       string    `json:"lang"` // 'en', 'zh'
-	Field      string    `json:"field"`
-	Value      string    `json:"value"`
-	Provenance string    `json:"provenance"` // 'machine', 'authored'
-	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 // TransitLeg is an authored route segment (a flight, ferry, or GPS-gap fill).
@@ -198,8 +185,4 @@ type Repository interface {
 	GetPhoto(ctx context.Context, id uuid.UUID) (*MementoPhoto, error)
 	ListPhotosByMemento(ctx context.Context, mementoID uuid.UUID) ([]*MementoPhoto, error)
 	UpsertPhoto(ctx context.Context, photo *MementoPhoto) error
-
-	// Translation operations
-	ListTranslations(ctx context.Context, ownerType string, ownerID uuid.UUID) ([]*Translation, error)
-	UpsertTranslation(ctx context.Context, translation *Translation) error
 }

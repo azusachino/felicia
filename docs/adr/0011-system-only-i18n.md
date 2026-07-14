@@ -1,6 +1,6 @@
 # ADR 0011: System-Only Internationalization
 
-* **Status:** Accepted
+* **Status:** Superseded by ADR 0019
 * **Date:** 2026-07-11
 * **Decisions:** `felicia:decision:system-only-i18n`
 * **Supersedes:** ADR 0004

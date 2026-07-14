@@ -635,46 +635,6 @@ func (q *Queries) ListTransitLegsByJourney(ctx context.Context, journeyID uuid.U
 	return items, nil
 }
 
-const listTranslations = `-- name: ListTranslations :many
-SELECT id, owner_type, owner_id, lang, field, value, provenance, updated_at
-FROM translations
-WHERE owner_type = $1 AND owner_id = $2
-`
-
-type ListTranslationsParams struct {
-	OwnerType string
-	OwnerID   uuid.UUID
-}
-
-func (q *Queries) ListTranslations(ctx context.Context, arg ListTranslationsParams) ([]Translation, error) {
-	rows, err := q.db.Query(ctx, listTranslations, arg.OwnerType, arg.OwnerID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Translation
-	for rows.Next() {
-		var i Translation
-		if err := rows.Scan(
-			&i.ID,
-			&i.OwnerType,
-			&i.OwnerID,
-			&i.Lang,
-			&i.Field,
-			&i.Value,
-			&i.Provenance,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const snapToRoute = `-- name: SnapToRoute :one
 SELECT ST_AsBinary(
     ST_ClosestPoint(
@@ -887,38 +847,4 @@ func (q *Queries) UpsertPhoto(ctx context.Context, arg UpsertPhotoParams) error 
 		return err
 	}
 	return nil
-}
-
-const upsertTranslation = `-- name: UpsertTranslation :exec
-INSERT INTO translations (
-    id, owner_type, owner_id, lang, field, value, provenance, updated_at
-) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, NOW()
-) ON CONFLICT (owner_type, owner_id, lang, field) DO UPDATE SET
-    value = CASE WHEN translations.provenance = 'machine' OR EXCLUDED.provenance = 'authored' THEN EXCLUDED.value ELSE translations.value END,
-    provenance = CASE WHEN translations.provenance = 'machine' OR EXCLUDED.provenance = 'authored' THEN EXCLUDED.provenance ELSE translations.provenance END,
-    updated_at = NOW()
-`
-
-type UpsertTranslationParams struct {
-	ID         uuid.UUID
-	OwnerType  string
-	OwnerID    uuid.UUID
-	Lang       string
-	Field      string
-	Value      string
-	Provenance string
-}
-
-func (q *Queries) UpsertTranslation(ctx context.Context, arg UpsertTranslationParams) error {
-	_, err := q.db.Exec(ctx, upsertTranslation,
-		arg.ID,
-		arg.OwnerType,
-		arg.OwnerID,
-		arg.Lang,
-		arg.Field,
-		arg.Value,
-		arg.Provenance,
-	)
-	return err
 }

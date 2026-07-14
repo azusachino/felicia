@@ -82,7 +82,7 @@ func run(logger *slog.Logger) error {
 		photos = immich.New(cfg.Immich.URL, cfg.Immich.APIKey, nil)
 		logger.Info("immich source configured", "url", cfg.Immich.URL)
 	}
-	imp := importer.New(tracks, photos, repo, cfg.RDPEpsilon)
+	imp := importer.NewWithLogger(tracks, photos, repo, cfg.RDPEpsilon, logger)
 
 	server := api.NewServer(repo, registry, cacheManager, logger, imp, api.RouteConfig{TransitSegmentLengthM: cfg.TransitSegmentLenM})
 

@@ -2,6 +2,7 @@ package importer
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -119,6 +120,29 @@ func TestPersistObservationsRecordsCanonicalRunAndMarksMissing(t *testing.T) {
 	}
 	if store.missingRunID != run.ID || store.missingSystem != "immich" || len(store.seen) != 1 || store.seen[0] != "asset-1" {
 		t.Fatalf("missing marker = %s/%s/%v", store.missingRunID, store.missingSystem, store.seen)
+	}
+}
+
+func TestPersistObservationsKeepsMediaKindsAndMemoryLinks(t *testing.T) {
+	store := &fakeObservationStore{}
+	link := domain.MemoryLink{EntityType: "memento", EntityID: uuid.New(), Relation: "attached_to"}
+	_, err := PersistObservations(context.Background(), store, "media-source", []domain.Observation{{
+		Kind:       domain.ObservationMedia,
+		Source:     domain.SourceIdentity{System: "media-source", ExternalID: "video-1"},
+		ObservedAt: time.Now().UTC(),
+		Payload: domain.MediaAsset{
+			ID: "video-1", Kind: domain.MediaVideo, URI: "https://cdn.example/video.mp4", MemoryLinks: []domain.MemoryLink{link},
+		},
+	}})
+	if err != nil {
+		t.Fatalf("PersistObservations: %v", err)
+	}
+	var payload domain.MediaAsset
+	if err := json.Unmarshal(store.observations[0].Payload, &payload); err != nil {
+		t.Fatalf("decode canonical media payload: %v", err)
+	}
+	if payload.Kind != domain.MediaVideo || len(payload.MemoryLinks) != 1 || payload.MemoryLinks[0].Relation != "attached_to" {
+		t.Fatalf("payload = %#v, want linked video asset", payload)
 	}
 }
 

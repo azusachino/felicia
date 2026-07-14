@@ -1,11 +1,11 @@
 <script lang="ts">
-  import V4Detail from './V4Detail.svelte'
-  import V4Map from './V4Map.svelte'
-  import V4Stub from './V4Stub.svelte'
-  import { loadJourneys } from '../api/source'
-  import type { Journey, Lang, Memento, Theme } from '../data'
+  import V4Detail from "./V4Detail.svelte"
+  import V4Map from "./V4Map.svelte"
+  import V4Stub from "./V4Stub.svelte"
+  import { loadJourneys } from "../api/source"
+  import type { Journey, Lang, Memento, Theme } from "../data"
 
-  let { lang = $bindable('ja'), theme = $bindable('dark') }: { lang?: Lang; theme?: Theme } =
+  let { lang = $bindable("ja"), theme = $bindable("dark") }: { lang?: Lang; theme?: Theme } =
     $props()
   let journeys = $state<Journey[]>([])
   let newestFirst = $state(true)
@@ -38,43 +38,43 @@
 
   const ui = {
     ja: {
-      title: '旅の地図帳',
-      subtitle: '旅の記憶を、チケットのかたちで',
-      newest: 'Newest',
-      oldest: 'Oldest',
-      journeys: '旅',
-      photos: 'photos',
-      photosHeading: '写真',
-      loading: '読み込み中…',
-      retry: '再試行',
-      close: '閉じる',
-      story: 'Story',
+      title: "旅の地図帳",
+      subtitle: "旅の記憶を、チケットのかたちで",
+      newest: "Newest",
+      oldest: "Oldest",
+      journeys: "旅",
+      photos: "photos",
+      photosHeading: "写真",
+      loading: "読み込み中…",
+      retry: "再試行",
+      close: "閉じる",
+      story: "Story",
     },
     en: {
       title: "Felicia's Waypoints",
-      subtitle: 'A travel journal in memento stubs',
-      newest: 'Newest',
-      oldest: 'Oldest',
-      journeys: 'journeys',
-      photos: 'photos',
-      photosHeading: 'Photos',
-      loading: 'Loading…',
-      retry: 'Retry',
-      close: 'Close',
-      story: 'Story',
+      subtitle: "A travel journal in memento stubs",
+      newest: "Newest",
+      oldest: "Oldest",
+      journeys: "journeys",
+      photos: "photos",
+      photosHeading: "Photos",
+      loading: "Loading…",
+      retry: "Retry",
+      close: "Close",
+      story: "Story",
     },
     zh: {
-      title: '旅行图册',
-      subtitle: '以纪念物记录旅途',
-      newest: 'Newest',
-      oldest: 'Oldest',
-      journeys: '次旅程',
-      photos: 'photos',
-      photosHeading: '照片',
-      loading: '加载中…',
-      retry: '重试',
-      close: '关闭',
-      story: '故事',
+      title: "旅行图册",
+      subtitle: "以纪念物记录旅途",
+      newest: "Newest",
+      oldest: "Oldest",
+      journeys: "次旅程",
+      photos: "photos",
+      photosHeading: "照片",
+      loading: "加载中…",
+      retry: "重试",
+      close: "关闭",
+      story: "故事",
     },
   } as const
 
@@ -107,7 +107,7 @@
       ([entry]) => {
         if (entry.isIntersecting) activeJourneyId = journey.id
       },
-      { rootMargin: '-35% 0px -55% 0px', threshold: 0 },
+      { rootMargin: "-35% 0px -55% 0px", threshold: 0 },
     )
     observer.observe(node)
     return { destroy: () => observer.disconnect() }
@@ -121,7 +121,7 @@
           activeJourneyId = node.dataset.journeyId ?? activeJourneyId
         }
       },
-      { rootMargin: '-42% 0px -42% 0px', threshold: 0 },
+      { rootMargin: "-42% 0px -42% 0px", threshold: 0 },
     )
     observer.observe(node)
     return { destroy: () => observer.disconnect() }
@@ -140,7 +140,7 @@
   $effect(() => loadData())
 </script>
 
-<main class="waypoints" class:light={theme === 'light'}>
+<main class="waypoints" class:light={theme === "light"}>
   {#if isLoading}
     <div class="status" role="status">{label.loading}</div>
   {:else if error}
@@ -196,7 +196,7 @@
         >
           <header class="journey-heading">
             <p class="journey-number">
-              {String(orderedJourneys.indexOf(entry) + 1).padStart(2, '0')}
+              {String(orderedJourneys.indexOf(entry) + 1).padStart(2, "0")}
             </p>
             <h2>{t(entry.journey.title)}</h2>
             <p>{t(entry.journey.place)} · {t(entry.journey.dates)}</p>

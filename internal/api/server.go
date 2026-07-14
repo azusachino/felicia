@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -113,8 +112,6 @@ func (s *Server) Handler() http.Handler {
 		r.Get("/mementos/{id}", s.handleGetMemento)
 		r.Post("/mementos", s.handleUpsertMemento)
 		r.Post("/photos", s.handleUpsertPhoto)
-		r.Get("/mementos/{id}/translations", s.handleListTranslations)
-		r.Post("/translations", s.handleUpsertTranslation)
 
 		// Ingest triggers (auto-seed from the configured sources)
 		r.Post("/journeys/{id}/sync-route", s.handleSyncRoute)
@@ -649,59 +646,6 @@ func (s *Server) handleUpsertPhoto(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// Translation handlers (Admin)
-
-func (s *Server) handleListTranslations(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
-	id, err := uuid.Parse(idStr)
-	if err != nil {
-		respondError(w, http.StatusBadRequest, "invalid memento UUID")
-		return
-	}
-	ts, err := s.repo.ListTranslations(r.Context(), "memento", id)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	respondJSON(w, http.StatusOK, ts)
-}
-
-type upsertTranslationRequest struct {
-	ID         uuid.UUID `json:"id"`
-	OwnerType  string    `json:"owner_type"`
-	OwnerID    uuid.UUID `json:"owner_id"`
-	Lang       string    `json:"lang"`
-	Field      string    `json:"field"`
-	Value      string    `json:"value"`
-	Provenance string    `json:"provenance"`
-}
-
-func (s *Server) handleUpsertTranslation(w http.ResponseWriter, r *http.Request) {
-	var req upsertTranslationRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request JSON")
-		return
-	}
-
-	translation := &domain.Translation{
-		ID:         req.ID,
-		OwnerType:  req.OwnerType,
-		OwnerID:    req.OwnerID,
-		Lang:       req.Lang,
-		Field:      req.Field,
-		Value:      req.Value,
-		Provenance: req.Provenance,
-	}
-
-	if err := s.repo.UpsertTranslation(r.Context(), translation); err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	s.cache.InvalidateAll(r.Context())
-	respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-}
-
 // Ingest handlers (Admin) — trigger the auto-seed importer from the sources.
 
 func (s *Server) ingestReady(w http.ResponseWriter) bool {
@@ -865,19 +809,18 @@ func (s *Server) handleGetPublicJourneys(w http.ResponseWriter, r *http.Request)
 }
 
 type publicJourney struct {
-	ID             uuid.UUID                 `json:"id"`
-	JournalID      uuid.UUID                 `json:"journal_id"`
-	Slug           string                    `json:"slug"`
-	SourceRef      *string                   `json:"source_ref,omitempty"`
-	Title          string                    `json:"title"`
-	Place          string                    `json:"place"`
-	Country        *string                   `json:"country,omitempty"`
-	Region         *string                   `json:"region,omitempty"`
-	DateStart      string                    `json:"date_start"`
-	DateEnd        string                    `json:"date_end"`
-	GPSRoute       *geoJSONGeom              `json:"gps_route,omitempty"`
-	AuthoredFields []string                  `json:"authored_fields"`
-	Translations   map[string]map[string]any `json:"translations,omitempty"`
+	ID             uuid.UUID    `json:"id"`
+	JournalID      uuid.UUID    `json:"journal_id"`
+	Slug           string       `json:"slug"`
+	SourceRef      *string      `json:"source_ref,omitempty"`
+	Title          string       `json:"title"`
+	Place          string       `json:"place"`
+	Country        *string      `json:"country,omitempty"`
+	Region         *string      `json:"region,omitempty"`
+	DateStart      string       `json:"date_start"`
+	DateEnd        string       `json:"date_end"`
+	GPSRoute       *geoJSONGeom `json:"gps_route,omitempty"`
+	AuthoredFields []string     `json:"authored_fields"`
 }
 
 func (s *Server) handleGetPublicJourneyDetails(w http.ResponseWriter, r *http.Request) {
@@ -901,12 +844,6 @@ func (s *Server) handleGetPublicJourneyDetails(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	trans, err := s.repo.ListTranslations(r.Context(), "journey", j.ID)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
 	pj := publicJourney{
 		ID:             j.ID,
 		JournalID:      j.JournalID,
@@ -920,7 +857,6 @@ func (s *Server) handleGetPublicJourneyDetails(w http.ResponseWriter, r *http.Re
 		DateEnd:        j.DateEnd.Format("2006-01-02"),
 		GPSRoute:       toGeoJSON(j.GPSRoute),
 		AuthoredFields: j.AuthoredFields,
-		Translations:   buildAPITranslationMap(trans),
 	}
 
 	jsonData, err := json.Marshal(pj)
@@ -932,23 +868,22 @@ func (s *Server) handleGetPublicJourneyDetails(w http.ResponseWriter, r *http.Re
 }
 
 type publicMemento struct {
-	ID            uuid.UUID                 `json:"id"`
-	JourneyID     uuid.UUID                 `json:"journey_id"`
-	Kind          string                    `json:"kind"`
-	Seq           int                       `json:"seq"`
-	OccurredAt    string                    `json:"occurred_at"`
-	OccurredTZ    string                    `json:"occurred_tz"`
-	Geom          *geoJSONGeom              `json:"geom,omitempty"`
-	Title         string                    `json:"title"`
-	Place         string                    `json:"place"`
-	Vendor        *string                   `json:"vendor,omitempty"`
-	Essay         *string                   `json:"essay,omitempty"`
-	PriceAmount   *int64                    `json:"price_amount,omitempty"`
-	PriceCurrency *string                   `json:"price_currency,omitempty"`
-	KindData      json.RawMessage           `json:"kind_data,omitempty"`
-	SourceRef     *string                   `json:"source_ref,omitempty"`
-	Photos        []publicPhoto             `json:"photos,omitempty"`
-	Translations  map[string]map[string]any `json:"translations,omitempty"`
+	ID            uuid.UUID       `json:"id"`
+	JourneyID     uuid.UUID       `json:"journey_id"`
+	Kind          string          `json:"kind"`
+	Seq           int             `json:"seq"`
+	OccurredAt    string          `json:"occurred_at"`
+	OccurredTZ    string          `json:"occurred_tz"`
+	Geom          *geoJSONGeom    `json:"geom,omitempty"`
+	Title         string          `json:"title"`
+	Place         string          `json:"place"`
+	Vendor        *string         `json:"vendor,omitempty"`
+	Essay         *string         `json:"essay,omitempty"`
+	PriceAmount   *int64          `json:"price_amount,omitempty"`
+	PriceCurrency *string         `json:"price_currency,omitempty"`
+	KindData      json.RawMessage `json:"kind_data,omitempty"`
+	SourceRef     *string         `json:"source_ref,omitempty"`
+	Photos        []publicPhoto   `json:"photos,omitempty"`
 }
 
 type publicPhoto struct {
@@ -991,12 +926,6 @@ func (s *Server) handleGetPublicMementos(w http.ResponseWriter, r *http.Request)
 
 	var list []publicMemento
 	for _, m := range mementos {
-		mTrans, err := s.repo.ListTranslations(r.Context(), "memento", m.ID)
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-
 		photos, err := s.repo.ListPhotosByMemento(r.Context(), m.ID)
 		if err != nil {
 			respondError(w, http.StatusInternalServerError, err.Error())
@@ -1044,7 +973,6 @@ func (s *Server) handleGetPublicMementos(w http.ResponseWriter, r *http.Request)
 			KindData:      kindData,
 			SourceRef:     m.SourceRef,
 			Photos:        sPhotos,
-			Translations:  buildAPITranslationMap(mTrans),
 		})
 	}
 
@@ -1104,31 +1032,6 @@ func toGeoJSON(geom orb.Geometry) *geoJSONGeom {
 	default:
 		return nil
 	}
-}
-
-func buildAPITranslationMap(translations []*domain.Translation) map[string]map[string]any {
-	m := make(map[string]map[string]any)
-	for _, t := range translations {
-		if _, ok := m[t.Lang]; !ok {
-			m[t.Lang] = make(map[string]any)
-		}
-		if strings.HasPrefix(t.Field, "kind_data.") {
-			parts := strings.Split(t.Field, ".")
-			if len(parts) == 2 {
-				kindDataMap, ok := m[t.Lang]["kind_data"].(map[string]any)
-				if !ok {
-					kindDataMap = make(map[string]any)
-					m[t.Lang]["kind_data"] = kindDataMap
-				}
-				kindDataMap[parts[1]] = t.Value
-			} else {
-				m[t.Lang][t.Field] = t.Value
-			}
-		} else {
-			m[t.Lang][t.Field] = t.Value
-		}
-	}
-	return m
 }
 
 // Helper responders

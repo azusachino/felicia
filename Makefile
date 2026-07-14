@@ -9,8 +9,9 @@ GO      ?= go
 # phase, so Go targets no-op cleanly until the first package is written.
 GO_FILES := $(shell find . -name '*.go' -not -path './vendor/*' -not -path './.git/*' -not -path '*/node_modules/*' -print -quit 2>/dev/null)
 
-# Real module packages, excluding stray Go files vendored inside apps/web-public/node_modules.
-GO_PKGS = $(shell $(GO) list ./... | grep -v /node_modules/)
+# Every Go module must be checked; the root module alone does not traverse the
+# independent workspace modules.
+GO_MODULES = . apps/core apps/runtime apps/providers apps/apiserver
 
 DATABASE_DSN ?= postgres://postgres:password@localhost:5432/felicia?sslmode=disable
 PORT ?= 8080
@@ -28,21 +29,21 @@ help: ## List targets
 		awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-13s\033[0m %s\n", $$1, $$2}'
 
 fmt: ## Format Go code
-	@if [ -z "$(GO_FILES)" ]; then echo "fmt: no Go packages yet, skipping"; else $(GO) fmt ./...; fi
+	@if [ -z "$(GO_FILES)" ]; then echo "fmt: no Go packages yet, skipping"; else set -e; for module in $(GO_MODULES); do (cd $$module && $(GO) fmt $$( $(GO) list ./... | grep -v '/node_modules/' )); done; fi
 
 vet: ## Run go vet
-	@if [ -z "$(GO_FILES)" ]; then echo "vet: no Go packages yet, skipping"; else $(GO) vet $(GO_PKGS); fi
+	@if [ -z "$(GO_FILES)" ]; then echo "vet: no Go packages yet, skipping"; else set -e; for module in $(GO_MODULES); do (cd $$module && $(GO) vet $$( $(GO) list ./... | grep -v '/node_modules/' )); done; fi
 
 lint: ## Lint Go (golangci-lint, from nix)
-	@if [ -z "$(GO_FILES)" ]; then echo "lint: no Go packages yet, skipping"; else $(NIX_RUN)golangci-lint run; fi
+	@if [ -z "$(GO_FILES)" ]; then echo "lint: no Go packages yet, skipping"; else set -e; for module in $(GO_MODULES); do (cd $$module && $(NIX_RUN)golangci-lint run); done; fi
 
 test: ## Run Go tests with race detector + coverage
-	@if [ -z "$(GO_FILES)" ]; then echo "test: no Go packages yet, skipping"; else $(GO) test -race -cover $(GO_PKGS); fi
+	@if [ -z "$(GO_FILES)" ]; then echo "test: no Go packages yet, skipping"; else set -e; for module in $(GO_MODULES); do (cd $$module && $(GO) test -race -cover $$( $(GO) list ./... | grep -v '/node_modules/' )); done; fi
 
-check: fmt vet lint test ## Pre-commit gate
+check: fmt vet lint test test-features ## Pre-commit gate
 
 build: ## Build all binaries
-	@if [ -z "$(GO_FILES)" ]; then echo "build: no Go packages yet, skipping"; else $(GO) build ./...; fi
+	@if [ -z "$(GO_FILES)" ]; then echo "build: no Go packages yet, skipping"; else set -e; for module in $(GO_MODULES); do (cd $$module && $(GO) build $$( $(GO) list ./... | grep -v '/node_modules/' )); done; fi
 
 # Pre-PR gate. Frontend (web-check) and migration smoke join here once web/ and
 # migrations/ have content.

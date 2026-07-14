@@ -88,18 +88,6 @@ CREATE TABLE mementos (
     CONSTRAINT valid_currency CHECK (price_currency IS NULL OR price_currency ~ '^[A-Z]{3}$')
 );
 
-CREATE TABLE translations (
-    id UUID PRIMARY KEY DEFAULT generate_uuid_v7(),
-    owner_type TEXT NOT NULL CHECK (owner_type IN ('journey', 'memento', 'photo')),
-    owner_id UUID NOT NULL,
-    lang TEXT NOT NULL CHECK (lang IN ('en', 'zh')),
-    field TEXT NOT NULL,
-    value TEXT NOT NULL,
-    provenance TEXT NOT NULL CHECK (provenance IN ('machine', 'authored')),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT unique_translation UNIQUE (owner_type, owner_id, lang, field)
-);
-
 CREATE TABLE memento_photos (
     id UUID PRIMARY KEY DEFAULT generate_uuid_v7(),
     memento_id UUID NOT NULL REFERENCES mementos(id) ON DELETE CASCADE,
@@ -132,7 +120,6 @@ DROP INDEX IF EXISTS idx_mementos_geom;
 DROP INDEX IF EXISTS idx_journeys_gps_route;
 
 DROP TABLE IF EXISTS memento_photos;
-DROP TABLE IF EXISTS translations;
 DROP TABLE IF EXISTS mementos;
 DROP TABLE IF EXISTS journeys;
 DROP TABLE IF EXISTS journal;

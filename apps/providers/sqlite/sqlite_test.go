@@ -62,15 +62,8 @@ func TestRepositoryJourneyWorkflow(t *testing.T) {
 	if err := repo.UpsertPhoto(ctx, photo); err != nil {
 		t.Fatalf("upsert photo: %v", err)
 	}
-	translation := &domain.Translation{ID: mustUUID(t), OwnerType: "memento", OwnerID: memento.ID, Lang: "en", Field: "title", Value: "Live show", Provenance: "authored"}
-	if err := repo.UpsertTranslation(ctx, translation); err != nil {
-		t.Fatalf("upsert translation: %v", err)
-	}
 	if photos, err := repo.ListPhotosByMemento(ctx, memento.ID); err != nil || len(photos) != 1 {
 		t.Fatalf("list photos: %v (%d)", err, len(photos))
-	}
-	if translations, err := repo.ListTranslations(ctx, "memento", memento.ID); err != nil || len(translations) != 1 {
-		t.Fatalf("list translations: %v (%d)", err, len(translations))
 	}
 
 	run := &domain.ImportRun{SourceSystem: "sqlite-test", StartedAt: time.Now().UTC(), Status: domain.ImportRunRunning}

@@ -50,7 +50,6 @@ type mockRepository struct {
 	journeys     map[uuid.UUID]*domain.Journey
 	mementos     map[uuid.UUID]*domain.Memento
 	photos       map[uuid.UUID]*domain.MementoPhoto
-	translations []*domain.Translation
 	transitLegs  []*domain.TransitLeg
 	createdLeg   *domain.TransitLegInput
 	displayRoute orb.MultiLineString
@@ -59,10 +58,9 @@ type mockRepository struct {
 
 func newMockRepository() *mockRepository {
 	return &mockRepository{
-		journeys:     make(map[uuid.UUID]*domain.Journey),
-		mementos:     make(map[uuid.UUID]*domain.Memento),
-		photos:       make(map[uuid.UUID]*domain.MementoPhoto),
-		translations: []*domain.Translation{},
+		journeys: make(map[uuid.UUID]*domain.Journey),
+		mementos: make(map[uuid.UUID]*domain.Memento),
+		photos:   make(map[uuid.UUID]*domain.MementoPhoto),
 	}
 }
 
@@ -223,27 +221,6 @@ func (m *mockRepository) ListPhotosByMemento(_ context.Context, mementoID uuid.U
 
 func (m *mockRepository) UpsertPhoto(_ context.Context, photo *domain.MementoPhoto) error {
 	m.photos[photo.ID] = photo
-	return nil
-}
-
-func (m *mockRepository) ListTranslations(_ context.Context, ownerType string, ownerID uuid.UUID) ([]*domain.Translation, error) {
-	var list []*domain.Translation
-	for _, t := range m.translations {
-		if t.OwnerType == ownerType && t.OwnerID == ownerID {
-			list = append(list, t)
-		}
-	}
-	return list, nil
-}
-
-func (m *mockRepository) UpsertTranslation(_ context.Context, translation *domain.Translation) error {
-	for i, t := range m.translations {
-		if t.OwnerType == translation.OwnerType && t.OwnerID == translation.OwnerID && t.Lang == translation.Lang && t.Field == translation.Field {
-			m.translations[i] = translation
-			return nil
-		}
-	}
-	m.translations = append(m.translations, translation)
 	return nil
 }
 

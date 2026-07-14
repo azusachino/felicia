@@ -148,21 +148,6 @@ INSERT INTO memento_photos (
     taken_at = EXCLUDED.taken_at,
     source_ref = EXCLUDED.source_ref;
 
--- name: ListTranslations :many
-SELECT id, owner_type, owner_id, lang, field, value, provenance, updated_at
-FROM translations
-WHERE owner_type = $1 AND owner_id = $2;
-
--- name: UpsertTranslation :exec
-INSERT INTO translations (
-    id, owner_type, owner_id, lang, field, value, provenance, updated_at
-) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, NOW()
-) ON CONFLICT (owner_type, owner_id, lang, field) DO UPDATE SET
-    value = CASE WHEN translations.provenance = 'machine' OR EXCLUDED.provenance = 'authored' THEN EXCLUDED.value ELSE translations.value END,
-    provenance = CASE WHEN translations.provenance = 'machine' OR EXCLUDED.provenance = 'authored' THEN EXCLUDED.provenance ELSE translations.provenance END,
-    updated_at = NOW();
-
 -- name: CreateTransitLeg :exec
 -- Build the great-circle arc once, at insert: ST_MakeLine of the two endpoints,
 -- densified along the geodesic by ST_Segmentize on geography ($10 = max segment

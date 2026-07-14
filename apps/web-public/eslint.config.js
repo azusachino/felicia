@@ -1,21 +1,21 @@
-import js from '@eslint/js'
-import globals from 'globals'
-import ts from 'typescript-eslint'
-import svelte from 'eslint-plugin-svelte'
+import js from "@eslint/js"
+import globals from "globals"
+import ts from "typescript-eslint"
+import svelte from "eslint-plugin-svelte"
 
 // Flat config. .svelte components are linted (previously ignored) using the
 // svelte parser with typescript-eslint for <script lang="ts"> blocks.
 export default ts.config(
-  { ignores: ['dist/'] },
+  { ignores: ["dist/"] },
   js.configs.recommended,
   ...ts.configs.recommended,
   ...svelte.configs.recommended,
   {
-    files: ['**/*.svelte', '**/*.svelte.ts'],
+    files: ["**/*.svelte", "**/*.svelte.ts"],
     languageOptions: {
       parserOptions: {
         parser: ts.parser,
-        extraFileExtensions: ['.svelte'],
+        extraFileExtensions: [".svelte"],
       },
     },
   },
@@ -29,7 +29,7 @@ export default ts.config(
       // (as this rule wants) would drop the reactive dependency and break
       // language switching. The rule's autofixer is also incompatible with
       // ESLint 10 (uses the removed SourceCode.isSpaceBetweenTokens).
-      'svelte/no-reactive-functions': 'off',
+      "svelte/no-reactive-functions": "off",
     },
   },
 )

@@ -1,7 +1,7 @@
 <script lang="ts">
-  import maplibregl from 'maplibre-gl'
-  import { onMount } from 'svelte'
-  import type { Coordinates, Theme } from '../data'
+  import maplibregl from "maplibre-gl"
+  import { onMount } from "svelte"
+  import type { Coordinates, Theme } from "../data"
 
   // v3 detail map — MapLibre vector basemap from OpenFreeMap (OSM-derived,
   // with attribution), route + transit lines, DOM markers, scoped to a journey
@@ -38,15 +38,15 @@
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- imperative maplibre marker cache, not reactive UI state
   const markers = new Map<string, maplibregl.Marker>()
 
-  const mapStyle = 'https://tiles.openfreemap.org/styles/liberty'
+  const mapStyle = "https://tiles.openfreemap.org/styles/liberty"
 
   function routeGeoJson() {
     return {
-      type: 'FeatureCollection' as const,
+      type: "FeatureCollection" as const,
       features: [
         {
-          type: 'Feature' as const,
-          geometry: { type: 'LineString' as const, coordinates: route },
+          type: "Feature" as const,
+          geometry: { type: "LineString" as const, coordinates: route },
           properties: {},
         },
       ],
@@ -55,10 +55,10 @@
 
   function transitGeoJson() {
     return {
-      type: 'FeatureCollection' as const,
+      type: "FeatureCollection" as const,
       features: transit.map((pair) => ({
-        type: 'Feature' as const,
-        geometry: { type: 'LineString' as const, coordinates: pair },
+        type: "Feature" as const,
+        geometry: { type: "LineString" as const, coordinates: pair },
         properties: {},
       })),
     }
@@ -83,14 +83,14 @@
   }
 
   function markerElement(place: Place) {
-    const button = document.createElement('button')
-    button.type = 'button'
-    button.className = 'v3-mark'
-    button.setAttribute('aria-label', `Place ${place.seq}`)
+    const button = document.createElement("button")
+    button.type = "button"
+    button.className = "v3-mark"
+    button.setAttribute("aria-label", `Place ${place.seq}`)
     button.innerHTML = `<span>${place.seq}</span>${
-      place.count > 1 ? `<i class="v3-mark-count">${place.count}</i>` : ''
+      place.count > 1 ? `<i class="v3-mark-count">${place.count}</i>` : ""
     }`
-    button.addEventListener('click', (e) => {
+    button.addEventListener("click", (e) => {
       e.stopPropagation()
       onSelect(place.key)
     })
@@ -102,7 +102,7 @@
     markers.forEach((marker) => marker.remove())
     markers.clear()
     for (const place of places) {
-      const marker = new maplibregl.Marker({ element: markerElement(place), anchor: 'center' })
+      const marker = new maplibregl.Marker({ element: markerElement(place), anchor: "center" })
         .setLngLat(place.coords)
         .addTo(map)
       markers.set(place.key, marker)
@@ -112,7 +112,7 @@
 
   function syncActive() {
     markers.forEach((marker, key) => {
-      marker.getElement().classList.toggle('is-active', key === activeKey)
+      marker.getElement().classList.toggle("is-active", key === activeKey)
     })
   }
 
@@ -130,11 +130,11 @@
       center: route[0] ?? places[0]?.coords ?? [138, 38],
       zoom: 6,
     })
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right")
 
-    map.on('click', (e) => {
-      if ((e.originalEvent?.target as HTMLElement)?.tagName === 'CANVAS') {
-        onSelect('')
+    map.on("click", (e) => {
+      if ((e.originalEvent?.target as HTMLElement)?.tagName === "CANVAS") {
+        onSelect("")
       }
     })
 
@@ -143,36 +143,36 @@
     resizeObserver = new ResizeObserver(() => map?.resize())
     resizeObserver.observe(container)
 
-    map.on('load', () => {
+    map.on("load", () => {
       if (!map) return
-      map.addSource('route', { type: 'geojson', data: routeGeoJson() })
+      map.addSource("route", { type: "geojson", data: routeGeoJson() })
       map.addLayer({
-        id: 'route-glow',
-        type: 'line',
-        source: 'route',
-        paint: { 'line-color': '#f97316', 'line-width': 8, 'line-opacity': 0.16, 'line-blur': 4 },
+        id: "route-glow",
+        type: "line",
+        source: "route",
+        paint: { "line-color": "#f97316", "line-width": 8, "line-opacity": 0.16, "line-blur": 4 },
       })
       map.addLayer({
-        id: 'route-line',
-        type: 'line',
-        source: 'route',
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        id: "route-line",
+        type: "line",
+        source: "route",
+        layout: { "line-cap": "round", "line-join": "round" },
         paint: {
-          'line-color': '#fb923c',
-          'line-width': 4,
-          'line-opacity': 0.95,
+          "line-color": "#fb923c",
+          "line-width": 4,
+          "line-opacity": 0.95,
         },
       })
-      map.addSource('transit', { type: 'geojson', data: transitGeoJson() })
+      map.addSource("transit", { type: "geojson", data: transitGeoJson() })
       map.addLayer({
-        id: 'transit',
-        type: 'line',
-        source: 'transit',
+        id: "transit",
+        type: "line",
+        source: "transit",
         paint: {
-          'line-color': '#f6c98b',
-          'line-width': 2,
-          'line-opacity': 0.35,
-          'line-dasharray': [1, 2],
+          "line-color": "#f6c98b",
+          "line-width": 2,
+          "line-opacity": 0.35,
+          "line-dasharray": [1, 2],
         },
       })
 
@@ -198,8 +198,8 @@
     void places
     void route
     if (!loaded || !map) return
-    ;(map.getSource('route') as maplibregl.GeoJSONSource | undefined)?.setData(routeGeoJson())
-    ;(map.getSource('transit') as maplibregl.GeoJSONSource | undefined)?.setData(transitGeoJson())
+    ;(map.getSource("route") as maplibregl.GeoJSONSource | undefined)?.setData(routeGeoJson())
+    ;(map.getSource("transit") as maplibregl.GeoJSONSource | undefined)?.setData(transitGeoJson())
     rebuildMarkers()
     fitJourney()
   })

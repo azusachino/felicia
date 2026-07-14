@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { designs, designFromHash } from './designs'
-  import type { Lang, Theme } from './data'
+  import { designs, designFromHash } from "./designs"
+  import type { Lang, Theme } from "./data"
+  import { message, resolveLocale } from "./i18n/catalog"
 
   // The demo is a deployable, immutable-data showcase that can switch between
   // multiple front-of-house DESIGNS (the PM may supply several). Every design
@@ -14,8 +15,12 @@
   const Active = $derived(active.component)
 
   // lang/theme are shared across designs so switching keeps your reading state.
-  let lang: Lang = $state('ja')
-  let theme: Theme = $state('dark')
+  let lang: Lang = $state(
+    resolveLocale(localStorage.getItem("felicia.locale") ?? navigator.language),
+  )
+  let theme: Theme = $state("dark")
+
+  $effect(() => localStorage.setItem("felicia.locale", lang))
 
   function select(target: (typeof designs)[number]) {
     location.hash = target.hash
@@ -24,7 +29,7 @@
 
 <svelte:window on:hashchange={() => (hash = location.hash)} />
 
-<nav class="design-switcher" aria-label="Design">
+<nav class="design-switcher" aria-label={message(lang, "system.design")}>
   {#each designs as design (design.id)}
     <button
       type="button"
@@ -33,7 +38,7 @@
       aria-pressed={design.id === active.id}
       onclick={() => select(design)}
     >
-      {design.label[lang]}
+      {message(lang, design.labelKey)}
     </button>
   {/each}
 </nav>

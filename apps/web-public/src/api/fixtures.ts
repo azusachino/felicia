@@ -1,4 +1,4 @@
-import type { ApiJourney, ApiMemento } from './types'
+import type { ApiJourney, ApiMemento } from "./types"
 
 type Scenario = {
   journeys: Array<{
@@ -21,7 +21,7 @@ type Scenario = {
       place: string
       geom: number[]
       kind_data: Record<string, unknown>
-      photos?: ApiMemento['photos']
+      photos?: ApiMemento["photos"]
     }>
   }>
 }
@@ -31,12 +31,12 @@ export async function loadGoldenRouteFixture(): Promise<{
   mementos: ApiMemento[]
 }> {
   const scenario = (await Bun.file(
-    new URL('../../../scripts/data.json', import.meta.url),
+    new URL("../../../../scripts/data.json", import.meta.url),
   ).json()) as Scenario
   const source = scenario.journeys[0]
   const journey: ApiJourney = {
     id: source.id,
-    journal_id: '0190cbde-f300-7000-8000-000000000000',
+    journal_id: "0190cbde-f300-7000-8000-000000000000",
     slug: source.slug,
     title: source.title,
     place: source.place,
@@ -44,7 +44,7 @@ export async function loadGoldenRouteFixture(): Promise<{
     region: source.region,
     date_start: source.date_start,
     date_end: source.date_end,
-    gps_route: { type: 'MultiLineString', coordinates: source.gps_route },
+    gps_route: { type: "MultiLineString", coordinates: source.gps_route },
     authored_fields: [],
   }
   const mementos: ApiMemento[] = source.mementos.map((memento) => ({
@@ -53,10 +53,10 @@ export async function loadGoldenRouteFixture(): Promise<{
     seq: memento.seq,
     occurred_at: memento.occurred_at,
     journey_id: source.id,
-    occurred_tz: memento.occurred_tz ?? 'Asia/Tokyo',
+    occurred_tz: memento.occurred_tz ?? "Asia/Tokyo",
     title: memento.title,
     place: memento.place,
-    geom: { type: 'Point', coordinates: memento.geom },
+    geom: { type: "Point", coordinates: memento.geom },
     kind_data: memento.kind_data,
     photos: memento.photos,
     authored_fields: [],

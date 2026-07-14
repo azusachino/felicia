@@ -41,11 +41,10 @@ func (t FieldType) coordBearing() bool {
 
 // Field is one declared entry of a kind's kind_data schema.
 type Field struct {
-	Name         string    `yaml:"name"`
-	Type         FieldType `yaml:"type"`
-	Required     bool      `yaml:"required"`
-	Translatable bool      `yaml:"translatable"` // lifted into the translations sidecar (D3); only meaningful on text
-	Values       []string  `yaml:"values"`       // the legal set for FieldEnum
+	Name     string    `yaml:"name"`
+	Type     FieldType `yaml:"type"`
+	Required bool      `yaml:"required"`
+	Values   []string  `yaml:"values"` // the legal set for FieldEnum
 }
 
 // Template is one memento kind declared as data. The same declaration drives

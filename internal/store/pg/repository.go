@@ -358,12 +358,6 @@ func (r *pgRepository) ApplyMementoAggregate(ctx context.Context, aggregate *dom
 			return fmt.Errorf("apply memento aggregate photo: %w", err)
 		}
 	}
-	for _, translation := range aggregate.Translations {
-		if err := txRepo.UpsertTranslation(ctx, translation); err != nil {
-			_ = tx.Rollback(ctx)
-			return fmt.Errorf("apply memento aggregate translation: %w", err)
-		}
-	}
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit memento aggregate: %w", err)
 	}
@@ -635,47 +629,6 @@ func (r *pgRepository) UpsertPhoto(ctx context.Context, photo *domain.MementoPho
 		SourceRef:   toText(photo.SourceRef),
 	}); err != nil {
 		return fmt.Errorf("upsert photo %s: %w", photo.ID, err)
-	}
-	return nil
-}
-
-// Translation operations
-
-func (r *pgRepository) ListTranslations(ctx context.Context, ownerType string, ownerID uuid.UUID) ([]*domain.Translation, error) {
-	rows, err := r.q.ListTranslations(ctx, db.ListTranslationsParams{
-		OwnerType: ownerType,
-		OwnerID:   ownerID,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("list translations for %s %s: %w", ownerType, ownerID, err)
-	}
-	var res []*domain.Translation
-	for _, row := range rows {
-		res = append(res, &domain.Translation{
-			ID:         row.ID,
-			OwnerType:  row.OwnerType,
-			OwnerID:    row.OwnerID,
-			Lang:       row.Lang,
-			Field:      row.Field,
-			Value:      row.Value,
-			Provenance: row.Provenance,
-			UpdatedAt:  fromTimestamptz(row.UpdatedAt),
-		})
-	}
-	return res, nil
-}
-
-func (r *pgRepository) UpsertTranslation(ctx context.Context, translation *domain.Translation) error {
-	if err := r.q.UpsertTranslation(ctx, db.UpsertTranslationParams{
-		ID:         translation.ID,
-		OwnerType:  translation.OwnerType,
-		OwnerID:    translation.OwnerID,
-		Lang:       translation.Lang,
-		Field:      translation.Field,
-		Value:      translation.Value,
-		Provenance: translation.Provenance,
-	}); err != nil {
-		return fmt.Errorf("upsert translation %s: %w", translation.ID, err)
 	}
 	return nil
 }

@@ -1,6 +1,6 @@
 // v3 (techo) — a hand-placed, roughly-proportional lon/lat sketch
 // projection helper for the stylized landing map.
-import type { Coordinates } from '../data'
+import type { Coordinates } from "../data"
 
 // Stylized bounding box for the full Japan sketch map. Include Okinawa rather
 // than using a mainland-only range, which projects southern points outside.

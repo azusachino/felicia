@@ -12,14 +12,14 @@ that revision still matches and reports a write conflict otherwise. New rows
 start at revision 1, and successful updates increment the revision.
 
 The repository exposes a separate aggregate operation that opens one database
-transaction, applies the memento patch, writes child photos and translations,
+transaction, applies the memento patch, and writes child photos,
 and commits only if every operation succeeds. A failed child write rolls back
 the memento change as well.
 
 ## Consequences
 
 * API clients receive HTTP 409 for stale authoring writes and must reload.
-* Memento, media, and translations cannot be partially committed through the
+* Memento and media cannot be partially committed through the
   aggregate seam.
 * Import and aggregate orchestration remain separate until broader workflow
   transaction boundaries are needed.

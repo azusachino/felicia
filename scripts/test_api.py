@@ -289,28 +289,6 @@ def test_memento_boundary_validation():
     assert status == 200, f"Expected incomplete draft 200, got {status} ({body})"
     print("✓ Memento boundary validation OK")
 
-def test_translations():
-    print("Testing translation endpoints...")
-    memento_id = "0190cbde-f300-7000-8000-a01000000001"
-    # List
-    status, body = request(f"/api/admin/mementos/{memento_id}/translations")
-    assert status == 200, f"Expected 200, got {status}"
-    assert len(body) > 0, "Expected at least 1 translation sidecar row"
-    
-    # Comic-book upsert style
-    new_trans = {
-        "id": "0190cbde-f300-7000-8000-eaaaaaaaaaaa",
-        "owner_type": "memento",
-        "owner_id": memento_id,
-        "lang": "en",
-        "field": "place",
-        "value": "Tokyo Station (Translated)",
-        "provenance": "authored"
-    }
-    status, body = request("/api/admin/translations", method="POST", data=new_trans)
-    assert status == 200, f"Expected 200 OK, got {status}"
-    print("✓ Translations OK")
-
 def test_public_apis():
     print("Testing public read-only query APIs (Valkey cached)...")
     # 1. Global list
@@ -353,7 +331,6 @@ def main():
         test_memento_lifecycle()
         test_memento_revision_conflict()
         test_memento_boundary_validation()
-        test_translations()
         test_public_apis()
         print("🎉 All API E2E tests passed successfully!")
     except AssertionError as e:

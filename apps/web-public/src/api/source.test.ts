@@ -1,7 +1,7 @@
-import { describe, expect, test, mock, beforeAll, afterAll } from 'bun:test'
-import { loadJourney, loadJourneys } from './source'
-import type { ApiJourney, ApiMemento } from './types'
-import { loadGoldenRouteFixture } from './testdata'
+import { describe, expect, test, mock, beforeAll, afterAll } from "bun:test"
+import { loadJourney, loadJourneys } from "./source"
+import type { ApiJourney, ApiMemento } from "./types"
+import { loadGoldenRouteFixture } from "./fixtures"
 
 // Access import.meta.env in a type-safe way that is extensible and avoids ESLint any/ignore rules
 const importMeta = import.meta as unknown as {
@@ -14,16 +14,16 @@ const importMeta = import.meta as unknown as {
 
 if (!importMeta.env) {
   importMeta.env = {
-    VITE_API_BASE: 'http://localhost:8080',
+    VITE_API_BASE: "http://localhost:8080",
     PROD: false,
     DEV: true,
   }
 }
 
 const originalFetch = globalThis.fetch
-const journeyID = '0190cbde-f300-7000-8000-111111111111'
+const journeyID = "0190cbde-f300-7000-8000-111111111111"
 
-describe('source API', () => {
+describe("source API", () => {
   let japanSpringJourney: ApiJourney
   let japanSpringMementos: ApiMemento[]
 
@@ -37,32 +37,32 @@ describe('source API', () => {
     globalThis.fetch = originalFetch
   })
 
-  test('loadJourney fetches detail and mementos, then adapts them (dev mode)', async () => {
+  test("loadJourney fetches detail and mementos, then adapts them (dev mode)", async () => {
     globalThis.fetch = mock((url: string | URL) => {
       const urlStr = url.toString()
-      expect(urlStr).not.toContain('.json') // should not have .json in dev mode
+      expect(urlStr).not.toContain(".json") // should not have .json in dev mode
       if (urlStr.endsWith(`/api/v1/journeys/${journeyID}`)) {
         return Promise.resolve(Response.json(japanSpringJourney))
       }
       if (urlStr.endsWith(`/api/v1/journeys/${journeyID}/mementos`)) {
         return Promise.resolve(Response.json(japanSpringMementos))
       }
-      return Promise.resolve(new Response('Not Found', { status: 404 }))
+      return Promise.resolve(new Response("Not Found", { status: 404 }))
     }) as unknown as typeof fetch
 
     const journey = await loadJourney(journeyID)
 
-    expect(journey.id).toBe('0190cbde-f300-7000-8000-111111111111')
-    expect(journey.title.en).toBe('Narita Express Day Trip')
+    expect(journey.id).toBe("0190cbde-f300-7000-8000-111111111111")
+    expect(journey.title.en).toBe("Narita Express Day Trip")
     expect(journey.mementos).toHaveLength(5)
   })
 
-  test('loadJourneys fetches list, then detail/mementos for each, and adapts (dev mode)', async () => {
+  test("loadJourneys fetches list, then detail/mementos for each, and adapts (dev mode)", async () => {
     const listFixture = [
       {
         id: journeyID,
-        slug: 'golden-route',
-        title: '日本ゴールデンルート',
+        slug: "golden-route",
+        title: "日本ゴールデンルート",
         memento_count: 11,
         representative_dots: [],
       },
@@ -70,8 +70,8 @@ describe('source API', () => {
 
     globalThis.fetch = mock((url: string | URL) => {
       const urlStr = url.toString()
-      expect(urlStr).not.toContain('.json') // should not have .json in dev mode
-      if (urlStr.endsWith('/api/v1/journeys')) {
+      expect(urlStr).not.toContain(".json") // should not have .json in dev mode
+      if (urlStr.endsWith("/api/v1/journeys")) {
         return Promise.resolve(Response.json(listFixture))
       }
       if (urlStr.endsWith(`/api/v1/journeys/${journeyID}`)) {
@@ -80,34 +80,34 @@ describe('source API', () => {
       if (urlStr.endsWith(`/api/v1/journeys/${journeyID}/mementos`)) {
         return Promise.resolve(Response.json(japanSpringMementos))
       }
-      return Promise.resolve(new Response('Not Found', { status: 404 }))
+      return Promise.resolve(new Response("Not Found", { status: 404 }))
     }) as unknown as typeof fetch
 
     const journeys = await loadJourneys()
 
     expect(journeys).toHaveLength(1)
-    expect(journeys[0].id).toBe('0190cbde-f300-7000-8000-111111111111')
+    expect(journeys[0].id).toBe("0190cbde-f300-7000-8000-111111111111")
     expect(journeys[0].representativeDots).toEqual([])
   })
 
-  test('loadJourneys tolerates null mementos and representative_dots (empty journey)', async () => {
-    const bareID = 'f02ed764-5a4a-41c1-8553-3a283832c7d7'
+  test("loadJourneys tolerates null mementos and representative_dots (empty journey)", async () => {
+    const bareID = "f02ed764-5a4a-41c1-8553-3a283832c7d7"
     const listFixture = [
-      { id: bareID, slug: 'bare-2026', title: '空路', memento_count: 0, representative_dots: null },
+      { id: bareID, slug: "bare-2026", title: "空路", memento_count: 0, representative_dots: null },
     ]
 
     globalThis.fetch = mock((url: string | URL) => {
       const urlStr = url.toString()
-      if (urlStr.endsWith('/api/v1/journeys')) {
+      if (urlStr.endsWith("/api/v1/journeys")) {
         return Promise.resolve(Response.json(listFixture))
       }
       if (urlStr.endsWith(`/api/v1/journeys/${bareID}/mementos`)) {
         return Promise.resolve(Response.json(null))
       }
       if (urlStr.endsWith(`/api/v1/journeys/${bareID}`)) {
-        return Promise.resolve(Response.json({ id: bareID, slug: 'bare-2026', gps_route: null }))
+        return Promise.resolve(Response.json({ id: bareID, slug: "bare-2026", gps_route: null }))
       }
-      return Promise.resolve(new Response('Not Found', { status: 404 }))
+      return Promise.resolve(new Response("Not Found", { status: 404 }))
     }) as unknown as typeof fetch
 
     const journeys = await loadJourneys()
@@ -117,17 +117,17 @@ describe('source API', () => {
     expect(journeys[0].representativeDots).toEqual([])
   })
 
-  test('loadJourney throws on non-ok response', async () => {
+  test("loadJourney throws on non-ok response", async () => {
     globalThis.fetch = mock(() =>
-      Promise.resolve(new Response('Error', { status: 500 })),
+      Promise.resolve(new Response("Error", { status: 500 })),
     ) as unknown as typeof fetch
 
     expect(loadJourney(journeyID)).rejects.toThrow()
   })
 
-  test('loadJourneys throws on non-ok response', async () => {
+  test("loadJourneys throws on non-ok response", async () => {
     globalThis.fetch = mock(() =>
-      Promise.resolve(new Response('Error', { status: 500 })),
+      Promise.resolve(new Response("Error", { status: 500 })),
     ) as unknown as typeof fetch
 
     expect(loadJourneys()).rejects.toThrow()

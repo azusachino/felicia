@@ -1,10 +1,11 @@
 <script lang="ts">
-  import { kindLabel, type Coordinates, type L, type Lang, type Memento, type Theme } from '../data'
-  import TripMap from './TripMap.svelte'
-  import TechoIndexMap from './TechoIndexMap.svelte'
-  import { loadJourneys } from '../api/source'
-  import type { Journey } from '../data'
-  import { onMount } from 'svelte'
+  import { kindLabel, type Coordinates, type L, type Lang, type Memento, type Theme } from "../data"
+  import TripMap from "./TripMap.svelte"
+  import TechoIndexMap from "./TechoIndexMap.svelte"
+  import { loadJourneys } from "../api/source"
+  import { message, type MessageKey } from "../i18n/catalog"
+  import type { Journey } from "../data"
+  import { onMount } from "svelte"
 
   // v3 — the "techo" (手帳, paper notebook) front door. View 1 (landing) is the
   // journal index — a two-page spread with a paper sketch map. View 2 (detail)
@@ -12,23 +13,23 @@
   // (map is the index — felicia:decision:map-first-landing), and opening a place
   // reveals its memories (a place holds several) as paper cards with essay +
   // gallery. Styled with Tailwind (felicia:decision:techo-paper-v3).
-  let { lang = $bindable('ja'), theme = $bindable('dark') }: { lang?: Lang; theme?: Theme } =
+  let { lang = $bindable("ja"), theme = $bindable("dark") }: { lang?: Lang; theme?: Theme } =
     $props()
 
   let journeys = $state<Journey[]>([])
   let isLoading = $state(true)
   let error = $state<string | null>(null)
   let selectedIndex = $state(0)
-  let view = $state<'landing' | 'detail'>('landing')
+  let view = $state<"landing" | "detail">("landing")
   let selectedPlaceKey = $state<string | null>(null)
   let selectedMementoIndex = $state(0)
 
   function handleKeydown(event: KeyboardEvent) {
-    if (view !== 'detail' || !selectedMemento) return
-    if (event.key === 'ArrowLeft') {
+    if (view !== "detail" || !selectedMemento) return
+    if (event.key === "ArrowLeft") {
       event.preventDefault()
       goToPrevMemento()
-    } else if (event.key === 'ArrowRight') {
+    } else if (event.key === "ArrowRight") {
       event.preventDefault()
       goToNextMemento()
     }
@@ -48,7 +49,7 @@
           selectedIndex = deepLinkedIndex
           selectedMementoIndex = 0
           selectedPlaceKey = data[deepLinkedIndex].mementos[0]?.visitId ?? null
-          view = 'detail'
+          view = "detail"
         }
         isLoading = false
       })
@@ -62,8 +63,8 @@
     loadData()
   })
 
-  function t(value: L): string {
-    return value[lang]
+  function t(value: L | MessageKey): string {
+    return typeof value === "string" ? message(lang, value) : value[lang]
   }
 
   // Places ARE the journey's derived visits (felicia:decision:place-as-derived-visit);
@@ -133,13 +134,13 @@
     selectedIndex = index
     selectedMementoIndex = 0
     selectedPlaceKey = journey.mementos[0]?.visitId ?? null
-    view = 'detail'
-    history.pushState({}, '', `#techo/journeys/${journey.id}`)
+    view = "detail"
+    history.pushState({}, "", `#techo/journeys/${journey.id}`)
   }
 
   function backToLanding() {
-    view = 'landing'
-    history.pushState({}, '', '#techo')
+    view = "landing"
+    history.pushState({}, "", "#techo")
   }
 
   onMount(() => {
@@ -150,13 +151,13 @@
         selectedIndex = index
         selectedMementoIndex = 0
         selectedPlaceKey = journeys[index].mementos[0]?.visitId ?? null
-        view = 'detail'
-      } else if (window.location.hash === '#techo') {
-        view = 'landing'
+        view = "detail"
+      } else if (window.location.hash === "#techo") {
+        view = "landing"
       }
     }
-    window.addEventListener('popstate', restoreFromURL)
-    return () => window.removeEventListener('popstate', restoreFromURL)
+    window.addEventListener("popstate", restoreFromURL)
+    return () => window.removeEventListener("popstate", restoreFromURL)
   })
 
   function selectPlace(key: string) {
@@ -182,15 +183,15 @@
   }
 
   function onPhotoError(event: Event) {
-    ;(event.currentTarget as HTMLImageElement).style.display = 'none'
+    ;(event.currentTarget as HTMLImageElement).style.display = "none"
   }
 
   // Washi tape texture: a small fixed palette cycled by card index.
   const washiColors = [
-    'rgba(200, 120, 60, 0.35)',
-    'rgba(120, 150, 108, 0.35)',
-    'rgba(120, 138, 188, 0.32)',
-    'rgba(196, 150, 88, 0.35)',
+    "rgba(200, 120, 60, 0.35)",
+    "rgba(120, 150, 108, 0.35)",
+    "rgba(120, 138, 188, 0.32)",
+    "rgba(196, 150, 88, 0.35)",
   ]
   const washiRotations = [-4, 3, -2, 5]
 
@@ -204,13 +205,13 @@
   })
 
   const activeYear = $derived.by(() => {
-    if (!selectedJourney) return years[0] ?? '2026'
+    if (!selectedJourney) return years[0] ?? "2026"
     return journeyYears(selectedJourney)[0] ?? years[0]
   })
 
   function journeyYears(journey: Journey): string[] {
     const years = [...journey.dates.ja, ...journey.dates.en, ...journey.dates.zh]
-      .join(' ')
+      .join(" ")
       .match(/\b(?:19|20)\d{2}\b/g)
       ?.map(Number)
     if (!years?.length) return []
@@ -221,66 +222,66 @@
 
   function kindSummary(journey: Journey): string {
     return Array.from(new Set(journey.mementos.map((memento) => t(kindLabel[memento.kind])))).join(
-      ' · ',
+      " · ",
     )
   }
 
   function kindDetails(memento: Memento): [string, string][] {
     if (!memento.kindData) return []
     return Object.entries(memento.kindData)
-      .filter(([, value]) => typeof value === 'string' || typeof value === 'number')
-      .map(([key, value]) => [key.replaceAll('_', ' '), String(value)])
+      .filter(([, value]) => typeof value === "string" || typeof value === "number")
+      .map(([key, value]) => [key.replaceAll("_", " "), String(value)])
   }
 
   const journeyCountLabel = $derived.by(() => {
     const n = journeys.length
-    if (lang === 'en') return `${n} journeys`
-    if (lang === 'zh') return `${n}次旅程`
+    if (lang === "en") return `${n} journeys`
+    if (lang === "zh") return `${n}次旅程`
     return `${n}つの旅`
   })
 
   function mementoCountLabel(n: number): string {
-    if (lang === 'en') return `${n} stop${n === 1 ? '' : 's'}`
-    if (lang === 'zh') return `${n}件`
+    if (lang === "en") return `${n} stop${n === 1 ? "" : "s"}`
+    if (lang === "zh") return `${n}件`
     return `${n}件`
   }
 
   function placeMemoriesLabel(n: number): string {
-    if (lang === 'en') return `${n} memor${n === 1 ? 'y' : 'ies'} here`
-    if (lang === 'zh') return `此地 ${n} 件记忆`
+    if (lang === "en") return `${n} memor${n === 1 ? "y" : "ies"} here`
+    if (lang === "zh") return `此地 ${n} 件记忆`
     return `この場所の記憶 ${n}件`
   }
 
   const mapCaption = {
-    ja: '地図の印をえらぶと、その旅がひらきます',
-    en: 'Choose a mark on the map to open that journey',
-    zh: '在地图上选择标记，即可打开这段旅程',
+    ja: "地図の印をえらぶと、その旅がひらきます",
+    en: "Choose a mark on the map to open that journey",
+    zh: "在地图上选择标记，即可打开这段旅程",
   } satisfies L
   const seasonCaption = {
-    ja: '冬－春の記録',
-    en: 'Winter–spring notes',
-    zh: '冬–春记录',
+    ja: "冬－春の記録",
+    en: "Winter–spring notes",
+    zh: "冬–春记录",
   } satisfies L
   const brandTagline = {
-    ja: 'Travel journal',
-    en: 'Travel journal',
-    zh: 'Travel journal',
+    ja: "Travel journal",
+    en: "Travel journal",
+    zh: "Travel journal",
   } satisfies L
-  const selectedBadge = { ja: '選択中', en: 'Selected', zh: '已选' } satisfies L
+  const selectedBadge = { ja: "選択中", en: "Selected", zh: "已选" } satisfies L
   const openCta = {
-    ja: 'この旅をひらく →',
-    en: 'Open this journey →',
-    zh: '打开这段旅程 →',
+    ja: "この旅をひらく →",
+    en: "Open this journey →",
+    zh: "打开这段旅程 →",
   } satisfies L
-  const backLabel = { ja: '手帳に戻る', en: 'Back to journal', zh: '返回手帳' } satisfies L
-  const prevMemoryLabel = { ja: '前の記憶', en: 'Previous memory', zh: '上一段记忆' } satisfies L
-  const nextMemoryLabel = { ja: '次の記憶', en: 'Next memory', zh: '下一段记忆' } satisfies L
+  const backLabel = { ja: "手帳に戻る", en: "Back to journal", zh: "返回手帳" } satisfies L
+  const prevMemoryLabel = { ja: "前の記憶", en: "Previous memory", zh: "上一段记忆" } satisfies L
+  const nextMemoryLabel = { ja: "次の記憶", en: "Next memory", zh: "下一段记忆" } satisfies L
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
 
-<main class="techo-shell" class:theme-light={theme === 'light'} class:is-detail={view === 'detail'}>
-  {#if view === 'landing'}
+<main class="techo-shell" class:theme-light={theme === "light"} class:is-detail={view === "detail"}>
+  {#if view === "landing"}
     <!-- View 1: the journal index — sketch map on the left, journey cards on the right. -->
     <div class="techo-frame">
       <div class="techo-spread">
@@ -541,7 +542,7 @@
               {t(selectedMemento.title)}
             </h3>
             <p class="m-0 mt-0.5 text-xs text-ink-faint">
-              {t(selectedMemento.date)}{selectedMemento.price ? ` · ${selectedMemento.price}` : ''}
+              {t(selectedMemento.date)}{selectedMemento.price ? ` · ${selectedMemento.price}` : ""}
             </p>
             <p class="m-0 mt-3 text-[0.9rem] leading-relaxed text-ink-soft">
               {t(selectedMemento.essay) || `${t(kindLabel[selectedMemento.kind])} record`}
@@ -604,7 +605,7 @@
     padding: 2.5rem;
     box-sizing: border-box;
     background: radial-gradient(circle at 50% 20%, #d8cbb2, #b9a988 85%);
-    font-family: 'Zen Old Mincho', 'Spectral', serif;
+    font-family: "Zen Old Mincho", "Spectral", serif;
     color: var(--ink);
   }
 
@@ -634,7 +635,7 @@
     box-shadow: 0 0.35rem 0.8rem rgba(58, 47, 28, 0.18);
     color: var(--terracotta);
     cursor: pointer;
-    font-family: ui-monospace, 'SFMono-Regular', monospace;
+    font-family: ui-monospace, "SFMono-Regular", monospace;
     font-size: 0.72rem;
     letter-spacing: 0.03em;
   }
@@ -718,7 +719,7 @@
 
   .brand-mark {
     margin: 0;
-    font-family: ui-monospace, 'SFMono-Regular', monospace;
+    font-family: ui-monospace, "SFMono-Regular", monospace;
     font-size: 0.95rem;
     letter-spacing: 0.4em;
     color: var(--terracotta);
@@ -726,7 +727,7 @@
 
   .brand-tagline {
     margin: 0.2rem 0 0;
-    font-family: 'Spectral', serif;
+    font-family: "Spectral", serif;
     font-style: italic;
     font-size: 1rem;
     color: var(--ink-soft);
@@ -747,7 +748,7 @@
 
   .year-heading {
     margin: 0;
-    font-family: 'Zen Old Mincho', serif;
+    font-family: "Zen Old Mincho", serif;
     font-size: 2.4rem;
     font-weight: 700;
     color: var(--ink);
@@ -755,7 +756,7 @@
 
   .year-count {
     margin: 0;
-    font-family: ui-monospace, 'SFMono-Regular', monospace;
+    font-family: ui-monospace, "SFMono-Regular", monospace;
     font-size: 0.72rem;
     color: var(--ink-faint);
   }
@@ -803,7 +804,7 @@
     position: absolute;
     top: 0.9rem;
     right: 1.1rem;
-    font-family: ui-monospace, 'SFMono-Regular', monospace;
+    font-family: ui-monospace, "SFMono-Regular", monospace;
     font-size: 0.62rem;
     letter-spacing: 0.06em;
     color: #fff;
@@ -814,7 +815,7 @@
 
   .card-title {
     margin: 0.6rem 0 0.3rem;
-    font-family: 'Zen Old Mincho', serif;
+    font-family: "Zen Old Mincho", serif;
     font-size: 1.25rem;
     font-weight: 700;
     color: var(--ink);
@@ -830,7 +831,7 @@
     margin: 0.45rem 0 0;
     overflow: hidden;
     color: var(--terracotta);
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: "IBM Plex Mono", monospace;
     font-size: 0.62rem;
     letter-spacing: 0.08em;
     text-overflow: ellipsis;
@@ -878,7 +879,7 @@
   .year-tab {
     display: block;
     padding: 0.5rem 0.35rem;
-    font-family: ui-monospace, 'SFMono-Regular', monospace;
+    font-family: ui-monospace, "SFMono-Regular", monospace;
     font-size: 0.68rem;
     letter-spacing: 0.06em;
     text-align: center;
@@ -976,7 +977,7 @@
   }
 
   .error-title {
-    font-family: 'Zen Old Mincho', serif;
+    font-family: "Zen Old Mincho", serif;
     font-size: 1.4rem;
     font-weight: 700;
     color: var(--terracotta);

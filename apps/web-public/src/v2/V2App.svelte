@@ -1,28 +1,30 @@
 <script lang="ts">
-  import { fade, fly } from 'svelte/transition'
-  import { onMount } from 'svelte'
-  import { loadJourneys } from '../api/source'
+  import { fade, fly } from "svelte/transition"
+  import { onMount } from "svelte"
+  import { loadJourneys } from "../api/source"
   import {
     kindLabel,
     uiText,
     type MementoCard,
+    type L,
     type Lang,
     type Memento,
     type Station,
     type Theme,
-  } from '../data'
+  } from "../data"
+  import { message, type MessageKey } from "../i18n/catalog"
 
   // v2 — memento-first front door. The detailed memento "page" is the centre;
   // a preview carousel is the index. The map (v1) is reached as the "more" view.
-  export let lang: Lang = 'ja'
-  export let theme: Theme = 'dark'
+  export let lang: Lang = "ja"
+  export let theme: Theme = "dark"
   export let toMap: (() => void) | undefined = undefined
 
-  const title = { ja: '旅の残り香', en: 'What Lingers', zh: '旅途余香' }
+  const title = { ja: "旅の残り香", en: "What Lingers", zh: "旅途余香" }
   const label = {
-    map: { ja: '← 地図', en: '← Map', zh: '← 地图' },
-    onMap: { ja: '地図で見る →', en: 'See on the map →', zh: '在地图上查看 →' },
-    memories: { ja: '記憶', en: 'Memories', zh: '回忆' },
+    map: { ja: "← 地図", en: "← Map", zh: "← 地图" },
+    onMap: { ja: "地図で見る →", en: "See on the map →", zh: "在地图上查看 →" },
+    memories: { ja: "記憶", en: "Memories", zh: "回忆" },
   }
 
   let allMementos: MementoCard[] = []
@@ -31,8 +33,8 @@
   let isLoading = true
   let error: string | null = null
 
-  $: t = (value: { ja: string; en: string; zh: string }) => value[lang]
-  $: stationName = (s: Station) => (lang === 'en' ? s.name : s.ja)
+  $: t = (value: L | MessageKey) => (typeof value === "string" ? message(lang, value) : value[lang])
+  $: stationName = (s: Station) => (lang === "en" ? s.name : s.ja)
   $: memento = selected?.memento as Memento | undefined
 
   onMount(() => {
@@ -57,11 +59,11 @@
   }
 
   function toggleTheme() {
-    theme = theme === 'dark' ? 'light' : 'dark'
+    theme = theme === "dark" ? "light" : "dark"
   }
 </script>
 
-<main class="app-shell v2-shell" class:theme-light={theme === 'light'}>
+<main class="app-shell v2-shell" class:theme-light={theme === "light"}>
   {#if isLoading}
     <div class="v2-status">Loading…</div>
   {:else if error}
@@ -74,16 +76,16 @@
       </div>
       <div class="v2-controls">
         <div class="lang-switch" role="group" aria-label="Language">
-          <button class:active={lang === 'ja'} on:click={() => (lang = 'ja')}>日本語</button>
-          <button class:active={lang === 'en'} on:click={() => (lang = 'en')}>EN</button>
-          <button class:active={lang === 'zh'} on:click={() => (lang = 'zh')}>中文</button>
+          <button class:active={lang === "ja"} on:click={() => (lang = "ja")}>日本語</button>
+          <button class:active={lang === "en"} on:click={() => (lang = "en")}>EN</button>
+          <button class:active={lang === "zh"} on:click={() => (lang = "zh")}>中文</button>
         </div>
         <button
           class="theme-toggle"
           on:click={toggleTheme}
-          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
         >
-          {theme === 'dark' ? '☀' : '☾'}
+          {theme === "dark" ? "☀" : "☾"}
         </button>
         {#if toMap}
           <button class="all-btn" on:click={toMap}>{t(label.map)}</button>
@@ -97,7 +99,7 @@
         <div class="v2-detail" in:fade={{ duration: 200 }}>
           <div class="v2-stub-col" in:fly={{ y: 14, duration: 320, delay: 40 }}>
             <div class="stub-card {memento.kind}">
-              {#if memento.kind === 'transit' && memento.transit}
+              {#if memento.kind === "transit" && memento.transit}
                 <div class="ticket-face">
                   <div class="ticket-line">
                     <span>{t(memento.transit.operator)}</span>
@@ -113,7 +115,7 @@
                     <span>{memento.transit.fare}</span>
                   </div>
                 </div>
-              {:else if memento.kind === 'stamp'}
+              {:else if memento.kind === "stamp"}
                 <div class="stamp-face">
                   <span>御朱印</span>
                   <strong>{t(memento.place)}</strong>
@@ -130,15 +132,15 @@
 
             <dl class="v2-facts">
               <div>
-                <dt>{lang === 'en' ? 'Journey' : lang === 'zh' ? '旅程' : '旅'}</dt>
+                <dt>{lang === "en" ? "Journey" : lang === "zh" ? "旅程" : "旅"}</dt>
                 <dd>{t(selected.journey.title)}</dd>
               </div>
               <div>
-                <dt>{lang === 'en' ? 'Date' : lang === 'zh' ? '日期' : '日付'}</dt>
+                <dt>{lang === "en" ? "Date" : lang === "zh" ? "日期" : "日付"}</dt>
                 <dd>{t(memento.date)}</dd>
               </div>
               <div>
-                <dt>{lang === 'en' ? 'Place' : lang === 'zh' ? '地点' : '場所'}</dt>
+                <dt>{lang === "en" ? "Place" : lang === "zh" ? "地点" : "場所"}</dt>
                 <dd>{t(memento.place)}</dd>
               </div>
             </dl>

@@ -63,9 +63,21 @@ const (
 	ObservationVisit ObservationKind = "visit"
 	// ObservationPhoto identifies a normalized media observation.
 	ObservationPhoto ObservationKind = "photo"
+	// ObservationMedia identifies a normalized media observation. It covers
+	// assets that are not still images, such as video, links, and embeds.
+	ObservationMedia ObservationKind = "media"
 	// ObservationMemento identifies a normalized memento candidate.
 	ObservationMemento ObservationKind = "memento"
 )
+
+// MemoryLink connects an observed or authored object to a canonical memory.
+// EntityType is intentionally open for future journal, journey, and memento
+// targets; adapters must not invent provider-specific foreign keys here.
+type MemoryLink struct {
+	EntityType string    `json:"entity_type"`
+	EntityID   uuid.UUID `json:"entity_id"`
+	Relation   string    `json:"relation"`
+}
 
 // Observation is the envelope shared by source-specific adapters. Payload is
 // one of the canonical shapes below; provider DTOs stay outside domain.
@@ -174,18 +186,19 @@ const (
 // nil when the asset carries no location (filled from the track by timestamp,
 // or on drop). Raw arbitrary HTML is never part of the canonical value.
 type MediaAsset struct {
-	ID         string
-	Kind       MediaKind
-	At         time.Time
-	Coord      *orb.Point
-	Checksum   string
-	SourceRef  string // legacy adapter ref; use Provenance for new writes
-	Provenance Provenance
-	URI        string
-	MIME       string
-	Title      string
-	Provider   string
-	EmbedURL   string
+	ID          string
+	Kind        MediaKind
+	At          time.Time
+	Coord       *orb.Point
+	Checksum    string
+	SourceRef   string // legacy adapter ref; use Provenance for new writes
+	Provenance  Provenance
+	URI         string
+	MIME        string
+	Title       string
+	Provider    string
+	EmbedURL    string
+	MemoryLinks []MemoryLink
 }
 
 // PhotoAsset remains as a source-compatibility alias while adapters migrate
@@ -197,16 +210,17 @@ type PhotoAsset = MediaAsset
 // candidate, not a persisted Memento: authored fields and publication state
 // belong to the write side.
 type MementoCandidate struct {
-	Source     SourceIdentity
-	Kind       string
-	OccurredAt time.Time
-	OccurredTZ string
-	Geom       orb.Geometry
-	Title      string
-	Place      string
-	KindData   map[string]any
-	Media      []MediaAsset
-	Provenance Provenance
+	Source      SourceIdentity
+	Kind        string
+	OccurredAt  time.Time
+	OccurredTZ  string
+	Geom        orb.Geometry
+	Title       string
+	Place       string
+	KindData    map[string]any
+	Media       []MediaAsset
+	MemoryLinks []MemoryLink
+	Provenance  Provenance
 }
 
 // TrackSource yields routes and visits for a time range. Dawarich implements it.

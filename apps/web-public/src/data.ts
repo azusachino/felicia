@@ -1,10 +1,11 @@
 // Shared presentation types and labels. Journey content comes from the API
 // adapter; this module intentionally contains no demo-owned mock dataset.
+import type { MessageKey } from "./i18n/catalog"
 
 export type Coordinates = [number, number]
-export type MementoKind = 'goods' | 'transit' | 'stamp' | 'receipt' | 'souvenir'
-export type Lang = 'ja' | 'en' | 'zh'
-export type Theme = 'dark' | 'light'
+export type MementoKind = "goods" | "transit" | "stamp" | "receipt" | "souvenir"
+export type Lang = "ja" | "en" | "zh"
+export type Theme = "dark" | "light"
 
 export interface L {
   ja: string
@@ -58,19 +59,19 @@ export interface Journey {
   representativeDots?: { coord: Coordinates; label: string }[]
 }
 
-export const kindLabel: Record<MementoKind, L> = {
-  transit: { ja: '交通', en: 'Transit', zh: '交通' },
-  stamp: { ja: '御朱印', en: 'Stamp', zh: '御朱印' },
-  goods: { ja: 'グッズ', en: 'Goods', zh: '周边' },
-  receipt: { ja: 'レシート', en: 'Receipt', zh: '收据' },
-  souvenir: { ja: 'おみやげ', en: 'Souvenir', zh: '纪念品' },
+export const kindLabel: Record<MementoKind, MessageKey> = {
+  transit: "kind.transit",
+  stamp: "kind.stamp",
+  goods: "kind.goods",
+  receipt: "kind.receipt",
+  souvenir: "kind.souvenir",
 }
 
 export const uiText = {
-  journeys: { ja: '旅の記録', en: 'Journeys', zh: '旅程' },
-  all: { ja: 'すべて表示', en: 'View all', zh: '查看全部' },
-  story: { ja: '物語', en: 'The Story', zh: '故事' },
-}
+  journeys: "ui.journeys",
+  all: "ui.all",
+  story: "ui.story",
+} satisfies Record<string, MessageKey>
 
 export interface MementoCard {
   memento: Memento

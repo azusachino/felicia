@@ -78,14 +78,3 @@ type TransitLeg struct {
 	Geom        interface{}
 	CreatedAt   pgtype.Timestamptz
 }
-
-type Translation struct {
-	ID         uuid.UUID
-	OwnerType  string
-	OwnerID    uuid.UUID
-	Lang       string
-	Field      string
-	Value      string
-	Provenance string
-	UpdatedAt  pgtype.Timestamptz
-}

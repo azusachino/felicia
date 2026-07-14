@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"time"
 
@@ -39,6 +40,7 @@ type Importer struct {
 	photos  domain.PhotoSource
 	store   JourneyStore
 	epsilon float64
+	logger  *slog.Logger
 }
 
 // PersistObservations records one complete canonical source response. It keeps
@@ -85,21 +87,36 @@ func PersistObservations(ctx context.Context, store ports.ObservationStore, sour
 
 // New builds an Importer. A non-positive epsilon falls back to DefaultEpsilon.
 func New(tracks domain.TrackSource, photos domain.PhotoSource, store JourneyStore, epsilon float64) *Importer {
+	return NewWithLogger(tracks, photos, store, epsilon, slog.Default())
+}
+
+// NewWithLogger builds an Importer with structured operation logging.
+func NewWithLogger(tracks domain.TrackSource, photos domain.PhotoSource, store JourneyStore, epsilon float64, logger *slog.Logger) *Importer {
 	if epsilon <= 0 {
 		epsilon = DefaultEpsilon
 	}
-	return &Importer{tracks: tracks, photos: photos, store: store, epsilon: epsilon}
+	if logger == nil {
+		logger = slog.Default()
+	}
+	return &Importer{tracks: tracks, photos: photos, store: store, epsilon: epsilon, logger: logger}
 }
 
 // SyncRoute fetches the journey's Dawarich tracks, RDP-simplifies them, and
 // writes the union into gps_route. It is a no-op when gps_route is authored, so
 // re-import never clobbers a hand-edited route (design §5).
 func (im *Importer) SyncRoute(ctx context.Context, journeyID uuid.UUID) error {
+	started := time.Now()
+	outcome := "success"
+	defer func() {
+		im.logger.Info("import operation", "operation", "sync_route", "journey_id", journeyID, "outcome", outcome, "duration_ms", time.Since(started).Milliseconds())
+	}()
 	if im.tracks == nil {
+		outcome = "source_unavailable"
 		return ErrNoTrackSource
 	}
 	j, err := im.store.GetJourney(ctx, journeyID)
 	if err != nil {
+		outcome = "error"
 		return fmt.Errorf("sync route %s: %w", journeyID, err)
 	}
 	if slices.Contains(j.AuthoredFields, "gps_route") {
@@ -108,6 +125,7 @@ func (im *Importer) SyncRoute(ctx context.Context, journeyID uuid.UUID) error {
 
 	routes, err := im.tracks.FetchRoutes(ctx, j.DateStart, endOfDay(j.DateEnd))
 	if err != nil {
+		outcome = "error"
 		return fmt.Errorf("sync route %s: %w", journeyID, err)
 	}
 
@@ -120,6 +138,7 @@ func (im *Importer) SyncRoute(ctx context.Context, journeyID uuid.UUID) error {
 	j.GPSRoute = simplify.DouglasPeucker(im.epsilon).MultiLineString(raw)
 
 	if err := im.store.UpsertJourney(ctx, j); err != nil {
+		outcome = "error"
 		return fmt.Errorf("sync route %s: %w", journeyID, err)
 	}
 	return nil
@@ -128,15 +147,23 @@ func (im *Importer) SyncRoute(ctx context.Context, journeyID uuid.UUID) error {
 // SyncVisits returns the journey's Dawarich visits as derived-place candidates.
 // They are not persisted here — they become mementos through admin curation.
 func (im *Importer) SyncVisits(ctx context.Context, journeyID uuid.UUID) ([]domain.Visit, error) {
+	started := time.Now()
+	outcome := "success"
+	defer func() {
+		im.logger.Info("import operation", "operation", "sync_visits", "journey_id", journeyID, "outcome", outcome, "duration_ms", time.Since(started).Milliseconds())
+	}()
 	if im.tracks == nil {
+		outcome = "source_unavailable"
 		return nil, ErrNoTrackSource
 	}
 	j, err := im.store.GetJourney(ctx, journeyID)
 	if err != nil {
+		outcome = "error"
 		return nil, fmt.Errorf("sync visits %s: %w", journeyID, err)
 	}
 	visits, err := im.tracks.FetchVisits(ctx, j.DateStart, endOfDay(j.DateEnd))
 	if err != nil {
+		outcome = "error"
 		return nil, fmt.Errorf("sync visits %s: %w", journeyID, err)
 	}
 	return visits, nil
@@ -145,15 +172,23 @@ func (im *Importer) SyncVisits(ctx context.Context, journeyID uuid.UUID) ([]doma
 // SyncPhotoTray returns the journey's Immich photos for the date range as tray
 // candidates for drag-to-snap curation. They are not persisted here.
 func (im *Importer) SyncPhotoTray(ctx context.Context, journeyID uuid.UUID) ([]domain.PhotoAsset, error) {
+	started := time.Now()
+	outcome := "success"
+	defer func() {
+		im.logger.Info("import operation", "operation", "sync_photo_tray", "journey_id", journeyID, "outcome", outcome, "duration_ms", time.Since(started).Milliseconds())
+	}()
 	if im.photos == nil {
+		outcome = "source_unavailable"
 		return nil, ErrNoPhotoSource
 	}
 	j, err := im.store.GetJourney(ctx, journeyID)
 	if err != nil {
+		outcome = "error"
 		return nil, fmt.Errorf("sync photo tray %s: %w", journeyID, err)
 	}
 	assets, err := im.photos.FetchAssets(ctx, j.DateStart, endOfDay(j.DateEnd))
 	if err != nil {
+		outcome = "error"
 		return nil, fmt.Errorf("sync photo tray %s: %w", journeyID, err)
 	}
 	return assets, nil

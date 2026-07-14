@@ -18,7 +18,6 @@ JOURNAL_ID = "0190cbde-f300-7000-8000-d11111111111"
 JOURNEY_ID = "0190cbde-f300-7000-8000-d22222222222"
 MEMENTO_ID = "0190cbde-f300-7000-8000-d33333333333"
 PHOTO_ID = "0190cbde-f300-7000-8000-d44444444444"
-TRANSLATION_ID = "0190cbde-f300-7000-8000-d55555555555"
 
 
 def parse_args() -> argparse.Namespace:
@@ -116,24 +115,11 @@ def run_workflow() -> None:
             "seq": 1,
         },
     )
-    post(
-        "/api/admin/translations",
-        {
-            "id": TRANSLATION_ID,
-            "owner_type": "memento",
-            "owner_id": MEMENTO_ID,
-            "lang": "en",
-            "field": "title",
-            "value": "Live show",
-            "provenance": "authored",
-        },
-    )
-
     status, mementos = request(f"/api/admin/journeys/{JOURNEY_ID}/mementos")
     assert status == 200 and len(mementos) == 1 and mementos[0]["state"] == "published"
     status, public = request(f"/api/v1/journeys/{JOURNEY_ID}/mementos")
     assert status == 200 and len(public) == 1 and len(public[0]["photos"]) == 1
-    assert public[0]["translations"]["en"]["title"] == "Live show"
+    assert public[0]["title"] == "Live show"
     print("full journey workflow passed")
 
 

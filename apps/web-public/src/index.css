@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 /* techo (v3) palette as Tailwind theme tokens → bg-paper-1, text-terracotta,
    font-mincho, … (felicia:decision:techo-paper-v3). */
@@ -11,8 +11,8 @@
   --color-ink-soft: #5a4622;
   --color-ink-faint: #7a5c30;
   --color-terracotta: #b45f26;
-  --font-mincho: 'Zen Old Mincho', serif;
-  --font-spectral: 'Spectral', serif;
+  --font-mincho: "Zen Old Mincho", serif;
+  --font-spectral: "Spectral", serif;
 }
 
 :root {
@@ -24,7 +24,7 @@
     system-ui,
     -apple-system,
     BlinkMacSystemFont,
-    'Segoe UI',
+    "Segoe UI",
     sans-serif;
 }
 

@@ -7,9 +7,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/azusachino/felicia/apps/core/domain"
 	"github.com/google/uuid"
 	"github.com/paulmach/orb"
+
+	"github.com/azusachino/felicia/apps/core/domain"
 )
 
 // JournalStore persists the journal root used by authoring workflows.
@@ -44,13 +45,11 @@ type MementoStore interface {
 	ApplyIngestMementoPatch(ctx context.Context, patch *domain.IngestMementoPatch) error
 }
 
-// MediaStore persists memento media and translation sidecars.
+// MediaStore persists memento media.
 type MediaStore interface {
 	GetPhoto(ctx context.Context, id uuid.UUID) (*domain.MementoPhoto, error)
 	ListPhotosByMemento(ctx context.Context, mementoID uuid.UUID) ([]*domain.MementoPhoto, error)
 	UpsertPhoto(ctx context.Context, photo *domain.MementoPhoto) error
-	ListTranslations(ctx context.Context, ownerType string, ownerID uuid.UUID) ([]*domain.Translation, error)
-	UpsertTranslation(ctx context.Context, translation *domain.Translation) error
 }
 
 // RouteStore persists authored route additions and computes the display route.
