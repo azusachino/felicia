@@ -5,7 +5,7 @@ go 1.26
 require github.com/azusachino/felicia/apps/core v0.1.0
 
 require (
-	github.com/azusachino/felicia/apps/runtime v0.0.0-20260714050911-2171a2a19483
+	github.com/azusachino/felicia/apps/runtime v0.1.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/paulmach/orb v0.13.0
