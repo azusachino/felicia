@@ -62,7 +62,7 @@ def post(path: str, payload: dict):
 
 
 def run_workflow() -> None:
-    post(f"/api/admin/journals", {"id": JOURNAL_ID})
+    post("/api/admin/journals", {"id": JOURNAL_ID})
     post(
         "/api/admin/journeys",
         {

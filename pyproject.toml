@@ -1,5 +1,5 @@
-# Docs tooling only — felicia is a Go project. uv manages this isolated env so the
-# MkDocs preview never touches the Go/bun toolchain. Run: `make docs`.
+# Python development and docs tooling — felicia's application runtime is Go.
+# uv manages this isolated environment for scripts, feature tests, and docs.
 [project]
 name = "felicia-docs"
 version = "0"
@@ -15,7 +15,9 @@ docs = [
 ]
 dev = [
   "psycopg[binary]>=3.2.0",
+  "ruff>=0.12,<0.13",
 ]
 
 [tool.uv]
 package = false
+default-groups = []

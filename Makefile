@@ -74,26 +74,10 @@ dev: ## Start the local API with SQLite
 	$(MAKE) dev-sqlite
 
 dev-sqlite: ## Start the API locally with the default SQLite provider
-	DATABASE_DRIVER=sqlite DATABASE_PATH="$${DATABASE_PATH:-felicia.db}" PORT="$(PORT)" CACHE_ADDR="$(CACHE_ADDR)" $(GO) run ./apps/apiserver/cmd/api
+	$(UV_RUN) run python scripts/dev.py --driver sqlite
 
 dev-postgres: ## Start the PostgreSQL-backed local stack, seed data, and serve the web app
-	@set -e; \
-		$(MAKE) db-up; \
-		DATABASE_DSN="$(DATABASE_DSN)" $(MAKE) migrate; \
-		api_bin="/tmp/felicia-api-$$$$"; \
-		go build -o "$$api_bin" ./apps/apiserver/cmd/api; \
-		DATABASE_DRIVER=postgres DATABASE_DSN="$(DATABASE_DSN)" PORT="$(PORT)" CACHE_ADDR="$(CACHE_ADDR)" "$$api_bin" & \
-		api_pid=$$!; \
-		cleanup() { kill $$api_pid 2>/dev/null || true; rm -f "$$api_bin"; }; \
-		trap cleanup EXIT INT TERM; \
-		for attempt in $$(seq 1 30); do \
-			if curl --fail --silent -X POST -H 'Content-Type: application/json' -d '{"id":"0190cbde-f300-7000-8000-000000000000"}' "http://localhost:$(PORT)/api/admin/journals" >/dev/null; then break; fi; \
-			if [ "$$attempt" = 30 ]; then echo "API did not become ready" >&2; exit 1; fi; \
-			sleep 1; \
-		done; \
-		DATABASE_DSN="$(DATABASE_DSN)" SEED_API_BASE="http://localhost:$(PORT)" $(MAKE) seed; \
-		if [ ! -d apps/web-public/node_modules ]; then $(MAKE) web-install; fi; \
-		cd apps/web-public && bun run dev
+	$(UV_RUN) run python scripts/dev.py --driver postgres --web
 
 mock-up: ## Start the mock Dawarich+Immich upstream in the background (:8099)
 	nohup $(UV_RUN) run python scripts/mock_upstream.py > /tmp/felicia-mock.log 2>&1 & echo "mock up on :8099 (log: /tmp/felicia-mock.log)"
@@ -121,6 +105,7 @@ test-postgres: ## Run PostgreSQL tests against the disposable test database
 	DATABASE_DSN= FELICIA_TEST_DATABASE_DSN="$(FELICIA_TEST_DATABASE_DSN)" $(MAKE) test
 
 test-features: ## Run offline Python feature-contract tests
+	$(UV_RUN) run --group dev ruff check scripts tests
 	$(UV_RUN) run python -m unittest discover -s tests
 
 web-install: ## Install frontend deps (bun, from mise)
@@ -148,41 +133,7 @@ docs-build: ## Build the static docs site into ./site
 # migrates+seeds via the host, then fronts it all with a trycloudflare.com URL.
 # No CF account/domain needed; only /api/v1 is exposed (admin stays host-only).
 share: ## Build + serve the full stack behind a quick Cloudflare tunnel (share to a friend)
-	@test -n "$(COMPOSE)" || (echo "No container compose command found (install podman-compose or Docker Compose)" >&2; exit 1)
-	@set -e; \
-		echo ">> building SPA (web/dist)"; \
-		$(MAKE) web-build; \
-		echo ">> starting db + cache"; \
-		$(COMPOSE) -f deploy/compose.yaml up -d db cache; \
-		echo ">> waiting for db"; \
-		for i in $$(seq 1 30); do \
-			if $(COMPOSE) -f deploy/compose.yaml exec -T db pg_isready -U postgres -d felicia >/dev/null 2>&1; then break; fi; \
-			[ "$$i" = 30 ] && { echo "db not ready" >&2; exit 1; }; sleep 1; \
-		done; \
-		echo ">> migrating"; \
-		DATABASE_DSN="$(DATABASE_DSN)" $(MAKE) migrate; \
-		echo ">> building + starting api"; \
-		$(COMPOSE) -f deploy/compose.yaml up -d --build api; \
-		echo ">> waiting for api"; \
-		for i in $$(seq 1 60); do \
-			if curl --fail --silent -X POST -H 'Content-Type: application/json' -d '{"id":"0190cbde-f300-7000-8000-000000000000"}' "http://localhost:8080/api/admin/journals" >/dev/null 2>&1; then break; fi; \
-			[ "$$i" = 60 ] && { echo "api not ready" >&2; exit 1; }; sleep 1; \
-		done; \
-		echo ">> seeding"; \
-		DATABASE_DSN="$(DATABASE_DSN)" SEED_API_BASE="http://localhost:8080" $(MAKE) seed; \
-		echo ">> starting web + cloudflared"; \
-		$(COMPOSE) -f deploy/compose.yaml up -d web cloudflared; \
-		echo ">> waiting for tunnel URL"; \
-		url=""; \
-		for i in $$(seq 1 30); do \
-			url=$$($(COMPOSE) -f deploy/compose.yaml logs cloudflared 2>&1 | grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' | head -1); \
-			[ -n "$$url" ] && break; sleep 1; \
-		done; \
-		echo ""; \
-		if [ -n "$$url" ]; then echo "  share this URL:  $$url"; \
-		else echo "  tunnel URL not ready — check: $(COMPOSE) -f deploy/compose.yaml logs cloudflared"; fi; \
-		echo "  local preview:   http://localhost:8081"; \
-		echo "  stop sharing:    make share-down"
+	$(UV_RUN) run python scripts/share.py
 
 share-down: ## Stop the shared stack (api, web, cloudflared); keeps db+cache+data
 	@test -n "$(COMPOSE)" || (echo "No container compose command found" >&2; exit 1)
