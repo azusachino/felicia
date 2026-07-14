@@ -261,10 +261,7 @@ func (r *pgRepository) upsertMemento(ctx context.Context, memento *domain.Mement
 			return fmt.Errorf("upsert memento %s: marshal geom: %w", memento.ID, err)
 		}
 	}
-	state := memento.State
-	if state == "" {
-		state = domain.MementoPublished
-	}
+	state := mementoStateOrDefault(memento.State)
 	sourceSystem, sourceExternalID, sourceRef := sourceColumns(memento)
 	var revision *int64
 	if memento.Revision > 0 {
@@ -301,6 +298,13 @@ func (r *pgRepository) upsertMemento(ctx context.Context, memento *domain.Mement
 		return fmt.Errorf("upsert memento %s: %w", memento.ID, err)
 	}
 	return nil
+}
+
+func mementoStateOrDefault(state domain.MementoState) domain.MementoState {
+	if state == "" {
+		return domain.MementoDraft
+	}
+	return state
 }
 
 // ApplyManualMementoPatch merges an explicit authoring patch with the current

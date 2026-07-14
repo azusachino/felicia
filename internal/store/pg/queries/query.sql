@@ -90,7 +90,7 @@ FROM mementos
 WHERE source_system = $1 AND source_external_id = $2;
 
 -- name: ListMementosByJourney :many
-SELECT id, journey_id, kind, seq, occurred_at, occurred_tz, ST_AsBinary(geom) AS geom_wkb, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, created_at, updated_at
+SELECT id, journey_id, kind, seq, occurred_at, occurred_tz, ST_AsBinary(geom) AS geom_wkb, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, revision, created_at, updated_at
 FROM mementos
 WHERE journey_id = $1
 ORDER BY seq ASC, occurred_at ASC;

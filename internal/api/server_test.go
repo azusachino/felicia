@@ -329,8 +329,7 @@ func TestServerAllowsIncompleteDraftButRejectsInvalidCompleteGeometry(t *testing
 	srv := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{})
 
 	draft := map[string]any{
-		"id": uuid.New(), "kind": "live", "occurred_at": "2026-03-20T10:00:00Z",
-		"occurred_tz": "Asia/Tokyo", "state": "draft", "kind_data": map[string]any{},
+		"id": uuid.New(), "kind": "live", "state": "draft", "kind_data": map[string]any{},
 	}
 	body, _ := json.Marshal(draft)
 	w := httptest.NewRecorder()

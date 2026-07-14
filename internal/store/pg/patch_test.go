@@ -67,6 +67,15 @@ func TestSourceColumnsDerivesLegacyRefForCanonicalIdentity(t *testing.T) {
 	}
 }
 
+func TestMementoStateOrDefaultIsNonVisible(t *testing.T) {
+	if got := mementoStateOrDefault(""); got != domain.MementoDraft {
+		t.Fatalf("empty state = %q, want draft", got)
+	}
+	if got := mementoStateOrDefault(domain.MementoPublished); got != domain.MementoPublished {
+		t.Fatalf("explicit state = %q, want published", got)
+	}
+}
+
 func stringPtr(value string) *string {
 	return &value
 }

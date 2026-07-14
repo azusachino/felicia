@@ -484,15 +484,30 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	occurred, err := time.Parse(time.RFC3339, req.OccurredAt)
-	if err != nil {
-		respondError(w, http.StatusBadRequest, "invalid occurred_at timestamp format (RFC3339)")
+	var occurred time.Time
+	if req.OccurredAt != "" {
+		var parseErr error
+		occurred, parseErr = time.Parse(time.RFC3339, req.OccurredAt)
+		if parseErr != nil {
+			respondError(w, http.StatusBadRequest, "invalid occurred_at timestamp format (RFC3339)")
+			return
+		}
+	} else if state != domain.MementoDraft {
+		respondError(w, http.StatusBadRequest, "occurred_at is required outside draft state")
 		return
 	}
-	if issues := domain.ValidateOccurredTimezone(req.OccurredTZ); len(issues) > 0 {
+	if req.OccurredTZ != "" {
+		if issues := domain.ValidateOccurredTimezone(req.OccurredTZ); len(issues) > 0 {
+			respondJSON(w, http.StatusBadRequest, map[string]any{
+				"error":  "validation failed",
+				"issues": issues,
+			})
+			return
+		}
+	} else if state != domain.MementoDraft {
 		respondJSON(w, http.StatusBadRequest, map[string]any{
 			"error":  "validation failed",
-			"issues": issues,
+			"issues": []domain.Issue{{Field: "occurred_tz", Code: domain.CodeInvalidTimezone}},
 		})
 		return
 	}
