@@ -1,8 +1,15 @@
-# ADR 0019: Authored Content and System Locales
+---
+id: "0019"
+title: "Authored Content and System Locales"
+status: "accepted"
+date: "2026-07-14"
+decisions: []
+related: []
+supersedes:
+  - "ADR 0011 and the translatable-field portion of ADR 0006"
+---
 
-- **Status:** Accepted
-- **Date:** 2026-07-14
-- **Supersedes:** ADR 0011 and the translatable-field portion of ADR 0006
+# ADR 0019: Authored Content and System Locales
 
 ## Context
 

@@ -1,9 +1,16 @@
-# ADR 0011: System-Only Internationalization
+---
+id: "0011"
+title: "System-Only Internationalization"
+status: "superseded"
+date: "2026-07-11"
+decisions:
+  - "felicia:decision:system-only-i18n"
+related: []
+supersedes:
+  - "ADR 0004"
+---
 
-- **Status:** Superseded by ADR 0019
-- **Date:** 2026-07-11
-- **Decisions:** `felicia:decision:system-only-i18n`
-- **Supersedes:** ADR 0004
+# ADR 0011: System-Only Internationalization
 
 ## Context
 

@@ -1,8 +1,15 @@
-# ADR 0004: Japanese-First i18n
+---
+id: "0004"
+title: "Japanese-First i18n"
+status: "accepted"
+date: "2026-07-01"
+decisions:
+  - "felicia:decision:jp-first-i18n"
+related: []
+supersedes: []
+---
 
-- **Status:** Accepted
-- **Date:** 2026-07-01
-- **Decisions:** `felicia:decision:jp-first-i18n`
+# ADR 0004: Japanese-First i18n
 
 ## Context
 

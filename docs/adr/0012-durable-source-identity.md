@@ -1,8 +1,16 @@
-# ADR 0012: Durable Source Identity for Idempotent Ingest
+---
+id: "0012"
+title: "Durable Source Identity for Idempotent Ingest"
+status: "accepted"
+date: "2026-07-13"
+decisions: []
+related:
+  - "ADR 0010"
+  - "felicia:write-side-stability:task-3"
+supersedes: []
+---
 
-- **Status:** Accepted
-- **Date:** 2026-07-13
-- **Related:** ADR 0010, `felicia:write-side-stability:task-3`
+# ADR 0012: Durable Source Identity for Idempotent Ingest
 
 ## Decision
 

@@ -1,7 +1,14 @@
-# ADR 0018: API Transport and Runtime Separation
+---
+id: "0018"
+title: "API Transport and Runtime Separation"
+status: "accepted"
+date: "2026-07-14"
+decisions: []
+related: []
+supersedes: []
+---
 
-- Status: Accepted
-- Date: 2026-07-14
+# ADR 0018: API Transport and Runtime Separation
 
 ## Context
 

@@ -1,8 +1,15 @@
-# ADR 0005: Places as Derived Visits
+---
+id: "0005"
+title: "Places as Derived Visits"
+status: "accepted"
+date: "2026-07-09"
+decisions:
+  - "felicia:decision:place-as-derived-visit"
+related: []
+supersedes: []
+---
 
-- **Status:** Accepted
-- **Date:** 2026-07-09
-- **Decisions:** `felicia:decision:place-as-derived-visit`
+# ADR 0005: Places as Derived Visits
 
 ## Context
 

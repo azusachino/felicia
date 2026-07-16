@@ -1,8 +1,15 @@
-# ADR 0007: Backend Stack (PostgreSQL 18 & Go)
+---
+id: "0007"
+title: "Backend Stack (PostgreSQL 18 & Go)"
+status: "accepted"
+date: "2026-07-08"
+decisions:
+  - "felicia:decision:backend-stack"
+related: []
+supersedes: []
+---
 
-- **Status:** Accepted
-- **Date:** 2026-07-08
-- **Decisions:** `felicia:decision:backend-stack`
+# ADR 0007: Backend Stack (PostgreSQL 18 & Go)
 
 ## Context
 

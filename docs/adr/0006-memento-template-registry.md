@@ -1,8 +1,15 @@
-# ADR 0006: Declarative Memento Template Registry
+---
+id: "0006"
+title: "Declarative Memento Template Registry"
+status: "accepted"
+date: "2026-07-09"
+decisions:
+  - "felicia:decision:memento-template-registry"
+related: []
+supersedes: []
+---
 
-- **Status:** Accepted
-- **Date:** 2026-07-09
-- **Decisions:** `felicia:decision:memento-template-registry`
+# ADR 0006: Declarative Memento Template Registry
 
 ## Context
 

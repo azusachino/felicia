@@ -1,8 +1,16 @@
-# ADR 0013: Lifecycle-Aware Write-Boundary Validation
+---
+id: "0013"
+title: "Lifecycle-Aware Write-Boundary Validation"
+status: "accepted"
+date: "2026-07-13"
+decisions: []
+related:
+  - "ADR 0010"
+  - "felicia:write-side-stability:task-4"
+supersedes: []
+---
 
-- **Status:** Accepted
-- **Date:** 2026-07-13
-- **Related:** ADR 0010, `felicia:write-side-stability:task-4`
+# ADR 0013: Lifecycle-Aware Write-Boundary Validation
 
 ## Decision
 

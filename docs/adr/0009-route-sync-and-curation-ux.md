@@ -1,8 +1,15 @@
-# ADR 0009: Route Ingestion, Simplification, and Manual Curation UX
+---
+id: "0009"
+title: "Route Ingestion, Simplification, and Manual Curation UX"
+status: "accepted"
+date: "2026-07-09"
+decisions:
+  - "felicia:decision:route-sync-curation-ux"
+related: []
+supersedes: []
+---
 
-- **Status:** Accepted
-- **Date:** 2026-07-09
-- **Decisions:** `felicia:decision:route-sync-curation-ux`
+# ADR 0009: Route Ingestion, Simplification, and Manual Curation UX
 
 ## Context
 

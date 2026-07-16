@@ -1,8 +1,15 @@
-# ADR 0003: Presentation-Agnostic Contract
+---
+id: "0003"
+title: "Presentation-Agnostic Contract"
+status: "accepted"
+date: "2026-07-08"
+decisions:
+  - "felicia:decision:presentation-agnostic-contract"
+related: []
+supersedes: []
+---
 
-- **Status:** Accepted
-- **Date:** 2026-07-08
-- **Decisions:** `felicia:decision:presentation-agnostic-contract`
+# ADR 0003: Presentation-Agnostic Contract
 
 ## Context
 

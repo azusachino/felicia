@@ -1,7 +1,14 @@
-# ADR 0021: Runtime Configuration and Database Modes
+---
+id: "0021"
+title: "Runtime Configuration and Database Modes"
+status: "accepted"
+date: "2026-07-14"
+decisions: []
+related: []
+supersedes: []
+---
 
-- Status: Accepted
-- Date: 2026-07-14
+# ADR 0021: Runtime Configuration and Database Modes
 
 ## Context
 

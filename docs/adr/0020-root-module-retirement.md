@@ -1,7 +1,14 @@
-# ADR 0020: Retire the Transitional Root Go Module
+---
+id: "0020"
+title: "Retire the Transitional Root Go Module"
+status: "accepted"
+date: "2026-07-14"
+decisions: []
+related: []
+supersedes: []
+---
 
-- **Status:** Accepted
-- **Date:** 2026-07-14
+# ADR 0020: Retire the Transitional Root Go Module
 
 ## Context
 

@@ -1,8 +1,15 @@
-# ADR 0011: Go Quality and Observability Baseline
+---
+id: "0011"
+title: "Go Quality and Observability Baseline"
+status: "accepted"
+date: "2026-07-13"
+decisions:
+  - "felicia:decision:go-quality-observability"
+related: []
+supersedes: []
+---
 
-- **Status:** Accepted
-- **Date:** 2026-07-13
-- **Decisions:** `felicia:decision:go-quality-observability`
+# ADR 0011: Go Quality and Observability Baseline
 
 ## Context
 

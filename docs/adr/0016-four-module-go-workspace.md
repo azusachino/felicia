@@ -1,7 +1,14 @@
-# ADR 0016: Four-Module Go Workspace Boundaries
+---
+id: "0016"
+title: "Four-Module Go Workspace Boundaries"
+status: "accepted"
+date: "2026-07-14"
+decisions: []
+related: []
+supersedes: []
+---
 
-- Status: Accepted
-- Date: 2026-07-14
+# ADR 0016: Four-Module Go Workspace Boundaries
 
 ## Context
 

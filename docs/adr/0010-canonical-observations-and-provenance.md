@@ -1,9 +1,16 @@
-# ADR 0010: Canonical Observations Between Sources and Writes
+---
+id: "0010"
+title: "Canonical Observations Between Sources and Writes"
+status: "accepted"
+date: "2026-07-13"
+decisions:
+  - "felicia:decision:canonical-data-layer"
+related:
+  - "felicia:decision:go-quality-observability"
+supersedes: []
+---
 
-- **Status:** Accepted
-- **Date:** 2026-07-13
-- **Decisions:** `felicia:decision:canonical-data-layer`
-- **Related:** `felicia:decision:go-quality-observability`
+# ADR 0010: Canonical Observations Between Sources and Writes
 
 ## Context
 
