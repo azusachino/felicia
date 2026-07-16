@@ -15,7 +15,9 @@ def go_files() -> list[Path]:
     return sorted(
         path
         for path in ROOT.rglob("*.go")
-        if ".git" not in path.parts and "node_modules" not in path.parts
+        if ".git" not in path.parts
+        and "node_modules" not in path.parts
+        and "vendor" not in path.parts
     )
 
 
@@ -63,14 +65,26 @@ def format_web(check: bool) -> bool:
 
 
 def format_markdown(check: bool) -> bool:
-    web = ROOT / "apps" / "web-public"
-    if not (web / "node_modules").exists():
-        return True
     mode = "--check" if check else "--write"
     files = [str(path) for path in markdown_files()]
     if not files:
         return True
-    result = run(["bun", "run", "prettier", "--", mode, *files], cwd=web)
+    # Markdown is repository documentation, not a frontend dependency. Keep this
+    # path usable before `make web-install` and avoid loading the Svelte plugin.
+    result = run(
+        [
+            "prettier",
+            "--no-config",
+            "--parser",
+            "markdown",
+            "--prose-wrap",
+            "preserve",
+            "--print-width",
+            "200",
+            mode,
+            *files,
+        ]
+    )
     print(result.stdout, end="")
     print(result.stderr, end="")
     return result.returncode == 0
