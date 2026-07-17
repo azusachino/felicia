@@ -53,15 +53,24 @@ def format_go(check: bool) -> bool:
 
 
 def format_web(check: bool) -> bool:
-    web = ROOT / "apps" / "web-public"
-    if not (web / "node_modules").exists():
+    web_apps = sorted(
+        path
+        for path in (ROOT / "apps").glob("web-*")
+        if (path / "package.json").is_file()
+    )
+    if not web_apps:
+        return True
+    if not all((web / "node_modules").exists() for web in web_apps):
         print("format: frontend dependencies missing; run make web-install")
         return True
-    command = ["bun", "run", "format:check" if check else "format"]
-    result = run(command, cwd=web)
-    print(result.stdout, end="")
-    print(result.stderr, end="")
-    return result.returncode == 0
+    success = True
+    for web in web_apps:
+        command = ["bun", "run", "format:check" if check else "format"]
+        result = run(command, cwd=web)
+        print(result.stdout, end="")
+        print(result.stderr, end="")
+        success = result.returncode == 0 and success
+    return success
 
 
 def format_markdown(check: bool) -> bool:

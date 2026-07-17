@@ -23,7 +23,7 @@ COMPOSE ?= $(shell \
 	elif command -v docker >/dev/null 2>&1; then echo docker compose; \
 	else echo ''; fi)
 
-.PHONY: help fmt fmt-check vet lint test test-sqlite test-postgres check build cli-build validate tidy db-up db-down migrate seed dev dev-sqlite dev-postgres test-workflow test-workflow-postgres mock-up mock-down web-install web-check web-build static-build static-validate static-publish pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
+.PHONY: help fmt fmt-check vet lint test test-sqlite test-postgres check build cli-build validate tidy db-up db-down migrate seed dev dev-sqlite dev-postgres test-workflow test-workflow-postgres mock-up mock-down web-install web-check web-build web-admin-check web-admin-build static-build static-validate static-publish pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -112,14 +112,17 @@ test-features: ## Run offline Python feature-contract tests
 	$(UV_RUN) run --group dev ruff check scripts tests
 	$(UV_RUN) run python -m unittest discover -s tests
 
-web-install: ## Install frontend deps (bun, from mise)
-	cd apps/web-public && bun install
+web-install: ## Install all frontend workspace deps (bun, from mise)
+	bun install
 
 web-dev: ## Run frontend dev server (bun + vite)
 	cd apps/web-public && bun run dev
 
-web-build: ## Build frontend for production (bun + vite)
-	cd apps/web-public && bun run build
+web-build: ## Build public frontend for production (bun + vite)
+	bun run web:public:build
+
+web-admin-build: ## Build admin frontend for production (bun + vite)
+	bun run web:admin:build
 
 static-build: ## Build the v0.1 static artifact
 	$(UV_RUN) run python scripts/felicia.py build --base-path "$${BASE_PATH:-/}"
@@ -147,7 +150,10 @@ pages-down: ## Stop the local static Pages preview
 	$(COMPOSE) -f deploy/compose.yaml --profile pages down pages-preview
 
 web-check: ## Frontend typecheck + lint + format check
-	cd apps/web-public && bun run check
+	bun run web:public:check
+
+web-admin-check: ## Admin frontend typecheck + lint + format check
+	bun run web:admin:check
 
 # Docs preview (uv-managed env, isolated from Go/bun). Binds 0.0.0.0 so it is
 # reachable over SSH — forward with `ssh -L 8000:localhost:8000 <host>`.

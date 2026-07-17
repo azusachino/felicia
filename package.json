@@ -1,0 +1,18 @@
+{
+  "name": "felicia-web-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "bun@1.3.13",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "web:public:dev": "bun run --cwd apps/web-public dev",
+    "web:public:build": "bun run --cwd apps/web-public build",
+    "web:public:check": "bun run --cwd apps/web-public check",
+    "web:admin:dev": "bun run --cwd apps/web-admin dev",
+    "web:admin:build": "bun run --cwd apps/web-admin build",
+    "web:admin:check": "bun run --cwd apps/web-admin check"
+  }
+}

@@ -37,7 +37,6 @@ jobs:
           python-version: "3.14"
 
       - name: Install frontend dependencies
-        working-directory: apps/web-public
         run: bun install --frozen-lockfile
 
       - name: Build CLI-backed static artifact

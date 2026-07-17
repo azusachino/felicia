@@ -39,7 +39,7 @@ def main() -> None:
 
         environment = os.environ.copy()
         environment["BASE_PATH"] = BASE_PATH
-        run(["bun", "install", "--frozen-lockfile"], cwd=checkout / "apps" / "web-public", env=environment)
+        run(["bun", "install", "--frozen-lockfile"], cwd=checkout, env=environment)
         run(
             ["uv", "run", "python", "scripts/felicia.py", "preview"],
             cwd=checkout,

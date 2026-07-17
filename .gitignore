@@ -1,6 +1,7 @@
 # Go
 /bin/
-/dist/
+node_modules/
+dist/
 vendor/
 *.test
 *.out
