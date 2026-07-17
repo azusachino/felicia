@@ -5,17 +5,17 @@ WORKDIR /app
 
 # Copy workspace and dependency manifests
 COPY go.work go.work.sum ./
-COPY apps/core/go.mod apps/core/go.sum apps/core/
-COPY apps/runtime/go.mod apps/runtime/go.sum apps/runtime/
-COPY apps/providers/go.mod apps/providers/go.sum apps/providers/
-COPY apps/apiserver/go.mod apps/apiserver/go.sum apps/apiserver/
-RUN for module in apps/core apps/runtime apps/providers apps/apiserver; do cd "$module" && go mod download && cd /app; done
+COPY core/go.mod core/go.sum core/
+COPY runtime/go.mod runtime/go.sum runtime/
+COPY providers/go.mod providers/go.sum providers/
+COPY server/go.mod server/go.sum server/
+RUN for module in core runtime providers server; do cd "$module" && go mod download && cd /app; done
 
 # Copy source code
 COPY . .
 
 # Build statically compiled binary
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /app/felicia-api ./apps/apiserver/cmd/api
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /app/felicia-api ./server/cmd/api
 
 # Stage 2: Runtime container
 FROM alpine:latest

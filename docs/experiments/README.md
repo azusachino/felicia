@@ -91,8 +91,8 @@ The repository already contains the first input set and orchestration examples:
 
 ## Current known implementation gaps
 
-- `apps/providers/sqlite/schema.sql` stores `tb_journeys.gps_route` as JSON text;
-- `apps/apiserver/cmd/build/main.go` constructs PostgreSQL directly;
+- `providers/sqlite/schema.sql` stores `tb_journeys.gps_route` as JSON text;
+- `server/cmd/build/main.go` constructs PostgreSQL directly;
 - the static publisher does not yet copy local public media derivatives;
 - the GitHub Pages workflow and static design demo exist, but deployment and
   browser review are still outstanding;

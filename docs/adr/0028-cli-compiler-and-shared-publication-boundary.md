@@ -7,7 +7,7 @@ decisions:
   - "Use the existing canonical domain model as the source of truth for both server and CLI workflows."
   - "Make package import, publication, and storage seams provider-neutral before adding server wiring."
   - "Introduce felicia-cli as a separate Go composition root in the existing go.work workspace."
-  - "Move the reusable public projection/compiler boundary out of apps/apiserver."
+  - "Move the reusable public projection/compiler boundary out of server."
 related:
   - "0023"
   - "0025"
@@ -23,8 +23,8 @@ The current repository already contains most of the canonical model, SQLite and
 PostgreSQL providers, importer use cases, and a public JSON projection. The
 composition is incomplete, however:
 
-- `apps/apiserver/cmd/build` constructs PostgreSQL directly;
-- the reusable projection package is under `apps/apiserver/publication`;
+- `server/cmd/build` constructs PostgreSQL directly;
+- the reusable projection package is now under `publication`;
 - no `felicia-cli` composition root exists;
 - the Python scripts build a checked-in design fixture, not a user package;
 - the portable ZIP shape is specified by ADR 0023 but is not yet implemented.
@@ -35,15 +35,15 @@ server ingestion or remote providers are wired into it.
 ## Proposed boundary
 
 ```text
-apps/core         domain entities, validation, templates, provider-neutral ports
-apps/runtime      import planning, no-clobber merge, publication use cases
-apps/publication  public JSON contract, visibility filtering, static compiler ports
-apps/providers    SQLite, PostgreSQL, local filesystem, and later S3-compatible implementations
-apps/cli          felicia-cli composition root
-apps/apiserver    postponed server composition root using the same seams
+core         domain entities, validation, templates, provider-neutral ports
+runtime      import planning, no-clobber merge, publication use cases
+publication  public JSON contract, visibility filtering, static compiler ports
+providers    SQLite, PostgreSQL, local filesystem, and later S3-compatible implementations
+cli               felicia-cli composition root
+server    postponed server composition root using the same seams
 ```
 
-`apps/cli` may depend on `core`, `runtime`, `publication`, and selected providers.
+`cli` may depend on `core`, `runtime`, `publication`, and selected providers.
 Those packages must not depend on the CLI or HTTP server. The server can be
 added later without changing package or publication contracts.
 
@@ -133,8 +133,8 @@ private source payloads.
 
 ## Open decisions
 
-- Whether `apps/publication` is a new Go module or a package first moved into
-  `apps/runtime`.
+- Whether `publication` is a new Go module or a package first moved into
+  `runtime`.
 - Whether package YAML is decoded directly into import DTOs or first normalized
   into a versioned intermediate representation.
 - Whether static compilation writes media directly to `dist/media/` or delegates

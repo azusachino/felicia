@@ -1,9 +1,9 @@
 go 1.26
 
 use (
-	./apps/apiserver
-	./apps/core
-	./apps/providers
-	./apps/publication
-	./apps/runtime
+	./server
+	./core
+	./providers
+	./publication
+	./runtime
 )

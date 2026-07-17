@@ -37,12 +37,13 @@ where you author _essays / photo curation / animation_. The importer is **field-
 ### Current layout
 
 ```
-apps/{apiserver,core,providers,runtime,web-admin,web-public}
+core/ runtime/ providers/ publication/ server/ apps/{web-admin,web-public}
 migrations/  scripts/  deploy/  docs/
 ```
 
-`apps/core` is the pure domain and port layer (no I/O). `apps/runtime` owns use cases,
-`apps/providers` owns persistence implementations, and API adapters depend on runtime ports.
+`core` is the pure domain and port layer (no I/O). `runtime` owns use cases,
+`providers` owns persistence implementations, `publication` owns the public contract,
+and server adapters depend on runtime and publication ports.
 The root Go module has been retired; all Go code is built through `go.work`.
 
 ## Build, Run & Test

@@ -39,7 +39,7 @@ frontend code and static publication use the `.json` paths.
 ## Current evidence
 
 - `apps/web-public/src/api/source.ts` requests the three `.json` paths.
-- `apps/apiserver/api/server.go` exposes matching `.json` aliases.
+- `server/api/server.go` exposes matching `.json` aliases.
 - `scripts/verify_static_demo.py` validates the index, every journey detail,
   every memento file, project-site base path, and demo media.
 - Go API tests and frontend tests pass for the current fixture/provider baseline.

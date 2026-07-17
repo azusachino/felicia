@@ -13,12 +13,12 @@ sequence. It is a contract draft, not a claim that the CLI already exists.
 
 | Concern                          | Current location               | Assessment                                       |
 | -------------------------------- | ------------------------------ | ------------------------------------------------ |
-| Canonical entities and lifecycle | `apps/core/domain`             | Reusable starting point                          |
-| Storage ports                    | `apps/core/ports`              | Reusable; publication needs a narrower read port |
-| SQLite provider                  | `apps/providers/sqlite`        | First CLI persistence target                     |
-| PostgreSQL provider              | `apps/providers/postgres`      | Server/deployment target                         |
-| Import joining/no-clobber logic  | `apps/runtime/importer`        | Reusable runtime seam                            |
-| Public projection                | `apps/apiserver/publication`   | Must move behind a shared boundary               |
+| Canonical entities and lifecycle | `core/domain`                  | Reusable starting point                          |
+| Storage ports                    | `core/ports`                   | Reusable; publication needs a narrower read port |
+| SQLite provider                  | `providers/sqlite`             | First CLI persistence target                     |
+| PostgreSQL provider              | `providers/postgres`           | Server/deployment target                         |
+| Import joining/no-clobber logic  | `runtime/importer`             | Reusable runtime seam                            |
+| Public projection                | `publication`                  | Shared boundary now exists                       |
 | Fixture build script             | `scripts/build_static_demo.py` | Demo only; not package compilation               |
 | `felicia-cli`                    | absent                         | Core missing deliverable                         |
 
@@ -56,11 +56,10 @@ of private/unsupported files. This replaces the current fixture demo check.
 
 ## Implementation order
 
-1. Extract shared publication DTOs and compiler ports from
-   `apps/apiserver/publication`.
+1. Extend the shared publication DTOs and compiler ports in `publication`.
 2. Define package DTOs and ZIP validation without a database dependency.
 3. Implement GPX and local-media adapters.
 4. Implement import plan/apply against SQLite through existing ports.
-5. Add `apps/cli/cmd/felicia-cli` with package, import, static, and publish.
+5. Add `cli/cmd/felicia` with package, import, static, and publish.
 6. Add the end-to-end fixture and compile it into the static reader.
 7. Recompose the postponed server and PostgreSQL compiler from the same seams.

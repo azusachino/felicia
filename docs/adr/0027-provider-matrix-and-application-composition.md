@@ -26,8 +26,8 @@ PostgreSQL is appropriate when a deployment wants stronger operational tooling a
 the existing spatial database path. Valkey can improve server caching and future
 job/session workflows, but Felicia must remain correct when it is unavailable.
 
-The repository already has four Go modules—core, runtime, providers, and API
-server—and both SQLite and PostgreSQL providers. The static compiler currently
+The repository now has five backend Go modules—core, runtime, providers,
+publication, and server—and both SQLite and PostgreSQL providers. The static compiler currently
 selects PostgreSQL directly, which prevents it from being a true static mode.
 
 ## Decision
@@ -67,7 +67,7 @@ felicia import → source/package intake and review report
 felicia export → portable source and authored-data backup
 ```
 
-The existing `apps/apiserver` module may continue to host HTTP transport during the
+The existing `server` module may continue to host HTTP transport during the
 transition, but static build logic must move behind provider-neutral ports and must
 not instantiate the PostgreSQL provider itself.
 

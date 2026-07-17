@@ -12,7 +12,7 @@ GO_FILES := $(shell find . -name '*.go' -not -path './vendor/*' -not -path './.g
 
 # Every Go module must be checked; the root module alone does not traverse the
 # independent workspace modules.
-GO_MODULES = apps/core apps/runtime apps/providers apps/publication apps/apiserver
+GO_MODULES = core runtime providers publication server
 
 DATABASE_DSN ?= postgres://postgres:password@localhost:5432/felicia?sslmode=disable
 PORT ?= 8080

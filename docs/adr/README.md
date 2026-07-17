@@ -27,3 +27,4 @@ This directory stores the immutable records of design and architecture choices m
 | [0026](0026-local-first-media-and-blob-storage.md)           | Local-First Media with Pluggable Blob Storage  | 2026-07-17 | Accepted |
 | [0027](0027-provider-matrix-and-application-composition.md)  | Provider Matrix and Application Composition    | 2026-07-17 | Accepted |
 | [0028](0028-cli-compiler-and-shared-publication-boundary.md) | CLI Compiler and Shared Publication Boundary   | 2026-07-17 | Proposed |
+| [0029](0029-community-go-workspace-layout.md)                | Community-Shaped Go Workspace Layout           | 2026-07-17 | Accepted |

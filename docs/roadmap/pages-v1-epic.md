@@ -145,7 +145,7 @@ leaking private data.
 | Gap                                                                      | Evidence                                                                  | Covered by |
 | ------------------------------------------------------------------------ | ------------------------------------------------------------------------- | ---------- |
 | Static builder reads checked-in JSON, not SQLite                         | `scripts/build_static_demo.py`                                            | 01.1, 01.2 |
-| Existing static compiler is PostgreSQL-specific                          | `apps/apiserver/cmd/build/main.go`                                        | 01.1, 01.2 |
+| Existing static compiler is PostgreSQL-specific                          | `server/cmd/build/main.go`                                                | 01.1, 01.2 |
 | GPX exists but is not in the Pages build path                            | `scripts/tracks/*.gpx` and provider baseline                              | 01.3       |
 | Demo media mapping is hardcoded; no safe local FS pipeline               | `scripts/build_static_demo.py`                                            | 01.4       |
 | Server `.json` aliases are newly added but parity is unproven end-to-end | Go route tests pass; browser parity remains untested                      | 01.5       |
