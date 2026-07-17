@@ -1,8 +1,10 @@
-// Package publication builds the presentation-agnostic public projections
-// shared by the live API and static compiler.
+// Package publication defines Felicia's presentation-agnostic public contract.
 package publication
 
 import (
+	"context"
+	"io"
+
 	"github.com/google/uuid"
 	"github.com/paulmach/orb"
 
@@ -67,4 +69,40 @@ func representativeCoord(geom orb.Geometry) []float64 {
 		}
 	}
 	return nil
+}
+
+// ReadModel is the provider-neutral read surface required by a compiler.
+// Implementations may be backed by SQLite, PostgreSQL, or another store.
+type ReadModel interface {
+	ListJourneys(context.Context) ([]*domain.Journey, error)
+	ListMementosByJourney(context.Context, uuid.UUID) ([]*domain.Memento, error)
+	ListPhotosByMemento(context.Context, uuid.UUID) ([]*domain.MementoPhoto, error)
+}
+
+// MediaSource opens a source object by its canonical object key.
+type MediaSource interface {
+	Open(context.Context, string) (io.ReadCloser, error)
+}
+
+// ArtifactWriter receives deterministic public JSON and media files.
+type ArtifactWriter interface {
+	WriteJSON(path string, value any) error
+	WriteMedia(path string, source io.Reader) error
+}
+
+// PublicationInput controls one static compilation.
+type PublicationInput struct {
+	JourneyIDs []uuid.UUID
+}
+
+// BuildReport describes the generated public artifact.
+type BuildReport struct {
+	Journeys int
+	Mementos int
+	Media    int
+}
+
+// Compiler is the shared publication boundary used by CLI and server modes.
+type Compiler interface {
+	Compile(context.Context, PublicationInput, ReadModel, MediaSource, ArtifactWriter) (BuildReport, error)
 }

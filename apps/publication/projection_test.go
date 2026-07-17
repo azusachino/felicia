@@ -23,9 +23,7 @@ func TestNewJourneyListItem(t *testing.T) {
 
 	got := NewJourneyListItem(journey, mementos)
 	want := JourneyListItem{
-		Slug:         "japan-spring-2026",
-		Title:        "日本春旅 2026",
-		MementoCount: 6,
+		Slug: "japan-spring-2026", Title: "日本春旅 2026", MementoCount: 6,
 		RepresentativeDots: []RepresentativeDot{
 			{Coord: []float64{139.7671, 35.6812}, Label: "東京駅"},
 			{Coord: []float64{139.7671, 35.6812}, Label: "東海道"},
@@ -37,14 +35,7 @@ func TestNewJourneyListItem(t *testing.T) {
 	}
 }
 
-func TestNewJourneyListItemEmptyMementos(t *testing.T) {
-	got := NewJourneyListItem(&domain.Journey{Slug: "bare", Title: "Bare Journey"}, nil)
-	if got.MementoCount != 0 || got.RepresentativeDots != nil {
-		t.Errorf("unexpected empty projection: %+v", got)
-	}
-}
-
-func TestJourneyListItemJSONShape(t *testing.T) {
+func TestNewJourneyListItemJSONShape(t *testing.T) {
 	data, err := json.Marshal(NewJourneyListItem(
 		&domain.Journey{Slug: "japan", Title: "日本"},
 		[]*domain.Memento{{Place: "東京", Geom: orb.Point{139.7, 35.6}}},

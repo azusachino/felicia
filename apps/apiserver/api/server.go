@@ -18,8 +18,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/paulmach/orb"
 
-	"github.com/azusachino/felicia/apps/apiserver/publication"
 	"github.com/azusachino/felicia/apps/core/domain"
+	"github.com/azusachino/felicia/apps/publication"
 	"github.com/azusachino/felicia/apps/runtime/importer"
 	journeyruntime "github.com/azusachino/felicia/apps/runtime/journey"
 	mementoruntime "github.com/azusachino/felicia/apps/runtime/memento"

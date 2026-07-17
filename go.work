@@ -4,5 +4,6 @@ use (
 	./apps/apiserver
 	./apps/core
 	./apps/providers
+	./apps/publication
 	./apps/runtime
 )

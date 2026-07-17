@@ -5,6 +5,7 @@ go 1.26
 require (
 	github.com/azusachino/felicia/apps/core v0.1.0
 	github.com/azusachino/felicia/apps/providers v0.1.0
+	github.com/azusachino/felicia/apps/publication v0.1.0
 	github.com/azusachino/felicia/apps/runtime v0.1.0
 	github.com/go-chi/chi/v5 v5.3.1
 	github.com/google/go-cmp v0.7.0
@@ -55,5 +56,6 @@ require (
 replace (
 	github.com/azusachino/felicia/apps/core => ../core
 	github.com/azusachino/felicia/apps/providers => ../providers
+	github.com/azusachino/felicia/apps/publication => ../publication
 	github.com/azusachino/felicia/apps/runtime => ../runtime
 )

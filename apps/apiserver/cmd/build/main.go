@@ -14,8 +14,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/paulmach/orb"
 
-	"github.com/azusachino/felicia/apps/apiserver/publication"
 	"github.com/azusachino/felicia/apps/providers/postgres"
+	"github.com/azusachino/felicia/apps/publication"
 )
 
 type geoJSONGeometry struct {
