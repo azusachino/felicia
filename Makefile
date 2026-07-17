@@ -23,7 +23,7 @@ COMPOSE ?= $(shell \
 	elif command -v docker >/dev/null 2>&1; then echo docker compose; \
 	else echo ''; fi)
 
-.PHONY: help fmt fmt-check vet lint test test-sqlite test-postgres check build validate tidy db-up db-down migrate seed dev dev-sqlite dev-postgres test-workflow test-workflow-postgres mock-up mock-down web-install web-check web-build static-demo static-build static-validate static-publish pages-workflow-validate pages-preview pages-down docs docs-build share share-down
+.PHONY: help fmt fmt-check vet lint test test-sqlite test-postgres check build validate tidy db-up db-down migrate seed dev dev-sqlite dev-postgres test-workflow test-workflow-postgres mock-up mock-down web-install web-check web-build static-demo static-build static-validate static-publish pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -131,6 +131,9 @@ static-publish: ## Build, validate, and print the v0.1 publication manifest
 
 pages-workflow-validate: ## Verify the Pages workflow is fork-safe
 	$(UV_RUN) run python scripts/verify_pages_workflow.py
+
+fork-smoke: ## Build a clean checkout from another filesystem path
+	$(UV_RUN) run python scripts/verify_fork_smoke.py
 
 pages-preview: ## Build and serve the static Pages artifact on localhost:8082
 	BASE_PATH=/ $(MAKE) static-demo
