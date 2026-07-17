@@ -6,7 +6,6 @@ from __future__ import annotations
 import io
 import os
 import subprocess
-import sys
 import tarfile
 import tempfile
 from pathlib import Path
@@ -42,10 +41,11 @@ def main() -> None:
         environment["BASE_PATH"] = BASE_PATH
         run(["bun", "install", "--frozen-lockfile"], cwd=checkout / "apps" / "web-public", env=environment)
         run(
-            [sys.executable, "scripts/felicia.py", "publish", "--base-path", BASE_PATH],
+            ["uv", "run", "python", "scripts/felicia.py", "preview"],
             cwd=checkout,
             env=environment,
         )
+        run(["uv", "run", "python", "scripts/verify_static_artifact.py"], cwd=checkout, env=environment)
 
         dist = checkout / "apps" / "web-public" / "dist"
         assert (dist / "index.html").is_file()
