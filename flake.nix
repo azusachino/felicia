@@ -22,8 +22,10 @@
           packages = with pkgs; [
             golangci-lint
             goose
-            postgresql_16
-            postgresqlPackages.postgis
+            # Keep the local client and extension toolchain aligned with the
+            # postgis/postgis:18-3.6 service used by Compose and CI.
+            postgresql_18
+            postgresql18Packages.postgis
             gnumake
             sqlc
             prettier
