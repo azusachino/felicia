@@ -35,7 +35,7 @@ approval boundary.
 For a local browser check using a compiled SQLite publication:
 
 ```bash
-make pages-preview PAGES_DB=.felicia/felicia.sqlite PAGES_MEDIA_ROOT=.felicia/media
+make pages-preview
 # open http://localhost:8082
 make pages-down
 ```

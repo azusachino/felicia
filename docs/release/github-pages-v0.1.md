@@ -16,7 +16,7 @@ SQLite compiler or the self-hosted authoring server.
 make static-publish
 make pages-workflow-validate
 make fork-smoke
-make pages-preview PAGES_DB=.felicia/felicia.sqlite PAGES_MEDIA_ROOT=.felicia/media
+make pages-preview
 ```
 
 The preview builds the SPA, compiles the local SQLite publication with

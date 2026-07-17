@@ -15,9 +15,6 @@ GO_FILES := $(shell find . -name '*.go' -not -path './vendor/*' -not -path './.g
 GO_MODULES = core runtime providers publication server cli
 
 DATABASE_DSN ?= postgres://postgres:password@localhost:5432/felicia?sslmode=disable
-PAGES_DB ?= .felicia/felicia.sqlite
-PAGES_MEDIA_ROOT ?= .felicia/media
-PAGES_DIST ?= apps/web-public/dist
 PORT ?= 8080
 CACHE_ADDR ?= localhost:6379
 
@@ -140,13 +137,7 @@ fork-smoke: ## Build a clean checkout from another filesystem path
 	$(UV_RUN) run python scripts/verify_fork_smoke.py
 
 pages-preview: ## Build and serve the static Pages artifact on localhost:8082
-	@test -f "$(PAGES_DB)" || (echo "SQLite database not found: $(PAGES_DB) (run felicia-cli import --apply first)" >&2; exit 1)
-	@test -d "$(PAGES_MEDIA_ROOT)" || (echo "media root not found: $(PAGES_MEDIA_ROOT) (pass PAGES_MEDIA_ROOT=...)" >&2; exit 1)
-	$(MAKE) cli-build
-	BASE_PATH=/ $(MAKE) web-build
-	./bin/felicia-cli static compile --db "$(PAGES_DB)" --media-root "$(PAGES_MEDIA_ROOT)" --out "$(PAGES_DIST)"
-	@test -f "$(PAGES_DIST)/index.html"
-	@test -f "$(PAGES_DIST)/api/v1/journeys.json"
+	BASE_PATH=/ $(UV_RUN) run python scripts/felicia.py preview
 	@test -n "$(COMPOSE)" || (echo "No container compose command found (install podman-compose or Docker Compose)" >&2; exit 1)
 	$(COMPOSE) -f deploy/compose.yaml --profile pages up -d pages-preview
 	@echo "Felicia Pages preview: http://localhost:8082"
