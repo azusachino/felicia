@@ -32,7 +32,7 @@ felicia-cli static compile --db .felicia/felicia.sqlite --media-root .felicia/me
 commit or push. A fork's normal Git review workflow remains the publication
 approval boundary.
 
-For a local browser check using a compiled SQLite publication:
+For a local browser check using an existing compiled SQLite publication:
 
 ```bash
 make pages-preview
@@ -42,8 +42,9 @@ make pages-down
 
 The preview uses Python's standard `http.server` in a disposable Compose
 profile. It mounts `apps/web-public/dist` read-only and has no API, database,
-cache, or cloud dependency. Caddy remains the server for the self-hosted/shared
-runtime, where reverse-proxy behavior also needs to be tested.
+cache, or cloud dependency. It does not import or compile anything. Caddy
+remains the server for the self-hosted/shared runtime, where reverse-proxy
+behavior also needs to be tested.
 
 The retired fixture command previously performed two operations:
 

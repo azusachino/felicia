@@ -12,9 +12,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 WEB = ROOT / "apps" / "web-public"
-CLI = ROOT / "bin" / "felicia-cli"
-DEFAULT_DB = ROOT / ".felicia" / "felicia.sqlite"
-DEFAULT_MEDIA_ROOT = ROOT / ".felicia" / "media"
 DEFAULT_DIST = WEB / "dist"
 
 
@@ -51,33 +48,14 @@ def publish(base_path: str, dry_run: bool) -> None:
 
 
 def preview(base_path: str) -> None:
-    database = Path(os.environ.get("PAGES_DB", DEFAULT_DB))
-    media_root = Path(os.environ.get("PAGES_MEDIA_ROOT", DEFAULT_MEDIA_ROOT))
     output = DEFAULT_DIST
-    if not database.is_file():
-        raise SystemExit(f"SQLite database not found: {database} (import a package first)")
-    media_root.mkdir(parents=True, exist_ok=True)
-    run(["go", "build", "-o", str(CLI), "./cli/cmd/felicia"])
-    environment = os.environ.copy()
-    environment["BASE_PATH"] = base_path
-    run(["bun", "run", "build"], cwd=WEB, env=environment)
-    run(
-        [
-            str(CLI),
-            "static",
-            "compile",
-            "--db",
-            str(database),
-            "--media-root",
-            str(media_root),
-            "--out",
-            str(output),
-        ]
-    )
     for required in (output / "index.html", output / "api" / "v1" / "journeys.json"):
         if not required.is_file():
-            raise SystemExit(f"preview artifact missing: {required}")
-    print(f"preview ready: {output}")
+            raise SystemExit(f"preview artifact missing: {required} (build the SPA and compile static data first)")
+    index = (output / "index.html").read_text(encoding="utf-8")
+    if base_path not in index:
+        raise SystemExit(f"preview base path {base_path!r} is missing from {output / 'index.html'}")
+    print(f"preview ready: {output} (existing artifact)")
 
 
 def parser() -> argparse.ArgumentParser:

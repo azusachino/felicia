@@ -19,10 +19,10 @@ make fork-smoke
 make pages-preview
 ```
 
-The preview builds the SPA, compiles the local SQLite publication with
-`felicia-cli`, and serves the combined artifact from `apps/web-public/dist`.
-`static-publish` does not commit or push. Use the normal review flow to inspect
-the generated result.
+The preview only serves the existing combined artifact from
+`apps/web-public/dist`; it does not import or compile data. Build the SPA and
+compile the static publication separately, then use `make pages-preview` to
+inspect the result.
 
 For a project-site path, use the repository name as the base path:
 

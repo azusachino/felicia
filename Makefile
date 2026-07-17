@@ -136,7 +136,7 @@ pages-workflow-validate: ## Verify the Pages workflow is fork-safe
 fork-smoke: ## Build a clean checkout from another filesystem path
 	$(UV_RUN) run python scripts/verify_fork_smoke.py
 
-pages-preview: ## Build and serve the static Pages artifact on localhost:8082
+pages-preview: ## Serve the existing static Pages artifact on localhost:8082
 	BASE_PATH=/ $(UV_RUN) run python scripts/felicia.py preview
 	@test -n "$(COMPOSE)" || (echo "No container compose command found (install podman-compose or Docker Compose)" >&2; exit 1)
 	$(COMPOSE) -f deploy/compose.yaml --profile pages up -d pages-preview
