@@ -1,8 +1,16 @@
-# ADR 0015: Transactional Memento Aggregates with Revisions
+---
+id: "0015"
+title: "Transactional Memento Aggregates with Revisions"
+status: "accepted"
+date: "2026-07-13"
+decisions: []
+related:
+  - "ADR 0010"
+  - "felicia:write-side-stability:task-6"
+supersedes: []
+---
 
-- **Status:** Accepted
-- **Date:** 2026-07-13
-- **Related:** ADR 0010, `felicia:write-side-stability:task-6`
+# ADR 0015: Transactional Memento Aggregates with Revisions
 
 ## Decision
 

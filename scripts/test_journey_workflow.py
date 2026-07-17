@@ -135,7 +135,7 @@ def disposable_server(port: int, driver: str, database_path: str, database_dsn: 
             database_path = database_path or os.path.join(temp_dir, "felicia.db")
         elif not database_dsn:
             raise RuntimeError("--database-dsn or FELICIA_TEST_DATABASE_DSN is required for postgres")
-        subprocess.run(["go", "build", "-o", api_bin, "./apps/apiserver/cmd/api"], check=True)
+        subprocess.run(["go", "build", "-o", api_bin, "./server/cmd/api"], check=True)
         environment = {
             **os.environ,
             "DATABASE_DRIVER": driver,

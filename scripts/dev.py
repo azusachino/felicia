@@ -60,7 +60,7 @@ def run_sqlite() -> None:
             "CACHE_ADDR": environment.get("CACHE_ADDR", ""),
         }
     )
-    os.execvpe("go", ["go", "run", "./apps/apiserver/cmd/api"], environment)
+    os.execvpe("go", ["go", "run", "./server/cmd/api"], environment)
 
 
 def run_postgres(start_web: bool) -> None:
@@ -71,7 +71,7 @@ def run_postgres(start_web: bool) -> None:
 
     run(["make", "db-up"])
     run(["make", "migrate"], env=environment)
-    run(["go", "build", "-o", str(API_BINARY), "./apps/apiserver/cmd/api"])
+    run(["go", "build", "-o", str(API_BINARY), "./server/cmd/api"])
 
     api_environment = environment | {
         "DATABASE_DRIVER": "postgres",

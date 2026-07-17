@@ -1,6 +1,7 @@
 # Go
 /bin/
-/dist/
+node_modules/
+dist/
 vendor/
 *.test
 *.out
@@ -14,6 +15,7 @@ coverage.*
 # Local data / object-store scratch
 /tmp/
 /design/
+.felicia/
 *.sqlite
 *.sqlite-journal
 

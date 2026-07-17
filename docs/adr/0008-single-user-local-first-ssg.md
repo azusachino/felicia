@@ -1,8 +1,15 @@
-# ADR 0008: PostgreSQL 18 & SSG Compiler Model
+---
+id: "0008"
+title: "PostgreSQL 18 & SSG Compiler Model"
+status: "accepted"
+date: "2026-07-09"
+decisions:
+  - "felicia:decision:pg18-ssg-compiler"
+related: []
+supersedes: []
+---
 
-- **Status:** Accepted
-- **Date:** 2026-07-09
-- **Decisions:** `felicia:decision:pg18-ssg-compiler`
+# ADR 0008: PostgreSQL 18 & SSG Compiler Model
 
 ## Context
 

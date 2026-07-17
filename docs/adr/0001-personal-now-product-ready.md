@@ -1,8 +1,15 @@
-# ADR 0001: Personal-Now, Product-Ready Direction
+---
+id: "0001"
+title: "Personal-Now, Product-Ready Direction"
+status: "accepted"
+date: "2026-06-12"
+decisions:
+  - "felicia:decision:personal-now-product-ready"
+related: []
+supersedes: []
+---
 
-- **Status:** Accepted
-- **Date:** 2026-06-12
-- **Decisions:** `felicia:decision:personal-now-product-ready`
+# ADR 0001: Personal-Now, Product-Ready Direction
 
 ## Context
 

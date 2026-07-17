@@ -1,8 +1,17 @@
-# ADR 0014: Persist Import Runs and Canonical Observation History
+---
+id: "0014"
+title: "Persist Import Runs and Canonical Observation History"
+status: "accepted"
+date: "2026-07-13"
+decisions: []
+related:
+  - "ADR 0010"
+  - "ADR 0012"
+  - "felicia:write-side-stability:task-5"
+supersedes: []
+---
 
-- **Status:** Accepted
-- **Date:** 2026-07-13
-- **Related:** ADR 0010, ADR 0012, `felicia:write-side-stability:task-5`
+# ADR 0014: Persist Import Runs and Canonical Observation History
 
 ## Decision
 

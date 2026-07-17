@@ -1,8 +1,15 @@
-# ADR 0002: Mementos as the Core Unit
+---
+id: "0002"
+title: "Mementos as the Core Unit"
+status: "accepted"
+date: "2026-06-14"
+decisions:
+  - "felicia:decision:memento-not-ticket"
+related: []
+supersedes: []
+---
 
-- **Status:** Accepted
-- **Date:** 2026-06-14
-- **Decisions:** `felicia:decision:memento-not-ticket`
+# ADR 0002: Mementos as the Core Unit
 
 ## Context
 

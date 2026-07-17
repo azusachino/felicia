@@ -1,8 +1,15 @@
-# ADR 0010: Media Pipeline — Immich Ingest, Object Storage, Public Serving
+---
+id: "0010"
+title: "Media Pipeline \u2014 Immich Ingest, Object Storage, Public Serving"
+status: "accepted"
+date: "2026-07-10"
+decisions:
+  - "felicia:decision:media-pipeline"
+related: []
+supersedes: []
+---
 
-- **Status:** Accepted
-- **Date:** 2026-07-10
-- **Decisions:** `felicia:decision:media-pipeline`
+# ADR 0010: Media Pipeline — Immich Ingest, Object Storage, Public Serving
 
 ## Context
 

@@ -1,7 +1,14 @@
-# ADR 0016: Four-Module Go Workspace Boundaries
+---
+id: "0016"
+title: "Go Workspace Module Boundaries"
+status: "accepted"
+date: "2026-07-14"
+decisions: []
+related: []
+supersedes: []
+---
 
-- Status: Accepted
-- Date: 2026-07-14
+# ADR 0016: Four-Module Go Workspace Boundaries
 
 ## Context
 
@@ -13,17 +20,18 @@ storage/provider implementations.
 
 ## Decision
 
-Felicia will use a committed Go workspace containing four modules:
+Felicia will use a committed Go workspace containing backend modules:
 
-- `apps/core`: domain entities, validation, errors, and provider contracts.
-- `apps/runtime`: application use cases and workflows; it depends only on `apps/core`.
-- `apps/providers`: SQLite, PostgreSQL, external-source, and object-storage adapters.
-- `apps/apiserver`: HTTP transport, operational concerns, and composition wiring.
+- `core`: domain entities, validation, errors, and provider contracts.
+- `runtime`: application use cases and workflows; it depends only on `core`.
+- `providers`: SQLite, PostgreSQL, external-source, and object-storage adapters.
+- `publication`: public read projections and static compiler contracts.
+- `server`: HTTP transport, operational concerns, and composition wiring.
 
-The dependency direction is `core <- runtime`, `core <- providers`, and
-`core + runtime + providers <- apiserver`. Runtime code must not import a
-concrete provider. Cross-module packages must not be placed under another
-module's `internal/` directory.
+The dependency direction is `core <- runtime`, `core <- providers`,
+`core <- publication`, and `core + runtime + providers + publication <- server`.
+Runtime code must not import a concrete provider. Cross-module packages must not
+be placed under another module's `internal/` directory.
 
 ## Consequences
 

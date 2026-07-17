@@ -72,8 +72,8 @@ BrightCoding writeup:
   affordance baked into the same surface as browsing, which only makes sense
   because there's no separate admin app.
 - The map **auto-fits bounds** to show all currently-filtered markers.
-- Collections (itineraries) with start/end dates get a dedicated **trip map
-  - chronological timeline view** — v0.10 specifically added "chronologically
+- Collections (itineraries) with start/end dates get a dedicated \*\*trip map
+  - chronological timeline view\*\* — v0.10 specifically added "chronologically
     accurate map and timeline view showing adventures in the right order,"
     i.e. only inside a dated collection does browsing become time-ordered; the
     top-level view is filter-driven, not date-driven.

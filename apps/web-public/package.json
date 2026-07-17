@@ -1,5 +1,5 @@
 {
-  "name": "web",
+  "name": "@felicia/web-public",
   "private": true,
   "version": "0.1.0",
   "type": "module",

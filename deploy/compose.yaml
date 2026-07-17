@@ -59,6 +59,18 @@ services:
     depends_on:
       - api
 
+  # Local GitHub Pages artifact preview. This intentionally has no API, DB, or
+  # cache dependency: it proves that the generated public artifact is portable.
+  pages-preview:
+    image: docker.io/library/python:3.14-alpine
+    container_name: felicia-pages-preview
+    profiles: [pages]
+    command: python -m http.server 8000 --bind 0.0.0.0 --directory /srv
+    volumes:
+      - ../apps/web-public/dist:/srv:ro
+    ports:
+      - "8082:8000"
+
   # Quick ephemeral Cloudflare tunnel — no account/domain. On start it prints a
   # random https://<name>.trycloudflare.com URL (see `make share` output).
   cloudflared:

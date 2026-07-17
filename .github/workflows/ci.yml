@@ -31,30 +31,24 @@ jobs:
     env:
       # The service database is disposable for this CI job. Destructive tests
       # use this dedicated test DSN, never the normal runtime DSN.
-      DATABASE_DSN: postgres://postgres:password@localhost:5432/felicia?sslmode=disable
-      FELICIA_TEST_DATABASE_DSN: postgres://postgres:password@localhost:5432/felicia?sslmode=disable
+      CI_DATABASE_DSN: postgres://postgres:password@localhost:5432/felicia?sslmode=disable
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: apps/core/go.mod
-
-      - name: Install Nix (golangci-lint, goose from the flake)
+      - name: Install Nix toolchain
         uses: cachix/install-nix-action@v30
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes
 
       - name: Apply migrations
-        run: make migrate
+        run: DATABASE_DSN="$CI_DATABASE_DSN" nix develop --command make migrate
 
       - name: Check (fmt, vet, lint, race tests)
-        run: make check
+        run: FELICIA_TEST_DATABASE_DSN="$CI_DATABASE_DSN" nix develop --command make check
 
       - name: SQLite journey workflow
-        run: make test-workflow
+        run: nix develop --command make test-workflow
 
   frontend:
     name: Frontend (make web-check)
@@ -62,11 +56,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
-
       - name: Install deps
-        run: make web-install
+        uses: cachix/install-nix-action@v30
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Install frontend deps
+        run: nix develop --command make web-install
 
       - name: Check (svelte-check, eslint, prettier)
-        run: make web-check
+        run: nix develop --command make web-check
+
+      - name: Check admin frontend
+        run: nix develop --command make web-admin-check

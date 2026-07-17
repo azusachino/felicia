@@ -1,18 +1,18 @@
 # felicia task runner.
-# Runtimes (go, bun) come from mise (shimmed onto PATH). System tools
-# (golangci-lint, goose) come from the nix flake; NIX_RUN prefixes those so
-# targets work both inside `nix develop` and outside it.
+# The repository toolchain comes from the nix flake. These wrappers make the
+# targets work both inside `nix develop` and from a normal shell.
 NIX_RUN := $(if $(IN_NIX_SHELL),,nix develop --command )
 UV_RUN  := $(if $(IN_NIX_SHELL),uv,nix develop --command uv)
-GO      ?= go
+GO      ?= $(if $(IN_NIX_SHELL),go,nix develop --command go)
+BUN     ?= $(if $(IN_NIX_SHELL),bun,nix develop --command bun)
 
-# Whether any Go sources exist yet. The skeleton has none during the research
-# phase, so Go targets no-op cleanly until the first package is written.
+# Whether any Go sources exist yet. Keep the check so the early repository
+# skeleton can still run the non-Go targets cleanly.
 GO_FILES := $(shell find . -name '*.go' -not -path './vendor/*' -not -path './.git/*' -not -path '*/node_modules/*' -print -quit 2>/dev/null)
 
 # Every Go module must be checked; the root module alone does not traverse the
 # independent workspace modules.
-GO_MODULES = apps/core apps/runtime apps/providers apps/apiserver
+GO_MODULES = core runtime providers publication server cli
 
 DATABASE_DSN ?= postgres://postgres:password@localhost:5432/felicia?sslmode=disable
 PORT ?= 8080
@@ -23,7 +23,7 @@ COMPOSE ?= $(shell \
 	elif command -v docker >/dev/null 2>&1; then echo docker compose; \
 	else echo ''; fi)
 
-.PHONY: help fmt fmt-check vet lint test test-sqlite test-postgres check build validate tidy db-up db-down migrate seed dev dev-sqlite dev-postgres test-workflow test-workflow-postgres mock-up mock-down web-install web-check docs docs-build share share-down
+.PHONY: help fmt fmt-check vet lint test test-api test-features test-sqlite test-postgres check build cli-build validate tidy db-up db-down migrate seed dev dev-sqlite dev-postgres test-workflow test-workflow-postgres mock-up mock-down web-install web-check web-build web-admin-check web-admin-build static-build static-validate static-publish pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -49,9 +49,13 @@ check: fmt-check vet lint test test-features ## Pre-commit gate
 build: ## Build all binaries
 	@if [ -z "$(GO_FILES)" ]; then echo "build: no Go packages yet, skipping"; else set -e; for module in $(GO_MODULES); do (cd $$module && $(GO) build $$( $(GO) list ./... | grep -v '/node_modules/' )); done; fi
 
-# Pre-PR gate. Frontend (web-check) and migration smoke join here once web/ and
-# migrations/ have content.
-validate: check build ## Pre-PR gate
+cli-build: ## Build the felicia-cli executable into bin/
+	@mkdir -p bin
+	$(GO) build -o bin/felicia-cli ./cli/cmd/felicia
+
+# Pre-PR gate. Database migration smoke remains separate because it needs a
+# disposable service; deterministic frontend checks belong in this gate.
+validate: check build web-check web-admin-check ## Pre-PR gate
 
 tidy: ## Tidy go modules
 	$(GO) mod tidy
@@ -108,17 +112,48 @@ test-features: ## Run offline Python feature-contract tests
 	$(UV_RUN) run --group dev ruff check scripts tests
 	$(UV_RUN) run python -m unittest discover -s tests
 
-web-install: ## Install frontend deps (bun, from mise)
-	cd apps/web-public && bun install
+web-install: ## Install all frontend workspace deps (bun from nix)
+	$(BUN) install
 
 web-dev: ## Run frontend dev server (bun + vite)
-	cd apps/web-public && bun run dev
+	$(BUN) run --cwd apps/web-public dev
 
-web-build: ## Build frontend for production (bun + vite)
-	cd apps/web-public && bun run build
+web-build: ## Build public frontend for production (bun + vite)
+	$(BUN) run web:public:build
+
+web-admin-build: ## Build admin frontend for production (bun + vite)
+	bun run web:admin:build
+
+static-build: ## Build the v0.1 static artifact
+	$(UV_RUN) run python scripts/felicia.py build --base-path "$${BASE_PATH:-/}"
+
+static-validate: ## Validate the generated v0.1 static artifact
+	$(UV_RUN) run python scripts/felicia.py validate --base-path "$${BASE_PATH:-/}"
+
+static-publish: ## Build, validate, and print the v0.1 publication manifest
+	$(UV_RUN) run python scripts/felicia.py publish --base-path "$${BASE_PATH:-/}"
+
+pages-workflow-validate: ## Verify the Pages workflow is fork-safe
+	$(UV_RUN) run python scripts/verify_pages_workflow.py
+
+fork-smoke: ## Build a clean checkout from another filesystem path
+	$(UV_RUN) run python scripts/verify_fork_smoke.py
+
+pages-preview: ## Import inbox packages, compile, and serve on localhost:8082
+	BASE_PATH=/ $(UV_RUN) run python scripts/felicia.py preview
+	@test -n "$(COMPOSE)" || (echo "No container compose command found (install podman-compose or Docker Compose)" >&2; exit 1)
+	$(COMPOSE) -f deploy/compose.yaml --profile pages up -d pages-preview
+	@echo "Felicia Pages preview: http://localhost:8082"
+
+pages-down: ## Stop the local static Pages preview
+	@test -n "$(COMPOSE)" || (echo "No container compose command found (install podman-compose or Docker Compose)" >&2; exit 1)
+	$(COMPOSE) -f deploy/compose.yaml --profile pages down pages-preview
 
 web-check: ## Frontend typecheck + lint + format check
-	cd apps/web-public && bun run check
+	$(BUN) run web:public:check
+
+web-admin-check: ## Admin frontend typecheck + lint + format check
+	$(BUN) run web:admin:check
 
 # Docs preview (uv-managed env, isolated from Go/bun). Binds 0.0.0.0 so it is
 # reachable over SSH — forward with `ssh -L 8000:localhost:8000 <host>`.

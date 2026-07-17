@@ -1,7 +1,14 @@
-# ADR 0017: SQLite-First Storage with Optional PostgreSQL
+---
+id: "0017"
+title: "SQLite-First Storage with Optional PostgreSQL"
+status: "accepted"
+date: "2026-07-14"
+decisions: []
+related: []
+supersedes: []
+---
 
-- Status: Accepted
-- Date: 2026-07-14
+# ADR 0017: SQLite-First Storage with Optional PostgreSQL
 
 ## Context
 

@@ -1,0 +1,55 @@
+name: GitHub Pages design demo
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Nix toolchain
+        uses: cachix/install-nix-action@v30
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Install frontend dependencies
+        run: nix develop --command bun install --frozen-lockfile
+
+      - name: Build CLI-backed static artifact
+        run: BASE_PATH="/${{ github.event.repository.name }}/" nix develop --command uv run python scripts/felicia.py preview
+
+      - name: Verify static artifact
+        run: BASE_PATH="/${{ github.event.repository.name }}/" nix develop --command uv run python scripts/verify_static_artifact.py
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/web-public/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

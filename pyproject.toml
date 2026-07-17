@@ -2,7 +2,7 @@
 # uv manages this isolated environment for scripts, feature tests, and docs.
 [project]
 name = "felicia-docs"
-version = "0"
+version = "0.1.0"
 description = "MkDocs preview tooling for felicia docs."
 requires-python = ">=3.14"
 
