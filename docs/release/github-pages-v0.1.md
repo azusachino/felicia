@@ -19,10 +19,10 @@ make fork-smoke
 make pages-preview
 ```
 
-The preview only serves the existing combined artifact from
-`apps/web-public/dist`; it does not import or compile data. Build the SPA and
-compile the static publication separately, then use `make pages-preview` to
-inspect the result.
+The preview is the one-click local path: it imports ZIPs found in
+`.felicia/inbox`, builds the SPA, compiles the SQLite publication, and serves
+the combined artifact from `apps/web-public/dist`. The underlying CLI commands
+remain independently usable for automation.
 
 For a project-site path, use the repository name as the base path:
 
