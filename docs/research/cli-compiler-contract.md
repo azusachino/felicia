@@ -9,6 +9,27 @@ date: "2026-07-17"
 This note turns the existing domain and package decisions into an implementation
 sequence. It is a contract draft, not a claim that the CLI already exists.
 
+## User raw-data workspace
+
+User-owned source files are not repository fixtures and are not written directly
+to the public artifact. A local installation uses this boundary:
+
+```text
+.felicia/
+  inbox/              raw ZIPs, GPX, Timeline exports, and original media
+  felicia.sqlite      local canonical working store
+  import-reports/     dry-run, conflict, and unresolved-source reports
+
+content/
+  journeys/<slug>/    reviewed authored source and selected public media
+
+site/                 generated static output
+```
+
+`.felicia/` is gitignored. `content/` is versioned only when the author chooses
+to keep reviewed source in the repository. The CLI must never copy raw originals
+from `.felicia/inbox` into a public GitHub Pages artifact automatically.
+
 ## What already exists
 
 | Concern                          | Current location               | Assessment                                       |
@@ -35,6 +56,12 @@ Journal -> Journey -> route geometry + source provenance
 GPX, Google Timeline exports, Immich/Dawarich records, and local photos are
 source material. They normalize into the same route, visit, memento-candidate,
 and media structures; they are not alternate canonical models.
+
+Incremental imports preserve stable package and record identities. Existing
+records are not renumbered; new mementos require an explicit `seq` or receive a
+new sequence after the current maximum. Re-imports merge source-owned fields,
+preserve authored fields, and report conflicts instead of silently replacing
+content.
 
 ## Package-to-static acceptance case
 

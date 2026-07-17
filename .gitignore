@@ -14,6 +14,7 @@ coverage.*
 # Local data / object-store scratch
 /tmp/
 /design/
+.felicia/
 *.sqlite
 *.sqlite-journal
 
