@@ -8,8 +8,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/paulmach/orb"
 
 	"github.com/azusachino/felicia/core/domain"
+	"github.com/azusachino/felicia/runtime/importer"
 )
 
 func TestOpenConfiguresFileDatabaseForLocalRuntime(t *testing.T) {
@@ -57,6 +59,42 @@ func TestOpenConfiguresInMemoryDatabaseWithoutWAL(t *testing.T) {
 	}
 	if got := pragmaInt(t, repo.db, "foreign_keys"); got != 1 {
 		t.Fatalf("foreign_keys = %d, want 1", got)
+	}
+}
+
+func TestApplyPackageIsIdempotent(t *testing.T) {
+	repo, err := Open(":memory:")
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	defer repo.Close()
+
+	journeyID := mustRuntimeUUID(t)
+	journalID := mustRuntimeUUID(t)
+	mementoID := mustRuntimeUUID(t)
+	photoID := mustRuntimeUUID(t)
+	source := domain.SourceIdentity{System: "package:sample", ExternalID: mementoID.String()}
+	document := &importer.PackageDocument{
+		Journey:  &domain.Journey{ID: journeyID, JournalID: journalID, Slug: "sample", Title: "Sample", Place: "Kyoto", DateStart: time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC), DateEnd: time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC), GPSRoute: orb.MultiLineString{{{135.7, 35.0}, {135.8, 35.1}}}},
+		Mementos: []*domain.Memento{{ID: mementoID, JourneyID: journeyID, Kind: "transit", Seq: 1, Title: "Train", Place: "Kyoto", KindData: []byte(`{"operator":"JR"}`), SourceIdentity: &source, State: domain.MementoCandidateState}},
+		Photos:   []*domain.MementoPhoto{{ID: photoID, MementoID: mementoID, ObjectKey: "media/train.jpg", ContentHash: "sha256:train", Seq: 1}},
+	}
+	for attempt := 0; attempt < 2; attempt++ {
+		if _, err := importer.ApplyPackage(context.Background(), document, repo); err != nil {
+			t.Fatalf("apply package attempt %d: %v", attempt+1, err)
+		}
+	}
+	journeys, err := repo.ListJourneys(context.Background())
+	if err != nil || len(journeys) != 1 {
+		t.Fatalf("journeys after repeat import: %d, %v", len(journeys), err)
+	}
+	mementos, err := repo.ListMementosByJourney(context.Background(), journeyID)
+	if err != nil || len(mementos) != 1 {
+		t.Fatalf("mementos after repeat import: %d, %v", len(mementos), err)
+	}
+	photos, err := repo.ListPhotosByMemento(context.Background(), mementoID)
+	if err != nil || len(photos) != 1 {
+		t.Fatalf("photos after repeat import: %d, %v", len(photos), err)
 	}
 }
 

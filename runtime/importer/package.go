@@ -1,6 +1,7 @@
 package importer
 
 import (
+	"context"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -20,6 +21,51 @@ type PackageDocument struct {
 	Journey  *domain.Journey
 	Mementos []*domain.Memento
 	Photos   []*domain.MementoPhoto
+}
+
+// PackageStore is the first local import composition seam. The SQLite provider
+// implements EnsureJournal; server/PostgreSQL composition can add the same
+// idempotent operation later without changing package normalization.
+type PackageStore interface {
+	domain.Repository
+	EnsureJournal(context.Context, *domain.Journal) error
+}
+
+// ImportReport summarizes one applied package.
+type ImportReport struct {
+	Journeys int
+	Mementos int
+	Photos   int
+}
+
+// ApplyPackage writes a normalized package into the canonical store. Source
+// fields are applied through the ingest boundary; authored fields are never
+// supplied by this operation.
+func ApplyPackage(ctx context.Context, document *PackageDocument, store PackageStore) (ImportReport, error) {
+	if document == nil || document.Journey == nil {
+		return ImportReport{}, fmt.Errorf("package document and journey are required")
+	}
+	if store == nil {
+		return ImportReport{}, fmt.Errorf("package store is required")
+	}
+	if err := store.EnsureJournal(ctx, &domain.Journal{ID: document.Journey.JournalID}); err != nil {
+		return ImportReport{}, fmt.Errorf("ensure journal: %w", err)
+	}
+	if err := store.UpsertJourney(ctx, document.Journey); err != nil {
+		return ImportReport{}, fmt.Errorf("upsert journey: %w", err)
+	}
+	for _, memento := range document.Mementos {
+		fields := []string{"journey_id", "kind", "seq", "occurred_at", "occurred_tz", "geom", "title", "place", "kind_data"}
+		if err := store.ApplyIngestMementoPatch(ctx, &domain.IngestMementoPatch{Memento: memento, Fields: fields}); err != nil {
+			return ImportReport{}, fmt.Errorf("import memento %s: %w", memento.ID, err)
+		}
+	}
+	for _, photo := range document.Photos {
+		if err := store.UpsertPhoto(ctx, photo); err != nil {
+			return ImportReport{}, fmt.Errorf("import photo %s: %w", photo.ID, err)
+		}
+	}
+	return ImportReport{Journeys: 1, Mementos: len(document.Mementos), Photos: len(document.Photos)}, nil
 }
 
 type journeyFile struct {

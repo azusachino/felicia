@@ -245,6 +245,18 @@ func (r *Repository) CreateJournal(ctx context.Context, journal *domain.Journal)
 	return err
 }
 
+// EnsureJournal creates a journal when it is absent and is safe to repeat.
+func (r *Repository) EnsureJournal(ctx context.Context, journal *domain.Journal) error {
+	if journal == nil || journal.ID == uuid.Nil {
+		return fmt.Errorf("journal with ID is required")
+	}
+	if journal.CreatedAt.IsZero() {
+		journal.CreatedAt = time.Now().UTC()
+	}
+	_, err := r.db.ExecContext(ctx, "INSERT INTO tb_journals(id, created_at) VALUES (?, ?) ON CONFLICT(id) DO NOTHING", idString(journal.ID), journal.CreatedAt.Format(time.RFC3339Nano))
+	return err
+}
+
 // ResetMockJournal deletes a journal and its dependent mock data.
 func (r *Repository) ResetMockJournal(ctx context.Context, id uuid.UUID) error {
 	_, err := r.db.ExecContext(ctx, "DELETE FROM tb_journals WHERE id = ?", idString(id))
