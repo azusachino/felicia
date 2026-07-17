@@ -593,7 +593,7 @@ func TestPublicJourneyOmitsEmptyGPSRoute(t *testing.T) {
 	handler := api.NewServer(repo, nil, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{}).Handler()
 
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/journeys/"+journey.ID.String(), nil))
+	handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/journeys/"+journey.ID.String()+".json", nil))
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d (%s)", w.Code, w.Body)
 	}
@@ -622,7 +622,7 @@ func TestGetPublicJourneysExcludesEmpty(t *testing.T) {
 
 	handler := api.NewServer(repo, nil, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{}).Handler()
 	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/journeys", nil))
+	handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/journeys.json", nil))
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d (%s)", w.Code, w.Body)
 	}

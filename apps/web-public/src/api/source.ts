@@ -2,10 +2,15 @@ import type { Journey } from "../data"
 import { adaptJourney } from "./adapt"
 import type { ApiJourney, ApiJourneyListItem, ApiMemento } from "./types"
 
-export async function loadJourney(id: string): Promise<Journey> {
+function endpoint(path: string): string {
   const apiBase = import.meta.env.VITE_API_BASE || ""
-  const journeyUrl = `${apiBase}/api/v1/journeys/${id}`
-  const mementosUrl = `${apiBase}/api/v1/journeys/${id}/mementos`
+  const baseURL = apiBase || import.meta.env.BASE_URL || "/"
+  return `${baseURL.replace(/\/$/, "")}${path}.json`
+}
+
+export async function loadJourney(id: string): Promise<Journey> {
+  const journeyUrl = endpoint(`/api/v1/journeys/${id}`)
+  const mementosUrl = endpoint(`/api/v1/journeys/${id}/mementos`)
 
   const [journeyRes, mementosRes] = await Promise.all([fetch(journeyUrl), fetch(mementosUrl)])
 
@@ -25,8 +30,7 @@ export async function loadJourney(id: string): Promise<Journey> {
 }
 
 export async function loadJourneys(): Promise<Journey[]> {
-  const apiBase = import.meta.env.VITE_API_BASE || ""
-  const url = `${apiBase}/api/v1/journeys`
+  const url = endpoint("/api/v1/journeys")
   const res = await fetch(url)
   if (!res.ok) {
     throw new Error(`Failed to load journeys list: ${res.statusText}`)

@@ -23,7 +23,7 @@ COMPOSE ?= $(shell \
 	elif command -v docker >/dev/null 2>&1; then echo docker compose; \
 	else echo ''; fi)
 
-.PHONY: help fmt fmt-check vet lint test test-sqlite test-postgres check build validate tidy db-up db-down migrate seed dev dev-sqlite dev-postgres test-workflow test-workflow-postgres mock-up mock-down web-install web-check docs docs-build share share-down
+.PHONY: help fmt fmt-check vet lint test test-sqlite test-postgres check build validate tidy db-up db-down migrate seed dev dev-sqlite dev-postgres test-workflow test-workflow-postgres mock-up mock-down web-install web-check web-build static-demo static-build static-validate static-publish pages-preview pages-down docs docs-build share share-down
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -116,6 +116,28 @@ web-dev: ## Run frontend dev server (bun + vite)
 
 web-build: ## Build frontend for production (bun + vite)
 	cd apps/web-public && bun run build
+
+static-demo: ## Generate the fixture API projection and build all public designs
+	$(MAKE) static-build
+
+static-build: ## Build the v0.1 static artifact
+	$(UV_RUN) run python scripts/felicia.py build --base-path "$${BASE_PATH:-/}"
+
+static-validate: ## Validate the generated v0.1 static artifact
+	$(UV_RUN) run python scripts/felicia.py validate --base-path "$${BASE_PATH:-/}"
+
+static-publish: ## Build, validate, and print the v0.1 publication manifest
+	$(UV_RUN) run python scripts/felicia.py publish --base-path "$${BASE_PATH:-/}"
+
+pages-preview: ## Build and serve the static Pages artifact on localhost:8082
+	BASE_PATH=/ $(MAKE) static-demo
+	@test -n "$(COMPOSE)" || (echo "No container compose command found (install podman-compose or Docker Compose)" >&2; exit 1)
+	$(COMPOSE) -f deploy/compose.yaml --profile pages up -d pages-preview
+	@echo "Felicia Pages preview: http://localhost:8082"
+
+pages-down: ## Stop the local static Pages preview
+	@test -n "$(COMPOSE)" || (echo "No container compose command found (install podman-compose or Docker Compose)" >&2; exit 1)
+	$(COMPOSE) -f deploy/compose.yaml --profile pages down pages-preview
 
 web-check: ## Frontend typecheck + lint + format check
 	cd apps/web-public && bun run check

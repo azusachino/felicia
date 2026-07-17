@@ -139,6 +139,11 @@ func (s *Server) Handler() http.Handler {
 		r.Get("/journeys", s.handleGetPublicJourneys)
 		r.Get("/journeys/{id}", s.handleGetPublicJourneyDetails)
 		r.Get("/journeys/{id}/mementos", s.handleGetPublicMementos)
+		// The .json aliases use the same public contract as the static Pages
+		// artifact. Keep extensionless routes for existing API clients.
+		r.Get("/journeys.json", s.handleGetPublicJourneys)
+		r.Get("/journeys/{id}.json", s.handleGetPublicJourneyDetails)
+		r.Get("/journeys/{id}/mementos.json", s.handleGetPublicMementos)
 	})
 
 	// Authoring Admin API (Valkey Invalidation on Write)

@@ -40,11 +40,10 @@ describe("source API", () => {
   test("loadJourney fetches detail and mementos, then adapts them (dev mode)", async () => {
     globalThis.fetch = mock((url: string | URL) => {
       const urlStr = url.toString()
-      expect(urlStr).not.toContain(".json") // should not have .json in dev mode
-      if (urlStr.endsWith(`/api/v1/journeys/${journeyID}`)) {
+      if (urlStr.endsWith(`/api/v1/journeys/${journeyID}.json`)) {
         return Promise.resolve(Response.json(japanSpringJourney))
       }
-      if (urlStr.endsWith(`/api/v1/journeys/${journeyID}/mementos`)) {
+      if (urlStr.endsWith(`/api/v1/journeys/${journeyID}/mementos.json`)) {
         return Promise.resolve(Response.json(japanSpringMementos))
       }
       return Promise.resolve(new Response("Not Found", { status: 404 }))
@@ -70,14 +69,13 @@ describe("source API", () => {
 
     globalThis.fetch = mock((url: string | URL) => {
       const urlStr = url.toString()
-      expect(urlStr).not.toContain(".json") // should not have .json in dev mode
-      if (urlStr.endsWith("/api/v1/journeys")) {
+      if (urlStr.endsWith("/api/v1/journeys.json")) {
         return Promise.resolve(Response.json(listFixture))
       }
-      if (urlStr.endsWith(`/api/v1/journeys/${journeyID}`)) {
+      if (urlStr.endsWith(`/api/v1/journeys/${journeyID}.json`)) {
         return Promise.resolve(Response.json(japanSpringJourney))
       }
-      if (urlStr.endsWith(`/api/v1/journeys/${journeyID}/mementos`)) {
+      if (urlStr.endsWith(`/api/v1/journeys/${journeyID}/mementos.json`)) {
         return Promise.resolve(Response.json(japanSpringMementos))
       }
       return Promise.resolve(new Response("Not Found", { status: 404 }))
@@ -96,13 +94,13 @@ describe("source API", () => {
 
     globalThis.fetch = mock((url: string | URL) => {
       const urlStr = url.toString()
-      if (urlStr.endsWith("/api/v1/journeys")) {
+      if (urlStr.endsWith("/api/v1/journeys.json")) {
         return Promise.resolve(Response.json(listFixture))
       }
-      if (urlStr.endsWith(`/api/v1/journeys/${bareID}/mementos`)) {
+      if (urlStr.endsWith(`/api/v1/journeys/${bareID}/mementos.json`)) {
         return Promise.resolve(Response.json(null))
       }
-      if (urlStr.endsWith(`/api/v1/journeys/${bareID}`)) {
+      if (urlStr.endsWith(`/api/v1/journeys/${bareID}.json`)) {
         return Promise.resolve(Response.json({ id: bareID, slug: "bare-2026", gps_route: null }))
       }
       return Promise.resolve(new Response("Not Found", { status: 404 }))

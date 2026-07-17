@@ -70,6 +70,11 @@ function stringValue(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined
 }
 
+function mediaURL(value: string): string {
+  if (/^(?:https?:)?\//.test(value)) return value
+  return `${import.meta.env.BASE_URL || "/"}${value}`
+}
+
 function station(value: unknown, fallback: Coordinates): Station {
   const data = objectValue(value)
   const coords = coordinate(data?.coords) ?? fallback
@@ -109,7 +114,7 @@ function adaptMemento(apiMemento: ApiMemento, visitId: string, visitCoords: Coor
     essay,
     kindData: apiMemento.kind_data,
     photos: (apiMemento.photos ?? []).map((photo) => ({
-      src: photo.object_key,
+      src: mediaURL(photo.object_key),
       caption: authored(photo.caption),
     })),
     transit: transitData(apiMemento, title, visitCoords),

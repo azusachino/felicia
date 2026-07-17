@@ -5,6 +5,7 @@ import { svelte } from "@sveltejs/vite-plugin-svelte"
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [svelte(), tailwindcss()],
+  base: process.env.BASE_PATH ?? "/",
   build: {
     chunkSizeWarningLimit: 2200,
   },
