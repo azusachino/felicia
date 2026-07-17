@@ -1,0 +1,66 @@
+---
+title: "CLI compiler contract"
+status: "proposed"
+date: "2026-07-17"
+---
+
+# CLI compiler contract
+
+This note turns the existing domain and package decisions into an implementation
+sequence. It is a contract draft, not a claim that the CLI already exists.
+
+## What already exists
+
+| Concern                          | Current location               | Assessment                                       |
+| -------------------------------- | ------------------------------ | ------------------------------------------------ |
+| Canonical entities and lifecycle | `apps/core/domain`             | Reusable starting point                          |
+| Storage ports                    | `apps/core/ports`              | Reusable; publication needs a narrower read port |
+| SQLite provider                  | `apps/providers/sqlite`        | First CLI persistence target                     |
+| PostgreSQL provider              | `apps/providers/postgres`      | Server/deployment target                         |
+| Import joining/no-clobber logic  | `apps/runtime/importer`        | Reusable runtime seam                            |
+| Public projection                | `apps/apiserver/publication`   | Must move behind a shared boundary               |
+| Fixture build script             | `scripts/build_static_demo.py` | Demo only; not package compilation               |
+| `felicia-cli`                    | absent                         | Core missing deliverable                         |
+
+## Canonical model
+
+```text
+Journal -> Journey -> route geometry + source provenance
+                    -> Memento(kind + kind_data + authored fields)
+                         -> MementoPhoto(object key + hash + curation)
+                    -> TransitLeg (authored route additions)
+                    -> ImportRun / SourceObservation (provenance)
+```
+
+GPX, Google Timeline exports, Immich/Dawarich records, and local photos are
+source material. They normalize into the same route, visit, memento-candidate,
+and media structures; they are not alternate canonical models.
+
+## Package-to-static acceptance case
+
+The first end-to-end fixture should contain:
+
+- `manifest.yaml` with checksums and package identity;
+- `journey.yaml` with one journey and authored metadata;
+- one real `route.gpx` with timestamped track points;
+- `timeline.json` containing a timestamped location event;
+- `mementos.yaml` containing transit, stamp, receipt, and goods `kind_data`;
+- two local JPEGs and one unsupported/private file;
+- unknown metadata retained as unresolved data rather than discarded;
+- a SQLite database populated by `felicia-cli import --apply`;
+- a static artifact containing the route, public mementos, and only safe media.
+
+The verifier must assert GPX provenance, coordinate normalization, media
+checksums, kind-data preservation, deterministic `.json` paths, and exclusion
+of private/unsupported files. This replaces the current fixture demo check.
+
+## Implementation order
+
+1. Extract shared publication DTOs and compiler ports from
+   `apps/apiserver/publication`.
+2. Define package DTOs and ZIP validation without a database dependency.
+3. Implement GPX and local-media adapters.
+4. Implement import plan/apply against SQLite through existing ports.
+5. Add `apps/cli/cmd/felicia-cli` with package, import, static, and publish.
+6. Add the end-to-end fixture and compile it into the static reader.
+7. Recompose the postponed server and PostgreSQL compiler from the same seams.
