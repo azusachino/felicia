@@ -36,12 +36,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Install frontend dependencies
-        run: make web-install
-
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
