@@ -6,12 +6,18 @@
   state: published
   title: Narita Express Ticket
   place: Narita
-  geom: [140.3149, 35.7801]
+  geom: [140.3933101, 35.7758714]
   kind_data:
     operator: JR East
     line: Narita Express
     from: Narita Airport
     to: Tokyo
+    osm:
+      source: OpenStreetMap
+      type: relation
+      id: 3182579
+      name: Narita International Airport
+      url: https://www.openstreetmap.org/relation/3182579
   photos:
     - id: 0190cbde-f300-7000-8000-f00000000001
       path: media/kyoto_temple.jpg
@@ -26,7 +32,13 @@
   state: published
   title: Naritasan Temple Stamp
   place: Narita
-  geom: [140.3180, 35.7805]
+  geom: [140.3172238, 35.7863311]
   kind_data:
     shrine_or_temple: Naritasan Shinshoji
     name: Goshuin
+    osm:
+      source: OpenStreetMap
+      type: way
+      id: 273746634
+      name: Naritasan Shinshoji
+      url: https://www.openstreetmap.org/way/273746634
