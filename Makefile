@@ -15,6 +15,9 @@ GO_FILES := $(shell find . -name '*.go' -not -path './vendor/*' -not -path './.g
 GO_MODULES = core runtime providers publication server cli
 
 DATABASE_DSN ?= postgres://postgres:password@localhost:5432/felicia?sslmode=disable
+PAGES_DB ?= .felicia/felicia.sqlite
+PAGES_MEDIA_ROOT ?= .felicia/media
+PAGES_DIST ?= apps/web-public/dist
 PORT ?= 8080
 CACHE_ADDR ?= localhost:6379
 
@@ -23,7 +26,7 @@ COMPOSE ?= $(shell \
 	elif command -v docker >/dev/null 2>&1; then echo docker compose; \
 	else echo ''; fi)
 
-.PHONY: help fmt fmt-check vet lint test test-sqlite test-postgres check build cli-build validate tidy db-up db-down migrate seed dev dev-sqlite dev-postgres test-workflow test-workflow-postgres mock-up mock-down web-install web-check web-build static-demo static-build static-validate static-publish pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
+.PHONY: help fmt fmt-check vet lint test test-sqlite test-postgres check build cli-build validate tidy db-up db-down migrate seed dev dev-sqlite dev-postgres test-workflow test-workflow-postgres mock-up mock-down web-install web-check web-build static-build static-validate static-publish pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -121,9 +124,6 @@ web-dev: ## Run frontend dev server (bun + vite)
 web-build: ## Build frontend for production (bun + vite)
 	cd apps/web-public && bun run build
 
-static-demo: ## Generate the fixture API projection and build all public designs
-	$(MAKE) static-build
-
 static-build: ## Build the v0.1 static artifact
 	$(UV_RUN) run python scripts/felicia.py build --base-path "$${BASE_PATH:-/}"
 
@@ -140,7 +140,13 @@ fork-smoke: ## Build a clean checkout from another filesystem path
 	$(UV_RUN) run python scripts/verify_fork_smoke.py
 
 pages-preview: ## Build and serve the static Pages artifact on localhost:8082
-	BASE_PATH=/ $(MAKE) static-demo
+	@test -f "$(PAGES_DB)" || (echo "SQLite database not found: $(PAGES_DB) (run felicia-cli import --apply first)" >&2; exit 1)
+	@test -d "$(PAGES_MEDIA_ROOT)" || (echo "media root not found: $(PAGES_MEDIA_ROOT) (pass PAGES_MEDIA_ROOT=...)" >&2; exit 1)
+	$(MAKE) cli-build
+	BASE_PATH=/ $(MAKE) web-build
+	./bin/felicia-cli static compile --db "$(PAGES_DB)" --media-root "$(PAGES_MEDIA_ROOT)" --out "$(PAGES_DIST)"
+	@test -f "$(PAGES_DIST)/index.html"
+	@test -f "$(PAGES_DIST)/api/v1/journeys.json"
 	@test -n "$(COMPOSE)" || (echo "No container compose command found (install podman-compose or Docker Compose)" >&2; exit 1)
 	$(COMPOSE) -f deploy/compose.yaml --profile pages up -d pages-preview
 	@echo "Felicia Pages preview: http://localhost:8082"

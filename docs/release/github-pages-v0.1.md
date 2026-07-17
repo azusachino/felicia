@@ -16,11 +16,13 @@ SQLite compiler or the self-hosted authoring server.
 make static-publish
 make pages-workflow-validate
 make fork-smoke
-make pages-preview
+make pages-preview PAGES_DB=.felicia/felicia.sqlite PAGES_MEDIA_ROOT=.felicia/media
 ```
 
-The commands generate and verify `apps/web-public/dist`. `static-publish` does
-not commit or push. Use the normal review flow to inspect the generated result.
+The preview builds the SPA, compiles the local SQLite publication with
+`felicia-cli`, and serves the combined artifact from `apps/web-public/dist`.
+`static-publish` does not commit or push. Use the normal review flow to inspect
+the generated result.
 
 For a project-site path, use the repository name as the base path:
 
@@ -62,12 +64,12 @@ Included:
 - static JSON projections;
 - fixture media;
 - project-site base-path support;
-- local Python/Compose preview;
+- local CLI/Compose preview;
 - fork-safe GitHub Actions build and deployment.
 
 Deferred:
 
-- SQLite-backed publication;
+- GitHub workflow input wiring for SQLite-backed publication;
 - agent CLI import/diff over journey packages;
 - GPX-to-canonical route compilation;
 - local filesystem media derivatives and EXIF stripping;

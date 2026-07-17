@@ -19,29 +19,23 @@ available for product review.
 
 ## Reproduction
 
-From the repository root:
+The original fixture-only reproduction is retired. From the repository root,
+prepare a package and compile it with the real CLI:
 
 ```bash
-BASE_PATH=/felicia/ make static-demo
-BASE_PATH=/felicia/ uv run python scripts/verify_static_demo.py
-```
-
-The v0.1 agent-friendly entrypoint combines these operations:
-
-```bash
-make static-build
-make static-validate
-make static-publish
+felicia-cli package validate .felicia/inbox/journey.zip
+felicia-cli import --db .felicia/felicia.sqlite --media-root .felicia/media --apply .felicia/inbox/journey.zip
+felicia-cli static compile --db .felicia/felicia.sqlite --media-root .felicia/media --out apps/web-public/dist
 ```
 
 `static-publish` only arranges and verifies `apps/web-public/dist`; it does not
 commit or push. A fork's normal Git review workflow remains the publication
 approval boundary.
 
-For a local browser check using only the static artifact:
+For a local browser check using a compiled SQLite publication:
 
 ```bash
-make pages-preview
+make pages-preview PAGES_DB=.felicia/felicia.sqlite PAGES_MEDIA_ROOT=.felicia/media
 # open http://localhost:8082
 make pages-down
 ```
@@ -51,9 +45,9 @@ profile. It mounts `apps/web-public/dist` read-only and has no API, database,
 cache, or cloud dependency. Caddy remains the server for the self-hosted/shared
 runtime, where reverse-proxy behavior also needs to be tested.
 
-The first command performs two operations:
+The retired fixture command previously performed two operations:
 
-1. `scripts/build_static_demo.py` converts the checked-in fixture at
+1. `scripts/build_static_demo.py` converted the checked-in fixture at
    `scripts/data.json` into a static read projection under
    `apps/web-public/public/api/v1`.
 2. Vite builds the public SPA with the project-site base path. The Pages workflow
@@ -79,17 +73,17 @@ switch between static and server publication without changing its read paths.
 
 Run on 2026-07-17 in the local development environment:
 
-| Check                                                          | Result                                                  |
-| -------------------------------------------------------------- | ------------------------------------------------------- |
-| `make static-demo`                                             | passed; Vite transformed 139 modules                    |
-| `BASE_PATH=/felicia/ make static-demo`                         | passed; project base path embedded                      |
-| `make web-check`                                               | passed; 0 Svelte diagnostics, ESLint and Prettier clean |
-| `uv run --group dev ruff check scripts`                        | passed                                                  |
-| `uv run python scripts/verify_static_demo.py` with `/felicia/` | passed                                                  |
-| journeys in static index                                       | 9                                                       |
-| journey detail files                                           | 9                                                       |
-| demo media copied to `dist/`                                   | 3 files                                                 |
-| generated artifact size                                        | 4.2 MB locally                                          |
+| Check                                   | Result                                                  |
+| --------------------------------------- | ------------------------------------------------------- |
+| retired fixture build                   | passed; Vite transformed 139 modules                    |
+| retired fixture project path build      | passed; project base path embedded                      |
+| `make web-check`                        | passed; 0 Svelte diagnostics, ESLint and Prettier clean |
+| `uv run --group dev ruff check scripts` | passed                                                  |
+| retired fixture artifact verifier       | passed                                                  |
+| journeys in static index                | 9                                                       |
+| journey detail files                    | 9                                                       |
+| demo media copied to `dist/`            | 3 files                                                 |
+| generated artifact size                 | 4.2 MB locally                                          |
 
 The output contains one index file, one detail file per journey, one memento
 file per journey, the SPA bundle, and the three fixture images. The frontend
@@ -112,7 +106,8 @@ The experiment supports these narrow claims:
 
 It does not yet support these claims:
 
-- SQLite-to-static compilation works; the current script reads the JSON fixture;
+- SQLite-to-static compilation works through `felicia-cli`; the local preview
+  now consumes the same compiled artifact;
 - GPX import and route normalization are wired into publication;
 - a local filesystem media root is safely transformed into public derivatives;
 - GitHub Actions can deploy this repository; the workflow is present but has
