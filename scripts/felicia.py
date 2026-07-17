@@ -16,6 +16,7 @@ CLI = ROOT / "bin" / "felicia-cli"
 DEFAULT_DB = ROOT / ".felicia" / "felicia.sqlite"
 DEFAULT_INBOX = ROOT / ".felicia" / "inbox"
 DEFAULT_MEDIA_ROOT = ROOT / ".felicia" / "media"
+DEFAULT_PREVIEW_PACKAGE = ROOT / ".felicia" / "preview.zip"
 DEFAULT_DIST = WEB / "dist"
 
 
@@ -59,7 +60,11 @@ def preview(base_path: str) -> None:
     inbox.mkdir(parents=True, exist_ok=True)
     media_root.mkdir(parents=True, exist_ok=True)
     run(["go", "build", "-o", str(CLI), "./cli/cmd/felicia"])
-    for package in sorted(inbox.glob("*.zip")):
+    packages = sorted(inbox.glob("*.zip"))
+    if not packages:
+        run([sys.executable, "scripts/build_preview_package.py"])
+        packages = [DEFAULT_PREVIEW_PACKAGE]
+    for package in packages:
         run(
             [
                 str(CLI),
@@ -88,7 +93,7 @@ def preview(base_path: str) -> None:
             str(output),
         ]
     )
-    print(f"preview ready: {output} (packages imported: {len(list(inbox.glob('*.zip')))})")
+    print(f"preview ready: {output} (packages imported: {len(packages)})")
 
 
 def parser() -> argparse.ArgumentParser:
