@@ -102,7 +102,6 @@ Cloudflare [R2](https://developers.cloudflare.com/r2/) (S3-compatible; MinIO/B2 
 [Immich](https://github.com/immich-app/immich) (photos)
 
 **🧰 Tooling**
-[mise](https://github.com/jdx/mise) ·
 [Nix](https://nixos.org/) ·
 [golangci-lint](https://github.com/golangci/golangci-lint) ·
 [Docker Compose](https://docs.docker.com/compose/) ·
@@ -126,7 +125,7 @@ make web-check        # svelte-check + eslint
 make check            # Go workspace checks + uv feature-contract tests
 ```
 
-> Runtimes come from **mise** (`mise install`); system tools from the **Nix** flake (`nix develop`). Everything routes through `make <target>`.
+> The complete toolchain comes from the **Nix** flake (`nix develop`). Everything routes through `make <target>`.
 
 ## 🧭 Data model in one breath
 

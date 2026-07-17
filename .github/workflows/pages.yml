@@ -20,30 +20,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - name: Install Nix toolchain
+        uses: cachix/install-nix-action@v30
         with:
-          go-version: "1.26.x"
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v6
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.14"
+          extra_nix_config: |
+            experimental-features = nix-command flakes
 
       - name: Install frontend dependencies
-        run: bun install --frozen-lockfile
+        run: nix develop --command bun install --frozen-lockfile
 
       - name: Build CLI-backed static artifact
-        run: BASE_PATH="/${{ github.event.repository.name }}/" uv run python scripts/felicia.py preview
+        run: BASE_PATH="/${{ github.event.repository.name }}/" nix develop --command uv run python scripts/felicia.py preview
 
       - name: Verify static artifact
-        run: BASE_PATH="/${{ github.event.repository.name }}/" uv run python scripts/verify_static_artifact.py
+        run: BASE_PATH="/${{ github.event.repository.name }}/" nix develop --command uv run python scripts/verify_static_artifact.py
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

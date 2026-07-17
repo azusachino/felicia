@@ -16,10 +16,12 @@
     in
     {
       devShells = forAll (pkgs: {
-        # Runtimes (go, bun) come from mise — intentionally NOT here.
-        # This shell provides the system tools the Makefile wraps via NIX_RUN.
+        # Keep the repository toolchain in one reproducible shell for local
+        # development and CI. PostgreSQL/PostGIS is the only database stack.
         default = pkgs.mkShell {
           packages = with pkgs; [
+            go_1_26
+            bun
             golangci-lint
             goose
             # Keep the local client and extension toolchain aligned with the

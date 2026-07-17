@@ -25,7 +25,7 @@ Status: **research stage** — flow is research → spec → TDD → implementat
 - **Frontend:** Vite + MapLibre GL SPAs — public site + admin authoring app (bun workspace).
 - **Locales:** static system UI catalogs support Japanese, English, and Chinese. Authored content
   has no translation sidecar and is rendered exactly as entered.
-- **Host:** Raspberry Pi (docker-compose) behind a **Cloudflare Tunnel** (no open ports).
+- **Host:** self-hosted container deployment; Cloudflare Tunnel is an optional ingress.
 - **Ingestion sources (self-hosted):** Immich (photos/ticket stubs, via API) + Dawarich
   (passive iPhone GPS track, via API); joined on timestamp. Vision-LLM (Claude) pre-fills
   ticket metadata for confirmation.
@@ -48,20 +48,20 @@ The root Go module has been retired; all Go code is built through `go.work`.
 
 ## Build, Run & Test
 
-All daily operations go through `make <target>`. **Tools:** runtimes (go, bun) from **mise**
-(`mise install`); system tools (golangci-lint, goose, postgres/postgis) from the **nix flake**
-(`nix develop`, or `make` wraps them via `NIX_RUN`).
+All daily operations go through `make <target>`. **Tools:** Go, Bun, uv, Prettier,
+golangci-lint, goose, sqlc, and PostgreSQL 18 + PostGIS come from the **nix flake**
+(`nix develop`, or `make` wraps them automatically).
 
-| Target          | Does                                                                             |
-| --------------- | -------------------------------------------------------------------------------- |
-| `make fmt`      | format Go                                                                        |
-| `make vet`      | `go vet ./...`                                                                   |
-| `make lint`     | `golangci-lint run` (nix)                                                        |
-| `make test`     | `go test -race -cover ./...`                                                     |
-| `make check`    | fmt + vet + lint + test — **before commit**                                      |
-| `make build`    | build all binaries                                                               |
-| `make validate` | check + build — **before PR** (frontend + migration smoke join once those exist) |
-| `make migrate`  | `goose up` (needs `DATABASE_DSN`)                                                |
+| Target          | Does                                                         |
+| --------------- | ------------------------------------------------------------ |
+| `make fmt`      | format Go                                                    |
+| `make vet`      | `go vet ./...`                                               |
+| `make lint`     | `golangci-lint run` (nix)                                    |
+| `make test`     | `go test -race -cover ./...`                                 |
+| `make check`    | fmt + vet + lint + test — **before commit**                  |
+| `make build`    | build all binaries                                           |
+| `make validate` | check + build + public/admin frontend checks — **before PR** |
+| `make migrate`  | `goose up` (needs `DATABASE_DSN`)                            |
 
 ## Coding Conventions
 
