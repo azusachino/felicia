@@ -14,6 +14,7 @@ SQLite compiler or the self-hosted authoring server.
 
 ```bash
 make static-publish
+make pages-workflow-validate
 make pages-preview
 ```
 
