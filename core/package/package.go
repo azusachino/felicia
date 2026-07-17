@@ -15,6 +15,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// CurrentSchemaVersion is the manifest schema version accepted by this importer.
 const CurrentSchemaVersion = "1"
 
 // Manifest describes the files and identities inside one portable package.
@@ -48,7 +49,7 @@ func Read(filename string) (*Package, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open package %s: %w", filename, err)
 	}
-	defer archive.Close()
+	defer func() { _ = archive.Close() }()
 
 	entries := make(map[string]*zip.File, len(archive.File))
 	for _, file := range archive.File {
@@ -146,6 +147,6 @@ func readMember(file *zip.File) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 	return io.ReadAll(reader)
 }

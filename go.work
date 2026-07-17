@@ -3,6 +3,7 @@ go 1.26
 use (
 	./server
 	./core
+	./cli
 	./providers
 	./publication
 	./runtime

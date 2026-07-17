@@ -7,7 +7,8 @@ date: "2026-07-17"
 # CLI compiler contract
 
 This note turns the existing domain and package decisions into an implementation
-sequence. It is a contract draft, not a claim that the CLI already exists.
+sequence. The first runnable CLI path now exists; this remains the contract for
+its deliberately small v0.1 surface.
 
 ## User raw-data workspace
 
@@ -41,7 +42,7 @@ from `.felicia/inbox` into a public GitHub Pages artifact automatically.
 | Import joining/no-clobber logic  | `runtime/importer`             | Reusable runtime seam                            |
 | Public projection                | `publication`                  | Shared boundary now exists                       |
 | Fixture build script             | `scripts/build_static_demo.py` | Demo only; not package compilation               |
-| `felicia-cli`                    | absent                         | Core missing deliverable                         |
+| `felicia-cli`                    | `cli/cmd/felicia`              | SQLite import and static compiler entry point    |
 
 ## Canonical model
 
@@ -87,6 +88,21 @@ of private/unsupported files. This replaces the current fixture demo check.
 2. Define package DTOs and ZIP validation without a database dependency.
 3. Implement GPX and local-media adapters.
 4. Implement import plan/apply against SQLite through existing ports.
-5. Add `cli/cmd/felicia` with package, import, static, and publish.
-6. Add the end-to-end fixture and compile it into the static reader.
+5. Add `cli/cmd/felicia` with package validation, import, and static compile.
+6. Add the end-to-end fixture and compile it into deterministic `.json` paths.
 7. Recompose the postponed server and PostgreSQL compiler from the same seams.
+
+## v0.1 commands
+
+The CLI is intentionally local-first and does not contact a server:
+
+```text
+felicia-cli package validate <journey.zip>
+felicia-cli import [--db .felicia/felicia.sqlite] [--media-root content/media] [--apply] <journey.zip>
+felicia-cli static compile --db .felicia/felicia.sqlite --media-root content/media --out site
+```
+
+`import` is a dry run unless `--apply` is provided. Static compilation writes
+the same `/api/v1/*.json` shape consumed by the public web app and copies only
+media referenced by published mementos. The ZIP package remains an intake
+format; the SQLite database and selected media are the reviewed working state.

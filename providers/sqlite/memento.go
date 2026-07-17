@@ -228,7 +228,7 @@ func (r *Repository) ApplyIngestMementoPatch(ctx context.Context, patch *domain.
 		current, err = r.GetMemento(ctx, patch.Memento.ID)
 	}
 	if errors.Is(err, sql.ErrNoRows) {
-		current = &domain.Memento{ID: patch.Memento.ID, JourneyID: patch.Memento.JourneyID, State: domain.MementoCandidateState}
+		current = &domain.Memento{ID: patch.Memento.ID, JourneyID: patch.Memento.JourneyID, State: patch.Memento.State}
 		err = nil
 	}
 	if err != nil {
@@ -243,7 +243,11 @@ func (r *Repository) ApplyIngestMementoPatch(ctx context.Context, patch *domain.
 		}
 	}
 	if current.State == "" {
-		current.State = domain.MementoCandidateState
+		if patch.Memento.State != "" {
+			current.State = patch.Memento.State
+		} else {
+			current.State = domain.MementoCandidateState
+		}
 	}
 	return r.UpsertMemento(ctx, current)
 }

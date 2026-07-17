@@ -12,7 +12,7 @@ GO_FILES := $(shell find . -name '*.go' -not -path './vendor/*' -not -path './.g
 
 # Every Go module must be checked; the root module alone does not traverse the
 # independent workspace modules.
-GO_MODULES = core runtime providers publication server
+GO_MODULES = core runtime providers publication server cli
 
 DATABASE_DSN ?= postgres://postgres:password@localhost:5432/felicia?sslmode=disable
 PORT ?= 8080
@@ -23,7 +23,7 @@ COMPOSE ?= $(shell \
 	elif command -v docker >/dev/null 2>&1; then echo docker compose; \
 	else echo ''; fi)
 
-.PHONY: help fmt fmt-check vet lint test test-sqlite test-postgres check build validate tidy db-up db-down migrate seed dev dev-sqlite dev-postgres test-workflow test-workflow-postgres mock-up mock-down web-install web-check web-build static-demo static-build static-validate static-publish pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
+.PHONY: help fmt fmt-check vet lint test test-sqlite test-postgres check build cli-build validate tidy db-up db-down migrate seed dev dev-sqlite dev-postgres test-workflow test-workflow-postgres mock-up mock-down web-install web-check web-build static-demo static-build static-validate static-publish pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -48,6 +48,10 @@ check: fmt-check vet lint test test-features ## Pre-commit gate
 
 build: ## Build all binaries
 	@if [ -z "$(GO_FILES)" ]; then echo "build: no Go packages yet, skipping"; else set -e; for module in $(GO_MODULES); do (cd $$module && $(GO) build $$( $(GO) list ./... | grep -v '/node_modules/' )); done; fi
+
+cli-build: ## Build the felicia-cli executable into bin/
+	@mkdir -p bin
+	$(GO) build -o bin/felicia-cli ./cli/cmd/felicia
 
 # Pre-PR gate. Frontend (web-check) and migration smoke join here once web/ and
 # migrations/ have content.

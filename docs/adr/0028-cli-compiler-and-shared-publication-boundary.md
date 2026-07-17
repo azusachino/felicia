@@ -25,7 +25,8 @@ composition is incomplete, however:
 
 - `server/cmd/build` constructs PostgreSQL directly;
 - the reusable projection package is now under `publication`;
-- no `felicia-cli` composition root exists;
+- the `felicia-cli` composition root is being implemented as the local-first
+  release path;
 - the Python scripts build a checked-in design fixture, not a user package;
 - the portable ZIP shape is specified by ADR 0023 but is not yet implemented.
 
@@ -94,7 +95,7 @@ type ImportApplier interface {
 }
 
 type PublicationCompiler interface {
-    Compile(ctx context.Context, input PublicationInput, output ArtifactWriter) (BuildReport, error)
+	Compile(ctx context.Context, input publication.Input, read publication.ReadModel, media publication.MediaSource, output publication.ArtifactWriter) (publication.BuildReport, error)
 }
 ```
 
@@ -110,14 +111,15 @@ The initial real binary is `felicia-cli`:
 
 ```text
 felicia-cli package validate journey.zip
-felicia-cli import journey.zip --db felicia.sqlite --dry-run
-felicia-cli import journey.zip --db felicia.sqlite --apply
+felicia-cli import --db felicia.sqlite journey.zip
+felicia-cli import --db felicia.sqlite --apply journey.zip
 felicia-cli static compile --db felicia.sqlite --media-root media --out dist
-felicia-cli publish --db felicia.sqlite --media-root media --out dist
 ```
 
-`publish` is explicit. `validate`, `import --dry-run`, and `static compile` must
-be safe to repeat and must not contact a server. The CLI must support
+Import is a dry run unless `--apply` is provided. `validate`, dry-run import,
+and `static compile` are safe to repeat and do not contact a server. A separate
+remote `publish` command is deferred until the GitHub Pages workflow is wired.
+The CLI must support
 machine-readable reports and must never log photo contents, package secrets, or
 private source payloads.
 

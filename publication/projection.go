@@ -90,8 +90,8 @@ type ArtifactWriter interface {
 	WriteMedia(path string, source io.Reader) error
 }
 
-// PublicationInput controls one static compilation.
-type PublicationInput struct {
+// Input controls one static compilation.
+type Input struct {
 	JourneyIDs []uuid.UUID
 }
 
@@ -104,5 +104,5 @@ type BuildReport struct {
 
 // Compiler is the shared publication boundary used by CLI and server modes.
 type Compiler interface {
-	Compile(context.Context, PublicationInput, ReadModel, MediaSource, ArtifactWriter) (BuildReport, error)
+	Compile(context.Context, Input, ReadModel, MediaSource, ArtifactWriter) (BuildReport, error)
 }

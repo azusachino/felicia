@@ -37,7 +37,7 @@ where you author _essays / photo curation / animation_. The importer is **field-
 ### Current layout
 
 ```
-core/ runtime/ providers/ publication/ server/ apps/{web-admin,web-public}
+core/ runtime/ providers/ publication/ server/ cli/ apps/{web-admin,web-public}
 migrations/  scripts/  deploy/  docs/
 ```
 

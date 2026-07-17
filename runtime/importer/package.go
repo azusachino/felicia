@@ -91,6 +91,7 @@ type mementoFile struct {
 	Place      string         `yaml:"place"`
 	Geom       []float64      `yaml:"geom"`
 	KindData   map[string]any `yaml:"kind_data"`
+	State      string         `yaml:"state"`
 	Photos     []photoFile    `yaml:"photos"`
 }
 
@@ -202,7 +203,11 @@ func normalizeMemento(pkg *journeypackage.Package, journeyID uuid.UUID, raw meme
 		return nil, nil, fmt.Errorf("kind_data: %w", err)
 	}
 	source := domain.SourceIdentity{System: "package:" + pkg.Manifest.PackageID, ExternalID: raw.ID}
-	memento := &domain.Memento{ID: id, JourneyID: journeyID, Kind: raw.Kind, Seq: raw.Seq, OccurredAt: occurredAt, OccurredTZ: raw.OccurredTZ, Geom: geom, Title: raw.Title, Place: raw.Place, KindData: kindData, SourceIdentity: &source, State: domain.MementoCandidateState}
+	state := domain.MementoState(raw.State)
+	if state == "" {
+		state = domain.MementoCandidateState
+	}
+	memento := &domain.Memento{ID: id, JourneyID: journeyID, Kind: raw.Kind, Seq: raw.Seq, OccurredAt: occurredAt, OccurredTZ: raw.OccurredTZ, Geom: geom, Title: raw.Title, Place: raw.Place, KindData: kindData, SourceIdentity: &source, State: state}
 	photos := make([]*domain.MementoPhoto, 0, len(raw.Photos))
 	for index, rawPhoto := range raw.Photos {
 		photoID, err := uuid.Parse(rawPhoto.ID)
