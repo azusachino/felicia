@@ -5,6 +5,14 @@
 > supersedes the ticket-era ER in [`archive/design.md`](../archive/design.md) §4.
 > It defines the DDL schema strictly for **PostgreSQL 18 + PostGIS**.
 
+> **Status note (2026-07-18).** The storage framing below predates
+> [ADR-0017](../adr/0017-sqlite-first-storage.md): SQLite is now the default
+> local provider and PostgreSQL/PostGIS is optional (provider matrix in
+> [ADR-0027](../adr/0027-provider-matrix-and-application-composition.md)).
+> The semantic model (D1–D9, provenance, uniform memento) is unchanged and is
+> formalized as [canonical contract v1](../contracts/canonical-v1.md); this
+> document is kept as the research trail behind it.
+
 ## Design invariants (why this is stable)
 
 1. **Presentation-agnostic** — no view-specific columns (no `is_landing`, `carousel_index`).

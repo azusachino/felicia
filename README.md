@@ -141,15 +141,19 @@ Full detail: [`docs/research/data-model.md`](docs/research/data-model.md) · [`d
 
 ## 🛣️ Status & roadmap
 
-**Research stage** — flow is research → spec → TDD → implementation, unhurried.
+**Implementation stage** (research trail continues). The backend pipeline is
+substantially built and tested: SQLite/PostgreSQL providers with shared
+contract tests, the field-scoped importer (Dawarich ⋈ Immich ⋈ local GPX),
+the deterministic intake planner, the Go API (`/api/v1` + admin), the CLI
+(`journey plan/apply/review`, `static compile`), and the published-only static
+compiler. Remaining gaps: the admin authoring GUI (read-only shell today),
+SQLite-backed GitHub Pages publication (fixture demo today), and the
+deliberately deferred AI enrichment / object storage seams.
 
-- [x] Direction + memento model
-- [x] Backend stack + stable data model (reconciled with Dawarich)
-- [x] Fixture web demos — v1 / v2 / v3 + design switcher
-- [ ] Backend spec → goose migrations
-- [ ] `waypoints` importer (Dawarich ⋈ Immich)
-- [ ] Go API (`/api/v1`) + wire the frontends to it
-- [ ] Admin authoring app
+The single source of truth for delivery status is
+[`docs/roadmap.md`](docs/roadmap.md) and the target end-to-end journey in
+[`docs/roadmap/user-journey.md`](docs/roadmap/user-journey.md) — this README
+no longer maintains its own checklist.
 
 ## 📚 Docs
 

@@ -169,7 +169,11 @@ publication path.
 ## GitHub issue wiring
 
 The epic and child issues are wired into project #8 (`felicia v1.0`) with parent
-relationships and the existing Status/Phase fields:
+relationships and the existing Status/Phase fields. **GitHub is the single
+ledger for issue state** — the original local issue drafts are archived under
+[`docs/archive/github-issues/`](../archive/github-issues/pages-01.1.md) and are
+no longer kept in sync. Scripted status checks should use a `GITHUB_TOKEN`
+environment variable rather than interactive `gh auth login`.
 
 1. [#40 Epic: SQLite-backed GitHub Pages publication](https://github.com/azusachino/felicia/issues/40)
 2. [#48 Define static publication contract](https://github.com/azusachino/felicia/issues/48)
