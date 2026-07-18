@@ -307,6 +307,13 @@ func compileCommand(args []string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
+	// Reconcile a reused output directory: unpublished or deleted content
+	// from a previous compile must not stay publicly reachable.
+	removed, err := writer.Finalize()
+	if err != nil {
+		return err
+	}
+	report.Removed = len(removed)
 	return writeJSON(output, report)
 }
 

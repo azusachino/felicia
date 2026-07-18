@@ -1128,6 +1128,15 @@ func (s *Server) handleCompile(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	// Reconcile a reused output directory: content unpublished since the
+	// previous compile must not stay publicly reachable (same manifest
+	// cleanup the CLI's `static compile` performs).
+	removed, err := writer.Finalize()
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	report.Removed = len(removed)
 	respondJSON(w, http.StatusOK, report)
 }
 

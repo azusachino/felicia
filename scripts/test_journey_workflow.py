@@ -76,24 +76,32 @@ def parse_args() -> argparse.Namespace:
 
 
 def request(path: str, method: str = "GET", payload: dict | None = None):
+    # Backs off on 429: the API's client rate limiter (1 req/s, burst 20)
+    # is easily exhausted by the later parity/regression stages, and every
+    # write this harness makes is an idempotent upsert, so replaying is safe.
     body = None if payload is None else json.dumps(payload).encode()
-    req = urllib.request.Request(
-        f"{BASE_URL}{path}",
-        data=body,
-        headers={"Content-Type": "application/json"},
-        method=method,
-    )
-    try:
-        with urllib.request.urlopen(req) as response:
-            raw = response.read().decode()
-            return response.status, json.loads(raw) if raw else {}
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode()
+    for _ in range(60):
+        req = urllib.request.Request(
+            f"{BASE_URL}{path}",
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method=method,
+        )
         try:
-            detail = json.loads(detail)
-        except json.JSONDecodeError:
-            pass
-        raise AssertionError(f"{method} {path} failed ({exc.code}): {detail}") from exc
+            with urllib.request.urlopen(req) as response:
+                raw = response.read().decode()
+                return response.status, json.loads(raw) if raw else {}
+        except urllib.error.HTTPError as exc:
+            if exc.code == 429:
+                time.sleep(1.1)
+                continue
+            detail = exc.read().decode()
+            try:
+                detail = json.loads(detail)
+            except json.JSONDecodeError:
+                pass
+            raise AssertionError(f"{method} {path} failed ({exc.code}): {detail}") from exc
+    raise AssertionError(f"{method} {path} still rate-limited after 60 attempts")
 
 
 def post(path: str, payload: dict):
@@ -143,18 +151,9 @@ def run_workflow(ids: WorkflowIDs) -> None:
 
     published = {
         **draft,
+        **published_memento_fields(),
         "state": "published",
         "expected_revision": 1,
-        "occurred_at": "2026-03-21T10:00:00Z",
-        "occurred_tz": "Asia/Tokyo",
-        "geom": {"type": "Point", "coordinates": [139.75, 35.69]},
-        "title": "Live show",
-        "place": "Tokyo",
-        "kind_data": {
-            "artist": "羊文学",
-            "venue": {"name": "日本武道館", "coords": [139.75, 35.69]},
-            "date": "2026-03-21T18:30:00+09:00",
-        },
     }
     post("/api/admin/mementos", published)
 
@@ -183,6 +182,28 @@ def run_workflow(ids: WorkflowIDs) -> None:
 
 
 RATE_LIMIT_RETRIES = 60
+
+
+def published_memento_fields() -> dict:
+    """The authored field set of the workflow's published memento.
+
+    Shared between the publish step and the stale-artifact regression's
+    unpublish step, which must send a complete upsert body (the admin GET
+    response serializes geometry in orb's array form, not the GeoJSON object
+    the upsert endpoint expects, so replaying a GET body is not an option).
+    """
+    return {
+        "occurred_at": "2026-03-21T10:00:00Z",
+        "occurred_tz": "Asia/Tokyo",
+        "geom": {"type": "Point", "coordinates": [139.75, 35.69]},
+        "title": "Live show",
+        "place": "Tokyo",
+        "kind_data": {
+            "artist": "羊文学",
+            "venue": {"name": "日本武道館", "coords": [139.75, 35.69]},
+            "date": "2026-03-21T18:30:00+09:00",
+        },
+    }
 
 
 def fetch_response(path: str) -> tuple[int, bytes]:
@@ -402,6 +423,51 @@ def run_static_parity_check(context: ServerContext) -> None:
             "compiler wrote a mementos file for an unpublished journey",
         )
         print("unpublished-journey exclusion passed")
+
+        # Stale-artifact regression: content published in an earlier compile
+        # and later unpublished must disappear from a REUSED output
+        # directory. Flip the published memento back to draft, recompile
+        # into the same out_dir, and assert its old JSON and media are gone
+        # (the compiler reconciles via the artifact manifest).
+        _, current = request(f"/api/admin/mementos/{ids.memento}")
+        unpublish = {
+            "id": ids.memento,
+            "journey_id": ids.journey,
+            "kind": "live",
+            "seq": 1,
+            **published_memento_fields(),
+            "state": "draft",
+            "expected_revision": current["revision"],
+        }
+        post("/api/admin/mementos", unpublish)
+
+        report = compile_static()
+        expect(
+            report.get("Journeys") == 0,
+            f"expected no published journeys after unpublish, got {report!r}",
+        )
+        expect(
+            report.get("Removed", 0) >= 3,
+            f"expected the stale detail/mementos/media artifacts to be removed, got {report!r}",
+        )
+        expect(
+            not os.path.exists(os.path.join(out_dir, "api", "v1", "journeys", f"{ids.journey}.json")),
+            "stale journey detail JSON survived recompilation into the same out dir",
+        )
+        expect(
+            not os.path.exists(os.path.join(out_dir, "api", "v1", "journeys", ids.journey, "mementos.json")),
+            "stale journey mementos JSON survived recompilation into the same out dir",
+        )
+        expect(
+            not os.path.exists(os.path.join(out_dir, "workflow", "live.jpg")),
+            "stale published media survived recompilation into the same out dir",
+        )
+        static_index = json.loads(read_static_file(out_dir, "api/v1/journeys.json"))
+        expect(
+            static_index == [],
+            f"unpublished journey still listed in the static index: {static_index!r}",
+        )
+        print("stale-artifact cleanup passed")
 
 
 def find_free_port() -> int:
