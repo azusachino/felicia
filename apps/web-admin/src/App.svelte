@@ -2,6 +2,7 @@
   import { parseRoute, listHash } from "./router"
   import JourneyList from "./views/JourneyList.svelte"
   import JourneyDetail from "./views/JourneyDetail.svelte"
+  import MementoEditor from "./views/MementoEditor.svelte"
 
   let hash = $state(location.hash)
   const route = $derived(parseRoute(hash))
@@ -40,6 +41,10 @@
     {#if route.name === "detail"}
       {#key route.id}
         <JourneyDetail id={route.id} />
+      {/key}
+    {:else if route.name === "memento"}
+      {#key `${route.journeyId}/${route.id}`}
+        <MementoEditor journeyId={route.journeyId} id={route.id} />
       {/key}
     {:else}
       <JourneyList />

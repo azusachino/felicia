@@ -21,7 +21,7 @@
     type AdminPhotoTrayItem,
     type PlanIntakeResult,
   } from "../api"
-  import { listHash } from "../router"
+  import { listHash, mementoEditHash } from "../router"
 
   let { id }: { id: string } = $props()
 
@@ -384,10 +384,12 @@
         <ul class="memento-list">
           {#each mementos as memento (memento.id)}
             <li class="memento-row">
-              <span class="memento-seq">#{memento.seq}</span>
-              <span class="memento-title">{memento.title || memento.place || memento.kind}</span>
-              <span class="memento-kind">{memento.kind}</span>
-              <span class={`badge badge--${memento.state}`}>{memento.state}</span>
+              <a class="memento-link" href={mementoEditHash(id, memento.id)}>
+                <span class="memento-seq">#{memento.seq}</span>
+                <span class="memento-title">{memento.title || memento.place || memento.kind}</span>
+                <span class="memento-kind">{memento.kind}</span>
+                <span class={`badge badge--${memento.state}`}>{memento.state}</span>
+              </a>
             </li>
           {/each}
         </ul>
@@ -530,13 +532,21 @@
     list-style: none;
   }
   .memento-row {
+    border: 1px solid #dfd4c1;
+    border-radius: 10px;
+    background: rgb(255 250 242 / 55%);
+    transition: border-color 0.15s ease;
+  }
+  .memento-row:hover {
+    border-color: #b3673a;
+  }
+  .memento-link {
     display: flex;
     align-items: center;
     gap: 14px;
     padding: 12px 16px;
-    border: 1px solid #dfd4c1;
-    border-radius: 10px;
-    background: rgb(255 250 242 / 55%);
+    color: inherit;
+    text-decoration: none;
   }
   .memento-seq {
     color: #a69a89;

@@ -4,9 +4,11 @@ import {
   countMementosByState,
   countPendingStopCandidates,
   getJourney,
+  getMemento,
   getTemplates,
   isConflict,
   listJourneys,
+  listMementoPhotos,
   listMementos,
   listStopCandidates,
   loadJourneySummaries,
@@ -15,12 +17,17 @@ import {
   promoteStopCandidate,
   reviewStopCandidate,
   routePointCount,
+  snapToRoute,
   sortMementosBySeq,
   syncRoute,
   syncVisits,
+  upsertMemento,
+  upsertPhoto,
   type AdminJourney,
   type AdminMemento,
+  type AdminMementoDetail,
   type AdminStopCandidate,
+  type UpsertMementoRequest,
 } from "./api"
 
 // bun test runs outside Vite, so import.meta.env isn't populated the way it
@@ -70,6 +77,38 @@ const memento = (overrides: Partial<AdminMemento> = {}): AdminMemento => ({
   title: "Coffee receipt",
   place: "Kyoto",
   state: "draft",
+  ...overrides,
+})
+
+const mementoDetail = (overrides: Partial<AdminMementoDetail> = {}): AdminMementoDetail => ({
+  id: "memento-1",
+  journey_id: "journey-1",
+  kind: "goods",
+  seq: 1,
+  occurred_at: "2026-03-21T09:00:00Z",
+  occurred_tz: "Asia/Tokyo",
+  geom: [139.7, 35.6],
+  title: "Tenugui",
+  place: "Kyoto",
+  kind_data: { name: "Tenugui" },
+  authored_fields: [],
+  state: "draft",
+  revision: 2,
+  created_at: "2026-03-20T00:00:00Z",
+  updated_at: "2026-03-20T00:00:00Z",
+  ...overrides,
+})
+
+const upsertRequest = (overrides: Partial<UpsertMementoRequest> = {}): UpsertMementoRequest => ({
+  id: "memento-1",
+  journey_id: "journey-1",
+  kind: "goods",
+  seq: 1,
+  title: "Tenugui",
+  place: "Kyoto",
+  kind_data: { name: "Tenugui" },
+  state: "draft",
+  expected_revision: 2,
   ...overrides,
 })
 
@@ -324,5 +363,133 @@ describe("intake inbox (ADMIN-01.3b)", () => {
     mockFetchOnce(409, { error: "candidate revision conflict" })
     const failure = reviewStopCandidate("candidate-1", { state: "ignored", expectedRevision: 0 })
     await expect(failure).rejects.toThrow("candidate revision conflict")
+  })
+})
+
+describe("memento editor (ADMIN-01.4 / ADMIN-01.5)", () => {
+  test("getMemento maps the full record, including revision and raw-array geom", async () => {
+    mockFetchOnce(200, mementoDetail())
+    const result = await getMemento("memento-1")
+    expect(result.revision).toBe(2)
+    expect(result.geom).toEqual([139.7, 35.6])
+    expect(result.kind_data).toEqual({ name: "Tenugui" })
+  })
+
+  test("upsertMemento POSTs the full payload including expected_revision", async () => {
+    let capturedUrl: string | undefined
+    let capturedBody: unknown
+    globalThis.fetch = ((url: string | URL, init?: RequestInit) => {
+      capturedUrl = url.toString()
+      capturedBody = init?.body ? JSON.parse(init.body as string) : undefined
+      return Promise.resolve(Response.json({ status: "ok" }))
+    }) as unknown as typeof fetch
+
+    const payload = upsertRequest({ geom: { type: "Point", coordinates: [135.7, 35.0] } })
+    const result = await upsertMemento(payload)
+
+    expect(capturedUrl).toContain("/api/admin/mementos")
+    expect(capturedBody).toEqual(payload)
+    expect(result).toEqual({ status: "ok" })
+  })
+
+  test("upsertMemento surfaces a 409 conflict with no memento payload (the caller must re-fetch)", async () => {
+    mockFetchOnce(409, { error: "memento was modified; reload before saving" })
+    let caught: unknown
+    try {
+      await upsertMemento(upsertRequest())
+    } catch (cause) {
+      caught = cause
+    }
+    expect(isConflict(caught)).toBe(true)
+    expect((caught as ApiError).message).toBe("memento was modified; reload before saving")
+  })
+
+  test("upsertMemento surfaces validation issues on the thrown ApiError for inline rendering", async () => {
+    mockFetchOnce(400, {
+      error: "validation failed",
+      issues: [
+        { Field: "operator", Code: "required_missing" },
+        { Field: "", Code: "anchor_mismatch" },
+      ],
+    })
+    let caught: unknown
+    try {
+      await upsertMemento(upsertRequest())
+    } catch (cause) {
+      caught = cause
+    }
+    expect(caught).toBeInstanceOf(ApiError)
+    expect((caught as ApiError).issues).toEqual([
+      { Field: "operator", Code: "required_missing" },
+      { Field: "", Code: "anchor_mismatch" },
+    ])
+  })
+
+  test("a plain error response has no issues on the ApiError", async () => {
+    mockFetchOnce(500, { error: "boom" })
+    let caught: unknown
+    try {
+      await upsertMemento(upsertRequest())
+    } catch (cause) {
+      caught = cause
+    }
+    expect((caught as ApiError).issues).toBeUndefined()
+  })
+
+  test("snapToRoute POSTs the point and maps the snapped GeoJSON point", async () => {
+    let capturedBody: unknown
+    globalThis.fetch = ((_url: string | URL, init?: RequestInit) => {
+      capturedBody = init?.body ? JSON.parse(init.body as string) : undefined
+      return Promise.resolve(Response.json({ point: { type: "Point", coordinates: [139.7, 35.6] } }))
+    }) as unknown as typeof fetch
+
+    const result = await snapToRoute("journey-1", [139.65, 35.55])
+    expect(capturedBody).toEqual({ point: [139.65, 35.55] })
+    expect(result.point.coordinates).toEqual([139.7, 35.6])
+  })
+
+  test("snapToRoute surfaces a 422 when the journey has no route to snap to", async () => {
+    mockFetchOnce(422, { error: "journey has no route to snap to" })
+    await expect(snapToRoute("journey-1", [139.7, 35.6])).rejects.toThrow("journey has no route to snap to")
+  })
+
+  test("upsertPhoto POSTs the photo payload", async () => {
+    let capturedBody: unknown
+    globalThis.fetch = ((_url: string | URL, init?: RequestInit) => {
+      capturedBody = init?.body ? JSON.parse(init.body as string) : undefined
+      return Promise.resolve(Response.json({ status: "ok" }))
+    }) as unknown as typeof fetch
+
+    const payload = { id: "photo-1", memento_id: "memento-1", object_key: "media/abc.jpg", content_hash: "sha256:abc", caption: "At the platform", seq: 0 }
+    const result = await upsertPhoto(payload)
+    expect(capturedBody).toEqual(payload)
+    expect(result).toEqual({ status: "ok" })
+  })
+
+  test("listMementoPhotos GETs the memento's photo list", async () => {
+    let capturedUrl = ""
+    globalThis.fetch = ((url: string | URL) => {
+      capturedUrl = String(url)
+      return Promise.resolve(
+        Response.json([
+          {
+            id: "photo-1",
+            memento_id: "memento-1",
+            object_key: "media/abc.jpg",
+            content_hash: "sha256:abc",
+            caption: "At the platform",
+            seq: 0,
+            taken_at: "2026-05-01T09:30:00Z",
+            created_at: "2026-05-02T00:00:00Z",
+          },
+        ]),
+      )
+    }) as unknown as typeof fetch
+
+    const photos = await listMementoPhotos("memento-1")
+    expect(capturedUrl).toBe("http://localhost:8080/api/admin/mementos/memento-1/photos")
+    expect(photos).toHaveLength(1)
+    expect(photos[0].object_key).toBe("media/abc.jpg")
+    expect(photos[0].seq).toBe(0)
   })
 })

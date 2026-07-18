@@ -178,6 +178,7 @@ func (s *Server) Handler() http.Handler {
 		r.Get("/journeys/{id}/stop-candidates", s.handleListStopCandidates)
 		r.Post("/journeys/{id}/intake/plan", s.handlePlanIntake)
 		r.Get("/mementos/{id}", s.handleGetMemento)
+		r.Get("/mementos/{id}/photos", s.handleListMementoPhotos)
 		r.Post("/mementos", s.handleUpsertMemento)
 		r.Post("/photos", s.handleUpsertPhoto)
 		r.Post("/stop-candidates/{id}/review", s.handleReviewStopCandidate)
@@ -882,6 +883,30 @@ func (s *Server) handleGetMemento(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondJSON(w, http.StatusOK, m)
+}
+
+// handleListMementoPhotos returns a memento's photos in sequence order for
+// the admin editor's photo list; the write side stays POST /photos.
+func (s *Server) handleListMementoPhotos(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid memento UUID")
+		return
+	}
+	if _, err := s.repo.GetMemento(r.Context(), id); err != nil {
+		respondError(w, http.StatusNotFound, "memento not found")
+		return
+	}
+	photos, err := s.repo.ListPhotosByMemento(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if photos == nil {
+		photos = []*domain.MementoPhoto{}
+	}
+	respondJSON(w, http.StatusOK, photos)
 }
 
 type mementoGeom struct {

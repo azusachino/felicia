@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { journeyDetailHash, listHash, parseRoute } from "./router"
+import { journeyDetailHash, listHash, mementoEditHash, parseRoute } from "./router"
 
 describe("parseRoute", () => {
   test("treats an empty hash as the journey list", () => {
@@ -31,6 +31,23 @@ describe("parseRoute", () => {
     expect(parseRoute("#/journey")).toEqual({ name: "list" })
     expect(parseRoute("#/journey/")).toEqual({ name: "list" })
   })
+
+  test("parses a memento editor hash", () => {
+    expect(parseRoute("#/journey/journey-1/memento/memento-1")).toEqual({ name: "memento", journeyId: "journey-1", id: "memento-1" })
+  })
+
+  test("tolerates a trailing slash on a memento editor hash", () => {
+    expect(parseRoute("#/journey/journey-1/memento/memento-1/")).toEqual({ name: "memento", journeyId: "journey-1", id: "memento-1" })
+  })
+
+  test("decodes URL-encoded ids in a memento editor hash", () => {
+    expect(parseRoute("#/journey/j%201/memento/m%202")).toEqual({ name: "memento", journeyId: "j 1", id: "m 2" })
+  })
+
+  test("falls back to the journey list for a malformed memento hash", () => {
+    expect(parseRoute("#/journey/journey-1/memento")).toEqual({ name: "list" })
+    expect(parseRoute("#/journey/journey-1/memento/")).toEqual({ name: "list" })
+  })
 })
 
 describe("journeyDetailHash", () => {
@@ -45,5 +62,16 @@ describe("journeyDetailHash", () => {
 
   test("listHash resolves back to the list route", () => {
     expect(parseRoute(listHash)).toEqual({ name: "list" })
+  })
+})
+
+describe("mementoEditHash", () => {
+  test("builds a deep-linkable memento editor hash", () => {
+    expect(mementoEditHash("journey-1", "memento-1")).toBe("#/journey/journey-1/memento/memento-1")
+  })
+
+  test("round-trips through parseRoute, encoding both ids", () => {
+    const hash = mementoEditHash("j/1", "m/1")
+    expect(parseRoute(hash)).toEqual({ name: "memento", journeyId: "j/1", id: "m/1" })
   })
 })
