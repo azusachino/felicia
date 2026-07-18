@@ -13,6 +13,7 @@ export const stubTemplates: Record<MementoKind, StubTemplate> = {
   goods: { id: "goods", label: "goods tag" },
   receipt: { id: "receipt", label: "receipt" },
   souvenir: { id: "souvenir", label: "souvenir card" },
+  live: { id: "live", label: "concert stub" },
 }
 
 export function templateFor(kind: string) {

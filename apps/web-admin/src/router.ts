@@ -1,0 +1,27 @@
+// Hash-based routing, the same idiom as web-public's designs.ts: no router
+// dependency, a pure function resolves state from `location.hash`, and the
+// shell re-derives on the `hashchange` event so deep links and back/forward
+// both work for free.
+
+export type Route = { name: "list" } | { name: "detail"; id: string }
+
+const LIST: Route = { name: "list" }
+
+// Accepts "", "#", "#/", and "#/journey/{id}" (with or without a trailing
+// slash). Anything else falls back to the list route rather than erroring,
+// since a stale or hand-edited hash shouldn't strand the user on a blank page.
+export function parseRoute(hash: string): Route {
+  const trimmed = hash.replace(/^#/, "").replace(/\/+$/, "")
+  if (trimmed === "" || trimmed === "/") return LIST
+
+  const match = /^\/journey\/([^/]+)$/.exec(trimmed)
+  if (match && match[1]) return { name: "detail", id: decodeURIComponent(match[1]) }
+
+  return LIST
+}
+
+export function journeyDetailHash(id: string): string {
+  return `#/journey/${encodeURIComponent(id)}`
+}
+
+export const listHash = "#/"

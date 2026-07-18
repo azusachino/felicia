@@ -9,6 +9,8 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -17,6 +19,7 @@ import (
 
 	"github.com/azusachino/felicia/core"
 	"github.com/azusachino/felicia/core/domain"
+	"github.com/azusachino/felicia/core/ports"
 	"github.com/azusachino/felicia/runtime/importer"
 	"github.com/azusachino/felicia/server/api"
 )
@@ -58,23 +61,28 @@ func (f *fakePhotoSource) FetchAssets(context.Context, time.Time, time.Time) ([]
 // testLogger discards output so tests stay quiet.
 var testLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
 
-var _ domain.Repository = (*mockRepository)(nil)
+var (
+	_ domain.Repository        = (*mockRepository)(nil)
+	_ ports.StopCandidateStore = (*mockRepository)(nil)
+)
 
 type mockRepository struct {
-	journeys     map[uuid.UUID]*domain.Journey
-	mementos     map[uuid.UUID]*domain.Memento
-	photos       map[uuid.UUID]*domain.MementoPhoto
-	transitLegs  []*domain.TransitLeg
-	createdLeg   *domain.TransitLegInput
-	displayRoute orb.MultiLineString
-	snappedPoint *orb.Point
+	journeys       map[uuid.UUID]*domain.Journey
+	mementos       map[uuid.UUID]*domain.Memento
+	photos         map[uuid.UUID]*domain.MementoPhoto
+	transitLegs    []*domain.TransitLeg
+	createdLeg     *domain.TransitLegInput
+	displayRoute   orb.MultiLineString
+	snappedPoint   *orb.Point
+	stopCandidates map[uuid.UUID]*domain.StopCandidate
 }
 
 func newMockRepository() *mockRepository {
 	return &mockRepository{
-		journeys: make(map[uuid.UUID]*domain.Journey),
-		mementos: make(map[uuid.UUID]*domain.Memento),
-		photos:   make(map[uuid.UUID]*domain.MementoPhoto),
+		journeys:       make(map[uuid.UUID]*domain.Journey),
+		mementos:       make(map[uuid.UUID]*domain.Memento),
+		photos:         make(map[uuid.UUID]*domain.MementoPhoto),
+		stopCandidates: make(map[uuid.UUID]*domain.StopCandidate),
 	}
 }
 
@@ -235,6 +243,70 @@ func (m *mockRepository) ListPhotosByMemento(_ context.Context, mementoID uuid.U
 
 func (m *mockRepository) UpsertPhoto(_ context.Context, photo *domain.MementoPhoto) error {
 	m.photos[photo.ID] = photo
+	return nil
+}
+
+func (m *mockRepository) GetStopCandidate(_ context.Context, id uuid.UUID) (*domain.StopCandidate, error) {
+	c, ok := m.stopCandidates[id]
+	if !ok {
+		return nil, domain.ErrNotFound
+	}
+	return c, nil
+}
+
+func (m *mockRepository) ListStopCandidatesByJourney(_ context.Context, journeyID uuid.UUID) ([]*domain.StopCandidate, error) {
+	var list []*domain.StopCandidate
+	for _, c := range m.stopCandidates {
+		if c.JourneyID == journeyID {
+			list = append(list, c)
+		}
+	}
+	return list, nil
+}
+
+// UpsertStopCandidate mimics the provider's re-import-safe upsert: a
+// candidate is identified by (journey, identity), not by ID, so a repeated
+// plan refreshes source-owned fields in place instead of duplicating rows.
+func (m *mockRepository) UpsertStopCandidate(_ context.Context, candidate *domain.StopCandidate) error {
+	for _, existing := range m.stopCandidates {
+		if existing.JourneyID == candidate.JourneyID && existing.Identity == candidate.Identity {
+			candidate.ID = existing.ID
+			candidate.State = existing.State
+			candidate.MergedInto = existing.MergedInto
+			candidate.Revision = existing.Revision + 1
+			m.stopCandidates[candidate.ID] = candidate
+			return nil
+		}
+	}
+	if candidate.ID == uuid.Nil {
+		candidate.ID = uuid.New()
+	}
+	if candidate.State == "" {
+		candidate.State = domain.CandidateProposed
+	}
+	candidate.Revision = 1
+	m.stopCandidates[candidate.ID] = candidate
+	return nil
+}
+
+func (m *mockRepository) ApplyStopReview(_ context.Context, patch *domain.StopReviewPatch) error {
+	existing, ok := m.stopCandidates[patch.CandidateID]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	if patch.ExpectedRevision != nil && *patch.ExpectedRevision != existing.Revision {
+		return domain.ErrWriteConflict
+	}
+	if patch.State != "" {
+		existing.State = patch.State
+	}
+	if patch.Label != nil {
+		existing.Label = *patch.Label
+	}
+	if patch.MergedInto != nil {
+		existing.MergedInto = patch.MergedInto
+	}
+	existing.Revision++
 	return nil
 }
 
@@ -732,5 +804,296 @@ func TestPublicEndpointsExposeOnlyPublishedMementos(t *testing.T) {
 	handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/journeys/"+draftJourney.ID.String(), nil))
 	if w.Code != http.StatusNotFound {
 		t.Errorf("draft-only journey detail status = %d, want 404 (%s)", w.Code, w.Body)
+	}
+}
+
+func TestServerPlanIntakePersistsStopCandidates(t *testing.T) {
+	reg := loadKinds(t)
+	repo := newMockRepository()
+	jid := uuid.New()
+	repo.journeys[jid] = &domain.Journey{
+		ID:             jid,
+		DateStart:      time.Date(2026, 3, 20, 0, 0, 0, 0, time.UTC),
+		DateEnd:        time.Date(2026, 3, 22, 0, 0, 0, 0, time.UTC),
+		AuthoredFields: []string{},
+	}
+	arrive := time.Date(2026, 3, 20, 10, 0, 0, 0, time.UTC)
+	depart := arrive.Add(45 * time.Minute)
+	tracks := &fakeTrackSource{
+		visits: []domain.Visit{
+			{Label: "Shibuya Crossing", Coord: orb.Point{139.7, 35.66}, Arrive: arrive, Depart: depart, Confidence: 0.8, SourceRef: "visit-1"},
+		},
+	}
+	imp := importer.New(tracks, nil, repo, 0)
+	handler := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, imp, api.RouteConfig{}).Handler()
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/journeys/"+jid.String()+"/intake/plan", nil)
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", w.Code, w.Body)
+	}
+
+	var resp struct {
+		JourneyID uuid.UUID              `json:"journey_id"`
+		Stops     []domain.StopCandidate `json:"stops"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if resp.JourneyID != jid {
+		t.Errorf("journey_id = %s, want %s", resp.JourneyID, jid)
+	}
+	if len(resp.Stops) != 1 {
+		t.Fatalf("expected 1 planned stop, got %d", len(resp.Stops))
+	}
+
+	// Plan+Apply must have persisted the candidate through the same
+	// candidate store the review/promote endpoints use.
+	if len(repo.stopCandidates) != 1 {
+		t.Fatalf("expected 1 persisted stop candidate, got %d", len(repo.stopCandidates))
+	}
+	for _, candidate := range repo.stopCandidates {
+		if candidate.JourneyID != jid {
+			t.Errorf("candidate journey_id = %s, want %s", candidate.JourneyID, jid)
+		}
+		if candidate.State != domain.CandidateProposed {
+			t.Errorf("candidate state = %q, want %q", candidate.State, domain.CandidateProposed)
+		}
+		if candidate.Coord != (orb.Point{139.7, 35.66}) {
+			t.Errorf("candidate coord = %v, want the visit coordinate", candidate.Coord)
+		}
+		if !candidate.Arrive.Equal(arrive) {
+			t.Errorf("candidate arrive = %v, want %v", candidate.Arrive, arrive)
+		}
+	}
+}
+
+func TestServerPlanIntakeNotConfigured(t *testing.T) {
+	repo := newMockRepository()
+	// nil importer -> the intake-plan endpoint is unavailable, same as the
+	// other ingest-trigger endpoints.
+	handler := api.NewServer(repo, nil, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{}).Handler()
+
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/api/admin/journeys/"+uuid.NewString()+"/intake/plan", nil))
+	if w.Code != http.StatusServiceUnavailable {
+		t.Errorf("expected 503 when ingest is unconfigured, got %d", w.Code)
+	}
+}
+
+func TestServerPromoteStopCandidate(t *testing.T) {
+	reg := loadKinds(t)
+	repo := newMockRepository()
+	jid := uuid.New()
+	candidateID := uuid.New()
+	arrive := time.Date(2026, 3, 20, 12, 0, 0, 0, time.UTC)
+	depart := arrive.Add(30 * time.Minute)
+	repo.stopCandidates[candidateID] = &domain.StopCandidate{
+		ID:        candidateID,
+		JourneyID: jid,
+		Identity:  domain.CandidateIdentity{DerivationVersion: "gpx-stops-v1", Key: "visit-1"},
+		Label:     "Ichiran Ramen",
+		Coord:     orb.Point{139.701, 35.661},
+		Arrive:    arrive,
+		Depart:    depart,
+		State:     domain.CandidateProposed,
+		Revision:  1,
+	}
+	handler := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{}).Handler()
+
+	// An unregistered kind is rejected before any state changes.
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/stop-candidates/"+candidateID.String()+"/promote", bytes.NewBufferString(`{"kind":"not-a-kind"}`))
+	req.Header.Set("Content-Type", "application/json")
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("unregistered kind status = %d, want 400 (%s)", w.Code, w.Body)
+	}
+	if repo.stopCandidates[candidateID].State != domain.CandidateProposed {
+		t.Fatal("candidate state must not change when the kind is rejected")
+	}
+
+	// A valid promote marks the candidate kept and creates a draft memento
+	// carrying the candidate's geometry, occurred window, and source ref.
+	w = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodPost, "/api/admin/stop-candidates/"+candidateID.String()+"/promote", bytes.NewBufferString(`{"kind":"goods"}`))
+	req.Header.Set("Content-Type", "application/json")
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("promote status = %d, want 200 (%s)", w.Code, w.Body)
+	}
+	var created struct {
+		ID uuid.UUID `json:"id"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&created); err != nil {
+		t.Fatalf("decode promote response: %v", err)
+	}
+	memento, ok := repo.mementos[created.ID]
+	if !ok {
+		t.Fatalf("expected a draft memento to be created for %s", created.ID)
+	}
+	if memento.Kind != "goods" || memento.State != domain.MementoDraft || memento.JourneyID != jid {
+		t.Errorf("unexpected memento: %+v", memento)
+	}
+	if memento.Geom != (orb.Point{139.701, 35.661}) {
+		t.Errorf("memento geom = %v, want the candidate coordinate", memento.Geom)
+	}
+	if !memento.OccurredAt.Equal(arrive) {
+		t.Errorf("memento occurred_at = %v, want candidate arrive %v", memento.OccurredAt, arrive)
+	}
+	if memento.SourceRef == nil || *memento.SourceRef != "stop-candidate:"+candidateID.String() {
+		t.Errorf("memento source_ref = %v, want a reference back to the candidate", memento.SourceRef)
+	}
+	if repo.stopCandidates[candidateID].State != domain.CandidateKept {
+		t.Errorf("candidate state = %q, want %q", repo.stopCandidates[candidateID].State, domain.CandidateKept)
+	}
+
+	// A second promote of the same candidate conflicts instead of creating a
+	// duplicate memento.
+	w = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodPost, "/api/admin/stop-candidates/"+candidateID.String()+"/promote", bytes.NewBufferString(`{"kind":"goods"}`))
+	req.Header.Set("Content-Type", "application/json")
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusConflict {
+		t.Fatalf("second promote status = %d, want 409 (%s)", w.Code, w.Body)
+	}
+	if len(repo.mementos) != 1 {
+		t.Fatalf("expected exactly 1 memento after a repeated promote, got %d", len(repo.mementos))
+	}
+}
+
+func TestServerPromoteStopCandidateEdgeAnchorSkipsGeometry(t *testing.T) {
+	reg := loadKinds(t)
+	repo := newMockRepository()
+	jid := uuid.New()
+	candidateID := uuid.New()
+	arrive := time.Date(2026, 3, 20, 9, 0, 0, 0, time.UTC)
+	repo.stopCandidates[candidateID] = &domain.StopCandidate{
+		ID:        candidateID,
+		JourneyID: jid,
+		Identity:  domain.CandidateIdentity{DerivationVersion: "gpx-stops-v1", Key: "visit-2"},
+		Label:     "HND -> KIX",
+		Coord:     orb.Point{139.78, 35.55},
+		Arrive:    arrive,
+		Depart:    arrive.Add(2 * time.Hour),
+		State:     domain.CandidateProposed,
+		Revision:  1,
+	}
+	handler := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{}).Handler()
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/stop-candidates/"+candidateID.String()+"/promote", bytes.NewBufferString(`{"kind":"transit"}`))
+	req.Header.Set("Content-Type", "application/json")
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("promote status = %d, want 200 (%s)", w.Code, w.Body)
+	}
+	var created struct {
+		ID uuid.UUID `json:"id"`
+	}
+	_ = json.NewDecoder(w.Body).Decode(&created)
+	memento := repo.mementos[created.ID]
+	if memento == nil {
+		t.Fatal("expected a draft memento to be created")
+	}
+	if memento.Geom != nil {
+		t.Errorf("expected nil geom for an edge-anchored kind, got %v", memento.Geom)
+	}
+}
+
+func TestServerPromoteStopCandidateNotFound(t *testing.T) {
+	reg := loadKinds(t)
+	handler := api.NewServer(newMockRepository(), reg, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{}).Handler()
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/stop-candidates/"+uuid.NewString()+"/promote", bytes.NewBufferString(`{"kind":"goods"}`))
+	req.Header.Set("Content-Type", "application/json")
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for an unknown candidate, got %d (%s)", w.Code, w.Body)
+	}
+}
+
+func TestServerCompile(t *testing.T) {
+	reg := loadKinds(t)
+	repo := newMockRepository()
+	jid := uuid.New()
+	repo.journeys[jid] = &domain.Journey{
+		ID:             jid,
+		Slug:           "tokyo",
+		Title:          "Tokyo",
+		DateStart:      time.Date(2026, 3, 20, 0, 0, 0, 0, time.UTC),
+		DateEnd:        time.Date(2026, 3, 22, 0, 0, 0, 0, time.UTC),
+		AuthoredFields: []string{},
+	}
+	mementoID := uuid.New()
+	repo.mementos[mementoID] = &domain.Memento{
+		ID:         mementoID,
+		JourneyID:  jid,
+		Kind:       "goods",
+		State:      domain.MementoPublished,
+		OccurredAt: time.Date(2026, 3, 20, 10, 0, 0, 0, time.UTC),
+		OccurredTZ: "Asia/Tokyo",
+		Title:      "Souvenir",
+		Place:      "Shibuya",
+		Geom:       orb.Point{139.7, 35.66},
+		KindData:   []byte(`{}`),
+	}
+	photoID := uuid.New()
+	repo.photos[photoID] = &domain.MementoPhoto{ID: photoID, MementoID: mementoID, ObjectKey: "img/1.jpg", ContentHash: "abc123", Seq: 1}
+
+	mediaRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(mediaRoot, "img"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(mediaRoot, "img", "1.jpg"), []byte("fake-photo-bytes"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	outDir := t.TempDir()
+
+	handler := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{MediaRoot: mediaRoot}).Handler()
+
+	compileBody, err := json.Marshal(map[string]string{"out_dir": outDir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/compile", bytes.NewReader(compileBody))
+	req.Header.Set("Content-Type", "application/json")
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("compile status = %d, want 200 (%s)", w.Code, w.Body)
+	}
+
+	var report struct {
+		Journeys int
+		Mementos int
+		Media    int
+	}
+	if err := json.NewDecoder(w.Body).Decode(&report); err != nil {
+		t.Fatalf("decode build report: %v", err)
+	}
+	if report.Journeys != 1 || report.Mementos != 1 || report.Media != 1 {
+		t.Errorf("unexpected build report: %+v", report)
+	}
+
+	if _, err := os.Stat(filepath.Join(outDir, "api", "v1", "journeys.json")); err != nil {
+		t.Errorf("expected journeys index to be written: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(outDir, "img", "1.jpg")); err != nil {
+		t.Errorf("expected media file to be written: %v", err)
+	}
+}
+
+func TestServerCompileRequiresOutDir(t *testing.T) {
+	handler := api.NewServer(newMockRepository(), nil, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{}).Handler()
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/compile", bytes.NewBufferString(`{}`))
+	req.Header.Set("Content-Type", "application/json")
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 when out_dir is missing, got %d (%s)", w.Code, w.Body)
 	}
 }

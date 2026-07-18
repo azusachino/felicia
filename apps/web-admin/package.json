@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "check": "svelte-check --tsconfig ./tsconfig.app.json && eslint . && prettier --check .",
+    "test": "bun test",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

@@ -21,6 +21,7 @@ const (
 	defaultRDPEpsilon         = 0.0001
 	defaultTransitSegmentLenM = 100000
 	defaultConfigPath         = "felicia.toml"
+	defaultMediaRoot          = ".felicia/media"
 )
 
 // SourceConfig describes one authenticated upstream source.
@@ -40,6 +41,10 @@ type Config struct {
 	Immich             SourceConfig `koanf:"immich"`
 	RDPEpsilon         float64      `koanf:"ingest.rdp_epsilon"`
 	TransitSegmentLenM float64      `koanf:"ingest.transit_segment_length_m"`
+	// MediaRoot is the private local media root read when compiling the public
+	// static artifact (server/api's /api/admin/compile), the same root the CLI
+	// resolves via its --media-root flag.
+	MediaRoot string `koanf:"media.root"`
 }
 
 // LoadFromEnv loads felicia.toml, or the path selected by FELICIA_CONFIG, then
@@ -91,6 +96,7 @@ func load(path string, lookup func(string) (string, bool), required bool) (Confi
 		Immich:             SourceConfig{URL: k.String("immich.url"), APIKey: k.String("immich.api_key")},
 		RDPEpsilon:         k.Float64("ingest.rdp_epsilon"),
 		TransitSegmentLenM: k.Float64("ingest.transit_segment_length_m"),
+		MediaRoot:          k.String("media.root"),
 	}
 	if err := cfg.Validate(); err != nil {
 		return Config{}, err
@@ -118,6 +124,9 @@ func (c Config) Validate() error {
 	if c.TransitSegmentLenM <= 0 {
 		return errors.New("ingest transit_segment_length_m must be positive")
 	}
+	if c.MediaRoot == "" {
+		return errors.New("media root is required")
+	}
 	return nil
 }
 
@@ -130,6 +139,7 @@ func defaults() map[string]any {
 			"rdp_epsilon":              defaultRDPEpsilon,
 			"transit_segment_length_m": defaultTransitSegmentLenM,
 		},
+		"media": map[string]any{"root": defaultMediaRoot},
 	}
 }
 
@@ -154,5 +164,6 @@ func environmentOverrides(lookup func(string) (string, bool)) map[string]any {
 	set("immich.api_key", "FELICIA_IMMICH_API_KEY", "IMMICH_API_KEY")
 	set("ingest.rdp_epsilon", "FELICIA_RDP_EPSILON", "RDP_EPSILON")
 	set("ingest.transit_segment_length_m", "FELICIA_TRANSIT_SEGMENT_LENGTH_M", "TRANSIT_SEGMENT_LENGTH_M")
+	set("media.root", "FELICIA_MEDIA_ROOT", "MEDIA_ROOT")
 	return values
 }

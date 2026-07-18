@@ -84,7 +84,7 @@ func run(logger *slog.Logger) error {
 	}
 	imp := importer.NewWithLogger(tracks, photos, repo, cfg.RDPEpsilon, logger)
 
-	server := api.NewServer(repo, registry, cacheManager, logger, imp, api.RouteConfig{TransitSegmentLengthM: cfg.TransitSegmentLenM})
+	server := api.NewServer(repo, registry, cacheManager, logger, imp, api.RouteConfig{TransitSegmentLengthM: cfg.TransitSegmentLenM, MediaRoot: cfg.MediaRoot})
 
 	// 4. Start local admin web server
 	logger.Info("starting admin server", "url", "http://localhost:"+cfg.Port)

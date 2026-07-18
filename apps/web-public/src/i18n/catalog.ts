@@ -12,6 +12,7 @@ export type MessageKey =
   | "kind.goods"
   | "kind.receipt"
   | "kind.souvenir"
+  | "kind.live"
   | "ui.journeys"
   | "ui.all"
   | "ui.story"
@@ -31,6 +32,7 @@ export const catalogs: Record<Locale, Catalog> = {
     "kind.goods": "グッズ",
     "kind.receipt": "レシート",
     "kind.souvenir": "おみやげ",
+    "kind.live": "ライブ",
     "ui.journeys": "旅の記録",
     "ui.all": "すべて表示",
     "ui.story": "物語",
@@ -47,6 +49,7 @@ export const catalogs: Record<Locale, Catalog> = {
     "kind.goods": "Goods",
     "kind.receipt": "Receipt",
     "kind.souvenir": "Souvenir",
+    "kind.live": "Live",
     "ui.journeys": "Journeys",
     "ui.all": "View all",
     "ui.story": "The Story",
@@ -63,6 +66,7 @@ export const catalogs: Record<Locale, Catalog> = {
     "kind.goods": "周边",
     "kind.receipt": "收据",
     "kind.souvenir": "纪念品",
+    "kind.live": "演出",
     "ui.journeys": "旅程",
     "ui.all": "查看全部",
     "ui.story": "故事",
