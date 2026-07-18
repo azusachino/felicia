@@ -1,14 +1,14 @@
 ---
 title: "Epic: SQLite-backed GitHub Pages publication"
-status: "in-review"
-date: "2026-07-18"
+status: "shipped"
+date: "2026-07-19"
 ---
 
 # Epic: SQLite-backed GitHub Pages publication
 
 **Epic key:** `FELICIA-PAGES-01`
-**Status:** In review — implementation complete (PR #55); the remote Pages
-workflow run is outstanding. Delivery status is tracked in
+**Status:** Shipped — merged to `main` in PR #55; the Pages workflow ran end
+to end on the merge commit. Delivery status is tracked in
 [`../roadmap.md`](../roadmap.md) and
 [`user-journey.md`](user-journey.md); this document records scope and
 acceptance only.

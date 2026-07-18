@@ -149,8 +149,9 @@ the deterministic intake planner, the Go API (`/api/v1` + admin, including
 intake-plan/promote and compile endpoints), the CLI (`journey
 plan/apply/review`, `static compile` with stale-artifact reconciliation), and
 the published-only static compiler shared verbatim by the live API and the
-static artifact. GitHub Pages publication runs the real SQLite pipeline with
-live/static contract parity proven in the workflow harness. Remaining gaps:
+static artifact. GitHub Pages publication runs the real SQLite pipeline —
+live/static contract parity is proven in the workflow harness and the Pages
+workflow has run end to end on `main` (PR #55). Remaining gaps:
 the admin authoring GUI (journey shell and intake inbox landed; the memento
 editor is in progress — epic
 [FELICIA-ADMIN-01](docs/roadmap/admin-gui-v1-epic.md)) and the deliberately

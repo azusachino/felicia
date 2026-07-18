@@ -41,7 +41,7 @@ Invariants that must hold at every step:
 | 2   | **Import / intake** | ✅ Done (deterministic)            | Field-scoped importer (`runtime/importer/`), dwell-cluster intake planner (`runtime/intake/planner.go`), SQLite + PostgreSQL providers behind shared contract tests                                                                                             |
 | 3   | **Authoring**       | ⚠️ GUI in progress (epic ADMIN-01) | Schema v1 + CLI path complete; admin API grew intake-plan/promote and compile endpoints; `apps/web-admin` has a navigable journey shell with import/preview triggers plus an intake inbox (plan, promote with kind picker, ignore, merge) — memento editor next |
 | 4   | **Publication**     | ✅ Done                            | Published-only static compiler (`publication/compiler.go`); live/static content parity is enforced by a shared projection layer (`publication/public.go`) and a workflow parity check                                                                           |
-| 5   | **Deployment**      | ⚠️ Wired; remote run pending       | Pages workflow builds the real compiled artifact from the example workspace (`scripts/felicia.py preview`); the workflow has not yet run on GitHub — epic [FELICIA-PAGES-01](pages-v1-epic.md)                                                                  |
+| 5   | **Deployment**      | ✅ Done                            | Pages workflow builds and deploys the real compiled artifact (artifact-based `upload-pages-artifact` → `deploy-pages`, nothing committed); first remote run succeeded on `main` after PR #55 merged — epic [FELICIA-PAGES-01](pages-v1-epic.md)                 |
 
 Deliberately deferred (not gaps): AI enrichment
 ([ADR-0024](../adr/0024-optional-ai-enrichment.md)), R2/S3 object storage
@@ -87,6 +87,13 @@ projection:
 
 ## Status log
 
+- **2026-07-19 (Phase 1 complete)** — PR #55 merged to `main` and the GitHub
+  Pages workflow ran end to end on the merge commit: the deployed demo is now
+  the real compiled artifact (example workspace → SQLite import →
+  `felicia static compile` → artifact-based Pages deployment). The legacy
+  `server/cmd/build` binary was also migrated to the shared publication
+  compiler (manifest reconciliation included), retiring the last duplicated
+  public projection.
 - **2026-07-19 (Phase 2 M2)** — Intake inbox landed in `apps/web-admin`
   (ADMIN-01.3b): candidates surface per journey with plan trigger, promote
   (kind picker driven by the template registry), ignore, and
