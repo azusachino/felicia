@@ -1,14 +1,32 @@
 ---
 title: "GitHub Pages v0.1 Release"
-status: "proposed"
-date: "2026-07-17"
+status: "active"
+date: "2026-07-18"
 ---
 
 # GitHub Pages v0.1 Release
 
-This is the smallest forkable release path for the current public design demo.
-It publishes the checked-in fixture projection and is intentionally not the
-SQLite compiler or the self-hosted authoring server.
+This is the smallest forkable release path for the public site. The Pages
+workflow runs the **real publication pipeline** against the example workspace:
+`examples/preview/local-journey` → journey packages → SQLite import →
+`felicia-cli static compile` → merged with the built SPA and deployed. The
+legacy fixture path survives only as the `make static-publish` demo helper.
+
+## Deployment topology (why the repo stays clean)
+
+The workflow uses GitHub's artifact-based Pages deployment
+(`upload-pages-artifact` → `deploy-pages`): the site is built on an ephemeral
+CI runner and handed to the Pages hosting environment directly. **No build
+output is ever committed** — there is no `gh-pages` branch, no generated
+files in git history, and `dist/`/`bin/`/`.felicia/` are gitignored locally.
+
+The deployed demo publishes the checked-in **example data only**. Personal
+journal content is not meant to live in this repository: originals stay on
+the author's machine (local-first), and a personal site is a fork or private
+repository that carries its own workspace data through the same workflow.
+The compiled artifact contains published-only content and is reconciled
+against `api/v1/manifest.json` on every compile, so unpublished or deleted
+content never lingers in a reused output directory.
 
 ## Local release check
 
