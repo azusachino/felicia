@@ -6,7 +6,7 @@ from argparse import Namespace
 from pathlib import Path
 
 from scripts.local_journey import build_package
-from scripts.validate_local_authoring import validate_workspace
+from scripts.validate_local_authoring import validate_document, validate_workspace
 
 
 class LocalJourneyWorkflowTest(unittest.TestCase):
@@ -18,6 +18,102 @@ class LocalJourneyWorkflowTest(unittest.TestCase):
             self.assertTrue((workspace / "journey.json").is_file())
             self.assertTrue((workspace / "stops.json").is_file())
             self.assertTrue((workspace / "mementos.json").is_file())
+
+    def test_plan_schema_types_all_evidence_arrays(self):
+        with tempfile.TemporaryDirectory() as directory:
+            plan_path = Path(directory) / "plan.json"
+            plan_path.write_text(
+                json.dumps(
+                    {
+                        "journey_id": "0190cbde-f300-7000-8000-111111111111",
+                        "schema": "felicia.intake.plan",
+                        "version": "1",
+                        "routes": [
+                            {
+                                "Line": [[135.5, 34.7], [135.6, 34.8]],
+                                "Points": [{"Coord": [135.5, 34.7], "At": "2026-04-01T09:00:00Z"}],
+                                "From": "2026-04-01T09:00:00Z",
+                                "To": "2026-04-01T10:00:00Z",
+                                "DistanceM": 100,
+                                "Mode": "walking",
+                                "SourceRef": "gpx:segment-1",
+                                "Provenance": {
+                                    "source": {"system": "gpx", "external_id": "segment-1"},
+                                    "observed_at": "2026-04-01T09:00:00Z",
+                                    "confidence": 1,
+                                },
+                            }
+                        ],
+                        "visits": [
+                            {
+                                "Coord": [135.5, 34.7],
+                                "Label": "Osaka",
+                                "Arrive": "2026-04-01T09:00:00Z",
+                                "Depart": "2026-04-01T10:00:00Z",
+                                "Confidence": 0.9,
+                                "SourceRef": "dawarich:visit-1",
+                                "Provenance": {
+                                    "source": {"system": "dawarich", "external_id": "visit-1"},
+                                    "observed_at": "2026-04-01T09:00:00Z",
+                                    "confidence": 0.9,
+                                },
+                            }
+                        ],
+                        "stops": [
+                            {
+                                "ID": "0190cbde-f300-7000-8000-222222222222",
+                                "JourneyID": "0190cbde-f300-7000-8000-111111111111",
+                                "Identity": {"derivation_version": "gpx-stops-v1", "key": "visit-1"},
+                                "Label": "Osaka",
+                                "Coord": [135.5, 34.7],
+                                "Arrive": "2026-04-01T09:00:00Z",
+                                "Depart": "2026-04-01T10:00:00Z",
+                                "Confidence": 0.9,
+                                "Evidence": [
+                                    {
+                                        "kind": "visit",
+                                        "source": {"system": "dawarich", "external_id": "visit-1"},
+                                        "locator": "visit-1",
+                                    }
+                                ],
+                                "State": "proposed",
+                                "Revision": 0,
+                                "CreatedAt": "2026-04-01T09:00:00Z",
+                                "UpdatedAt": "2026-04-01T09:00:00Z",
+                            }
+                        ],
+                        "mementos": [
+                            {
+                                "source": {"system": "immich", "external_id": "asset-1"},
+                                "stop_key": "visit-1",
+                                "kind": "goods",
+                                "occurred_at": "2026-04-01T09:30:00Z",
+                                "occurred_tz": "Asia/Tokyo",
+                                "geom": [135.5, 34.7],
+                                "title": "Souvenir",
+                                "place": "Osaka",
+                                "kind_data": {},
+                                "media": [],
+                                "memory_links": [],
+                                "provenance": {
+                                    "source": {"system": "immich", "external_id": "asset-1"},
+                                    "observed_at": "2026-04-01T09:30:00Z",
+                                    "confidence": 0.8,
+                                },
+                            }
+                        ],
+                        "issues": [{"severity": "warning", "code": "review", "message": "check stop"}],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            validate_document(plan_path)
+            document = json.loads(plan_path.read_text(encoding="utf-8"))
+            document["routes"][0]["DistanceM"] = "100"
+            plan_path.write_text(json.dumps(document), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "routes.0.DistanceM"):
+                validate_document(plan_path)
 
     def test_package_keeps_only_selected_stops_and_copies_media(self):
         with tempfile.TemporaryDirectory() as directory:

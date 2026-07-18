@@ -109,6 +109,163 @@
       },
       "additionalProperties": false
     },
+    "source_identity": {
+      "type": "object",
+      "required": ["system", "external_id"],
+      "properties": {
+        "system": { "type": "string", "minLength": 1 },
+        "external_id": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["source", "observed_at", "confidence"],
+      "properties": {
+        "source": { "$ref": "#/$defs/source_identity" },
+        "observed_at": { "type": "string", "format": "date-time" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "track_point": {
+      "type": "object",
+      "required": ["Coord", "At"],
+      "properties": {
+        "Coord": { "$ref": "#/$defs/coordinate" },
+        "At": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    },
+    "route": {
+      "type": "object",
+      "required": ["Line", "Points", "From", "To", "DistanceM", "Mode", "SourceRef", "Provenance"],
+      "properties": {
+        "Line": { "anyOf": [{ "type": "array", "items": { "$ref": "#/$defs/coordinate" } }, { "type": "null" }] },
+        "Points": { "type": "array", "items": { "$ref": "#/$defs/track_point" } },
+        "From": { "type": "string", "format": "date-time" },
+        "To": { "type": "string", "format": "date-time" },
+        "DistanceM": { "type": "integer", "minimum": 0 },
+        "Mode": { "type": "string" },
+        "SourceRef": { "type": "string" },
+        "Provenance": { "$ref": "#/$defs/provenance" }
+      },
+      "additionalProperties": false
+    },
+    "visit": {
+      "type": "object",
+      "required": ["Coord", "Label", "Arrive", "Depart", "Confidence", "SourceRef", "Provenance"],
+      "properties": {
+        "Coord": { "$ref": "#/$defs/coordinate" },
+        "Label": { "type": "string" },
+        "Arrive": { "type": "string", "format": "date-time" },
+        "Depart": { "type": "string", "format": "date-time" },
+        "Confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "SourceRef": { "type": "string" },
+        "Provenance": { "$ref": "#/$defs/provenance" }
+      },
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["kind", "source", "locator"],
+      "properties": {
+        "kind": { "enum": ["route", "visit", "media"] },
+        "source": { "$ref": "#/$defs/source_identity" },
+        "locator": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "candidate_identity": {
+      "type": "object",
+      "required": ["derivation_version", "key"],
+      "properties": {
+        "derivation_version": { "type": "string", "minLength": 1 },
+        "key": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "stop_candidate": {
+      "type": "object",
+      "required": ["ID", "JourneyID", "Identity", "Label", "Coord", "Arrive", "Depart", "Confidence", "Evidence", "State", "Revision", "CreatedAt", "UpdatedAt"],
+      "properties": {
+        "ID": { "type": "string", "format": "uuid" },
+        "JourneyID": { "type": "string", "format": "uuid" },
+        "Identity": { "$ref": "#/$defs/candidate_identity" },
+        "Label": { "type": "string" },
+        "AuthoredFields": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "Coord": { "$ref": "#/$defs/coordinate" },
+        "Arrive": { "type": "string", "format": "date-time" },
+        "Depart": { "type": "string", "format": "date-time" },
+        "Confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "Evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } },
+        "State": { "enum": ["proposed", "kept", "ignored", "merged"] },
+        "MergedInto": { "anyOf": [{ "type": "string", "format": "uuid" }, { "type": "null" }] },
+        "Provenance": { "type": "array", "items": { "$ref": "#/$defs/provenance" } },
+        "Revision": { "type": "integer", "minimum": 0 },
+        "CreatedAt": { "type": "string", "format": "date-time" },
+        "UpdatedAt": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    },
+    "memory_link": {
+      "type": "object",
+      "required": ["entity_type", "entity_id", "relation"],
+      "properties": {
+        "entity_type": { "type": "string", "minLength": 1 },
+        "entity_id": { "type": "string", "format": "uuid" },
+        "relation": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "media_asset": {
+      "type": "object",
+      "properties": {
+        "ID": { "type": "string" },
+        "Kind": { "enum": ["image", "video", "audio", "document", "link", "embed"] },
+        "At": { "type": "string", "format": "date-time" },
+        "Coord": { "anyOf": [{ "$ref": "#/$defs/coordinate" }, { "type": "null" }] },
+        "Checksum": { "type": "string" },
+        "SourceRef": { "type": "string" },
+        "Provenance": { "$ref": "#/$defs/provenance" },
+        "URI": { "type": "string" },
+        "MIME": { "type": "string" },
+        "Title": { "type": "string" },
+        "Provider": { "type": "string" },
+        "EmbedURL": { "type": "string" },
+        "MemoryLinks": { "type": "array", "items": { "$ref": "#/$defs/memory_link" } }
+      },
+      "additionalProperties": false
+    },
+    "memento_candidate": {
+      "type": "object",
+      "required": ["source", "stop_key", "kind", "occurred_at", "occurred_tz", "geom", "title", "place", "kind_data", "media", "memory_links", "provenance"],
+      "properties": {
+        "source": { "$ref": "#/$defs/source_identity" },
+        "stop_key": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "minLength": 1 },
+        "occurred_at": { "type": "string", "format": "date-time" },
+        "occurred_tz": { "type": "string" },
+        "geom": { "anyOf": [{ "$ref": "#/$defs/coordinate" }, { "type": "null" }] },
+        "title": { "type": "string" },
+        "place": { "type": "string" },
+        "kind_data": { "type": "object" },
+        "media": { "type": "array", "items": { "$ref": "#/$defs/media_asset" } },
+        "memory_links": { "type": "array", "items": { "$ref": "#/$defs/memory_link" } },
+        "provenance": { "$ref": "#/$defs/provenance" }
+      },
+      "additionalProperties": false
+    },
+    "plan_issue": {
+      "type": "object",
+      "required": ["severity", "code", "message"],
+      "properties": {
+        "severity": { "enum": ["info", "warning", "error"] },
+        "code": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
     "plan": {
       "type": "object",
       "required": ["journey_id", "schema", "version", "routes", "visits", "stops", "mementos", "issues"],
@@ -117,11 +274,11 @@
         "schema": { "const": "felicia.intake.plan" },
         "version": { "const": "1" },
         "source_fingerprint": { "type": "string" },
-        "routes": { "type": "array" },
-        "visits": { "type": "array" },
-        "stops": { "type": "array" },
-        "mementos": { "type": "array" },
-        "issues": { "type": "array" }
+        "routes": { "type": "array", "items": { "$ref": "#/$defs/route" } },
+        "visits": { "type": "array", "items": { "$ref": "#/$defs/visit" } },
+        "stops": { "type": "array", "items": { "$ref": "#/$defs/stop_candidate" } },
+        "mementos": { "type": "array", "items": { "$ref": "#/$defs/memento_candidate" } },
+        "issues": { "type": "array", "items": { "$ref": "#/$defs/plan_issue" } }
       },
       "additionalProperties": false
     }
