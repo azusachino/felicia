@@ -87,6 +87,14 @@ projection:
 
 ## Status log
 
+- **2026-07-18 (later)** — Phase 1.1 in progress: found and fixed a draft-leak
+  on the live public API (`/api/v1` endpoints did not filter memento state, so
+  draft essays and draft-only journey routes were publicly exposed) and closed
+  the static-artifact contract gap (missing `essay`/`vendor`/`price_*` and photo
+  `taken_at`). Public projection and the published-only gate now live once in
+  the `publication` package and are shared by the live API and the static
+  compiler; a journey without published mementos has no public projection on
+  either side. Verification pending (local toolchain unavailable).
 - **2026-07-18** — Journey selected and documented. Stages 1/2/4 complete;
   stage 3 blocked on the admin GUI; stage 5 blocked on epic FELICIA-PAGES-01.
   Baseline includes PR #53 (canonical contract v1, local authoring schema v1,

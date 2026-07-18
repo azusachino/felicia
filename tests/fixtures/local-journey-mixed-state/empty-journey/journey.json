@@ -1,0 +1,13 @@
+{
+  "schema": "felicia.local.journey.v1",
+  "id": "0190cbde-f300-7000-9000-a00000000002",
+  "journal_id": "0190cbde-f300-7000-9000-000000000000",
+  "slug": "zero-published-journey",
+  "title": "Zero Published Journey",
+  "place": "Kobe",
+  "country": "JPN",
+  "region": "Kansai",
+  "date_start": "2026-05-10",
+  "date_end": "2026-05-10",
+  "source_ref": "route.gpx"
+}

@@ -70,6 +70,9 @@ def preview(base_path: str) -> None:
     # The API tree is produced by the Go compiler, not by Vite's public source.
     # Remove an older generated copy before Vite copies its public directory.
     shutil.rmtree(WEB / "public" / "api", ignore_errors=True)
+    # `go build -o` does not create missing parent directories (bin/ is
+    # gitignored, so a fresh clone/CI runner never has it yet).
+    CLI.parent.mkdir(parents=True, exist_ok=True)
     run(["go", "build", "-o", str(CLI), "./cli/cmd/felicia"])
     packages = sorted(inbox.glob("*.zip"))
     if not packages:

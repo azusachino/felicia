@@ -4,13 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sort"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/paulmach/orb"
-
-	"github.com/azusachino/felicia/core/domain"
 )
 
 // StaticJourney is the public journey detail projection.
@@ -31,18 +27,22 @@ type StaticJourney struct {
 
 // StaticMemento is the public memento projection.
 type StaticMemento struct {
-	ID         string           `json:"id"`
-	JourneyID  string           `json:"journey_id"`
-	Kind       string           `json:"kind"`
-	Seq        int              `json:"seq"`
-	OccurredAt string           `json:"occurred_at"`
-	OccurredTZ string           `json:"occurred_tz"`
-	Geom       *GeoJSONGeometry `json:"geom,omitempty"`
-	Title      string           `json:"title"`
-	Place      string           `json:"place"`
-	KindData   json.RawMessage  `json:"kind_data,omitempty"`
-	SourceRef  *string          `json:"source_ref,omitempty"`
-	Photos     []StaticPhoto    `json:"photos,omitempty"`
+	ID            string           `json:"id"`
+	JourneyID     string           `json:"journey_id"`
+	Kind          string           `json:"kind"`
+	Seq           int              `json:"seq"`
+	OccurredAt    string           `json:"occurred_at"`
+	OccurredTZ    string           `json:"occurred_tz"`
+	Geom          *GeoJSONGeometry `json:"geom,omitempty"`
+	Title         string           `json:"title"`
+	Place         string           `json:"place"`
+	Vendor        *string          `json:"vendor,omitempty"`
+	Essay         *string          `json:"essay,omitempty"`
+	PriceAmount   *int64           `json:"price_amount,omitempty"`
+	PriceCurrency *string          `json:"price_currency,omitempty"`
+	KindData      json.RawMessage  `json:"kind_data,omitempty"`
+	SourceRef     *string          `json:"source_ref,omitempty"`
+	Photos        []StaticPhoto    `json:"photos,omitempty"`
 }
 
 // StaticPhoto is the public media metadata projection.
@@ -76,15 +76,7 @@ func (StaticCompiler) Compile(ctx context.Context, input Input, read ReadModel, 
 	for _, id := range input.JourneyIDs {
 		allowed[id] = true
 	}
-	sort.Slice(journeys, func(i, j int) bool {
-		if journeys[i].DateStart.Equal(journeys[j].DateStart) {
-			if journeys[i].Slug == journeys[j].Slug {
-				return journeys[i].ID.String() < journeys[j].ID.String()
-			}
-			return journeys[i].Slug < journeys[j].Slug
-		}
-		return journeys[i].DateStart.Before(journeys[j].DateStart)
-	})
+	SortJourneys(journeys)
 
 	index := make([]JourneyListItem, 0, len(journeys))
 	report := BuildReport{}
@@ -96,33 +88,17 @@ func (StaticCompiler) Compile(ctx context.Context, input Input, read ReadModel, 
 		if err != nil {
 			return report, fmt.Errorf("list mementos for %s: %w", journey.ID, err)
 		}
-		published := make([]*domain.Memento, 0, len(mementos))
-		for _, memento := range mementos {
-			if memento.State == domain.MementoPublished {
-				published = append(published, memento)
-			}
+		published := PublishedMementos(mementos)
+		// A journey without published content has no public projection at
+		// all — matching the live public API, which hides such journeys.
+		if len(published) == 0 {
+			continue
 		}
-		sort.SliceStable(published, func(i, j int) bool {
-			if published[i].Seq != published[j].Seq {
-				return published[i].Seq < published[j].Seq
-			}
-			if published[i].OccurredAt.Equal(published[j].OccurredAt) {
-				return published[i].ID.String() < published[j].ID.String()
-			}
-			return published[i].OccurredAt.Before(published[j].OccurredAt)
-		})
 		index = append(index, NewJourneyListItem(journey, published))
 		report.Journeys++
 		report.Mementos += len(published)
 
-		journeyProjection := StaticJourney{
-			ID: journey.ID.String(), JournalID: journey.JournalID.String(), Slug: journey.Slug,
-			SourceRef: journey.SourceRef, Title: journey.Title, Place: journey.Place,
-			Country: journey.Country, Region: journey.Region,
-			DateStart: journey.DateStart.Format("2006-01-02"), DateEnd: journey.DateEnd.Format("2006-01-02"),
-			GPSRoute: geometry(journey.GPSRoute), AuthoredFields: journey.AuthoredFields,
-		}
-		if err := output.WriteJSON("api/v1/journeys/"+journey.ID.String()+".json", journeyProjection); err != nil {
+		if err := output.WriteJSON("api/v1/journeys/"+journey.ID.String()+".json", NewStaticJourney(journey)); err != nil {
 			return report, fmt.Errorf("write journey %s: %w", journey.ID, err)
 		}
 
@@ -132,12 +108,7 @@ func (StaticCompiler) Compile(ctx context.Context, input Input, read ReadModel, 
 			if err != nil {
 				return report, fmt.Errorf("list photos for %s: %w", memento.ID, err)
 			}
-			sort.SliceStable(photos, func(i, j int) bool {
-				if photos[i].Seq != photos[j].Seq {
-					return photos[i].Seq < photos[j].Seq
-				}
-				return photos[i].ID.String() < photos[j].ID.String()
-			})
+			SortPhotos(photos)
 			photoProjection := make([]StaticPhoto, 0, len(photos))
 			for _, photo := range photos {
 				if media == nil {
@@ -155,9 +126,9 @@ func (StaticCompiler) Compile(ctx context.Context, input Input, read ReadModel, 
 					return report, fmt.Errorf("close media %s: %w", photo.ObjectKey, err)
 				}
 				report.Media++
-				photoProjection = append(photoProjection, StaticPhoto{ID: photo.ID.String(), MementoID: photo.MementoID.String(), ObjectKey: photo.ObjectKey, ContentHash: photo.ContentHash, Caption: photo.Caption, Seq: photo.Seq, SourceRef: photo.SourceRef})
+				photoProjection = append(photoProjection, NewStaticPhoto(photo))
 			}
-			mementoProjection = append(mementoProjection, StaticMemento{ID: memento.ID.String(), JourneyID: memento.JourneyID.String(), Kind: memento.Kind, Seq: memento.Seq, OccurredAt: memento.OccurredAt.Format(time.RFC3339), OccurredTZ: memento.OccurredTZ, Geom: geometry(memento.Geom), Title: memento.Title, Place: memento.Place, KindData: memento.KindData, SourceRef: memento.SourceRef, Photos: photoProjection})
+			mementoProjection = append(mementoProjection, NewStaticMemento(memento, photoProjection))
 		}
 		if err := output.WriteJSON("api/v1/journeys/"+journey.ID.String()+"/mementos.json", mementoProjection); err != nil {
 			return report, fmt.Errorf("write mementos %s: %w", journey.ID, err)

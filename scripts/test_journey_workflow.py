@@ -28,6 +28,22 @@ class WorkflowIDs:
     slug: str
 
 
+@dataclass(frozen=True)
+class ServerContext:
+    """What the disposable server can hand back to the driver script.
+
+    ``database_path`` is only populated for the sqlite driver — the static
+    compiler CLI (``felicia-cli static compile``) only knows how to open a
+    SQLite file (see cli/cmd/felicia/main.go's compileCommand, which calls
+    sqlite.Open unconditionally), so the static/live parity check below only
+    runs when this is set.
+    """
+
+    ids: WorkflowIDs
+    driver: str
+    database_path: str
+
+
 def workflow_ids() -> WorkflowIDs:
     run_id = uuid4()
     prefix = f"felicia-workflow:{run_id}"
@@ -166,6 +182,210 @@ def run_workflow(ids: WorkflowIDs) -> None:
     print("full journey workflow passed")
 
 
+def fetch_raw(path: str) -> bytes:
+    """Fetch the raw response body for a live public endpoint (no JSON decode)."""
+    req = urllib.request.Request(f"{BASE_URL}{path}")
+    with urllib.request.urlopen(req) as response:
+        expect(response.status == 200, f"GET {path} expected 200, got {response.status}")
+        return response.read()
+
+
+def fetch_status(path: str) -> int:
+    """GET a path and return its status code without raising on non-2xx.
+
+    Unlike request() above (which treats any non-2xx response as a hard
+    test failure — see its HTTPError branch), this is for asserting an
+    *expected* error status, such as the 404 a journey with no published
+    mementos should return.
+    """
+    req = urllib.request.Request(f"{BASE_URL}{path}")
+    try:
+        with urllib.request.urlopen(req) as response:
+            return response.status
+    except urllib.error.HTTPError as exc:
+        return exc.code
+
+
+def read_static_file(out_dir: str, relative_path: str) -> bytes:
+    with open(os.path.join(out_dir, *relative_path.split("/")), "rb") as handle:
+        return handle.read()
+
+
+def canonical_json(raw: bytes) -> str:
+    """Canonicalize JSON bytes for cross-surface comparison.
+
+    The live server encodes responses with encoding/json's Encoder — compact,
+    no indentation, one trailing newline (server/api/server.go respondJSON).
+    The static compiler writes files with json.MarshalIndent at a 2-space
+    indent plus a manually appended trailing newline
+    (cli/cmd/felicia/main.go fileArtifactWriter.WriteJSON). Both sides
+    project through the same publication package types (PublishedMementos,
+    NewStaticJourney, NewStaticMemento, NewStaticPhoto), so the *values* are
+    expected to be identical, but the raw bytes never will be — only the
+    whitespace differs, by construction of the two writers. Decoding and
+    re-serializing through the same canonical form (sorted keys, compact
+    separators) makes the comparison target content, not formatting.
+    """
+    return json.dumps(json.loads(raw.decode("utf-8")), sort_keys=True, separators=(",", ":"))
+
+
+def expect_json_parity(label: str, live_raw: bytes, static_raw: bytes) -> None:
+    live_canonical = canonical_json(live_raw)
+    static_canonical = canonical_json(static_raw)
+    expect(
+        live_canonical == static_canonical,
+        f"{label}: live/static public JSON diverged\n  live:   {live_canonical}\n  static: {static_canonical}",
+    )
+
+
+def expect_aliases_match(path_a: str, path_b: str) -> None:
+    """The extensionless route and its ".json" alias share one handler
+    (server/api/server.go) — they must return byte-identical bodies."""
+    expect(
+        fetch_raw(path_a) == fetch_raw(path_b),
+        f"{path_a} and {path_b} should be byte-identical (they share a handler)",
+    )
+
+
+def run_static_parity_check(context: ServerContext) -> None:
+    """Compile the static artifact from the same SQLite database the live
+    server is reading, then prove the two publication surfaces agree.
+
+    Both surfaces already share the same projection code — this only guards
+    that the two entry points (server/api/server.go's public handlers and
+    cli/cmd/felicia/main.go's `static compile`) keep calling that shared
+    code the same way, for the same data.
+    """
+    ids = context.ids
+    with tempfile.TemporaryDirectory(prefix="felicia-workflow-static-") as static_dir:
+        cli_bin = os.path.join(static_dir, "felicia-cli")
+        media_root = os.path.join(static_dir, "media")
+        out_dir = os.path.join(static_dir, "site")
+
+        # The workflow above only exercises the admin API's metadata calls —
+        # it registers a photo's object_key but never uploads real bytes.
+        # Plant a stand-in file at that object key so the compiler's media
+        # source (which reads real files off disk) can open it, the way a
+        # real ingest would have placed it there.
+        photo_path = os.path.join(media_root, "workflow", "live.jpg")
+        os.makedirs(os.path.dirname(photo_path), exist_ok=True)
+        with open(photo_path, "wb") as handle:
+            handle.write(b"felicia-workflow-test-photo")
+
+        subprocess.run(["go", "build", "-o", cli_bin, "./cli/cmd/felicia"], check=True)
+
+        def compile_static() -> dict:
+            result = subprocess.run(
+                [
+                    cli_bin,
+                    "static",
+                    "compile",
+                    "--db",
+                    context.database_path,
+                    "--media-root",
+                    media_root,
+                    "--out",
+                    out_dir,
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            return json.loads(result.stdout)
+
+        report = compile_static()
+        expect(report.get("Journeys") == 1, f"expected compiler to publish 1 journey, got {report!r}")
+
+        journey_path = f"/api/v1/journeys/{ids.journey}"
+        mementos_path = f"/api/v1/journeys/{ids.journey}/mementos"
+
+        expect_aliases_match("/api/v1/journeys", "/api/v1/journeys.json")
+        expect_aliases_match(journey_path, journey_path + ".json")
+        expect_aliases_match(mementos_path, mementos_path + ".json")
+
+        expect_json_parity(
+            "journeys index",
+            fetch_raw("/api/v1/journeys"),
+            read_static_file(out_dir, "api/v1/journeys.json"),
+        )
+        expect_json_parity(
+            "journey detail",
+            fetch_raw(journey_path),
+            read_static_file(out_dir, f"api/v1/journeys/{ids.journey}.json"),
+        )
+        expect_json_parity(
+            "journey mementos",
+            fetch_raw(mementos_path),
+            read_static_file(out_dir, f"api/v1/journeys/{ids.journey}/mementos.json"),
+        )
+        print("live/static public JSON parity passed")
+
+        # Negative case: a journey with only a draft memento has no public
+        # projection anywhere. The shared PublishedMementos gate hides it
+        # from the live API (404 on detail/mementos, absent from the index)
+        # and the compiler must not emit any file for it.
+        unpublished_journey_uuid = uuid4()
+        unpublished_journey = str(unpublished_journey_uuid)
+        unpublished_memento = str(uuid4())
+        post(
+            "/api/admin/journeys",
+            {
+                "id": unpublished_journey,
+                "journal_id": ids.journal,
+                "slug": f"workflow-unpublished-{unpublished_journey_uuid.hex[:12]}",
+                "title": "Unpublished workflow journey",
+                "place": "Kyoto",
+                "country": "JPN",
+                "date_start": "2026-03-25",
+                "date_end": "2026-03-25",
+                "gps_route": [[[135.7, 35.0], [135.8, 35.1]]],
+                "authored_fields": [],
+            },
+        )
+        post(
+            "/api/admin/mementos",
+            {
+                "id": unpublished_memento,
+                "journey_id": unpublished_journey,
+                "kind": "live",
+                "seq": 1,
+                "state": "draft",
+                "kind_data": {"artist": "test"},
+            },
+        )
+
+        report = compile_static()
+        expect(
+            report.get("Journeys") == 1,
+            f"expected compiler to still publish only 1 journey after adding a draft-only journey, got {report!r}",
+        )
+
+        status = fetch_status(f"/api/v1/journeys/{unpublished_journey}")
+        expect(status == 404, f"expected 404 for unpublished journey detail, got {status}")
+        status = fetch_status(f"/api/v1/journeys/{unpublished_journey}/mementos")
+        expect(status == 404, f"expected 404 for unpublished journey mementos, got {status}")
+
+        _, live_index = request("/api/v1/journeys")
+        expect(
+            all(item.get("id") != unpublished_journey for item in live_index),
+            f"unpublished journey leaked into the live journeys index: {live_index!r}",
+        )
+        static_index = json.loads(read_static_file(out_dir, "api/v1/journeys.json"))
+        expect(
+            all(item.get("id") != unpublished_journey for item in static_index),
+            f"unpublished journey leaked into the static journeys index: {static_index!r}",
+        )
+        expect(
+            not os.path.exists(os.path.join(out_dir, "api", "v1", "journeys", f"{unpublished_journey}.json")),
+            "compiler wrote a detail file for an unpublished journey",
+        )
+        expect(
+            not os.path.exists(os.path.join(out_dir, "api", "v1", "journeys", unpublished_journey, "mementos.json")),
+            "compiler wrote a mementos file for an unpublished journey",
+        )
+        print("unpublished-journey exclusion passed")
+
+
 def find_free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))
@@ -262,7 +482,11 @@ def disposable_server(port: int, driver: str, database_path: str, database_dsn: 
                 else:
                     stderr = server.stderr.read() if server.stderr else ""
                     raise RuntimeError(f"API did not become ready:\n{stderr}")
-                yield ids
+                yield ServerContext(
+                    ids=ids,
+                    driver=driver,
+                    database_path=database_path if driver == "sqlite" else "",
+                )
             finally:
                 server.terminate()
                 try:
@@ -283,10 +507,20 @@ if __name__ == "__main__":
                 arguments.database_path,
                 database_dsn,
                 arguments.postgres_admin_dsn or os.getenv("FELICIA_TEST_POSTGRES_ADMIN_DSN", ""),
-            ) as ids:
-                run_workflow(ids)
+            ) as context:
+                run_workflow(context.ids)
+                if context.database_path:
+                    run_static_parity_check(context)
+                else:
+                    print("static/live parity check skipped (requires --database-driver sqlite)")
         else:
             run_workflow(workflow_ids())
-    except (AssertionError, OSError, RuntimeError, urllib.error.URLError) as exc:
+    except (
+        AssertionError,
+        OSError,
+        RuntimeError,
+        urllib.error.URLError,
+        subprocess.CalledProcessError,
+    ) as exc:
         print(f"workflow failed: {exc!r}", file=sys.stderr)
         raise SystemExit(1) from exc
