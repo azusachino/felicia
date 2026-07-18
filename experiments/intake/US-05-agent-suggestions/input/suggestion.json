@@ -1,0 +1,12 @@
+{
+  "schema": "felicia.suggestion",
+  "version": 1,
+  "provider": "local-agent",
+  "model": "fixture",
+  "candidate_id": "candidate-nara-ticket",
+  "fields": {
+    "title": "The train to Nara",
+    "kind_data.operator": "JR West"
+  },
+  "confidence": 0.82
+}

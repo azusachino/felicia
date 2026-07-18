@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -13,7 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 WEB = ROOT / "apps" / "web-public"
 CLI = ROOT / "bin" / "felicia-cli"
-DEFAULT_DB = ROOT / ".felicia" / "felicia.sqlite"
+DEFAULT_DB = ROOT / ".felicia" / "pages-preview.sqlite"
 DEFAULT_INBOX = ROOT / ".felicia" / "inbox"
 DEFAULT_MEDIA_ROOT = ROOT / ".felicia" / "media"
 DEFAULT_PREVIEW_PACKAGE = ROOT / ".felicia" / "preview.zip"
@@ -21,7 +22,7 @@ DEFAULT_DIST = WEB / "dist"
 
 
 def run(command: list[str], *, cwd: Path = ROOT, env: dict[str, str] | None = None) -> None:
-    print("$", " ".join(command))
+    print("$", " ".join(command), flush=True)
     subprocess.run(command, cwd=cwd, env=env, check=True)
 
 
@@ -53,17 +54,29 @@ def publish(base_path: str, dry_run: bool) -> None:
 
 
 def preview(base_path: str) -> None:
-    database = Path(os.environ.get("PAGES_DB", DEFAULT_DB))
+    configured_database = os.environ.get("PAGES_DB")
+    database = Path(configured_database) if configured_database else DEFAULT_DB
     inbox = Path(os.environ.get("PAGES_INBOX", DEFAULT_INBOX))
     media_root = Path(os.environ.get("PAGES_MEDIA_ROOT", DEFAULT_MEDIA_ROOT))
     output = DEFAULT_DIST
     inbox.mkdir(parents=True, exist_ok=True)
     media_root.mkdir(parents=True, exist_ok=True)
+    if not configured_database:
+        for suffix in ("", "-wal", "-shm"):
+            database.with_name(database.name + suffix).unlink(missing_ok=True)
+        shutil.rmtree(media_root)
+        media_root.mkdir(parents=True, exist_ok=True)
+    shutil.rmtree(output, ignore_errors=True)
+    # The API tree is produced by the Go compiler, not by Vite's public source.
+    # Remove an older generated copy before Vite copies its public directory.
+    shutil.rmtree(WEB / "public" / "api", ignore_errors=True)
     run(["go", "build", "-o", str(CLI), "./cli/cmd/felicia"])
     packages = sorted(inbox.glob("*.zip"))
     if not packages:
         run([sys.executable, "scripts/build_preview_package.py"])
-        packages = [DEFAULT_PREVIEW_PACKAGE]
+        packages = sorted((ROOT / ".felicia" / "preview-packages").glob("*.zip"))
+        if not packages:
+            packages = [DEFAULT_PREVIEW_PACKAGE]
     for package in packages:
         run(
             [

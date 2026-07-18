@@ -110,7 +110,9 @@
                 <div class="goods-face">
                   <span>{t(kindLabel.goods)}</span>
                   <strong>{t(memento.title)}</strong>
-                  <small>{t(memento.vendor)} · {memento.price}</small>
+                  {#if t(memento.vendor) || memento.price}
+                    <small>{[t(memento.vendor), memento.price].filter(Boolean).join(" · ")}</small>
+                  {/if}
                 </div>
               {/if}
             </div>
@@ -144,7 +146,7 @@
 
             {#if memento.photos.length}
               <div class="gallery">
-                {#each memento.photos as photo (photo.src)}
+                {#each memento.photos as photo, index (`${photo.src}:${index}`)}
                   <figure>
                     <img src={photo.src} alt={t(memento.title)} />
                     <figcaption>{t(photo.caption)}</figcaption>

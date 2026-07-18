@@ -14,8 +14,8 @@ import (
 // Local UUIDs identify felicia rows; source identities identify observations
 // across repeated imports and must therefore survive a re-run.
 type SourceIdentity struct {
-	System     string
-	ExternalID string
+	System     string `json:"system"`
+	ExternalID string `json:"external_id"`
 }
 
 // Valid reports whether an identity is usable as an idempotency key.
@@ -48,9 +48,9 @@ func (i SourceIdentity) Validate() error {
 // describes origin, while the write model will decide whether an authored
 // field may be changed.
 type Provenance struct {
-	Source     SourceIdentity
-	ObservedAt time.Time
-	Confidence float64
+	Source     SourceIdentity `json:"source"`
+	ObservedAt time.Time      `json:"observed_at"`
+	Confidence float64        `json:"confidence"`
 }
 
 // ObservationKind identifies the canonical shape produced by an adapter.
@@ -144,12 +144,21 @@ type ObservationStore interface {
 // Dawarich tracks map to this; the journey's gps_route is the union of routes.
 type Route struct {
 	Line       orb.LineString
+	Points     []TrackPoint
 	From       time.Time
 	To         time.Time
 	DistanceM  int
 	Mode       string // dominant transport mode, e.g. "walking", "car"
 	SourceRef  string // legacy adapter ref; use Provenance for new writes
 	Provenance Provenance
+}
+
+// TrackPoint preserves timestamped samples when a source provides them. The
+// public route does not require these samples; local planning uses them to
+// derive visits when no VisitSource is available.
+type TrackPoint struct {
+	Coord orb.Point
+	At    time.Time
 }
 
 // Visit is a normalized stay — a derived place (place-as-derived-visit, ADR
@@ -210,23 +219,37 @@ type PhotoAsset = MediaAsset
 // candidate, not a persisted Memento: authored fields and publication state
 // belong to the write side.
 type MementoCandidate struct {
-	Source      SourceIdentity
-	Kind        string
-	OccurredAt  time.Time
-	OccurredTZ  string
-	Geom        orb.Geometry
-	Title       string
-	Place       string
-	KindData    map[string]any
-	Media       []MediaAsset
-	MemoryLinks []MemoryLink
-	Provenance  Provenance
+	Source      SourceIdentity `json:"source"`
+	StopKey     string         `json:"stop_key"`
+	Kind        string         `json:"kind"`
+	OccurredAt  time.Time      `json:"occurred_at"`
+	OccurredTZ  string         `json:"occurred_tz"`
+	Geom        orb.Geometry   `json:"geom"`
+	Title       string         `json:"title"`
+	Place       string         `json:"place"`
+	KindData    map[string]any `json:"kind_data"`
+	Media       []MediaAsset   `json:"media"`
+	MemoryLinks []MemoryLink   `json:"memory_links"`
+	Provenance  Provenance     `json:"provenance"`
 }
 
-// TrackSource yields routes and visits for a time range. Dawarich implements it.
-type TrackSource interface {
+// RouteSource yields normalized route segments for a time range. Dawarich and
+// local GPX adapters implement this capability.
+type RouteSource interface {
 	FetchRoutes(ctx context.Context, from, to time.Time) ([]Route, error)
+}
+
+// VisitSource yields semantic stays for a time range. Dawarich implements it;
+// a local GPX planner may derive the same Visit shape when it is unavailable.
+type VisitSource interface {
 	FetchVisits(ctx context.Context, from, to time.Time) ([]Visit, error)
+}
+
+// TrackSource is the legacy combined capability retained while runtime callers
+// migrate to RouteSource and VisitSource independently.
+type TrackSource interface {
+	RouteSource
+	VisitSource
 }
 
 // PhotoSource yields photo assets for a time range. Immich implements it.

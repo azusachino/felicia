@@ -480,7 +480,7 @@
             {/if}
             {#if selectedMemento.photos.length}
               <div class="mt-4 flex flex-col gap-3">
-                {#each selectedMemento.photos as photo (photo.src)}
+                {#each selectedMemento.photos as photo, index (`${photo.src}:${index}`)}
                   <figure class="m-0 overflow-hidden rounded-md border border-black/5">
                     <img src={photo.src} alt={t(selectedMemento.title)} class="block aspect-[4/3] w-full object-cover" onerror={onPhotoError} />
                     <figcaption class="px-3 py-2 text-xs text-ink-soft">

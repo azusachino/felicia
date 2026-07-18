@@ -23,7 +23,7 @@ COMPOSE ?= $(shell \
 	elif command -v docker >/dev/null 2>&1; then echo docker compose; \
 	else echo ''; fi)
 
-.PHONY: help fmt fmt-check vet lint test test-api test-features test-sqlite test-postgres check build cli-build validate tidy db-up db-down migrate seed dev dev-sqlite dev-postgres test-workflow test-workflow-postgres mock-up mock-down web-install web-check web-build web-admin-check web-admin-build static-build static-validate static-publish pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
+.PHONY: help fmt fmt-check vet lint test test-api test-features test-sqlite test-postgres check build cli-build experiment-intake journey-local validate tidy db-up db-down migrate seed dev dev-sqlite dev-postgres test-workflow test-workflow-postgres mock-up mock-down web-install web-check web-build web-admin-check web-admin-build static-build static-validate static-publish pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -52,6 +52,14 @@ build: ## Build all binaries
 cli-build: ## Build the felicia-cli executable into bin/
 	@mkdir -p bin
 	$(GO) build -o bin/felicia-cli ./cli/cmd/felicia
+
+experiment-intake: cli-build ## Run the offline intake experiment matrix
+	$(UV_RUN) run python scripts/run_intake_experiments.py --out .felicia/experiments/intake/report.json
+
+journey-local: cli-build ## Preprocess raw local sources into an editable journey workspace
+	@test -n "$(GPX)" || (echo 'usage: make journey-local GPX=path/to/route.gpx PHOTOS=path/to/photos [SIDECAR=path]' >&2; exit 1)
+	@test -n "$(PHOTOS)" || (echo 'usage: make journey-local GPX=path/to/route.gpx PHOTOS=path/to/photos [SIDECAR=path]' >&2; exit 1)
+	$(UV_RUN) run python scripts/local_journey.py preprocess --gpx "$(GPX)" --photos "$(PHOTOS)" $(if $(SIDECAR),--sidecar "$(SIDECAR)",)
 
 # Pre-PR gate. Database migration smoke remains separate because it needs a
 # disposable service; deterministic frontend checks belong in this gate.

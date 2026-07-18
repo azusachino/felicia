@@ -1,0 +1,61 @@
+{
+  "schema": "felicia.local.mementos.v1",
+  "mementos": [
+    {
+      "id": "0190cbde-f300-7000-8000-b00000000001",
+      "stop_key": "osaka-night",
+      "seq": 1,
+      "kind": "goods",
+      "occurred_at": "2026-04-01T19:30:00+09:00",
+      "occurred_tz": "Asia/Tokyo",
+      "state": "published",
+      "title": "Osaka Street Souvenir",
+      "place": "Osaka",
+      "geom": [135.5016, 34.6687],
+      "kind_data": {"memory": "The first night of the five-day route"},
+      "media": [{"path": "apps/web-public/public/osaka_plushie.jpg", "caption": "Osaka at night"}]
+    },
+    {
+      "id": "0190cbde-f300-7000-8000-b00000000002",
+      "stop_key": "kobe-harbor",
+      "seq": 2,
+      "kind": "receipt",
+      "occurred_at": "2026-04-02T13:00:00+09:00",
+      "occurred_tz": "Asia/Tokyo",
+      "state": "published",
+      "title": "Harbor Lunch Receipt",
+      "place": "Kobe",
+      "geom": [135.1878, 34.6794],
+      "kind_data": {"vendor": "Harbor Kitchen", "currency": "JPY"},
+      "media": [{"path": "apps/web-public/public/kyoto_temple.jpg", "caption": "A lunch worth remembering"}]
+    },
+    {
+      "id": "0190cbde-f300-7000-8000-b00000000003",
+      "stop_key": "kobe-harbor",
+      "seq": 3,
+      "kind": "transit",
+      "occurred_at": "2026-04-02T17:00:00+09:00",
+      "occurred_tz": "Asia/Tokyo",
+      "state": "published",
+      "title": "Kobe Transit Pass",
+      "place": "Kobe",
+      "geom": [135.1878, 34.6794],
+      "kind_data": {"operator": "JR West", "line": "Kansai local"},
+      "media": [{"path": "apps/web-public/public/tokyo_night.jpg", "caption": "The route continues"}]
+    },
+    {
+      "id": "0190cbde-f300-7000-8000-b00000000004",
+      "stop_key": "nara-park",
+      "seq": 4,
+      "kind": "stamp",
+      "occurred_at": "2026-04-03T14:00:00+09:00",
+      "occurred_tz": "Asia/Tokyo",
+      "state": "published",
+      "title": "Nara Temple Stamp",
+      "place": "Nara",
+      "geom": [135.8398, 34.6851],
+      "kind_data": {"name": "Nara Park Goshuin"},
+      "media": [{"path": "apps/web-public/public/kyoto_temple.jpg", "caption": "The quietest stop"}]
+    }
+  ]
+}

@@ -42,7 +42,7 @@
       <section class="gallery" aria-label={photoLabel}>
         <h3>{photosHeading}</h3>
         <div class="gallery-grid">
-          {#each memento.photos as photo, index (photo.src)}
+          {#each memento.photos as photo, index (`${photo.src}:${index}`)}
             <figure class:tilt-left={index % 2 === 0}>
               <img src={photo.src} alt={t(photo.caption)} />
               <figcaption>{t(photo.caption)}</figcaption>

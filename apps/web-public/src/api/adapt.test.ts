@@ -61,6 +61,20 @@ describe("adaptJourney", () => {
     expect(result.mementos[0].price).toBe("JPY 1,200")
   })
 
+  test("normalizes string transit stations and vendor kind data", () => {
+    const result = adaptJourney(journey(), [
+      memento({
+        id: "transit-1",
+        kind: "transit",
+        kind_data: { operator: "JR", line: "Kansai local", from: "Osaka", to: "Kobe", vendor: "Harbor Kitchen" },
+      }),
+    ])
+
+    expect(result.mementos[0].transit?.from.name).toBe("Osaka")
+    expect(result.mementos[0].transit?.to.name).toBe("Kobe")
+    expect(result.mementos[0].vendor.en).toBe("Harbor Kitchen")
+  })
+
   test("flattens a multi-line route and tolerates an empty route", () => {
     const result = adaptJourney(
       journey({

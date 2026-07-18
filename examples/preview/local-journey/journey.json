@@ -1,0 +1,13 @@
+{
+  "schema": "felicia.local.journey.v1",
+  "id": "0190cbde-f300-7000-8000-111111111111",
+  "journal_id": "0190cbde-f300-7000-8000-000000000000",
+  "slug": "golden-route",
+  "title": "Narita Express Day Trip",
+  "place": "Narita · Tokyo",
+  "country": "JPN",
+  "region": "Kanto",
+  "date_start": "2025-10-06",
+  "date_end": "2025-10-06",
+  "source_ref": "route.gpx"
+}

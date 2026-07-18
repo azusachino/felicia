@@ -1,0 +1,96 @@
+{
+  "schema": "felicia.local.mementos.v1",
+  "mementos": [
+    {
+      "id": "0190cbde-f300-7000-8000-a00000000001",
+      "stop_key": "naritasan",
+      "seq": 1,
+      "kind": "transit",
+      "occurred_at": "2025-10-06T10:03:00+09:00",
+      "occurred_tz": "Asia/Tokyo",
+      "state": "published",
+      "title": "Narita Express Ticket",
+      "place": "Narita",
+      "geom": [140.3933101, 35.7758714],
+      "kind_data": {
+        "operator": "JR East",
+        "line": "Narita Express",
+        "from": "Narita Airport",
+        "to": "Tokyo"
+      },
+      "media": [
+        {
+          "path": "apps/web-public/public/kyoto_temple.jpg",
+          "caption": "Ticket memory"
+        }
+      ]
+    },
+    {
+      "id": "0190cbde-f300-7000-8000-a00000000002",
+      "stop_key": "naritasan",
+      "seq": 2,
+      "kind": "stamp",
+      "occurred_at": "2025-10-06T11:00:00+09:00",
+      "occurred_tz": "Asia/Tokyo",
+      "state": "published",
+      "title": "Naritasan Temple Stamp",
+      "place": "Narita",
+      "geom": [140.3172238, 35.7863311],
+      "kind_data": {
+        "shrine_or_temple": "Naritasan Shinshoji",
+        "name": "Goshuin"
+      },
+      "media": [
+        {
+          "path": "apps/web-public/public/kyoto_temple.jpg",
+          "caption": "A small souvenir from the first stop"
+        }
+      ]
+    },
+    {
+      "id": "0190cbde-f300-7000-8000-a00000000003",
+      "stop_key": "narita-station",
+      "seq": 3,
+      "kind": "transit",
+      "occurred_at": "2025-10-06T12:30:00+09:00",
+      "occurred_tz": "Asia/Tokyo",
+      "state": "published",
+      "title": "Narita Station Departure",
+      "place": "Narita",
+      "geom": [140.3188889, 35.7766667],
+      "kind_data": {
+        "operator": "JR East",
+        "line": "Narita Line",
+        "direction": "Tokyo"
+      },
+      "media": [
+        {
+          "path": "apps/web-public/public/tokyo_night.jpg",
+          "caption": "Leaving Narita"
+        }
+      ]
+    },
+    {
+      "id": "0190cbde-f300-7000-8000-a00000000004",
+      "stop_key": "tokyo-station",
+      "seq": 4,
+      "kind": "goods",
+      "occurred_at": "2025-10-06T15:00:00+09:00",
+      "occurred_tz": "Asia/Tokyo",
+      "state": "published",
+      "title": "Tokyo Station Souvenir",
+      "place": "Tokyo",
+      "geom": [139.767125, 35.681236],
+      "kind_data": {
+        "item": "station souvenir",
+        "memory": "The journey became a day in Tokyo"
+      },
+      "media": [
+        {
+          "path": "apps/web-public/public/osaka_plushie.jpg",
+          "caption": "A tangible end to the route"
+        }
+      ]
+    }
+  ]
+}

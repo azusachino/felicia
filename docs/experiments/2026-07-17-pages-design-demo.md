@@ -19,7 +19,10 @@ available for product review.
 
 ## Reproduction
 
-The original fixture-only reproduction is retired. From the repository root,
+The Pages demo is now sourced from the same local-workflow JSON used for a
+user-authored journey. The checked-in demo decisions live under
+`examples/preview/local-journey/`; `scripts/build_preview_package.py` converts
+them into the portable package during the build. From the repository root,
 prepare a package and compile it with the real CLI:
 
 ```bash
@@ -47,17 +50,9 @@ no API, database, cache, or cloud dependency at serving time. Caddy remains the
 server for the self-hosted/shared runtime, where reverse-proxy behavior also
 needs to be tested.
 
-The retired fixture command previously performed two operations:
-
-1. `scripts/build_static_demo.py` converted the checked-in fixture at
-   `scripts/data.json` into a static read projection under
-   `apps/web-public/public/api/v1`.
-2. Vite builds the public SPA with the project-site base path. The Pages workflow
-   uses the repository name as that path automatically.
-
-The generated API is ignored by Git and is intentionally treated as build
-output. The source fixture remains the inspectable input for this experiment;
-it is not evidence that JSON is Felicia's canonical data model.
+The generated API and static site are ignored build output. The local-workflow
+JSON is the inspectable authoring input; the portable YAML package is only the
+transport boundary consumed by the importer.
 
 The public read contract is extensionful in both publication modes:
 
@@ -82,8 +77,9 @@ Run on 2026-07-17 in the local development environment:
 | `make web-check`                        | passed; 0 Svelte diagnostics, ESLint and Prettier clean |
 | `uv run --group dev ruff check scripts` | passed                                                  |
 | retired fixture artifact verifier       | passed                                                  |
-| journeys in static index                | 9                                                       |
-| journey detail files                    | 9                                                       |
+| journeys in static index                | 1                                                       |
+| journey detail files                    | 1                                                       |
+| authored mementos                       | 4                                                       |
 | demo media copied to `dist/`            | 3 files                                                 |
 | generated artifact size                 | 4.2 MB locally                                          |
 

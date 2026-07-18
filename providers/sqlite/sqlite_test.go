@@ -3,6 +3,7 @@ package sqlite_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
 
@@ -82,6 +83,44 @@ func TestRepositoryJourneyWorkflow(t *testing.T) {
 	}
 }
 
+func TestStopCandidateReviewSurvivesReimport(t *testing.T) {
+	repo, err := sqlite.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer repo.Close()
+	ctx := context.Background()
+	journal := &domain.Journal{ID: mustUUID(t), CreatedAt: time.Now().UTC()}
+	if err := repo.CreateJournal(ctx, journal); err != nil {
+		t.Fatal(err)
+	}
+	journey := &domain.Journey{ID: mustUUID(t), JournalID: journal.ID, Slug: "candidate-review", Title: "Candidate review", Place: "Osaka", DateStart: time.Now().UTC(), DateEnd: time.Now().UTC()}
+	if err := repo.UpsertJourney(ctx, journey); err != nil {
+		t.Fatal(err)
+	}
+	arrive := time.Date(2026, 7, 1, 10, 0, 0, 0, time.UTC)
+	candidate := &domain.StopCandidate{ID: mustUUID(t), JourneyID: journey.ID, Identity: domain.CandidateIdentity{DerivationVersion: "gpx-stops-v1", Key: "stop-001"}, Label: "Osaka Castle", Coord: orb.Point{135.5259, 34.6873}, Arrive: arrive, Depart: arrive.Add(time.Hour), Confidence: .8, Evidence: []domain.EvidenceRef{{Kind: domain.EvidenceRoute, Source: domain.SourceIdentity{System: "gpx", ExternalID: "track.gpx"}, Locator: "segment-1"}}}
+	if err := repo.UpsertStopCandidate(ctx, candidate); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.ApplyStopReview(ctx, &domain.StopReviewPatch{CandidateID: candidate.ID, State: domain.CandidateIgnored, Label: stringPtr("skip Osaka Castle"), ExpectedRevision: int64Ptr(candidate.Revision)}); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.UpsertStopCandidate(ctx, &domain.StopCandidate{ID: mustUUID(t), JourneyID: journey.ID, Identity: candidate.Identity, Label: "Castle (refreshed)", Coord: orb.Point{135.526, 34.688}, Arrive: arrive, Depart: arrive.Add(2 * time.Hour), Confidence: .9, Evidence: []domain.EvidenceRef{{Kind: domain.EvidenceMedia, Source: domain.SourceIdentity{System: "immich", ExternalID: "photo-1"}, Locator: "asset"}}}); err != nil {
+		t.Fatal(err)
+	}
+	fetched, err := repo.GetStopCandidate(ctx, candidate.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fetched.State != domain.CandidateIgnored || fetched.Label != "skip Osaka Castle" || len(fetched.Evidence) != 1 || fetched.Evidence[0].Kind != domain.EvidenceMedia {
+		t.Fatalf("review or evidence was not preserved correctly: %#v", fetched)
+	}
+	if err := repo.ApplyStopReview(ctx, &domain.StopReviewPatch{CandidateID: candidate.ID, State: domain.CandidateKept, ExpectedRevision: int64Ptr(1)}); !errors.Is(err, domain.ErrWriteConflict) {
+		t.Fatalf("stale review error = %v, want write conflict", err)
+	}
+}
+
 func mustUUID(t *testing.T) uuid.UUID {
 	t.Helper()
 	id, err := uuid.NewV7()
@@ -92,3 +131,5 @@ func mustUUID(t *testing.T) uuid.UUID {
 }
 
 func int64Ptr(value int64) *int64 { return &value }
+
+func stringPtr(value string) *string { return &value }

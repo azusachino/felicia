@@ -1,0 +1,10 @@
+story: US-02
+name: review-evidence-backed-stops
+current: blocked
+inputs:
+  track: ../US-01-plan/input/route.gpx
+  photos: ../US-01-plan/input/photos.jsonl
+expected:
+  proposed_stops: 2
+  actions: [keep, merge, ignore, rename]
+  evidence: [route_interval, dwell_duration, photo_ids]

@@ -68,3 +68,13 @@ type ObservationStore interface {
 	RecordSourceObservation(ctx context.Context, observation *domain.SourceObservation) error
 	MarkMissingSourceObservations(ctx context.Context, runID uuid.UUID, sourceSystem string, seenExternalIDs []string) error
 }
+
+// StopCandidateStore persists private intake candidates and explicit review
+// decisions. Implementations must not expose candidates through publication
+// reads unless an authored memento references one.
+type StopCandidateStore interface {
+	GetStopCandidate(ctx context.Context, id uuid.UUID) (*domain.StopCandidate, error)
+	ListStopCandidatesByJourney(ctx context.Context, journeyID uuid.UUID) ([]*domain.StopCandidate, error)
+	UpsertStopCandidate(ctx context.Context, candidate *domain.StopCandidate) error
+	ApplyStopReview(ctx context.Context, patch *domain.StopReviewPatch) error
+}

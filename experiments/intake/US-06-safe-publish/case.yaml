@@ -1,0 +1,10 @@
+story: US-06
+name: safe-publish-prepared-package
+current: works-prepared-package-only
+inputs:
+  package: input/journey.zip
+expected:
+  public_mementos: 1
+  private_media: 0
+  raw_gpx_public: false
+  unattached_media_public: false

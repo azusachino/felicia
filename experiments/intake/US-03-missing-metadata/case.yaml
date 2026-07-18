@@ -1,0 +1,12 @@
+story: US-03
+name: missing-photo-metadata
+current: blocked
+inputs:
+  track: input/route.gpx
+  photos: input/photos.jsonl
+  sidecar: input/sidecar.jsonl
+expected:
+  confidently_matched: 1
+  weakly_matched: 1
+  unattached: 1
+  sidecar_promotes: 1

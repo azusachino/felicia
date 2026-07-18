@@ -19,8 +19,10 @@ import (
 	"github.com/paulmach/orb"
 
 	"github.com/azusachino/felicia/core/domain"
+	"github.com/azusachino/felicia/core/ports"
 	"github.com/azusachino/felicia/publication"
 	"github.com/azusachino/felicia/runtime/importer"
+	"github.com/azusachino/felicia/runtime/intake"
 	journeyruntime "github.com/azusachino/felicia/runtime/journey"
 	mementoruntime "github.com/azusachino/felicia/runtime/memento"
 )
@@ -34,6 +36,7 @@ type Server struct {
 	cache                 *CacheManager
 	logger                *slog.Logger
 	importer              *importer.Importer // may be nil when no sources are configured
+	intakeService         *intake.Service
 	transitSegmentLengthM float64
 	requestTimeout        time.Duration
 	maxBodyBytes          int64
@@ -80,6 +83,10 @@ func NewServer(repo domain.Repository, registry *domain.Registry, cache *CacheMa
 	if routeConfig.RateBurst <= 0 {
 		routeConfig.RateBurst = defaultRateBurst
 	}
+	var candidateStore ports.StopCandidateStore
+	if store, ok := repo.(ports.StopCandidateStore); ok {
+		candidateStore = store
+	}
 	return &Server{
 		repo:                  repo,
 		journeyWriter:         journeyruntime.New(repo),
@@ -88,6 +95,7 @@ func NewServer(repo domain.Repository, registry *domain.Registry, cache *CacheMa
 		cache:                 cache,
 		logger:                logger,
 		importer:              imp,
+		intakeService:         intake.NewService(candidateStore),
 		transitSegmentLengthM: routeConfig.TransitSegmentLengthM,
 		requestTimeout:        routeConfig.RequestTimeout,
 		maxBodyBytes:          routeConfig.MaxBodyBytes,
@@ -157,9 +165,11 @@ func (s *Server) Handler() http.Handler {
 		r.Post("/journeys/{id}/legs", s.handleCreateTransitLeg)
 		r.Post("/journeys/{id}/snap", s.handleSnapToRoute)
 		r.Get("/journeys/{id}/mementos", s.handleListMementos)
+		r.Get("/journeys/{id}/stop-candidates", s.handleListStopCandidates)
 		r.Get("/mementos/{id}", s.handleGetMemento)
 		r.Post("/mementos", s.handleUpsertMemento)
 		r.Post("/photos", s.handleUpsertPhoto)
+		r.Post("/stop-candidates/{id}/review", s.handleReviewStopCandidate)
 
 		// Ingest triggers (auto-seed from the configured sources)
 		r.Post("/journeys/{id}/sync-route", s.handleSyncRoute)
@@ -575,6 +585,69 @@ func (s *Server) handleUpsertJourney(w http.ResponseWriter, r *http.Request) {
 
 	s.cache.InvalidateAll(r.Context())
 	respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// Stop-candidate handlers are admin-only by route placement and are never
+// included in the public publication contract.
+func (s *Server) handleListStopCandidates(w http.ResponseWriter, r *http.Request) {
+	journeyID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid journey UUID")
+		return
+	}
+	candidates, err := s.intakeService.List(r.Context(), journeyID)
+	if errors.Is(err, intake.ErrNoCandidateStore) {
+		respondError(w, http.StatusServiceUnavailable, "intake candidate storage is unavailable")
+		return
+	}
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	respondJSON(w, http.StatusOK, candidates)
+}
+
+type stopReviewRequest struct {
+	State            domain.CandidateState `json:"state"`
+	Label            *string               `json:"label,omitempty"`
+	MergedInto       *uuid.UUID            `json:"merged_into,omitempty"`
+	ExpectedRevision *int64                `json:"expected_revision,omitempty"`
+}
+
+func (s *Server) handleReviewStopCandidate(w http.ResponseWriter, r *http.Request) {
+	candidateID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid candidate UUID")
+		return
+	}
+	var request stopReviewRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request JSON")
+		return
+	}
+	if request.State == "" {
+		respondError(w, http.StatusBadRequest, "state is required")
+		return
+	}
+	err = s.intakeService.Review(r.Context(), &domain.StopReviewPatch{CandidateID: candidateID, State: request.State, Label: request.Label, MergedInto: request.MergedInto, ExpectedRevision: request.ExpectedRevision})
+	if errors.Is(err, domain.ErrWriteConflict) {
+		respondError(w, http.StatusConflict, "candidate revision conflict")
+		return
+	}
+	if errors.Is(err, intake.ErrNoCandidateStore) {
+		respondError(w, http.StatusServiceUnavailable, "intake candidate storage is unavailable")
+		return
+	}
+	if err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	candidate, err := s.intakeService.Get(r.Context(), candidateID)
+	if err != nil {
+		respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		return
+	}
+	respondJSON(w, http.StatusOK, candidate)
 }
 
 // Memento handlers (Admin)
