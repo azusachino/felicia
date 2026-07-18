@@ -1,63 +1,24 @@
 #!/usr/bin/env python3
-"""Simulate the offline Felicia journey authoring loop.
-
-The files in the workspace are deliberately boring JSON so an author or a
-local agent can edit them with any tool.  The package command turns those
-files into the same portable package consumed by felicia-cli.
-"""
+"""Orchestrate the offline Felicia journey authoring loop."""
 
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import shutil
 import subprocess
 import uuid
-import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
-
-ROOT = Path(__file__).resolve().parent.parent
-CLI = ROOT / "bin" / "felicia-cli"
-NAMESPACE = uuid.UUID("0190cbde-f300-7000-8000-999999999999")
-
-
-def write_json(path: Path, value: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n")
-
-
-def read_json(path: Path) -> Any:
-    try:
-        return json.loads(path.read_text())
-    except FileNotFoundError as exc:
-        raise SystemExit(f"missing {path}; run preprocess first") from exc
-    except json.JSONDecodeError as exc:
-        raise SystemExit(f"invalid JSON in {path}: {exc}") from exc
-
-
-def run(command: list[str]) -> None:
-    print("$", " ".join(command))
-    subprocess.run(command, cwd=ROOT, check=True)
-
-
-def ensure_cli() -> None:
-    if not CLI.exists():
-        run(["make", "cli-build"])
-
-
-def as_coord(value: Any) -> list[float] | None:
-    if isinstance(value, list) and len(value) == 2:
-        return [float(value[0]), float(value[1])]
-    return None
-
-
-def candidate_key(stop: dict[str, Any]) -> str:
-    identity = stop.get("identity", {})
-    return str(identity.get("key") or stop.get("id") or "")
+try:
+    from .local_journey_author import interactive_author
+    from .local_journey_common import CLI, NAMESPACE, ROOT, as_coord, candidate_key, ensure_cli, run, write_json
+    from .local_journey_package import package
+except ImportError:
+    from local_journey_author import interactive_author
+    from local_journey_common import CLI, NAMESPACE, ROOT, as_coord, candidate_key, ensure_cli, run, write_json
+    from local_journey_package import package
 
 
 def preprocess(args: argparse.Namespace) -> None:
@@ -85,10 +46,9 @@ def preprocess(args: argparse.Namespace) -> None:
 
     stops = []
     for index, source in enumerate(plan.get("stops", []), start=1):
-        key = candidate_key(source)
         stops.append(
             {
-                "candidate_key": key,
+                "candidate_key": candidate_key(source),
                 "selected": True,
                 "label": source.get("label", ""),
                 "coord": as_coord(source.get("coord")),
@@ -132,7 +92,7 @@ def preprocess(args: argparse.Namespace) -> None:
         {
             "schema": "felicia.local.journey.v1",
             "id": args.journey,
-            "journal_id": str(uuid.uuid5(NAMESPACE, "journal")),
+            "journal_id": args.journal,
             "slug": args.slug,
             "title": args.title,
             "place": "",
@@ -146,204 +106,6 @@ def preprocess(args: argparse.Namespace) -> None:
     shutil.copy2(args.gpx, workspace / "route.gpx")
     print(f"preprocess ready: {workspace}")
     print("edit journey.json, stops.json, and mementos.json, then run `package` or `preview`")
-
-
-def ask(prompt: str, default: str = "") -> str:
-    suffix = f" [{default}]" if default else ""
-    answer = input(f"{prompt}{suffix}: ").strip()
-    return answer or default
-
-
-def interactive_author(args: argparse.Namespace) -> None:
-    """Let a person curate the generated evidence before it becomes authored data."""
-    workspace = args.workspace.resolve()
-    journey = read_json(workspace / "journey.json")
-    stop_data = read_json(workspace / "stops.json")
-    memento_data = read_json(workspace / "mementos.json")
-
-    print("\nJourney metadata (press Enter to keep the default)")
-    for field in ("title", "place", "country", "region", "date_start", "date_end"):
-        journey[field] = ask(field, str(journey.get(field, "")))
-
-    print("\nStop curation: keep the places that should anchor the journey.")
-    curated_stops = []
-    for stop in stop_data.get("stops", []):
-        key = stop["candidate_key"]
-        label = stop.get("label") or key
-        keep = ask(f"Keep {key} ({label})? y/N", "y" if stop.get("selected", True) else "n").lower()
-        stop["selected"] = keep in {"y", "yes"}
-        if stop["selected"]:
-            stop["label"] = ask("  label", label)
-            curated_stops.append(stop)
-
-    next_manual = len(stop_data.get("stops", [])) + 1
-    while ask("Add a manual stop? y/N", "n").lower() in {"y", "yes"}:
-        key = f"manual-{next_manual:03d}"
-        stop = {
-            "candidate_key": key,
-            "selected": True,
-            "label": ask("  label"),
-            "coord": parse_coord(ask("  coordinate longitude,latitude")),
-            "arrive": ask("  arrive RFC3339"),
-            "depart": ask("  depart RFC3339"),
-            "confidence": 1.0,
-            "review_note": "Manually selected by author.",
-        }
-        stop_data.setdefault("stops", []).append(stop)
-        curated_stops.append(stop)
-        next_manual += 1
-
-    by_stop = {stop["candidate_key"] for stop in curated_stops}
-    mementos = [m for m in memento_data.get("mementos", []) if m.get("stop_key") in by_stop]
-    for memento in mementos:
-        print(f"\nEdit memento {memento.get('id')}")
-        memento["title"] = ask("  title", memento.get("title", ""))
-        memento["kind"] = ask("  kind", memento.get("kind", "note"))
-        memento["state"] = ask("  state (draft/published)", "published")
-        media_default = ",".join(item.get("path", "") for item in memento.get("media", []))
-        media_paths = ask("  media paths (comma-separated)", media_default)
-        memento["media"] = [{"path": path.strip(), "caption": ""} for path in media_paths.split(",") if path.strip()]
-
-    for stop in curated_stops:
-        while ask(f"Add a memento at {stop['label']}? y/N", "n").lower() in {"y", "yes"}:
-            index = len(mementos) + 1
-            mementos.append(
-                {
-                    "id": str(uuid.uuid5(NAMESPACE, f"{args.journey}:memento:{index}")),
-                    "stop_key": stop["candidate_key"],
-                    "seq": index,
-                    "kind": ask("  kind", "note"),
-                    "occurred_at": ask("  occurred_at RFC3339", stop.get("arrive", "")),
-                    "occurred_tz": ask("  timezone", "UTC"),
-                    "title": ask("  title"),
-                    "place": stop["label"],
-                    "geom": stop.get("coord"),
-                    "state": ask("  state (draft/published)", "published"),
-                    "kind_data": {},
-                    "media": [
-                        {"path": path.strip(), "caption": ""}
-                        for path in ask("  media paths (comma-separated)").split(",")
-                        if path.strip()
-                    ],
-                }
-            )
-    write_json(workspace / "journey.json", journey)
-    write_json(workspace / "stops.json", stop_data)
-    write_json(workspace / "mementos.json", {"schema": "felicia.local.mementos.v1", "mementos": mementos})
-    print(f"authoring saved: stops={len(curated_stops)}, mementos={len(mementos)}")
-
-
-def parse_coord(value: str) -> list[float] | None:
-    if not value:
-        return None
-    try:
-        longitude, latitude = (float(part.strip()) for part in value.split(",", 1))
-    except (ValueError, StopIteration):
-        raise SystemExit("coordinate must be longitude,latitude")
-    if not -180 <= longitude <= 180 or not -90 <= latitude <= 90:
-        raise SystemExit("coordinate is out of range")
-    return [longitude, latitude]
-
-
-def safe_media_path(workspace: Path, source: str) -> Path:
-    path = Path(source)
-    if path.is_absolute():
-        resolved = path.resolve()
-    else:
-        resolved = (workspace / path).resolve()
-        if not resolved.exists():
-            resolved = (ROOT / path).resolve()
-    if not resolved.is_file():
-        raise SystemExit(f"media file does not exist: {source}")
-    return resolved
-
-
-def package(args: argparse.Namespace) -> Path:
-    workspace = args.workspace.resolve()
-    journey = read_json(workspace / "journey.json")
-    stop_data = read_json(workspace / "stops.json")
-    memento_data = read_json(workspace / "mementos.json")
-    selected = {
-        stop["candidate_key"]
-        for stop in stop_data.get("stops", [])
-        if stop.get("selected", stop.get("state", "kept") == "kept")
-        and stop.get("state", "kept") != "ignored"
-    }
-    if not journey.get("id") or not journey.get("journal_id"):
-        raise SystemExit("journey.json requires id and journal_id")
-    if not (workspace / "route.gpx").is_file():
-        raise SystemExit("route.gpx is missing; run preprocess first")
-
-    files: dict[str, bytes] = {}
-    journey_yaml = {key: value for key, value in journey.items() if key != "schema"}
-    files["journey.yaml"] = (json.dumps(journey_yaml, ensure_ascii=False) + "\n").encode()
-    package_mementos = []
-    copied_media: dict[str, bytes] = {}
-    for memento in memento_data.get("mementos", []):
-        if memento.get("stop_key") not in selected or memento.get("state") == "archived":
-            continue
-        if not memento.get("id") or not memento.get("occurred_at") or not memento.get("kind"):
-            raise SystemExit("each included memento requires id, kind, and occurred_at")
-        photos = []
-        for photo_index, photo in enumerate(memento.get("media", []), start=1):
-            source = safe_media_path(workspace, str(photo.get("path", "")))
-            name = f"media/{source.name}"
-            data = source.read_bytes()
-            copied_media[name] = data
-            photos.append(
-                {
-                    "id": str(uuid.uuid5(NAMESPACE, f"{memento['id']}:photo:{photo_index}")),
-                    "path": name,
-                    "content_hash": "sha256:" + hashlib.sha256(data).hexdigest(),
-                    "caption": photo.get("caption", ""),
-                    "seq": photo_index,
-                }
-            )
-        package_mementos.append(
-            {
-                key: memento[key]
-                for key in (
-                    "id",
-                    "seq",
-                    "kind",
-                    "occurred_at",
-                    "occurred_tz",
-                    "title",
-                    "place",
-                    "geom",
-                    "kind_data",
-                    "state",
-                )
-                if key in memento
-            }
-            | {"photos": photos}
-        )
-    files["mementos.yaml"] = (json.dumps(package_mementos, ensure_ascii=False) + "\n").encode()
-    files["route.gpx"] = (workspace / "route.gpx").read_bytes()
-    files.update(copied_media)
-
-    manifest_lines = [
-        'schema_version: "1"',
-        f'package_id: "local-{journey["id"]}"',
-        'source: "felicia local journey workflow"',
-        "files:",
-    ]
-    for name, data in files.items():
-        manifest_lines.extend(
-            [
-                f"  - path: {name}",
-                "    kind: local-workflow",
-                f"    bytes: {len(data)}",
-                f"    sha256: {hashlib.sha256(data).hexdigest()}",
-            ]
-        )
-    files["manifest.yaml"] = ("\n".join(manifest_lines) + "\n").encode()
-    output = workspace / "journey.zip"
-    with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        for name, data in files.items():
-            archive.writestr(name, data)
-    print(f"package ready: {output} (stops={len(selected)}, mementos={len(package_mementos)}, media={len(copied_media)})")
-    return output
 
 
 def preview(args: argparse.Namespace) -> None:
@@ -364,6 +126,7 @@ def parser() -> argparse.ArgumentParser:
     parser.add_argument("command", choices=("run", "preprocess", "package", "preview"))
     parser.add_argument("--workspace", type=Path, default=Path(".felicia/local-journey"))
     parser.add_argument("--journey", default="0190cbde-f300-7000-8000-111111111111")
+    parser.add_argument("--journal", default="0190cbde-f300-7000-8000-000000000000")
     parser.add_argument("--slug", default="local-journey")
     parser.add_argument("--title", default="Local journey draft")
     parser.add_argument("--gpx", type=Path)

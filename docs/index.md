@@ -23,6 +23,7 @@ The exploration trail, roughly in order:
 - [Authoring & publish flow](research/authoring-publish-flow.md)
 - [Architecture experiments](experiments/README.md)
 - [GitHub Pages design demo](experiments/2026-07-17-pages-design-demo.md)
+- [Local workflow boundaries](research/local-workflow-boundaries.md) · [Media support matrix](research/media-support-matrix.md)
 - [Public read contract](experiments/2026-07-17-public-read-contract.md)
 - [GitHub Pages v0.1 release](release/github-pages-v0.1.md)
 - [SQLite-backed Pages epic](roadmap/pages-v1-epic.md)
