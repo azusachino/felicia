@@ -13,17 +13,26 @@ import (
 	"github.com/azusachino/felicia/core/domain"
 )
 
+// CanonicalVersion identifies the stable Felicia-owned semantic contract.
 const CanonicalVersion = "felicia.canonical.v1"
 
+// Capability identifies an optional behavior an adapter can provide.
 type Capability string
 
 const (
-	CapabilityRoutes      Capability = "routes.read"
-	CapabilityVisits      Capability = "visits.read"
-	CapabilityMedia       Capability = "media.read"
-	CapabilityAuthoring   Capability = "mementos.write"
-	CapabilityReview      Capability = "stops.review"
+	// CapabilityRoutes reads normalized route evidence.
+	CapabilityRoutes Capability = "routes.read"
+	// CapabilityVisits reads normalized visit evidence.
+	CapabilityVisits Capability = "visits.read"
+	// CapabilityMedia reads normalized media evidence.
+	CapabilityMedia Capability = "media.read"
+	// CapabilityAuthoring writes authored mementos.
+	CapabilityAuthoring Capability = "mementos.write"
+	// CapabilityReview applies explicit stop review decisions.
+	CapabilityReview Capability = "stops.review"
+	// CapabilitySuggestions proposes non-mutating authoring changes.
 	CapabilitySuggestions Capability = "suggestions.propose"
+	// CapabilityPublication writes a public projection.
 	CapabilityPublication Capability = "publication.write"
 )
 
@@ -46,27 +55,32 @@ type Trait interface {
 	Capabilities() []Capability
 }
 
+// RouteSource reads normalized route evidence for a time range.
 type RouteSource interface {
 	Trait
 	FetchRoutes(context.Context, time.Time, time.Time) ([]domain.Route, error)
 }
 
+// VisitSource reads normalized visit evidence for a time range.
 type VisitSource interface {
 	Trait
 	FetchVisits(context.Context, time.Time, time.Time) ([]domain.Visit, error)
 }
 
+// MediaSource reads normalized media evidence for a time range.
 type MediaSource interface {
 	Trait
 	FetchMedia(context.Context, time.Time, time.Time) ([]domain.MediaAsset, error)
 }
 
+// AuthoringStore applies revision-protected authored memento changes.
 type AuthoringStore interface {
 	Trait
 	GetMemento(context.Context, uuid.UUID) (*domain.Memento, error)
 	ApplyManualMementoPatch(context.Context, *domain.ManualMementoPatch) error
 }
 
+// CandidateReviewStore exposes private stop candidates and explicit reviews.
 type CandidateReviewStore interface {
 	Trait
 	ListStopCandidatesByJourney(context.Context, uuid.UUID) ([]*domain.StopCandidate, error)
