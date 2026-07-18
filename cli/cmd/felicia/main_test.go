@@ -48,6 +48,24 @@ func TestCLIImportAndStaticCompileEndToEnd(t *testing.T) {
 	}
 }
 
+func TestCLIJourneyPlanJSONL(t *testing.T) {
+	root := t.TempDir()
+	gpx := filepath.Join(root, "route.gpx")
+	content := `<?xml version="1.0"?><gpx><trk><trkseg><trkpt lat="35" lon="135"><time>2026-04-01T09:00:00Z</time></trkpt><trkpt lat="35.0001" lon="135.0001"><time>2026-04-01T10:00:00Z</time></trkpt></trkseg></trk></gpx>`
+	if err := os.WriteFile(gpx, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var output strings.Builder
+	err := execute([]string{"journey", "plan", "--journey", "00000000-0000-0000-0000-000000000001", "--gpx", gpx, "--format", "jsonl"}, &output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(output.String()), "\n")
+	if len(lines) != 2 || !strings.Contains(lines[0], `"type":"stop"`) || !strings.Contains(lines[1], `"type":"summary"`) {
+		t.Fatalf("unexpected JSONL output: %s", output.String())
+	}
+}
+
 func writeFixturePackage(t *testing.T, filename string) string {
 	t.Helper()
 	files := map[string][]byte{

@@ -17,9 +17,9 @@ const (
 // EvidenceRef is a stable, explainable link from a candidate to source material.
 // Locator identifies a segment, record, or asset within the source identity.
 type EvidenceRef struct {
-	Kind    EvidenceKind
-	Source  SourceIdentity
-	Locator string
+	Kind    EvidenceKind   `json:"kind"`
+	Source  SourceIdentity `json:"source"`
+	Locator string         `json:"locator"`
 }
 
 // Validate checks the minimum identity required for a durable evidence link.

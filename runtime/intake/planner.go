@@ -43,9 +43,9 @@ const (
 
 // Issue is an explainable planner diagnostic.
 type Issue struct {
-	Severity IssueSeverity
-	Code     string
-	Message  string
+	Severity IssueSeverity `json:"severity"`
+	Code     string        `json:"code"`
+	Message  string        `json:"message"`
 }
 
 // PlanInput contains already-normalized source values. Adapters and storage
@@ -69,14 +69,15 @@ type PlanConfig struct {
 
 // DraftPlan is the read-only result of intake planning.
 type DraftPlan struct {
-	Schema            string
-	Version           string
-	SourceFingerprint string
-	Routes            []domain.Route
-	Visits            []domain.Visit
-	Stops             []domain.StopCandidate
-	Mementos          []domain.MementoCandidate
-	Issues            []Issue
+	JourneyID         uuid.UUID                 `json:"journey_id"`
+	Schema            string                    `json:"schema"`
+	Version           string                    `json:"version"`
+	SourceFingerprint string                    `json:"source_fingerprint,omitempty"`
+	Routes            []domain.Route            `json:"routes"`
+	Visits            []domain.Visit            `json:"visits"`
+	Stops             []domain.StopCandidate    `json:"stops"`
+	Mementos          []domain.MementoCandidate `json:"mementos"`
+	Issues            []Issue                   `json:"issues"`
 }
 
 // DefaultConfig returns the deterministic planner defaults.
@@ -98,6 +99,7 @@ func BuildPlan(input PlanInput, config PlanConfig) (DraftPlan, error) {
 	}
 	config = withDefaults(config)
 	plan := DraftPlan{
+		JourneyID:         input.JourneyID,
 		Schema:            PlanSchema,
 		Version:           "1",
 		SourceFingerprint: input.SourceFingerprint,

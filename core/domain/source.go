@@ -14,8 +14,8 @@ import (
 // Local UUIDs identify felicia rows; source identities identify observations
 // across repeated imports and must therefore survive a re-run.
 type SourceIdentity struct {
-	System     string
-	ExternalID string
+	System     string `json:"system"`
+	ExternalID string `json:"external_id"`
 }
 
 // Valid reports whether an identity is usable as an idempotency key.
@@ -48,9 +48,9 @@ func (i SourceIdentity) Validate() error {
 // describes origin, while the write model will decide whether an authored
 // field may be changed.
 type Provenance struct {
-	Source     SourceIdentity
-	ObservedAt time.Time
-	Confidence float64
+	Source     SourceIdentity `json:"source"`
+	ObservedAt time.Time      `json:"observed_at"`
+	Confidence float64        `json:"confidence"`
 }
 
 // ObservationKind identifies the canonical shape produced by an adapter.
@@ -219,18 +219,18 @@ type PhotoAsset = MediaAsset
 // candidate, not a persisted Memento: authored fields and publication state
 // belong to the write side.
 type MementoCandidate struct {
-	Source      SourceIdentity
-	StopKey     string
-	Kind        string
-	OccurredAt  time.Time
-	OccurredTZ  string
-	Geom        orb.Geometry
-	Title       string
-	Place       string
-	KindData    map[string]any
-	Media       []MediaAsset
-	MemoryLinks []MemoryLink
-	Provenance  Provenance
+	Source      SourceIdentity `json:"source"`
+	StopKey     string         `json:"stop_key"`
+	Kind        string         `json:"kind"`
+	OccurredAt  time.Time      `json:"occurred_at"`
+	OccurredTZ  string         `json:"occurred_tz"`
+	Geom        orb.Geometry   `json:"geom"`
+	Title       string         `json:"title"`
+	Place       string         `json:"place"`
+	KindData    map[string]any `json:"kind_data"`
+	Media       []MediaAsset   `json:"media"`
+	MemoryLinks []MemoryLink   `json:"memory_links"`
+	Provenance  Provenance     `json:"provenance"`
 }
 
 // RouteSource yields normalized route segments for a time range. Dawarich and
