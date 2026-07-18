@@ -32,6 +32,10 @@
             sqlc
             prettier
             uv
+            # Provide the interpreter pinned by .python-version so uv can run
+            # with a system Python everywhere; uv-managed manylinux builds
+            # cannot exec inside non-FHS (nix) containers.
+            python314
           ];
         };
       });

@@ -182,12 +182,34 @@ def run_workflow(ids: WorkflowIDs) -> None:
     print("full journey workflow passed")
 
 
+RATE_LIMIT_RETRIES = 60
+
+
+def fetch_response(path: str) -> tuple[int, bytes]:
+    """GET a path, waiting out the API's rate limiter (1 req/s, burst 20).
+
+    The parity and negative-case checks below issue more requests than the
+    server's default burst allows; a well-behaved client backs off on 429
+    instead of failing, so the limiter's defaults stay untouched.
+    """
+    for _ in range(RATE_LIMIT_RETRIES):
+        req = urllib.request.Request(f"{BASE_URL}{path}")
+        try:
+            with urllib.request.urlopen(req) as response:
+                return response.status, response.read()
+        except urllib.error.HTTPError as exc:
+            if exc.code == 429:
+                time.sleep(1.1)
+                continue
+            return exc.code, exc.read()
+    raise RuntimeError(f"GET {path} still rate-limited after {RATE_LIMIT_RETRIES} attempts")
+
+
 def fetch_raw(path: str) -> bytes:
     """Fetch the raw response body for a live public endpoint (no JSON decode)."""
-    req = urllib.request.Request(f"{BASE_URL}{path}")
-    with urllib.request.urlopen(req) as response:
-        expect(response.status == 200, f"GET {path} expected 200, got {response.status}")
-        return response.read()
+    status, body = fetch_response(path)
+    expect(status == 200, f"GET {path} expected 200, got {status}")
+    return body
 
 
 def fetch_status(path: str) -> int:
@@ -198,12 +220,8 @@ def fetch_status(path: str) -> int:
     *expected* error status, such as the 404 a journey with no published
     mementos should return.
     """
-    req = urllib.request.Request(f"{BASE_URL}{path}")
-    try:
-        with urllib.request.urlopen(req) as response:
-            return response.status
-    except urllib.error.HTTPError as exc:
-        return exc.code
+    status, _ = fetch_response(path)
+    return status
 
 
 def read_static_file(out_dir: str, relative_path: str) -> bytes:
@@ -365,7 +383,7 @@ def run_static_parity_check(context: ServerContext) -> None:
         status = fetch_status(f"/api/v1/journeys/{unpublished_journey}/mementos")
         expect(status == 404, f"expected 404 for unpublished journey mementos, got {status}")
 
-        _, live_index = request("/api/v1/journeys")
+        live_index = json.loads(fetch_raw("/api/v1/journeys"))
         expect(
             all(item.get("id") != unpublished_journey for item in live_index),
             f"unpublished journey leaked into the live journeys index: {live_index!r}",

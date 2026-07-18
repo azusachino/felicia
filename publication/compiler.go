@@ -145,6 +145,11 @@ func geometry(value orb.Geometry) *GeoJSONGeometry {
 	case orb.Point:
 		return &GeoJSONGeometry{Type: "Point", Coordinates: []float64{value.X(), value.Y()}}
 	case orb.MultiLineString:
+		// An empty route is omitted from the projection entirely rather
+		// than encoded as a degenerate geometry.
+		if len(value) == 0 {
+			return nil
+		}
 		coordinates := make([][][]float64, 0, len(value))
 		for _, line := range value {
 			points := make([][]float64, 0, len(line))
@@ -155,6 +160,9 @@ func geometry(value orb.Geometry) *GeoJSONGeometry {
 		}
 		return &GeoJSONGeometry{Type: "MultiLineString", Coordinates: coordinates}
 	case orb.LineString:
+		if len(value) == 0 {
+			return nil
+		}
 		points := make([][]float64, 0, len(value))
 		for _, point := range value {
 			points = append(points, []float64{point.X(), point.Y()})

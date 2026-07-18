@@ -35,13 +35,13 @@ Invariants that must hold at every step:
 
 ## Per-stage status
 
-| # | Stage | Status | Where it lives |
-|---|-------|--------|----------------|
-| 1 | **Data collection** | ✅ Done | Dawarich client (`providers/dawarich/`), Immich client (`providers/immich/`), local GPX + photo/sidecar source (`providers/local/`), mock upstream (`scripts/mock_upstream.py`) |
-| 2 | **Import / intake** | ✅ Done (deterministic) | Field-scoped importer (`runtime/importer/`), dwell-cluster intake planner (`runtime/intake/planner.go`), SQLite + PostgreSQL providers behind shared contract tests |
-| 3 | **Authoring** | ⚠️ File/CLI path complete; **GUI is the gap** | Local authoring schema v1 (`schemas/local-authoring-v1.schema.json`), CLI `journey plan/apply/review`, full admin API (`server/api/server.go`); `apps/web-admin` is a read-only overview shell |
-| 4 | **Publication** | ✅ Done | Published-only static compiler (`publication/compiler.go`), byte-identical to the live `/api/v1` read contract, enforced public media boundary |
-| 5 | **Deployment** | ⚠️ Fixture demo only | Pages workflow deploys a checked-in fixture; SQLite-backed publication is epic [FELICIA-PAGES-01](pages-v1-epic.md) (GitHub issues [#40–#50](https://github.com/azusachino/felicia/issues/40)) |
+| #   | Stage               | Status                                        | Where it lives                                                                                                                                                                                 |
+| --- | ------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Data collection** | ✅ Done                                       | Dawarich client (`providers/dawarich/`), Immich client (`providers/immich/`), local GPX + photo/sidecar source (`providers/local/`), mock upstream (`scripts/mock_upstream.py`)                |
+| 2   | **Import / intake** | ✅ Done (deterministic)                       | Field-scoped importer (`runtime/importer/`), dwell-cluster intake planner (`runtime/intake/planner.go`), SQLite + PostgreSQL providers behind shared contract tests                            |
+| 3   | **Authoring**       | ⚠️ File/CLI path complete; **GUI is the gap** | Local authoring schema v1 (`schemas/local-authoring-v1.schema.json`), CLI `journey plan/apply/review`, full admin API (`server/api/server.go`); `apps/web-admin` is a read-only overview shell |
+| 4   | **Publication**     | ✅ Done                                       | Published-only static compiler (`publication/compiler.go`); live/static content parity is enforced by a shared projection layer (`publication/public.go`) and a workflow parity check          |
+| 5   | **Deployment**      | ⚠️ Wired; remote run pending                  | Pages workflow builds the real compiled artifact from the example workspace (`scripts/felicia.py preview`); the workflow has not yet run on GitHub — epic [FELICIA-PAGES-01](pages-v1-epic.md) |
 
 Deliberately deferred (not gaps): AI enrichment
 ([ADR-0024](../adr/0024-optional-ai-enrichment.md)), R2/S3 object storage
@@ -94,7 +94,13 @@ projection:
   `taken_at`). Public projection and the published-only gate now live once in
   the `publication` package and are shared by the live API and the static
   compiler; a journey without published mementos has no public projection on
-  either side. Verification pending (local toolchain unavailable).
+  either side. Verified end to end (`make check`, `make test-features`,
+  `make test-workflow`): a mixed-state seed fixture
+  (`tests/fixtures/local-journey-mixed-state/`) drives the real
+  package→import→compile pipeline with media/publish-invariant assertions,
+  and the workflow harness now proves live/static JSON parity plus
+  unpublished-journey exclusion against the same SQLite database. Remaining
+  for Phase 1: run the Pages workflow remotely (epic 01.7/01.10).
 - **2026-07-18** — Journey selected and documented. Stages 1/2/4 complete;
   stage 3 blocked on the admin GUI; stage 5 blocked on epic FELICIA-PAGES-01.
   Baseline includes PR #53 (canonical contract v1, local authoring schema v1,
