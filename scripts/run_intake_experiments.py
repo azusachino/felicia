@@ -61,10 +61,12 @@ def baseline_points() -> list[tuple[float, float, str]]:
     ]
 
 
-def plan_command(route: Path, photos: Path | None = None, fmt: str = "json") -> list[str]:
+def plan_command(route: Path, photos: Path | None = None, fmt: str = "json", sidecar: Path | None = None) -> list[str]:
     command = [str(CLI), "journey", "plan", "--journey", JOURNEY, "--gpx", str(route), "--format", fmt]
     if photos is not None:
         command.extend(["--photos", str(photos)])
+    if sidecar is not None:
+        command.extend(["--sidecar", str(sidecar)])
     return command
 
 
@@ -104,9 +106,13 @@ def main() -> None:
         results.append(case_result("US-02-review-stops", "partial", first, reason="plan is executable, but this harness does not fabricate authored review actions or exercise an HTTP review session"))
 
         metadata = run(plan_command(route, photos))
-        if metadata["exit_code"] == 0:
+        sidecar = workspace / "photos.jsonl"
+        sidecar.write_text('{"path":"ticket.jpg","at":"2026-04-01T09:10:00Z","coord":[135.0001,35.0001]}\n', encoding="utf-8")
+        promoted = run(plan_command(route, photos, sidecar=sidecar))
+        if metadata["exit_code"] == 0 and promoted["exit_code"] == 0:
             plan = json.loads(str(metadata["stdout"]))
-            results.append(case_result("US-03-missing-metadata", "partial", metadata, discovered_media=3, matched_mementos=len(plan["mementos"]), unattached_media=3, reason="local adapter preserves missing metadata but has no EXIF/JSONL sidecar promotion yet"))
+            promoted_plan = json.loads(str(promoted["stdout"]))
+            results.append(case_result("US-03-missing-metadata", "partial", promoted, discovered_media=3, baseline_mementos=len(plan["mementos"]), sidecar_mementos=len(promoted_plan["mementos"]), unattached_media_after_sidecar=2, reason="JSONL sidecar promotion works; EXIF extraction and confidence classes remain incomplete"))
         else:
             results.append(case_result("US-03-missing-metadata", "fail", metadata, reason="local media plan failed"))
 

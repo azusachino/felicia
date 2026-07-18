@@ -6,20 +6,19 @@ The cases are deliberately small and deterministic. They are source fixtures,
 not public journey content.
 
 Current status: these cases describe the proposed raw-intake contract. The
-current `felicia-cli` can execute the prepared-package path, but it does not yet
-have a `journey plan` command that consumes a raw GPX and photo directory. A
-case marked `current: blocked` is therefore an intentional capability-gap test.
+offline `felicia-cli journey plan` path is executable; partial cases identify
+deliberate capability gaps rather than missing command coverage.
 
 ## Cases
 
-| Case                       | Class | Story                                  | Current expectation                                       |
-| -------------------------- | ----- | -------------------------------------- | --------------------------------------------------------- |
-| `US-01-plan`               | happy | Plan without mutation                  | blocked: no raw plan command                              |
-| `US-02-review-stops`       | happy | Review evidence-backed stops           | blocked: no persisted stop candidates                     |
-| `US-03-missing-metadata`   | evil  | Handle photos without metadata         | blocked: no local-photo adapter/sidecar                   |
-| `US-04-mementos-from-stop` | happy | Create multiple mementos from one stop | partial: mementos work, stop link does not                |
-| `US-05-agent-suggestions`  | evil  | Agent suggestions preserve authorship  | partial: patch boundary exists, suggestion store does not |
-| `US-06-safe-publish`       | evil  | Publish only reviewed story            | works for prepared packages; raw-intake path blocked      |
+| Case                       | Class | Story                                  | Current expectation                                             |
+| -------------------------- | ----- | -------------------------------------- | --------------------------------------------------------------- |
+| `US-01-plan`               | happy | Plan without mutation                  | pass: raw GPX/local media plan and deterministic output         |
+| `US-02-review-stops`       | happy | Review evidence-backed stops           | partial: persistence/review API exists; session fixture pending |
+| `US-03-missing-metadata`   | evil  | Handle photos without metadata         | partial: JSONL sidecar works; EXIF/confidence classes pending   |
+| `US-04-mementos-from-stop` | happy | Create multiple mementos from one stop | partial: mementos work, stop link does not                      |
+| `US-05-agent-suggestions`  | evil  | Agent suggestions preserve authorship  | partial: patch boundary exists, suggestion store does not       |
+| `US-06-safe-publish`       | evil  | Publish only reviewed story            | works for prepared packages; raw-intake path blocked            |
 
 Happy cases prove that the intended workflow is useful. Evil cases prove that
 bad or incomplete inputs fail safely and remain explainable. Both are required.
@@ -106,10 +105,10 @@ Generated databases, media, reports, and sites belong under `.felicia/` and
 must not be committed. The small source inputs and expected reports in this
 directory are committed so the experiments remain reproducible.
 
-The next implementation should add one read-only command:
+The current read-only command is:
 
 ```text
-felicia-cli journey plan --track <file.gpx> --photos <directory> --json
+felicia-cli journey plan --gpx <file.gpx> --photos <directory> [--sidecar <photos.jsonl>] --format json
 ```
 
 That command should consume these source cases without mutating the database.

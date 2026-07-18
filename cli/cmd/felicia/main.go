@@ -76,6 +76,7 @@ func journeyPlanCommand(args []string, output io.Writer) error {
 	journeyID := flags.String("journey", "", "journey UUID")
 	gpxPath := flags.String("gpx", "", "local GPX path")
 	photosPath := flags.String("photos", "", "local media directory")
+	sidecarPath := flags.String("sidecar", "", "local photo JSONL sidecar")
 	from := flags.String("from", "", "RFC3339 range start")
 	to := flags.String("to", "", "RFC3339 range end")
 	format := flags.String("format", "json", "json or jsonl")
@@ -99,7 +100,7 @@ func journeyPlanCommand(args []string, output io.Writer) error {
 	}
 	var media domain.PhotoSource
 	if *photosPath != "" {
-		media = local.NewPhotoSource(*photosPath)
+		media = local.NewPhotoSourceWithSidecar(*photosPath, *sidecarPath)
 	}
 	fingerprint, err := fileFingerprint(*gpxPath)
 	if err != nil {

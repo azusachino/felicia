@@ -74,3 +74,22 @@ func TestPhotoSourceIsDeterministicAndPreservesMissingMetadata(t *testing.T) {
 		t.Fatalf("asset metadata = %#v", asset)
 	}
 }
+
+func TestPhotoSourceAppliesValidSidecarAndSkipsMalformedRecords(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "ticket.jpg"), []byte("jpeg bytes"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	sidecar := filepath.Join(dir, "photos.jsonl")
+	content := "not json\n" + `{"path":"ticket.jpg","at":"2026-04-01T09:10:00Z","coord":[135.1,35.1],"title":"Ticket"}` + "\n" + `{"path":"../private.jpg","at":"2026-04-01T09:10:00Z"}` + "\n"
+	if err := os.WriteFile(sidecar, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	assets, err := NewPhotoSourceWithSidecar(dir, sidecar).FetchAssets(context.Background(), time.Time{}, time.Time{})
+	if err != nil || len(assets) != 1 {
+		t.Fatalf("assets = %#v, %v", assets, err)
+	}
+	if assets[0].At.IsZero() || assets[0].Coord == nil || assets[0].Title != "Ticket" || assets[0].Provenance.Source.System != "local-sidecar" || assets[0].Provenance.Confidence != .9 {
+		t.Fatalf("sidecar metadata was not applied: %#v", assets[0])
+	}
+}

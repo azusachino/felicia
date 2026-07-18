@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -79,12 +80,22 @@ func (s *GPXSource) FetchRoutes(ctx context.Context, from, to time.Time) ([]doma
 // capture timestamp without EXIF decoding; At is therefore zero and the
 // planner leaves them visible as unattached evidence instead of treating file
 // modification time as a memory timestamp.
-type PhotoSource struct{ root string }
+type PhotoSource struct {
+	root    string
+	sidecar string
+}
 
 var _ domain.PhotoSource = (*PhotoSource)(nil)
 
 // NewPhotoSource creates an offline media source rooted at root.
 func NewPhotoSource(root string) *PhotoSource { return &PhotoSource{root: root} }
+
+// NewPhotoSourceWithSidecar loads optional user-authored JSONL metadata. Each
+// record is keyed by a path relative to root; malformed records are ignored so
+// one bad line cannot prevent the remaining photo tray from opening.
+func NewPhotoSourceWithSidecar(root, sidecar string) *PhotoSource {
+	return &PhotoSource{root: root, sidecar: sidecar}
+}
 
 // FetchAssets returns deterministic image/video assets. The requested range
 // is intentionally not applied to timestamp-less local files.
@@ -115,15 +126,83 @@ func (s *PhotoSource) FetchAssets(ctx context.Context, _, _ time.Time) ([]domain
 		return nil, fmt.Errorf("walk media root %s: %w", s.root, err)
 	}
 	sort.Strings(paths)
+	metadata, err := readSidecar(s.sidecar)
+	if err != nil {
+		return nil, err
+	}
 	assets := make([]domain.PhotoAsset, 0, len(paths))
 	for _, path := range paths {
 		asset, err := localAsset(s.root, path)
 		if err != nil {
 			return nil, err
 		}
+		if record, ok := metadata[asset.ID]; ok {
+			applySidecar(&asset, record)
+		}
 		assets = append(assets, asset)
 	}
 	return assets, nil
+}
+
+type sidecarRecord struct {
+	Path      string    `json:"path"`
+	At        string    `json:"at"`
+	Timestamp string    `json:"timestamp"`
+	Coord     []float64 `json:"coord"`
+	Title     string    `json:"title"`
+	Kind      string    `json:"kind"`
+}
+
+func readSidecar(filename string) (map[string]sidecarRecord, error) {
+	metadata := make(map[string]sidecarRecord)
+	if filename == "" {
+		return metadata, nil
+	}
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, fmt.Errorf("open photo sidecar %s: %w", filename, err)
+	}
+	defer func() { _ = file.Close() }()
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		var record sidecarRecord
+		if json.Unmarshal(scanner.Bytes(), &record) != nil || !safeRelativePath(record.Path) {
+			continue
+		}
+		metadata[filepath.ToSlash(record.Path)] = record
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("read photo sidecar %s: %w", filename, err)
+	}
+	return metadata, nil
+}
+
+func applySidecar(asset *domain.PhotoAsset, record sidecarRecord) {
+	value := record.At
+	if value == "" {
+		value = record.Timestamp
+	}
+	if value != "" {
+		if at, err := time.Parse(time.RFC3339, value); err == nil {
+			asset.At = at
+			asset.Provenance = domain.Provenance{Source: domain.SourceIdentity{System: "local-sidecar", ExternalID: asset.ID}, ObservedAt: at, Confidence: 0.9}
+		}
+	}
+	if len(record.Coord) >= 2 && record.Coord[0] >= -180 && record.Coord[0] <= 180 && record.Coord[1] >= -90 && record.Coord[1] <= 90 {
+		point := orb.Point{record.Coord[0], record.Coord[1]}
+		asset.Coord = &point
+	}
+	if record.Title != "" {
+		asset.Title = record.Title
+	}
+	if record.Kind != "" {
+		asset.Kind = domain.MediaKind(record.Kind)
+	}
+}
+
+func safeRelativePath(value string) bool {
+	clean := filepath.ToSlash(filepath.Clean(value))
+	return value != "" && clean == filepath.ToSlash(value) && clean != "." && !strings.HasPrefix(clean, "/") && !strings.HasPrefix(clean, "../")
 }
 
 type gpxSegment []domain.TrackPoint

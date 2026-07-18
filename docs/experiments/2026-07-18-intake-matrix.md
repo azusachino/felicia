@@ -19,16 +19,16 @@ make experiment-intake
 
 ## Results
 
-| Case                        | Result             | Evidence                                                                                                                 |
-| --------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| US-01 plan without mutation | pass               | Raw GPX/local-photo plan executes, returns a versioned plan, and repeated output hashes match.                           |
-| US-02 review stops          | partial            | Persistence and review APIs exist, but this harness does not invent author decisions or exercise an HTTP review session. |
-| US-03 missing metadata      | partial            | Files remain discoverable and unattached; EXIF/JSONL sidecar promotion is not implemented.                               |
-| US-04 multiple mementos     | partial            | The current planner emits at most one generic memento candidate per matched stop.                                        |
-| US-05 agent suggestions     | not run            | Suggestion schema/store is intentionally not implemented yet.                                                            |
-| US-06 safe publish          | pass-prepared-only | Existing prepared-package publication path validates; raw-intake publication is not wired.                               |
-| Evil: invalid GPX           | pass               | Invalid coordinates fail before a plan is returned.                                                                      |
-| Evil: large GPX             | baseline           | 20,000 points are measured; the current parser materializes the XML document, so memory is not yet bounded.              |
+| Case                        | Result             | Evidence                                                                                                                                             |
+| --------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| US-01 plan without mutation | pass               | Raw GPX/local-photo plan executes, returns a versioned plan, and repeated output hashes match.                                                       |
+| US-02 review stops          | partial            | Persistence and review APIs exist, but this harness does not invent author decisions or exercise an HTTP review session.                             |
+| US-03 missing metadata      | partial            | Files remain discoverable; a JSONL sidecar now promotes timestamp/location metadata, while EXIF extraction and confidence classes remain incomplete. |
+| US-04 multiple mementos     | partial            | The current planner emits at most one generic memento candidate per matched stop.                                                                    |
+| US-05 agent suggestions     | not run            | Suggestion schema/store is intentionally not implemented yet.                                                                                        |
+| US-06 safe publish          | pass-prepared-only | Existing prepared-package publication path validates; raw-intake publication is not wired.                                                           |
+| Evil: invalid GPX           | pass               | Invalid coordinates fail before a plan is returned.                                                                                                  |
+| Evil: large GPX             | baseline           | 20,000 points are measured; the current parser materializes the XML document, so memory is not yet bounded.                                          |
 
 ## Pushback and implementation gaps
 
