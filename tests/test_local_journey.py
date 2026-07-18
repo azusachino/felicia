@@ -6,12 +6,13 @@ from argparse import Namespace
 from pathlib import Path
 
 from scripts.local_journey import build_package
-from scripts.validate_local_authoring import validate_document, validate_workspace
+from scripts.validate_local_authoring import validate_document, validate_workspace, validate_workspace_root
 
 
 class LocalJourneyWorkflowTest(unittest.TestCase):
     def test_preview_workspaces_validate_as_independent_journeys(self):
         root = Path(__file__).resolve().parents[1] / "examples" / "preview" / "local-journey"
+        validate_workspace_root(root)
         workspaces = [root, root / "kansai-ramble"]
         for workspace in workspaces:
             validate_workspace(workspace)
@@ -114,6 +115,26 @@ class LocalJourneyWorkflowTest(unittest.TestCase):
             plan_path.write_text(json.dumps(document), encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "routes.0.DistanceM"):
                 validate_document(plan_path)
+
+    def test_workspace_manifest_rejects_duplicate_journey_paths(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "workspace.json").write_text(
+                json.dumps(
+                    {
+                        "schema": "felicia.local.workspace.v1",
+                        "version": "1",
+                        "journal_id": "0190cbde-f300-7000-8000-000000000000",
+                        "journeys": [
+                            {"path": ".", "id": "0190cbde-f300-7000-8000-111111111111"},
+                            {"path": ".", "id": "0190cbde-f300-7000-8000-222222222222"},
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "path is duplicated"):
+                validate_workspace_root(root)
 
     def test_package_keeps_only_selected_stops_and_copies_media(self):
         with tempfile.TemporaryDirectory() as directory:

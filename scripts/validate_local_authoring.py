@@ -11,11 +11,45 @@ from jsonschema import Draft202012Validator, FormatChecker
 ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_PATH = ROOT / "schemas" / "local-authoring-v1.schema.json"
 DEFINITION_FOR_FILE = {
+    "workspace.json": "workspace",
     "journey.json": "journey",
     "stops.json": "stops_file",
     "mementos.json": "mementos_file",
     "plan.json": "plan",
 }
+
+
+def validate_workspace_root(root: Path) -> None:
+    manifest_path = root / "workspace.json"
+    validate_document(manifest_path)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    root_resolved = root.resolve()
+    seen_paths: set[Path] = set()
+    seen_ids: set[str] = set()
+    for entry in manifest["journeys"]:
+        journey_path = (root / entry["path"]).resolve()
+        try:
+            journey_path.relative_to(root_resolved)
+        except ValueError as error:
+            raise ValueError(f"workspace journey escapes root: {entry['path']}") from error
+        if journey_path in seen_paths:
+            raise ValueError(f"workspace journey path is duplicated: {entry['path']}")
+        if entry["id"] in seen_ids:
+            raise ValueError(f"workspace journey ID is duplicated: {entry['id']}")
+        seen_paths.add(journey_path)
+        seen_ids.add(entry["id"])
+    for entry in manifest["journeys"]:
+        journey_path = (root / entry["path"]).resolve()
+        if not journey_path.is_dir():
+            raise ValueError(f"workspace journey directory is missing: {entry['path']}")
+        validate_workspace(journey_path)
+        journey = json.loads((journey_path / "journey.json").read_text(encoding="utf-8"))
+        if journey["id"] != entry["id"]:
+            raise ValueError(f"workspace journey ID mismatch: {entry['path']}")
+        if journey["journal_id"] != manifest["journal_id"]:
+            raise ValueError(f"workspace journal ID mismatch: {entry['path']}")
+        if entry.get("slug") and journey.get("slug") != entry["slug"]:
+            raise ValueError(f"workspace journey slug mismatch: {entry['path']}")
 
 
 def validate_document(path: Path) -> None:

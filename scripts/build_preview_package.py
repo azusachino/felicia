@@ -9,6 +9,7 @@ from argparse import Namespace
 from pathlib import Path
 
 from local_journey import build_package
+from validate_local_authoring import validate_workspace_root
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -47,7 +48,13 @@ def build_from_local_workspace(source: Path, workspace: Path) -> Path:
 def main() -> None:
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     source_root = ROOT / "examples" / "preview" / "local-journey"
-    sources = [source_root, *sorted(path for path in source_root.iterdir() if path.is_dir())]
+    manifest = source_root / "workspace.json"
+    if manifest.is_file():
+        validate_workspace_root(source_root)
+        entries = json.loads(manifest.read_text(encoding="utf-8"))["journeys"]
+        sources = [(source_root / entry["path"]).resolve() for entry in entries]
+    else:
+        sources = [source_root, *sorted(path for path in source_root.iterdir() if path.is_dir())]
     shutil.rmtree(PACKAGE_DIR, ignore_errors=True)
     PACKAGE_DIR.mkdir(parents=True, exist_ok=True)
     generated = []

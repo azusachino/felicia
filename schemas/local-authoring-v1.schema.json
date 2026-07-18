@@ -44,6 +44,36 @@
       },
       "additionalProperties": false
     },
+    "workspace_journey": {
+      "type": "object",
+      "required": ["path", "id"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?:\\.|[A-Za-z0-9][A-Za-z0-9._-]*)(?:/[A-Za-z0-9][A-Za-z0-9._-]*)*$"
+        },
+        "id": { "type": "string", "format": "uuid" },
+        "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "title": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "workspace": {
+      "type": "object",
+      "required": ["schema", "version", "journal_id", "journeys"],
+      "properties": {
+        "schema": { "const": "felicia.local.workspace.v1" },
+        "version": { "const": "1" },
+        "journal_id": { "type": "string", "format": "uuid" },
+        "journeys": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/workspace_journey" }
+        }
+      },
+      "additionalProperties": false
+    },
     "stop": {
       "type": "object",
       "required": ["candidate_key", "selected", "label"],
