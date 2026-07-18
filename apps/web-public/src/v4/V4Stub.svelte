@@ -70,7 +70,9 @@
     <div class="tag-hole"></div>
     <span class="tag-kind">{template?.label}</span>
     <strong>{t(memento.title)}</strong>
-    <small>{t(memento.vendor)} · {memento.price}</small>
+    {#if t(memento.vendor) || memento.price}
+      <small>{[t(memento.vendor), memento.price].filter(Boolean).join(" · ")}</small>
+    {/if}
   {:else if memento.kind === "receipt"}
     <span class="receipt-vendor">{t(memento.vendor)}</span>
     <strong>{t(memento.title)}</strong>

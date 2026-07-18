@@ -110,7 +110,9 @@
                 <div class="goods-face">
                   <span>{t(kindLabel.goods)}</span>
                   <strong>{t(memento.title)}</strong>
-                  <small>{t(memento.vendor)} · {memento.price}</small>
+                  {#if t(memento.vendor) || memento.price}
+                    <small>{[t(memento.vendor), memento.price].filter(Boolean).join(" · ")}</small>
+                  {/if}
                 </div>
               {/if}
             </div>

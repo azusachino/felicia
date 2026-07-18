@@ -78,7 +78,7 @@ function mediaURL(value: string): string {
 function station(value: unknown, fallback: Coordinates): Station {
   const data = objectValue(value)
   const coords = coordinate(data?.coords) ?? fallback
-  const name = stringValue(data?.name) ?? ""
+  const name = stringValue(value) ?? stringValue(data?.name) ?? ""
   return { name, ja: name, coords }
 }
 
@@ -98,7 +98,8 @@ function transitData(apiMemento: ApiMemento, title: L, fallback: Coordinates): M
 function adaptMemento(apiMemento: ApiMemento, visitId: string, visitCoords: Coordinates): Memento {
   const title = authored(apiMemento.title)
   const place = authored(apiMemento.place)
-  const vendor = authored(apiMemento.vendor)
+  const data = objectValue(apiMemento.kind_data)
+  const vendor = authored(apiMemento.vendor ?? stringValue(data?.vendor))
   const essay = authored(apiMemento.essay)
   const coords = geometryPoint(apiMemento.geom)
   return {
