@@ -35,11 +35,13 @@ BASE_PATH=/ nix develop --command uv run python scripts/felicia.py preview
 - `FELICIA_TEST_DATABASE_DSN=... make test-postgres` passes against the live
   Podman PostgreSQL/PostGIS service.
 - The PostgreSQL admin API starts and direct journey/memento writes succeed.
-  The existing `test_journey_workflow.py` PostgreSQL mode is not accepted as a
-  full pass because its fixed IDs and fixed port allow stale or competing state;
-  repeated runs fail the expected revision-1 assertion. The harness needs an
-  isolated database and dynamically reserved port before this story can be
-  called provider-parity green.
+- The original PostgreSQL HTTP workflow exposed two isolation/parity defects:
+  fixed IDs and ports allowed stale state, and the PostgreSQL no-clobber upsert
+  path also preserved draft values during a manual publish. The harness now
+  creates per-run IDs, probes `/readyz` on a reserved port, and can create,
+  migrate, and drop a unique PostgreSQL database. Manual authoring uses a
+  separate PostgreSQL upsert path. The isolated SQLite and PostgreSQL workflows
+  now pass.
 
 ## Schema-v1 decision
 
@@ -56,14 +58,12 @@ The contract is usable for the local-first workflow, with explicit boundaries:
 
 ## Remaining gaps before calling v1 product-ready
 
-1. Make the PostgreSQL HTTP workflow genuinely disposable: create/drop a test
-   database per run, reserve a free port, and include response diagnostics.
-2. Type the `plan.json` route/visit/stop/memento evidence arrays instead of
+1. Type the `plan.json` route/visit/stop/memento evidence arrays instead of
    validating them only as arrays.
-3. Add a root multi-journey workspace manifest; v1 currently uses one workspace
+2. Add a root multi-journey workspace manifest; v1 currently uses one workspace
    and package per journey.
-4. Implement agent suggestion storage and an explicit review transition.
-5. Add the future media attachment model for video, audio, documents, and
+3. Implement agent suggestion storage and an explicit review transition.
+4. Add the future media attachment model for video, audio, documents, and
    trusted embeds.
 
 Conclusion: schema v1 is suitable for the current offline authoring and static

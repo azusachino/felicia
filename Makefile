@@ -104,9 +104,13 @@ test-workflow: ## Run full journey workflow against disposable SQLite
 	$(UV_RUN) run python scripts/test_journey_workflow.py --start-server
 
 test-workflow-postgres: ## Run full journey workflow against disposable PostgreSQL
-	@test -n "$(FELICIA_TEST_DATABASE_DSN)" || (echo "FELICIA_TEST_DATABASE_DSN is required" >&2; exit 1)
-	DATABASE_DSN="$(FELICIA_TEST_DATABASE_DSN)" $(MAKE) migrate
-	FELICIA_TEST_DATABASE_DSN="$(FELICIA_TEST_DATABASE_DSN)" $(UV_RUN) run python scripts/test_journey_workflow.py --start-server --database-driver postgres
+	@test -n "$(FELICIA_TEST_DATABASE_DSN)$(FELICIA_TEST_POSTGRES_ADMIN_DSN)" || (echo "FELICIA_TEST_DATABASE_DSN or FELICIA_TEST_POSTGRES_ADMIN_DSN is required" >&2; exit 1)
+	@if test -n "$(FELICIA_TEST_POSTGRES_ADMIN_DSN)"; then \
+		FELICIA_TEST_POSTGRES_ADMIN_DSN="$(FELICIA_TEST_POSTGRES_ADMIN_DSN)" $(UV_RUN) run python scripts/test_journey_workflow.py --start-server --database-driver postgres; \
+	else \
+		DATABASE_DSN="$(FELICIA_TEST_DATABASE_DSN)" $(MAKE) migrate; \
+		FELICIA_TEST_DATABASE_DSN="$(FELICIA_TEST_DATABASE_DSN)" $(UV_RUN) run python scripts/test_journey_workflow.py --start-server --database-driver postgres; \
+	fi
 
 test-sqlite: ## Run all tests with SQLite as the only enabled provider
 	DATABASE_DSN= FELICIA_TEST_DATABASE_DSN= $(MAKE) test

@@ -806,6 +806,72 @@ func (q *Queries) UpsertMemento(ctx context.Context, arg UpsertMementoParams) er
 	return nil
 }
 
+const upsertManualMemento = `-- name: UpsertManualMemento :exec
+INSERT INTO tb_mementos (
+    id, journey_id, kind, seq, occurred_at, occurred_tz, geom, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, revision, created_at, updated_at
+) VALUES (
+    $1, $2, $3, $4, $5, $6, ST_GeomFromWKB($7, 4326), $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, COALESCE($21, 1), NOW(), NOW()
+) ON CONFLICT (id) DO UPDATE SET
+    journey_id = EXCLUDED.journey_id,
+    kind = EXCLUDED.kind,
+    seq = EXCLUDED.seq,
+    occurred_at = EXCLUDED.occurred_at,
+    occurred_tz = EXCLUDED.occurred_tz,
+    geom = EXCLUDED.geom,
+    title = EXCLUDED.title,
+    place = EXCLUDED.place,
+    vendor = EXCLUDED.vendor,
+    essay = EXCLUDED.essay,
+    price_amount = EXCLUDED.price_amount,
+    price_currency = EXCLUDED.price_currency,
+    kind_data = EXCLUDED.kind_data,
+    source_system = EXCLUDED.source_system,
+    source_external_id = EXCLUDED.source_external_id,
+    source_ref = EXCLUDED.source_ref,
+    authored_fields = EXCLUDED.authored_fields,
+    orphaned_at = EXCLUDED.orphaned_at,
+    state = EXCLUDED.state,
+    revision = tb_mementos.revision + 1,
+    updated_at = NOW()
+WHERE $22::bigint IS NULL OR tb_mementos.revision = $22
+`
+
+type UpsertManualMementoParams = UpsertMementoParams
+
+func (q *Queries) UpsertManualMemento(ctx context.Context, arg UpsertManualMementoParams) error {
+	tag, err := q.db.Exec(ctx, upsertManualMemento,
+		arg.ID,
+		arg.JourneyID,
+		arg.Kind,
+		arg.Seq,
+		arg.OccurredAt,
+		arg.OccurredTz,
+		arg.StGeomfromwkb,
+		arg.Title,
+		arg.Place,
+		arg.Vendor,
+		arg.Essay,
+		arg.PriceAmount,
+		arg.PriceCurrency,
+		arg.KindData,
+		arg.SourceSystem,
+		arg.SourceExternalID,
+		arg.SourceRef,
+		arg.AuthoredFields,
+		arg.OrphanedAt,
+		arg.State,
+		arg.Revision,
+		arg.ExpectedRevision,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+	return nil
+}
+
 const upsertPhoto = `-- name: UpsertPhoto :exec
 INSERT INTO tb_memento_photos (
     id, memento_id, object_key, content_hash, caption, seq, taken_at, source_ref, created_at

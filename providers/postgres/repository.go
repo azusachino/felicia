@@ -254,6 +254,14 @@ func (r *pgRepository) UpsertMemento(ctx context.Context, memento *domain.Mement
 }
 
 func (r *pgRepository) upsertMemento(ctx context.Context, memento *domain.Memento, expectedRevision *int64) error {
+	return r.upsertMementoWith(ctx, memento, expectedRevision, false)
+}
+
+func (r *pgRepository) upsertManualMemento(ctx context.Context, memento *domain.Memento, expectedRevision *int64) error {
+	return r.upsertMementoWith(ctx, memento, expectedRevision, true)
+}
+
+func (r *pgRepository) upsertMementoWith(ctx context.Context, memento *domain.Memento, expectedRevision *int64, manual bool) error {
 	var geomBytes []byte
 	var err error
 	if memento.Geom != nil {
@@ -270,7 +278,7 @@ func (r *pgRepository) upsertMemento(ctx context.Context, memento *domain.Mement
 		revision = &memento.Revision
 	}
 
-	if err := r.q.UpsertMemento(ctx, db.UpsertMementoParams{
+	params := db.UpsertMementoParams{
 		ID:               memento.ID,
 		JourneyID:        memento.JourneyID,
 		Kind:             memento.Kind,
@@ -293,7 +301,13 @@ func (r *pgRepository) upsertMemento(ctx context.Context, memento *domain.Mement
 		State:            string(state),
 		Revision:         toInt8(revision),
 		ExpectedRevision: toInt8(expectedRevision),
-	}); err != nil {
+	}
+	if manual {
+		err = r.q.UpsertManualMemento(ctx, params)
+	} else {
+		err = r.q.UpsertMemento(ctx, params)
+	}
+	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.ErrWriteConflict
 		}
@@ -335,7 +349,7 @@ func (r *pgRepository) ApplyManualMementoPatch(ctx context.Context, patch *domai
 	if patch.State != "" {
 		current.State = patch.State
 	}
-	return r.upsertMemento(ctx, current, patch.ExpectedRevision)
+	return r.upsertManualMemento(ctx, current, patch.ExpectedRevision)
 }
 
 // ApplyMementoAggregate persists the authored memento and child content in a
