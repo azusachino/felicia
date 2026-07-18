@@ -10,6 +10,26 @@
       "depart": "2025-10-06T03:00:00Z",
       "confidence": 1.0,
       "review_note": "Curated stop for the Pages design demo."
+    },
+    {
+      "candidate_key": "narita-station",
+      "selected": true,
+      "label": "Narita Station",
+      "coord": [140.3188889, 35.7766667],
+      "arrive": "2025-10-06T03:10:00Z",
+      "depart": "2025-10-06T03:30:00Z",
+      "confidence": 0.92,
+      "review_note": "Curated as the departure point after the temple visit."
+    },
+    {
+      "candidate_key": "tokyo-station",
+      "selected": true,
+      "label": "Tokyo Station",
+      "coord": [139.767125, 35.681236],
+      "arrive": "2025-10-06T04:30:00Z",
+      "depart": "2025-10-06T06:00:00Z",
+      "confidence": 0.87,
+      "review_note": "Curated arrival stop; the route is evidence, not the story."
     }
   ]
 }

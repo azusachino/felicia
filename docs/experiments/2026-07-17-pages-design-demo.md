@@ -77,8 +77,9 @@ Run on 2026-07-17 in the local development environment:
 | `make web-check`                        | passed; 0 Svelte diagnostics, ESLint and Prettier clean |
 | `uv run --group dev ruff check scripts` | passed                                                  |
 | retired fixture artifact verifier       | passed                                                  |
-| journeys in static index                | 9                                                       |
-| journey detail files                    | 9                                                       |
+| journeys in static index                | 1                                                       |
+| journey detail files                    | 1                                                       |
+| authored mementos                       | 4                                                       |
 | demo media copied to `dist/`            | 3 files                                                 |
 | generated artifact size                 | 4.2 MB locally                                          |
 

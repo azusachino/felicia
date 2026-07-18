@@ -21,7 +21,7 @@ DEFAULT_DIST = WEB / "dist"
 
 
 def run(command: list[str], *, cwd: Path = ROOT, env: dict[str, str] | None = None) -> None:
-    print("$", " ".join(command))
+    print("$", " ".join(command), flush=True)
     subprocess.run(command, cwd=cwd, env=env, check=True)
 
 
