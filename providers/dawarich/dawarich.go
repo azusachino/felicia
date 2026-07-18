@@ -28,6 +28,8 @@ type Client struct {
 }
 
 var _ domain.TrackSource = (*Client)(nil)
+var _ domain.RouteSource = (*Client)(nil)
+var _ domain.VisitSource = (*Client)(nil)
 
 // New builds a Client. A nil doer defaults to http.DefaultClient.
 func New(baseURL, apiKey string, doer Doer) *Client {
