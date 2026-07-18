@@ -1,0 +1,10 @@
+story: US-05
+name: agent-suggestions-with-authorship
+current: partial
+inputs:
+  candidate: input/candidate.json
+  suggestion: input/suggestion.json
+expected:
+  authored_title_preserved: true
+  suggestion_requires_acceptance: true
+  implicit_database_write: false

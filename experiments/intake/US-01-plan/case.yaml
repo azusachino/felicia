@@ -1,0 +1,11 @@
+story: US-01
+name: plan-without-mutation
+current: blocked
+inputs:
+  track: input/route.gpx
+  photos: input/photos.jsonl
+expected:
+  route_points: 6
+  photo_count: 3
+  writes_database: false
+  deterministic_plan: true

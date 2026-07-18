@@ -1,0 +1,10 @@
+story: US-04
+name: multiple-mementos-from-one-stop
+current: partial
+inputs:
+  track: ../US-01-plan/input/route.gpx
+  photos: input/photos.jsonl
+expected:
+  kept_stops: 1
+  mementos: [transit, receipt]
+  shared_stop_allowed: true

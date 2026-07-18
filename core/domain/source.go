@@ -211,6 +211,7 @@ type PhotoAsset = MediaAsset
 // belong to the write side.
 type MementoCandidate struct {
 	Source      SourceIdentity
+	StopKey     string
 	Kind        string
 	OccurredAt  time.Time
 	OccurredTZ  string
@@ -223,10 +224,23 @@ type MementoCandidate struct {
 	Provenance  Provenance
 }
 
-// TrackSource yields routes and visits for a time range. Dawarich implements it.
-type TrackSource interface {
+// RouteSource yields normalized route segments for a time range. Dawarich and
+// local GPX adapters implement this capability.
+type RouteSource interface {
 	FetchRoutes(ctx context.Context, from, to time.Time) ([]Route, error)
+}
+
+// VisitSource yields semantic stays for a time range. Dawarich implements it;
+// a local GPX planner may derive the same Visit shape when it is unavailable.
+type VisitSource interface {
 	FetchVisits(ctx context.Context, from, to time.Time) ([]Visit, error)
+}
+
+// TrackSource is the legacy combined capability retained while runtime callers
+// migrate to RouteSource and VisitSource independently.
+type TrackSource interface {
+	RouteSource
+	VisitSource
 }
 
 // PhotoSource yields photo assets for a time range. Immich implements it.

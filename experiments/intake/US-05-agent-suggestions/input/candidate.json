@@ -1,0 +1,7 @@
+{
+  "id": "candidate-nara-ticket",
+  "kind": "transit",
+  "place": "Nara",
+  "source": "local:ticket.jpg",
+  "evidence": ["ticket.jpg", "route-segment-02"]
+}
