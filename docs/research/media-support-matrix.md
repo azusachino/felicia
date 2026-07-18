@@ -18,8 +18,12 @@ The current demo deliberately exercises multiple image files and repeated use
 of one image. Repeated assets must remain valid: attachment keys are identified
 by memento plus sequence, not only by the URL/object key.
 
-The next media seam should be a versioned `memento_media` model with
-`kind=image|video|audio|document|embed`, `object_key`, `content_hash`, optional
-`mime`, `width`, `height`, `duration_ms`, `poster_key`, `caption`, and `seq`.
-Until that exists, only reviewed image derivatives should enter a public static
-artifact; raw originals, unsupported files, and external URLs stay in intake.
+The v1 local authoring attachment shape now permits
+`kind=image|video|audio|document|embed`, `mime`, `visibility=public|private`,
+`caption`, and `path`. This is descriptive intake metadata, not a promise that
+the current publisher can render every kind. The public package boundary accepts
+only public local JPEG/PNG/WebP images; private attachments, unsupported kinds,
+raw unsupported files, and external URLs are rejected rather than silently
+published. A future `memento_media` model still needs `object_key`,
+`content_hash`, `width`, `height`, `duration_ms`, `poster_key`, and `seq` for
+non-image publication.

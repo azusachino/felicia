@@ -1,0 +1,316 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://felicia.local/schemas/local-authoring-v1.schema.json",
+  "title": "Felicia local authoring v1",
+  "description": "Definitions for the editable local journey workspace. Each file selects one definition below.",
+  "$defs": {
+    "coordinate": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "number", "minimum": -180, "maximum": 180 },
+        { "type": "number", "minimum": -90, "maximum": 90 }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "media": {
+      "type": "object",
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["image", "video", "audio", "document", "embed"] },
+        "mime": { "type": "string", "minLength": 1 },
+        "visibility": { "enum": ["public", "private"] },
+        "caption": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "journey": {
+      "type": "object",
+      "required": ["schema", "id", "journal_id", "slug", "title", "date_start", "date_end"],
+      "properties": {
+        "schema": { "const": "felicia.local.journey.v1" },
+        "id": { "type": "string", "format": "uuid" },
+        "journal_id": { "type": "string", "format": "uuid" },
+        "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "title": { "type": "string", "minLength": 1 },
+        "place": { "type": "string" },
+        "country": { "type": "string" },
+        "region": { "type": "string" },
+        "date_start": { "type": "string", "format": "date" },
+        "date_end": { "type": "string", "format": "date" },
+        "source_ref": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "workspace_journey": {
+      "type": "object",
+      "required": ["path", "id"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?:\\.|[A-Za-z0-9][A-Za-z0-9._-]*)(?:/[A-Za-z0-9][A-Za-z0-9._-]*)*$"
+        },
+        "id": { "type": "string", "format": "uuid" },
+        "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "title": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "workspace": {
+      "type": "object",
+      "required": ["schema", "version", "journal_id", "journeys"],
+      "properties": {
+        "schema": { "const": "felicia.local.workspace.v1" },
+        "version": { "const": "1" },
+        "journal_id": { "type": "string", "format": "uuid" },
+        "journeys": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/workspace_journey" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "stop": {
+      "type": "object",
+      "required": ["candidate_key", "selected", "label"],
+      "properties": {
+        "candidate_key": { "type": "string", "minLength": 1 },
+        "selected": { "type": "boolean" },
+        "label": { "type": "string" },
+        "coord": { "anyOf": [{ "$ref": "#/$defs/coordinate" }, { "type": "null" }] },
+        "arrive": { "type": "string", "format": "date-time" },
+        "depart": { "type": "string", "format": "date-time" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "source_index": { "type": "integer", "minimum": 1 },
+        "review_note": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "stops_file": {
+      "type": "object",
+      "required": ["schema", "stops"],
+      "properties": {
+        "schema": { "const": "felicia.local.stops.v1" },
+        "stops": { "type": "array", "items": { "$ref": "#/$defs/stop" } }
+      },
+      "additionalProperties": false
+    },
+    "memento": {
+      "type": "object",
+      "required": ["id", "stop_key", "seq", "kind", "occurred_at", "state", "title", "kind_data", "media"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "stop_key": { "type": "string", "minLength": 1 },
+        "seq": { "type": "integer", "minimum": 1 },
+        "kind": { "enum": ["goods", "live", "transit", "stamp", "receipt"] },
+        "occurred_at": { "type": "string", "format": "date-time" },
+        "occurred_tz": { "type": "string", "minLength": 1 },
+        "state": { "enum": ["candidate", "draft", "authored", "published", "archived"] },
+        "title": { "type": "string" },
+        "place": { "type": "string" },
+        "geom": { "anyOf": [{ "$ref": "#/$defs/coordinate" }, { "type": "null" }] },
+        "kind_data": { "type": "object" },
+        "essay": { "type": "string" },
+        "vendor": { "type": "string" },
+        "price_amount": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+        "price_currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "authored_fields": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["title", "place", "kind", "seq", "occurred_at", "occurred_tz", "geom", "vendor", "essay", "price_amount", "price_currency", "kind_data"]
+          }
+        },
+        "media": { "type": "array", "items": { "$ref": "#/$defs/media" } },
+        "author_note": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "mementos_file": {
+      "type": "object",
+      "required": ["schema", "mementos"],
+      "properties": {
+        "schema": { "const": "felicia.local.mementos.v1" },
+        "mementos": { "type": "array", "items": { "$ref": "#/$defs/memento" } }
+      },
+      "additionalProperties": false
+    },
+    "source_identity": {
+      "type": "object",
+      "required": ["system", "external_id"],
+      "properties": {
+        "system": { "type": "string", "minLength": 1 },
+        "external_id": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["source", "observed_at", "confidence"],
+      "properties": {
+        "source": { "$ref": "#/$defs/source_identity" },
+        "observed_at": { "type": "string", "format": "date-time" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "track_point": {
+      "type": "object",
+      "required": ["Coord", "At"],
+      "properties": {
+        "Coord": { "$ref": "#/$defs/coordinate" },
+        "At": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    },
+    "route": {
+      "type": "object",
+      "required": ["Line", "Points", "From", "To", "DistanceM", "Mode", "SourceRef", "Provenance"],
+      "properties": {
+        "Line": { "anyOf": [{ "type": "array", "items": { "$ref": "#/$defs/coordinate" } }, { "type": "null" }] },
+        "Points": { "type": "array", "items": { "$ref": "#/$defs/track_point" } },
+        "From": { "type": "string", "format": "date-time" },
+        "To": { "type": "string", "format": "date-time" },
+        "DistanceM": { "type": "integer", "minimum": 0 },
+        "Mode": { "type": "string" },
+        "SourceRef": { "type": "string" },
+        "Provenance": { "$ref": "#/$defs/provenance" }
+      },
+      "additionalProperties": false
+    },
+    "visit": {
+      "type": "object",
+      "required": ["Coord", "Label", "Arrive", "Depart", "Confidence", "SourceRef", "Provenance"],
+      "properties": {
+        "Coord": { "$ref": "#/$defs/coordinate" },
+        "Label": { "type": "string" },
+        "Arrive": { "type": "string", "format": "date-time" },
+        "Depart": { "type": "string", "format": "date-time" },
+        "Confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "SourceRef": { "type": "string" },
+        "Provenance": { "$ref": "#/$defs/provenance" }
+      },
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["kind", "source", "locator"],
+      "properties": {
+        "kind": { "enum": ["route", "visit", "media"] },
+        "source": { "$ref": "#/$defs/source_identity" },
+        "locator": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "candidate_identity": {
+      "type": "object",
+      "required": ["derivation_version", "key"],
+      "properties": {
+        "derivation_version": { "type": "string", "minLength": 1 },
+        "key": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "stop_candidate": {
+      "type": "object",
+      "required": ["ID", "JourneyID", "Identity", "Label", "Coord", "Arrive", "Depart", "Confidence", "Evidence", "State", "Revision", "CreatedAt", "UpdatedAt"],
+      "properties": {
+        "ID": { "type": "string", "format": "uuid" },
+        "JourneyID": { "type": "string", "format": "uuid" },
+        "Identity": { "$ref": "#/$defs/candidate_identity" },
+        "Label": { "type": "string" },
+        "AuthoredFields": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "Coord": { "$ref": "#/$defs/coordinate" },
+        "Arrive": { "type": "string", "format": "date-time" },
+        "Depart": { "type": "string", "format": "date-time" },
+        "Confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "Evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } },
+        "State": { "enum": ["proposed", "kept", "ignored", "merged"] },
+        "MergedInto": { "anyOf": [{ "type": "string", "format": "uuid" }, { "type": "null" }] },
+        "Provenance": { "type": "array", "items": { "$ref": "#/$defs/provenance" } },
+        "Revision": { "type": "integer", "minimum": 0 },
+        "CreatedAt": { "type": "string", "format": "date-time" },
+        "UpdatedAt": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    },
+    "memory_link": {
+      "type": "object",
+      "required": ["entity_type", "entity_id", "relation"],
+      "properties": {
+        "entity_type": { "type": "string", "minLength": 1 },
+        "entity_id": { "type": "string", "format": "uuid" },
+        "relation": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "media_asset": {
+      "type": "object",
+      "properties": {
+        "ID": { "type": "string" },
+        "Kind": { "enum": ["image", "video", "audio", "document", "link", "embed"] },
+        "At": { "type": "string", "format": "date-time" },
+        "Coord": { "anyOf": [{ "$ref": "#/$defs/coordinate" }, { "type": "null" }] },
+        "Checksum": { "type": "string" },
+        "SourceRef": { "type": "string" },
+        "Provenance": { "$ref": "#/$defs/provenance" },
+        "URI": { "type": "string" },
+        "MIME": { "type": "string" },
+        "Title": { "type": "string" },
+        "Provider": { "type": "string" },
+        "EmbedURL": { "type": "string" },
+        "MemoryLinks": { "type": "array", "items": { "$ref": "#/$defs/memory_link" } }
+      },
+      "additionalProperties": false
+    },
+    "memento_candidate": {
+      "type": "object",
+      "required": ["source", "stop_key", "kind", "occurred_at", "occurred_tz", "geom", "title", "place", "kind_data", "media", "memory_links", "provenance"],
+      "properties": {
+        "source": { "$ref": "#/$defs/source_identity" },
+        "stop_key": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "minLength": 1 },
+        "occurred_at": { "type": "string", "format": "date-time" },
+        "occurred_tz": { "type": "string" },
+        "geom": { "anyOf": [{ "$ref": "#/$defs/coordinate" }, { "type": "null" }] },
+        "title": { "type": "string" },
+        "place": { "type": "string" },
+        "kind_data": { "type": "object" },
+        "media": { "type": "array", "items": { "$ref": "#/$defs/media_asset" } },
+        "memory_links": { "type": "array", "items": { "$ref": "#/$defs/memory_link" } },
+        "provenance": { "$ref": "#/$defs/provenance" }
+      },
+      "additionalProperties": false
+    },
+    "plan_issue": {
+      "type": "object",
+      "required": ["severity", "code", "message"],
+      "properties": {
+        "severity": { "enum": ["info", "warning", "error"] },
+        "code": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "plan": {
+      "type": "object",
+      "required": ["journey_id", "schema", "version", "routes", "visits", "stops", "mementos", "issues"],
+      "properties": {
+        "journey_id": { "type": "string", "format": "uuid" },
+        "schema": { "const": "felicia.intake.plan" },
+        "version": { "const": "1" },
+        "source_fingerprint": { "type": "string" },
+        "routes": { "type": "array", "items": { "$ref": "#/$defs/route" } },
+        "visits": { "type": "array", "items": { "$ref": "#/$defs/visit" } },
+        "stops": { "type": "array", "items": { "$ref": "#/$defs/stop_candidate" } },
+        "mementos": { "type": "array", "items": { "$ref": "#/$defs/memento_candidate" } },
+        "issues": { "type": "array", "items": { "$ref": "#/$defs/plan_issue" } }
+      },
+      "additionalProperties": false
+    }
+  }
+}

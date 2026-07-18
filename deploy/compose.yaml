@@ -1,6 +1,9 @@
 services:
   db:
     image: postgis/postgis:18-3.6-alpine
+    # The pinned PostGIS image currently publishes amd64 only; Podman on
+    # Apple Silicon runs this service through its supported emulation path.
+    platform: linux/amd64
     container_name: felicia-db
     ports:
       - "5432:5432"

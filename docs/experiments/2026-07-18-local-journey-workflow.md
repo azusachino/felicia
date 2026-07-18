@@ -38,6 +38,7 @@ uv run python scripts/local_journey.py preprocess \
 The command runs the real `felicia-cli journey plan` and writes:
 
 - `plan.json`: immutable-ish source-derived output and diagnostics;
+- `workspace.json`: optional root index for multiple journey workspaces;
 - `journey.json`: journey metadata to complete;
 - `stops.json`: the stop decisions to curate (`selected` and `label`);
 - `mementos.json`: editable memento drafts seeded from matched media.
@@ -68,8 +69,7 @@ SQLite database and generated site are local build artifacts.
 
 ## Current boundary
 
-The package importer currently accepts title/place/kind data and photos, but not
-essay/vendor/price authored fields. This workflow therefore tests the real
-stop-selection, memento metadata, media, import, and static-preview path. Essay
-authoring needs a follow-up package/import contract before it should be added to
-this script.
+The package importer carries essay/vendor/price and an explicit `authored_fields`
+mask into the existing no-clobber write path. Translations are intentionally not
+part of this v1 workflow: authored content has no translation sidecar and is
+rendered exactly as entered. Media remains the separate image-support contract.

@@ -1,0 +1,19 @@
+{
+  "schema": "felicia.local.workspace.v1",
+  "version": "1",
+  "journal_id": "0190cbde-f300-7000-8000-000000000000",
+  "journeys": [
+    {
+      "path": ".",
+      "id": "0190cbde-f300-7000-8000-111111111111",
+      "slug": "golden-route",
+      "title": "Narita Express Day Trip"
+    },
+    {
+      "path": "kansai-ramble",
+      "id": "0190cbde-f300-7000-8000-222222222222",
+      "slug": "kansai-ramble",
+      "title": "Kansai Ramble"
+    }
+  ]
+}

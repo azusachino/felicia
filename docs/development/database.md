@@ -65,12 +65,19 @@ FELICIA_TEST_DATABASE_DSN='postgres://postgres:password@localhost:5432/felicia?s
 
 FELICIA_TEST_DATABASE_DSN='postgres://postgres:password@localhost:5432/felicia?sslmode=disable' \
   make test-workflow-postgres
+
+# Preferred: create, migrate, and drop a unique database per run.
+FELICIA_TEST_POSTGRES_ADMIN_DSN='postgres://postgres:password@localhost:5432/postgres?sslmode=disable' \
+  make test-workflow-postgres
 ```
 
-PostgreSQL tests require `FELICIA_TEST_DATABASE_DSN`, not ordinary
-`DATABASE_DSN`. The test database must be disposable: integration tests clean
-tables before exercising provider behavior. Tests also verify that Goose
-migrations have reached version 8 or later.
+PostgreSQL tests require a test DSN rather than ordinary `DATABASE_DSN`. The
+preferred workflow uses `FELICIA_TEST_POSTGRES_ADMIN_DSN` to create, migrate,
+and drop a unique database per run. The direct `FELICIA_TEST_DATABASE_DSN`
+form remains available when CI or another runner owns database lifecycle; that
+database must be disposable because integration tests clean tables before
+exercising provider behavior. Tests also verify that Goose migrations have
+reached version 8 or later.
 
 The repository contract suite runs against both providers. Provider-specific
 features, such as PostGIS route acceleration, remain in PostgreSQL-specific

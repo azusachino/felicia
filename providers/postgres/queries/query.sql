@@ -123,6 +123,35 @@ INSERT INTO tb_mementos (
     updated_at = NOW()
 WHERE $22::bigint IS NULL OR tb_mementos.revision = $22;
 
+-- name: UpsertManualMemento :exec
+INSERT INTO tb_mementos (
+    id, journey_id, kind, seq, occurred_at, occurred_tz, geom, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, revision, created_at, updated_at
+) VALUES (
+    $1, $2, $3, $4, $5, $6, ST_GeomFromWKB($7, 4326), $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, COALESCE($21, 1), NOW(), NOW()
+) ON CONFLICT (id) DO UPDATE SET
+    journey_id = EXCLUDED.journey_id,
+    kind = EXCLUDED.kind,
+    seq = EXCLUDED.seq,
+    occurred_at = EXCLUDED.occurred_at,
+    occurred_tz = EXCLUDED.occurred_tz,
+    geom = EXCLUDED.geom,
+    title = EXCLUDED.title,
+    place = EXCLUDED.place,
+    vendor = EXCLUDED.vendor,
+    essay = EXCLUDED.essay,
+    price_amount = EXCLUDED.price_amount,
+    price_currency = EXCLUDED.price_currency,
+    kind_data = EXCLUDED.kind_data,
+    source_system = EXCLUDED.source_system,
+    source_external_id = EXCLUDED.source_external_id,
+    source_ref = EXCLUDED.source_ref,
+    authored_fields = EXCLUDED.authored_fields,
+    orphaned_at = EXCLUDED.orphaned_at,
+    state = EXCLUDED.state,
+    revision = tb_mementos.revision + 1,
+    updated_at = NOW()
+WHERE $22::bigint IS NULL OR tb_mementos.revision = $22;
+
 -- name: GetPhoto :one
 SELECT id, memento_id, object_key, content_hash, caption, seq, taken_at, source_ref, created_at
 FROM tb_memento_photos

@@ -68,7 +68,7 @@ def preprocess(args: argparse.Namespace) -> None:
                 "id": str(uuid.uuid5(NAMESPACE, f"{args.journey}:memento:{index}")),
                 "stop_key": source.get("stop_key", ""),
                 "seq": index,
-                "kind": source.get("kind") or "note",
+                "kind": source.get("kind") or "goods",
                 "occurred_at": source.get("occurred_at", ""),
                 "occurred_tz": source.get("occurred_tz", "UTC"),
                 "title": source.get("title", ""),

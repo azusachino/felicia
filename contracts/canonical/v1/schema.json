@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://felicia.local/contracts/canonical/v1/schema.json",
+  "title": "Felicia canonical contract v1",
+  "description": "Stable Felicia-owned data shapes. Transport adapters may project these records, but provider-specific fields do not belong here.",
+  "$defs": {
+    "source_identity": {
+      "type": "object",
+      "required": ["system", "external_id"],
+      "properties": {
+        "system": { "type": "string", "minLength": 1 },
+        "external_id": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["source", "observed_at", "confidence"],
+      "properties": {
+        "source": { "$ref": "#/$defs/source_identity" },
+        "observed_at": { "type": "string", "format": "date-time" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "geometry": {
+      "type": "object",
+      "required": ["type", "coordinates"],
+      "properties": {
+        "type": { "enum": ["Point", "LineString", "MultiLineString"] },
+        "coordinates": { "type": "array" }
+      },
+      "additionalProperties": false
+    },
+    "media": {
+      "type": "object",
+      "required": ["id", "kind", "visibility", "source"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["image", "video", "audio", "document", "link", "embed"] },
+        "mime": { "type": "string", "minLength": 1 },
+        "visibility": { "enum": ["private", "public"] },
+        "source": { "$ref": "#/$defs/source_identity" },
+        "object_key": { "type": "string", "minLength": 1 },
+        "content_hash": { "type": "string", "minLength": 1 },
+        "caption": { "type": "string" },
+        "title": { "type": "string" },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "duration_ms": { "type": "integer", "minimum": 1 },
+        "poster_key": { "type": "string", "minLength": 1 },
+        "url": { "type": "string", "format": "uri" }
+      },
+      "additionalProperties": false
+    },
+    "route": {
+      "type": "object",
+      "required": ["id", "geometry", "source", "provenance"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "geometry": { "$ref": "#/$defs/geometry" },
+        "points": { "type": "array", "items": { "$ref": "#/$defs/route_point" } },
+        "mode": { "type": "string" },
+        "distance_m": { "type": "number", "minimum": 0 },
+        "source": { "$ref": "#/$defs/source_identity" },
+        "provenance": { "$ref": "#/$defs/provenance" }
+      },
+      "additionalProperties": false
+    },
+    "route_point": {
+      "type": "object",
+      "required": ["coord", "at"],
+      "properties": {
+        "coord": { "type": "array", "prefixItems": [{ "type": "number" }, { "type": "number" }], "items": false, "minItems": 2, "maxItems": 2 },
+        "at": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    },
+    "visit": {
+      "type": "object",
+      "required": ["id", "coord", "arrive", "depart", "source", "provenance"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string" },
+        "coord": { "type": "array", "prefixItems": [{ "type": "number" }, { "type": "number" }], "items": false, "minItems": 2, "maxItems": 2 },
+        "arrive": { "type": "string", "format": "date-time" },
+        "depart": { "type": "string", "format": "date-time" },
+        "source": { "$ref": "#/$defs/source_identity" },
+        "provenance": { "$ref": "#/$defs/provenance" }
+      },
+      "additionalProperties": false
+    },
+    "stop_candidate": {
+      "type": "object",
+      "required": ["id", "journey_id", "candidate_key", "state", "evidence"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "journey_id": { "type": "string", "format": "uuid" },
+        "candidate_key": { "type": "string", "minLength": 1 },
+        "derivation_version": { "type": "string", "minLength": 1 },
+        "label": { "type": "string" },
+        "state": { "enum": ["proposed", "kept", "ignored", "merged"] },
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "revision": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["kind", "source", "locator"],
+      "properties": {
+        "kind": { "enum": ["route", "visit", "media"] },
+        "source": { "$ref": "#/$defs/source_identity" },
+        "locator": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "memento": {
+      "type": "object",
+      "required": ["id", "journey_id", "kind", "state", "revision", "occurred_at", "kind_data", "media"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "journey_id": { "type": "string", "format": "uuid" },
+        "kind": { "type": "string", "minLength": 1 },
+        "state": { "enum": ["candidate", "draft", "authored", "published", "archived"] },
+        "revision": { "type": "integer", "minimum": 1 },
+        "occurred_at": { "type": "string", "format": "date-time" },
+        "occurred_tz": { "type": "string", "minLength": 1 },
+        "geom": { "anyOf": [{ "$ref": "#/$defs/geometry" }, { "type": "null" }] },
+        "title": { "type": "string" },
+        "place": { "type": "string" },
+        "vendor": { "type": "string" },
+        "essay": { "type": "string" },
+        "price": { "$ref": "#/$defs/price" },
+        "kind_data": { "type": "object" },
+        "media": { "type": "array", "items": { "$ref": "#/$defs/media" } },
+        "provenance": { "type": "array", "items": { "$ref": "#/$defs/provenance" } },
+        "authored_fields": { "type": "array", "uniqueItems": true, "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "price": {
+      "type": "object",
+      "required": ["amount", "currency"],
+      "properties": {
+        "amount": { "type": "integer" },
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" }
+      },
+      "additionalProperties": false
+    },
+    "journey": {
+      "type": "object",
+      "required": ["id", "journal_id", "slug", "title", "date_start", "date_end", "routes"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "journal_id": { "type": "string", "format": "uuid" },
+        "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "title": { "type": "string", "minLength": 1 },
+        "place": { "type": "string" },
+        "country": { "type": "string" },
+        "region": { "type": "string" },
+        "date_start": { "type": "string", "format": "date" },
+        "date_end": { "type": "string", "format": "date" },
+        "routes": { "type": "array", "items": { "$ref": "#/$defs/route" } },
+        "visits": { "type": "array", "items": { "$ref": "#/$defs/visit" } },
+        "source_ref": { "type": "string" },
+        "authored_fields": { "type": "array", "uniqueItems": true, "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "journal": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "title": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "suggestion": {
+      "type": "object",
+      "required": ["id", "target", "operation", "proposal", "evidence", "status", "provider"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "target": { "type": "string", "minLength": 1 },
+        "operation": { "enum": ["set", "clear", "append", "remove"] },
+        "proposal": {},
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } },
+        "status": { "enum": ["proposed", "accepted", "rejected", "superseded"] },
+        "provider": { "type": "string", "minLength": 1 },
+        "model": { "type": "string" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    },
+    "document": {
+      "type": "object",
+      "required": ["schema", "version", "kind", "data"],
+      "properties": {
+        "schema": { "const": "felicia.canonical.v1" },
+        "version": { "const": "1" },
+        "kind": { "enum": ["journal", "journey", "memento", "stop_candidate", "suggestion"] },
+        "data": {
+          "oneOf": [
+            { "$ref": "#/$defs/journal" },
+            { "$ref": "#/$defs/journey" },
+            { "$ref": "#/$defs/memento" },
+            { "$ref": "#/$defs/stop_candidate" },
+            { "$ref": "#/$defs/suggestion" }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$ref": "#/$defs/document"
+}

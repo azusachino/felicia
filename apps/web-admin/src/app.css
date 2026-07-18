@@ -157,6 +157,12 @@ h2 {
   gap: 16px;
   margin-top: 18px;
 }
+
+.api-error {
+  margin-top: 1rem;
+  color: #a84a34;
+  font-size: 0.9rem;
+}
 .cards article {
   display: grid;
   gap: 10px;
