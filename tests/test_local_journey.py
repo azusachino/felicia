@@ -50,6 +50,11 @@ class LocalJourneyWorkflowTest(unittest.TestCase):
                                 "place": "Osaka",
                                 "geom": [135.5, 34.7],
                                 "state": "published",
+                                "vendor": "Dotonbori Kitchen",
+                                "essay": "A receipt from the first night.",
+                                "price_amount": 1200,
+                                "price_currency": "JPY",
+                                "authored_fields": ["title", "vendor", "essay", "price_amount", "price_currency"],
                                 "kind_data": {"vendor": "sample"},
                                 "media": [{"path": "ticket.jpg", "caption": "ticket"}],
                             },
@@ -76,6 +81,8 @@ class LocalJourneyWorkflowTest(unittest.TestCase):
             with zipfile.ZipFile(output) as archive:
                 mementos = json.loads(archive.read("mementos.yaml"))
                 self.assertEqual(["Dotonbori receipt"], [m["title"] for m in mementos])
+                self.assertEqual("A receipt from the first night.", mementos[0]["essay"])
+                self.assertEqual(["title", "vendor", "essay", "price_amount", "price_currency"], mementos[0]["authored_fields"])
                 self.assertEqual(b"ticket", archive.read("media/ticket.jpg"))
                 self.assertIn(b"sha256:", archive.read("manifest.yaml"))
 

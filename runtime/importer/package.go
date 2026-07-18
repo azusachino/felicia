@@ -59,6 +59,11 @@ func ApplyPackage(ctx context.Context, document *PackageDocument, store PackageS
 		if err := store.ApplyIngestMementoPatch(ctx, &domain.IngestMementoPatch{Memento: memento, Fields: fields}); err != nil {
 			return ImportReport{}, fmt.Errorf("import memento %s: %w", memento.ID, err)
 		}
+		if len(memento.AuthoredFields) > 0 || (memento.State != "" && memento.State != domain.MementoCandidateState) {
+			if err := store.ApplyManualMementoPatch(ctx, &domain.ManualMementoPatch{Memento: memento, Fields: memento.AuthoredFields, State: memento.State}); err != nil {
+				return ImportReport{}, fmt.Errorf("apply authored memento %s: %w", memento.ID, err)
+			}
+		}
 	}
 	for _, photo := range document.Photos {
 		if err := store.UpsertPhoto(ctx, photo); err != nil {
@@ -82,17 +87,22 @@ type journeyFile struct {
 }
 
 type mementoFile struct {
-	ID         string         `yaml:"id"`
-	Seq        int            `yaml:"seq"`
-	Kind       string         `yaml:"kind"`
-	OccurredAt string         `yaml:"occurred_at"`
-	OccurredTZ string         `yaml:"occurred_tz"`
-	Title      string         `yaml:"title"`
-	Place      string         `yaml:"place"`
-	Geom       []float64      `yaml:"geom"`
-	KindData   map[string]any `yaml:"kind_data"`
-	State      string         `yaml:"state"`
-	Photos     []photoFile    `yaml:"photos"`
+	ID             string         `yaml:"id"`
+	Seq            int            `yaml:"seq"`
+	Kind           string         `yaml:"kind"`
+	OccurredAt     string         `yaml:"occurred_at"`
+	OccurredTZ     string         `yaml:"occurred_tz"`
+	Title          string         `yaml:"title"`
+	Place          string         `yaml:"place"`
+	Geom           []float64      `yaml:"geom"`
+	Vendor         string         `yaml:"vendor"`
+	Essay          string         `yaml:"essay"`
+	PriceAmount    *int64         `yaml:"price_amount"`
+	PriceCurrency  string         `yaml:"price_currency"`
+	AuthoredFields []string       `yaml:"authored_fields"`
+	KindData       map[string]any `yaml:"kind_data"`
+	State          string         `yaml:"state"`
+	Photos         []photoFile    `yaml:"photos"`
 }
 
 type photoFile struct {
@@ -207,7 +217,7 @@ func normalizeMemento(pkg *journeypackage.Package, journeyID uuid.UUID, raw meme
 	if state == "" {
 		state = domain.MementoCandidateState
 	}
-	memento := &domain.Memento{ID: id, JourneyID: journeyID, Kind: raw.Kind, Seq: raw.Seq, OccurredAt: occurredAt, OccurredTZ: raw.OccurredTZ, Geom: geom, Title: raw.Title, Place: raw.Place, KindData: kindData, SourceIdentity: &source, State: state}
+	memento := &domain.Memento{ID: id, JourneyID: journeyID, Kind: raw.Kind, Seq: raw.Seq, OccurredAt: occurredAt, OccurredTZ: raw.OccurredTZ, Geom: geom, Title: raw.Title, Place: raw.Place, Vendor: optional(raw.Vendor), Essay: optional(raw.Essay), PriceAmount: raw.PriceAmount, PriceCurrency: optional(raw.PriceCurrency), AuthoredFields: raw.AuthoredFields, KindData: kindData, SourceIdentity: &source, State: state}
 	photos := make([]*domain.MementoPhoto, 0, len(raw.Photos))
 	for index, rawPhoto := range raw.Photos {
 		photoID, err := uuid.Parse(rawPhoto.ID)

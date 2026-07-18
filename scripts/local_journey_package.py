@@ -58,7 +58,10 @@ def build_package(args: Namespace) -> Path:
         package_mementos.append(
             {
                 key: memento[key]
-                for key in ("id", "seq", "kind", "occurred_at", "occurred_tz", "title", "place", "geom", "kind_data", "state")
+                for key in (
+                    "id", "seq", "kind", "occurred_at", "occurred_tz", "title", "place", "geom",
+                    "vendor", "essay", "price_amount", "price_currency", "authored_fields", "kind_data", "state"
+                )
                 if key in memento
             }
             | {"photos": photos}

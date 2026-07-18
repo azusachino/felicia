@@ -83,9 +83,15 @@
         "kind_data": { "type": "object" },
         "essay": { "type": "string" },
         "vendor": { "type": "string" },
-        "price_amount": { "type": "integer" },
-        "price_currency": { "type": "string" },
-        "translations": { "type": "object" },
+        "price_amount": { "anyOf": [{ "type": "integer" }, { "type": "null" }] },
+        "price_currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "authored_fields": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["title", "place", "kind", "seq", "occurred_at", "occurred_tz", "geom", "vendor", "essay", "price_amount", "price_currency", "kind_data"]
+          }
+        },
         "media": { "type": "array", "items": { "$ref": "#/$defs/media" } },
         "author_note": { "type": "string" }
       },

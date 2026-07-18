@@ -76,7 +76,7 @@ func TestApplyPackageIsIdempotent(t *testing.T) {
 	source := domain.SourceIdentity{System: "package:sample", ExternalID: mementoID.String()}
 	document := &importer.PackageDocument{
 		Journey:  &domain.Journey{ID: journeyID, JournalID: journalID, Slug: "sample", Title: "Sample", Place: "Kyoto", DateStart: time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC), DateEnd: time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC), GPSRoute: orb.MultiLineString{{{135.7, 35.0}, {135.8, 35.1}}}},
-		Mementos: []*domain.Memento{{ID: mementoID, JourneyID: journeyID, Kind: "transit", Seq: 1, Title: "Train", Place: "Kyoto", KindData: []byte(`{"operator":"JR"}`), SourceIdentity: &source, State: domain.MementoCandidateState}},
+		Mementos: []*domain.Memento{{ID: mementoID, JourneyID: journeyID, Kind: "transit", Seq: 1, Title: "Train", Place: "Kyoto", Vendor: runtimeStringPtr("JR East"), Essay: runtimeStringPtr("A quiet departure."), PriceAmount: runtimeInt64Ptr(1800), PriceCurrency: runtimeStringPtr("JPY"), AuthoredFields: []string{"title", "vendor", "essay", "price_amount", "price_currency"}, KindData: []byte(`{"operator":"JR"}`), SourceIdentity: &source, State: domain.MementoPublished}},
 		Photos:   []*domain.MementoPhoto{{ID: photoID, MementoID: mementoID, ObjectKey: "media/train.jpg", ContentHash: "sha256:train", Seq: 1}},
 	}
 	for attempt := 0; attempt < 2; attempt++ {
@@ -92,11 +92,18 @@ func TestApplyPackageIsIdempotent(t *testing.T) {
 	if err != nil || len(mementos) != 1 {
 		t.Fatalf("mementos after repeat import: %d, %v", len(mementos), err)
 	}
+	if mementos[0].Vendor == nil || *mementos[0].Vendor != "JR East" || mementos[0].Essay == nil || *mementos[0].Essay != "A quiet departure." || mementos[0].PriceAmount == nil || *mementos[0].PriceAmount != 1800 || mementos[0].State != domain.MementoPublished {
+		t.Fatalf("authored memento fields after import: %#v", mementos[0])
+	}
 	photos, err := repo.ListPhotosByMemento(context.Background(), mementoID)
 	if err != nil || len(photos) != 1 {
 		t.Fatalf("photos after repeat import: %d, %v", len(photos), err)
 	}
 }
+
+func runtimeStringPtr(value string) *string { return &value }
+
+func runtimeInt64Ptr(value int64) *int64 { return &value }
 
 func pragmaString(t *testing.T, db *sql.DB, name string) string {
 	t.Helper()

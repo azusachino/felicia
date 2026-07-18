@@ -29,6 +29,15 @@ def parse_coord(value: str) -> list[float] | None:
     return [longitude, latitude]
 
 
+def parse_price(value: str) -> int | None:
+    if not value:
+        return None
+    try:
+        return int(value)
+    except ValueError as error:
+        raise SystemExit("price amount must be an integer") from error
+
+
 def interactive_author(args: Namespace) -> None:
     """Let a person curate generated evidence before it becomes authored data."""
     workspace = args.workspace.resolve()
@@ -74,6 +83,11 @@ def interactive_author(args: Namespace) -> None:
         print(f"\nEdit memento {memento.get('id')}")
         memento["title"] = ask("  title", memento.get("title", ""))
         memento["kind"] = ask("  kind", memento.get("kind", "goods"))
+        memento["vendor"] = ask("  vendor", memento.get("vendor", ""))
+        memento["essay"] = ask("  essay", memento.get("essay", ""))
+        memento["price_amount"] = parse_price(ask("  price amount", str(memento.get("price_amount", "") or "")))
+        memento["price_currency"] = ask("  price currency", memento.get("price_currency", "JPY"))
+        memento["authored_fields"] = ["title", "kind", "vendor", "essay", "price_amount", "price_currency"]
         memento["state"] = ask("  state (draft/published)", "published")
         media_default = ",".join(item.get("path", "") for item in memento.get("media", []))
         media_paths = ask("  media paths (comma-separated)", media_default)
@@ -95,6 +109,11 @@ def interactive_author(args: Namespace) -> None:
                     "geom": stop.get("coord"),
                     "state": ask("  state (draft/published)", "published"),
                     "kind_data": {},
+                    "vendor": ask("  vendor"),
+                    "essay": ask("  essay"),
+                    "price_amount": parse_price(ask("  price amount")),
+                    "price_currency": ask("  price currency", "JPY"),
+                    "authored_fields": ["title", "kind", "vendor", "essay", "price_amount", "price_currency"],
                     "media": [
                         {"path": path.strip(), "caption": ""}
                         for path in ask("  media paths (comma-separated)").split(",")
