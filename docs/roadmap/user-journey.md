@@ -35,13 +35,13 @@ Invariants that must hold at every step:
 
 ## Per-stage status
 
-| #   | Stage               | Status                                        | Where it lives                                                                                                                                                                                 |
-| --- | ------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **Data collection** | ✅ Done                                       | Dawarich client (`providers/dawarich/`), Immich client (`providers/immich/`), local GPX + photo/sidecar source (`providers/local/`), mock upstream (`scripts/mock_upstream.py`)                |
-| 2   | **Import / intake** | ✅ Done (deterministic)                       | Field-scoped importer (`runtime/importer/`), dwell-cluster intake planner (`runtime/intake/planner.go`), SQLite + PostgreSQL providers behind shared contract tests                            |
-| 3   | **Authoring**       | ⚠️ File/CLI path complete; **GUI is the gap** | Local authoring schema v1 (`schemas/local-authoring-v1.schema.json`), CLI `journey plan/apply/review`, full admin API (`server/api/server.go`); `apps/web-admin` is a read-only overview shell |
-| 4   | **Publication**     | ✅ Done                                       | Published-only static compiler (`publication/compiler.go`); live/static content parity is enforced by a shared projection layer (`publication/public.go`) and a workflow parity check          |
-| 5   | **Deployment**      | ⚠️ Wired; remote run pending                  | Pages workflow builds the real compiled artifact from the example workspace (`scripts/felicia.py preview`); the workflow has not yet run on GitHub — epic [FELICIA-PAGES-01](pages-v1-epic.md) |
+| #   | Stage               | Status                             | Where it lives                                                                                                                                                                                 |
+| --- | ------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Data collection** | ✅ Done                            | Dawarich client (`providers/dawarich/`), Immich client (`providers/immich/`), local GPX + photo/sidecar source (`providers/local/`), mock upstream (`scripts/mock_upstream.py`)                |
+| 2   | **Import / intake** | ✅ Done (deterministic)            | Field-scoped importer (`runtime/importer/`), dwell-cluster intake planner (`runtime/intake/planner.go`), SQLite + PostgreSQL providers behind shared contract tests                            |
+| 3   | **Authoring**       | ⚠️ GUI in progress (epic ADMIN-01) | Schema v1 + CLI path complete; admin API grew intake-plan/promote and compile endpoints; `apps/web-admin` has a navigable journey shell with import/preview triggers — inbox and editor next   |
+| 4   | **Publication**     | ✅ Done                            | Published-only static compiler (`publication/compiler.go`); live/static content parity is enforced by a shared projection layer (`publication/public.go`) and a workflow parity check          |
+| 5   | **Deployment**      | ⚠️ Wired; remote run pending       | Pages workflow builds the real compiled artifact from the example workspace (`scripts/felicia.py preview`); the workflow has not yet run on GitHub — epic [FELICIA-PAGES-01](pages-v1-epic.md) |
 
 Deliberately deferred (not gaps): AI enrichment
 ([ADR-0024](../adr/0024-optional-ai-enrichment.md)), R2/S3 object storage
@@ -87,6 +87,16 @@ projection:
 
 ## Status log
 
+- **2026-07-18 (Phase 2 begins)** — Epic
+  [FELICIA-ADMIN-01](admin-gui-v1-epic.md) designed (adversarially reviewed)
+  and M1 landed with the parallel-safe server tasks: navigable web-admin
+  journey shell with import/preview triggers, intake over HTTP
+  (plan + promote endpoints), a compile endpoint sharing the CLI's
+  publication path, and kind-contract convergence on six kinds with a
+  registry-vs-frontend drift test. PR #55 gained manifest-based
+  stale-artifact reconciliation after review (unpublished content cannot
+  linger in a reused output directory) — merged into this branch so the
+  compile endpoint inherits it. All verified in the containerized toolchain.
 - **2026-07-18 (later)** — Phase 1.1 in progress: found and fixed a draft-leak
   on the live public API (`/api/v1` endpoints did not filter memento state, so
   draft essays and draft-only journey routes were publicly exposed) and closed

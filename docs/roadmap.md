@@ -1,6 +1,9 @@
 # felicia v1 roadmap
 
-Current next epic proposal: [SQLite-backed GitHub Pages publication](roadmap/pages-v1-epic.md).
+Epics: [SQLite-backed GitHub Pages publication](roadmap/pages-v1-epic.md)
+(implementation complete pending PR review; remote workflow run outstanding)
+and the active [admin GUI MVP](roadmap/admin-gui-v1-epic.md) (M1 landed;
+intake inbox and memento editor in progress).
 The selected end-to-end journey and its per-stage status: [User journey](roadmap/user-journey.md).
 
 > Drafted 2026-07-16. This is a delivery roadmap, not a commitment to build every future seam in the current release.

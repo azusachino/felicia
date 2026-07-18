@@ -144,11 +144,16 @@ Full detail: [`docs/research/data-model.md`](docs/research/data-model.md) · [`d
 **Implementation stage** (research trail continues). The backend pipeline is
 substantially built and tested: SQLite/PostgreSQL providers with shared
 contract tests, the field-scoped importer (Dawarich ⋈ Immich ⋈ local GPX),
-the deterministic intake planner, the Go API (`/api/v1` + admin), the CLI
-(`journey plan/apply/review`, `static compile`), and the published-only static
-compiler. Remaining gaps: the admin authoring GUI (read-only shell today),
-SQLite-backed GitHub Pages publication (fixture demo today), and the
-deliberately deferred AI enrichment / object storage seams.
+the deterministic intake planner, the Go API (`/api/v1` + admin, including
+intake-plan/promote and compile endpoints), the CLI (`journey
+plan/apply/review`, `static compile` with stale-artifact reconciliation), and
+the published-only static compiler shared verbatim by the live API and the
+static artifact. GitHub Pages publication runs the real SQLite pipeline with
+live/static contract parity proven in the workflow harness. Remaining gaps:
+the admin authoring GUI (navigable journey shell landed; intake inbox and the
+memento editor are in progress — epic
+[FELICIA-ADMIN-01](docs/roadmap/admin-gui-v1-epic.md)) and the deliberately
+deferred AI enrichment / object storage seams.
 
 The single source of truth for delivery status is
 [`docs/roadmap.md`](docs/roadmap.md) and the target end-to-end journey in
