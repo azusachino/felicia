@@ -91,3 +91,36 @@ CREATE TABLE IF NOT EXISTS tb_source_observations (
 );
 CREATE INDEX IF NOT EXISTS source_observations_identity_idx
   ON tb_source_observations(source_system, source_external_id, observed_at DESC);
+
+CREATE TABLE IF NOT EXISTS tb_stop_candidates (
+  id TEXT PRIMARY KEY,
+  journey_id TEXT NOT NULL REFERENCES tb_journeys(id) ON DELETE CASCADE,
+  derivation_version TEXT NOT NULL,
+  candidate_key TEXT NOT NULL,
+  label TEXT NOT NULL DEFAULT '',
+  authored_fields TEXT NOT NULL DEFAULT '[]',
+  geom TEXT NOT NULL,
+  arrive TEXT NOT NULL,
+  depart TEXT NOT NULL,
+  confidence REAL NOT NULL,
+  state TEXT NOT NULL DEFAULT 'proposed' CHECK (state IN ('proposed', 'kept', 'ignored', 'merged')),
+  merged_into TEXT REFERENCES tb_stop_candidates(id),
+  provenance TEXT NOT NULL DEFAULT '[]',
+  revision INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE (journey_id, derivation_version, candidate_key)
+);
+CREATE TABLE IF NOT EXISTS tb_stop_candidate_evidence (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  candidate_id TEXT NOT NULL REFERENCES tb_stop_candidates(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,
+  source_system TEXT NOT NULL,
+  source_external_id TEXT NOT NULL,
+  locator TEXT NOT NULL,
+  UNIQUE (candidate_id, kind, source_system, source_external_id, locator)
+);
+CREATE INDEX IF NOT EXISTS stop_candidates_journey_idx
+  ON tb_stop_candidates(journey_id, arrive);
+CREATE INDEX IF NOT EXISTS stop_candidate_evidence_candidate_idx
+  ON tb_stop_candidate_evidence(candidate_id);

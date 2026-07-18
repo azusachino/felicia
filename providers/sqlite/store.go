@@ -28,6 +28,7 @@ var _ ports.MementoStore = (*Repository)(nil)
 var _ ports.MediaStore = (*Repository)(nil)
 var _ ports.RouteStore = (*Repository)(nil)
 var _ ports.ObservationStore = (*Repository)(nil)
+var _ ports.StopCandidateStore = (*Repository)(nil)
 
 // Repository persists the canonical model in a local SQLite database.
 type Repository struct {

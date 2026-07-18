@@ -31,20 +31,22 @@ type CandidateIdentity struct {
 // StopCandidate is a private, reviewable grouping of route and media evidence.
 // It is deliberately separate from Visit evidence and authored Memento data.
 type StopCandidate struct {
-	ID         uuid.UUID
-	JourneyID  uuid.UUID
-	Identity   CandidateIdentity
-	Label      string
-	Coord      orb.Point
-	Arrive     time.Time
-	Depart     time.Time
-	Confidence float64
-	Evidence   []EvidenceRef
-	State      CandidateState
-	MergedInto *uuid.UUID
-	Provenance []Provenance
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID             uuid.UUID
+	JourneyID      uuid.UUID
+	Identity       CandidateIdentity
+	Label          string
+	AuthoredFields []string
+	Coord          orb.Point
+	Arrive         time.Time
+	Depart         time.Time
+	Confidence     float64
+	Evidence       []EvidenceRef
+	State          CandidateState
+	MergedInto     *uuid.UUID
+	Provenance     []Provenance
+	Revision       int64
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 // StopReviewPatch records an explicit author decision without changing source
