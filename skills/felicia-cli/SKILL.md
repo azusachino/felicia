@@ -67,7 +67,7 @@ The sidecar is one JSON object per line. Use stable local paths and only factual
 metadata, for example:
 
 ```json
-{"path":"photos/IMG_0001.jpg","at":"2026-04-01T09:10:00Z","coord":[135.5016,34.6687],"source_ref":"local:photo:IMG_0001"}
+{ "path": "photos/IMG_0001.jpg", "at": "2026-04-01T09:10:00Z", "coord": [135.5016, 34.6687], "source_ref": "local:photo:IMG_0001" }
 ```
 
 Do not put prose guesses in the sidecar. Keep the original files unchanged.
