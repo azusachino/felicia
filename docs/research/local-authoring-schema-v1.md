@@ -43,14 +43,12 @@ The machine-readable definitions are in
 ## Deliberate boundaries and gaps
 
 This task freezes file shape, not every downstream capability. The following
-remain explicit next-task work:
+boundaries remain explicit:
 
-- essay/vendor/price and the explicit `authored_fields` mask must be mapped
-  through the importer without being dropped;
 - translations are intentionally not part of v1: the canonical model has no
   translation sidecar, and authored content is rendered exactly as entered;
 - `media` is still image-shaped in the current package/publication path;
 - multiple journeys remain multiple packages at publication time; the root
   manifest indexes them for local authoring and preview discovery only;
-- JSON Schema validation is defined here but executable validation belongs in
-  the implementation task.
+- `plan.json` is source evidence and is validated structurally, but it is not
+  an author-editable document.

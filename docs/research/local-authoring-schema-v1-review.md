@@ -58,12 +58,10 @@ The contract is usable for the local-first workflow, with explicit boundaries:
 
 ## Remaining gaps before calling v1 product-ready
 
-1. Type the `plan.json` route/visit/stop/memento evidence arrays instead of
-   validating them only as arrays.
-2. Implement agent suggestion storage and an explicit review transition.
-3. Add the future media attachment model for video, audio, documents, and
+1. Implement agent suggestion storage and an explicit review transition.
+2. Add the future media attachment model for video, audio, documents, and
    trusted embeds.
 
 Conclusion: schema v1 is suitable for the current offline authoring and static
-preview experiment, but the five gaps above must remain visible in the next
+preview experiment, but the two gaps above must remain visible in the next
 implementation stage.

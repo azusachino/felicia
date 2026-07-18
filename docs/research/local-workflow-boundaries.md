@@ -11,7 +11,7 @@ felicia-cli journey plan       runtime/intake + providers/local
         │ plan.json
         ▼
 local_journey_author.py        human/agent stop and memento decisions
-        │ journey.json, stops.json, mementos.json
+        │ workspace.json + journey.json, stops.json, mementos.json
         ▼
 local_journey_package.py       portable package serialization + media hashing
         │ journey.zip

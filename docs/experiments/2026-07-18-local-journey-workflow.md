@@ -38,6 +38,7 @@ uv run python scripts/local_journey.py preprocess \
 The command runs the real `felicia-cli journey plan` and writes:
 
 - `plan.json`: immutable-ish source-derived output and diagnostics;
+- `workspace.json`: optional root index for multiple journey workspaces;
 - `journey.json`: journey metadata to complete;
 - `stops.json`: the stop decisions to curate (`selected` and `label`);
 - `mementos.json`: editable memento drafts seeded from matched media.
