@@ -42,3 +42,8 @@ Before implementing a new entity or endpoint, add or update:
 The Go interfaces in `core/ports` remain implementation seams. The versioned
 behavioral traits are declared in `core/contracts`; neither replaces the JSON
 contract or its projection tests.
+
+For agent-operated offline workflows, use the repository skill:
+[`skills/felicia-cli/SKILL.md`](../../skills/felicia-cli/SKILL.md). It is the
+operational companion to these contracts and must not invent commands or fields
+that are not implemented.
