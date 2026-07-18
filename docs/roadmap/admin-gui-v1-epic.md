@@ -110,21 +110,20 @@ Acceptance: after publishing in the GUI, the reported artifact matches
 `felicia-cli static compile` output for the same DB (same shared compiler, so
 this is a smoke assertion, not a new parity suite).
 
-### ADMIN-01.7 — Kind contract alignment (drift fix)
+### ADMIN-01.7 — Kind contract alignment (drift fix) — done (landed early, in M1)
 
-Known drift: backend registry has `live` (no `souvenir`); the public SPA's
-`MementoKind` union and v4 stub registry have `souvenir` (no `live`). Fix:
-align frontend lists with `core/kinds` (add `live`, decide `souvenir` —
-either add a registry yaml or drop it from the frontend). Frontend sites to
-touch: `apps/web-public/src/data.ts` (union), `apps/web-public/src/v4/stubs.ts`
-(+ `stubs.test.ts`, which currently asserts `live` is unknown), and
-`apps/web-public/src/api/adapt.ts` (known-kind allowlist). Add a drift test
-that compares the registry kinds against the frontend lists so the two can
-never silently diverge again.
+The drift is resolved: the registry and the public SPA converged on six
+kinds (`goods`, `live`, `receipt`, `stamp`, `transit`, `souvenir`) — a
+`souvenir` registry yaml was added and `live` was threaded through
+`apps/web-public/src/data.ts` (union), `apps/web-public/src/v4/stubs.ts`
+(+ `stubs.test.ts`), the i18n catalogs, and `apps/web-public/src/api/adapt.ts`
+(known-kind allowlist). A drift test
+(`tests/test_kind_registry_drift.py`) compares the registry kinds against
+the frontend lists so the two can never silently diverge again.
 
-Acceptance: the drift test fails if `core/kinds` and frontend kind lists
-disagree; a published `live` memento renders with a proper stub, not the
-photo fallback.
+Acceptance (met): the drift test fails if `core/kinds` and frontend kind
+lists disagree; a published `live` memento renders with a proper stub, not
+the photo fallback.
 
 ### ADMIN-01.8 — Closed-loop verification
 
@@ -142,7 +141,8 @@ E2E script passes locally against the disposable server.
 - **M1** = 01.1 + 01.2 (navigate + import/preview)
 - **M2** = 01.3a + 01.3b (intake over HTTP, then the inbox)
 - **M3** = 01.4 + 01.5 (editor + concurrency)
-- **M4** = 01.6 + 01.7 + 01.8 (publish loop, drift fix, verification)
+- **M4** = 01.6 + 01.8 (publish loop, verification) — 01.7 (drift fix) was
+  parallel-safe and landed early with M1
 
 Each milestone is one PR with docs-sync per `AGENTS.md`; GitHub issues are
 the status ledger, this document records scope and acceptance only.

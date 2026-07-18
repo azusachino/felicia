@@ -14,7 +14,7 @@ Modeled on [liuaaron.com](https://liuaaron.com/) · _"Aaron's Waypoints."_
 
 <br/>
 
-![status](https://img.shields.io/badge/status-research%20stage-e8a33d)
+![status](https://img.shields.io/badge/status-implementation%20stage-e8a33d)
 ![web](https://img.shields.io/badge/web-Svelte%205%20%C2%B7%20Vite%20%C2%B7%20MapLibre-ff3e00)
 ![backend](<https://img.shields.io/badge/backend-Go%20%C2%B7%20SQLite%20(local)%20%7C%20Postgres-00add8>)
 ![i18n](https://img.shields.io/badge/i18n-日本語%20%C2%B7%20EN%20%C2%B7%20中文-6b8e23)
@@ -27,20 +27,21 @@ Modeled on [liuaaron.com](https://liuaaron.com/) · _"Aaron's Waypoints."_
 ## ✨ The idea
 
 - 🗺️ **The map is the index.** One glance says _everywhere I've been_ and _which trip to revisit_. You navigate spatially, not through a feed.
-- 🎫 **Mementos, not tickets.** Physical stubs are dying, so a memento is `kind`-tagged (`ticket · transit · goods · stamp · receipt · souvenir`) and rendered from **data**, template-first — not scanned.
+- 🎫 **Mementos, not tickets.** Physical stubs are dying, so a memento is `kind`-tagged (`goods · live · transit · stamp · receipt · souvenir`) and rendered from **data**, template-first — not scanned.
 - 📍 **A place is a _visit_.** Following how [Dawarich](https://github.com/Freika/dawarich) and Google Timeline model location (`points → tracks → visits @ places → trips`), a _place_ is a dwell-time **visit** derived from your track. Several memories can stack at one place.
 - ✍️ **Auto-ingest, then author.** A pipeline seeds _ingested_ fields (track, photos, stubs); you author the _essay, curation, and animation_. Re-import is field-scoped and **never clobbers** what you wrote.
 - 🌏 **Japanese-first**, with English and Chinese alongside.
 
-## 🚪 Three front doors, one contract
+## 🚪 Four front doors, one contract
 
-The web demo renders the **same** `{ journey, visit, memento }` fixtures three ways — proof the data contract is presentation-agnostic. Flip between them with the on-screen switcher (deep-linkable).
+The web demo renders the **same** `{ journey, visit, memento }` fixtures four ways — proof the data contract is presentation-agnostic. Flip between them with the on-screen switcher (deep-linkable).
 
-|     | Front door            | Route         | What it is                                                                                                                                               |
-| --- | --------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 🗺️  | **v1 — Map reader**   | `/`           | liuaaron-aligned: journey rail → dark MapLibre map → paper detail. _The default._                                                                        |
-| 🗄️  | **v2 — Collection**   | `#collection` | Memento-first shelf; a "greatest-hits" browse across every trip.                                                                                         |
-| 📓  | **v3 — Techo (手帳)** | `#techo`      | Warm paper notebook: a journal-index spread, then the trip on a real map with mementos clustered by **place/visit** — open a place to read its memories. |
+|     | Front door                | Route         | What it is                                                                                                                                               |
+| --- | ------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 🗺️  | **v1 — Map reader**       | `/`           | liuaaron-aligned: journey rail → dark MapLibre map → paper detail. _The default._                                                                        |
+| 🗄️  | **v2 — Collection**       | `#collection` | Memento-first shelf; a "greatest-hits" browse across every trip.                                                                                         |
+| 📓  | **v3 — Techo (手帳)**     | `#techo`      | Warm paper notebook: a journal-index spread, then the trip on a real map with mementos clustered by **place/visit** — open a place to read its memories. |
+| 🌐  | **v4 — Atlas (世界地図)** | `#atlas`      | Full-map atlas index across every journey; mementos render as `kind`-designed collectible stubs (one stub design per registry kind).                     |
 
 > The checked-in fixtures keep UI design work fast; the same shape is served by the working backend.
 
@@ -57,7 +58,7 @@ flowchart LR
   imp --> r2[["R2 / S3\nEXIF-stripped photos"]]
   db --> api["HTTP API (Go, chi)\n/api/v1 · GeoJSON"]
   r2 --> api
-  api --> web["Web SPAs\nv1 · v2 · v3 (MapLibre)"]
+  api --> web["Web SPAs\nv1 · v2 · v3 · v4 (MapLibre)"]
 ```
 
 - **Ingest** — `waypoints` pulls the **track + visits** from Dawarich and **photos** from Immich, joins on timestamp, EXIF-strips + resizes to R2, and seeds stub mementos. Raw GPS never lands in a public file.
@@ -117,8 +118,8 @@ The web demo runs on fixtures — no database, no keys.
 make web-dev          # Vite dev server → http://localhost:5173
 ```
 
-Then use the switcher at the bottom (`地図 / コレクション / 手帳`), or jump straight in:
-`/` (map) · `#collection` · `#techo`. Toggle language (日本語 / EN / 中文) and light/dark in each design's header.
+Then use the switcher at the bottom (`地図 / コレクション / 手帳 / 世界地図`), or jump straight in:
+`/` (map) · `#collection` · `#techo` · `#atlas`. Toggle language (日本語 / EN / 中文) and light/dark in each design's header.
 
 ```bash
 make web-check        # svelte-check + eslint
@@ -150,8 +151,8 @@ plan/apply/review`, `static compile` with stale-artifact reconciliation), and
 the published-only static compiler shared verbatim by the live API and the
 static artifact. GitHub Pages publication runs the real SQLite pipeline with
 live/static contract parity proven in the workflow harness. Remaining gaps:
-the admin authoring GUI (navigable journey shell landed; intake inbox and the
-memento editor are in progress — epic
+the admin authoring GUI (journey shell and intake inbox landed; the memento
+editor is in progress — epic
 [FELICIA-ADMIN-01](docs/roadmap/admin-gui-v1-epic.md)) and the deliberately
 deferred AI enrichment / object storage seams.
 

@@ -1,13 +1,17 @@
 ---
 title: "Epic: SQLite-backed GitHub Pages publication"
-status: "proposed"
-date: "2026-07-17"
+status: "in-review"
+date: "2026-07-18"
 ---
 
 # Epic: SQLite-backed GitHub Pages publication
 
 **Epic key:** `FELICIA-PAGES-01`
-**Status:** Proposed; not a settled architecture decision
+**Status:** In review — implementation complete (PR #55); the remote Pages
+workflow run is outstanding. Delivery status is tracked in
+[`../roadmap.md`](../roadmap.md) and
+[`user-journey.md`](user-journey.md); this document records scope and
+acceptance only.
 **Goal:** replace the fixture-only Pages demo with a reproducible SQLite-backed
 static publication while preserving the verified public `.json` contract.
 

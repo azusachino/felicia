@@ -1,7 +1,8 @@
 # felicia
 
 A map-based travel journal — each journey a route line on a dark map, each memory anchored by
-a collectible **memento**. These are the research-stage docs.
+a collectible **memento**. These are the project docs — direction, delivery roadmap, and the
+research trail.
 
 Start with the **[Direction](direction.md)** (the north star), or jump in:
 

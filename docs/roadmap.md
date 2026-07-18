@@ -1,9 +1,10 @@
 # felicia v1 roadmap
 
 Epics: [SQLite-backed GitHub Pages publication](roadmap/pages-v1-epic.md)
-(implementation complete pending PR review; remote workflow run outstanding)
-and the active [admin GUI MVP](roadmap/admin-gui-v1-epic.md) (M1 landed;
-intake inbox and memento editor in progress).
+(implementation complete; in review as PR #55, remote workflow run
+outstanding) and the active [admin GUI MVP](roadmap/admin-gui-v1-epic.md)
+(M1 + M2 landed — journey shell, import/preview triggers, intake inbox;
+memento editor next).
 The selected end-to-end journey and its per-stage status: [User journey](roadmap/user-journey.md).
 
 > Drafted 2026-07-16. This is a delivery roadmap, not a commitment to build every future seam in the current release.
@@ -23,7 +24,7 @@ The map remains the index. A memento is the story's click target. The first rele
 - One canonical API/data contract used by the public frontend and admin surface.
 - SQLite-first local storage, with the existing PostgreSQL path kept healthy.
 - Authored content that is never overwritten by ingestion.
-- A small, declarative memento template set: `goods`, `transit`, `stamp`, and `receipt`.
+- A declarative memento template registry (`core/kinds/*.yaml`): `goods`, `live`, `transit`, `stamp`, `receipt`, and `souvenir`; the admin MVP hand-builds forms for `transit`/`goods` first.
 - Japanese-first system UI with English and Chinese catalogs; authored content is shown exactly as entered.
 - One authoring flow: create or import a journey, curate mementos/photos, preview, and publish.
 - One real journey as the acceptance fixture and one complete end-to-end publish flow.
