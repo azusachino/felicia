@@ -152,8 +152,8 @@ the published-only static compiler shared verbatim by the live API and the
 static artifact. GitHub Pages publication runs the real SQLite pipeline —
 live/static contract parity is proven in the workflow harness and the Pages
 workflow has run end to end on `main` (PR #55). Remaining gaps:
-the admin authoring GUI (journey shell and intake inbox landed; the memento
-editor is in progress — epic
+the admin authoring GUI (journey shell, intake inbox, and memento editor
+landed; the closed-loop E2E pass remains — epic
 [FELICIA-ADMIN-01](docs/roadmap/admin-gui-v1-epic.md)) and the deliberately
 deferred AI enrichment / object storage seams.
 
