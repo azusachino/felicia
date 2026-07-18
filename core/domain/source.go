@@ -144,12 +144,21 @@ type ObservationStore interface {
 // Dawarich tracks map to this; the journey's gps_route is the union of routes.
 type Route struct {
 	Line       orb.LineString
+	Points     []TrackPoint
 	From       time.Time
 	To         time.Time
 	DistanceM  int
 	Mode       string // dominant transport mode, e.g. "walking", "car"
 	SourceRef  string // legacy adapter ref; use Provenance for new writes
 	Provenance Provenance
+}
+
+// TrackPoint preserves timestamped samples when a source provides them. The
+// public route does not require these samples; local planning uses them to
+// derive visits when no VisitSource is available.
+type TrackPoint struct {
+	Coord orb.Point
+	At    time.Time
 }
 
 // Visit is a normalized stay — a derived place (place-as-derived-visit, ADR
