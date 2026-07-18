@@ -1,0 +1,54 @@
+{
+  "schema": "felicia.canonical.v1",
+  "version": "1",
+  "kind": "memento",
+  "data": {
+    "id": "0190cbde-f300-7000-8000-333333333333",
+    "journey_id": "0190cbde-f300-7000-8000-111111111111",
+    "kind": "goods",
+    "state": "authored",
+    "revision": 2,
+    "occurred_at": "2026-04-01T09:30:00Z",
+    "occurred_tz": "Asia/Tokyo",
+    "geom": {
+      "type": "Point",
+      "coordinates": [135.5016, 34.6687]
+    },
+    "title": "Dotonbori souvenir",
+    "place": "Osaka",
+    "vendor": "Example shop",
+    "price": {
+      "amount": 1200,
+      "currency": "JPY"
+    },
+    "kind_data": {
+      "category": "souvenir"
+    },
+    "media": [
+      {
+        "id": "immich:asset:photo-1",
+        "kind": "image",
+        "mime": "image/jpeg",
+        "visibility": "public",
+        "source": {
+          "system": "immich",
+          "external_id": "asset:photo-1"
+        },
+        "object_key": "media/dotonbori.jpg",
+        "content_hash": "sha256:example",
+        "caption": "The shop front"
+      }
+    ],
+    "provenance": [
+      {
+        "source": {
+          "system": "manual",
+          "external_id": "author-1"
+        },
+        "observed_at": "2026-04-02T10:00:00Z",
+        "confidence": 1
+      }
+    ],
+    "authored_fields": ["title", "vendor", "price"]
+  }
+}
