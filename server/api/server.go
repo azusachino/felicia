@@ -2,6 +2,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1036,20 +1037,24 @@ func (s *Server) handleGetPublicJourneys(w http.ResponseWriter, r *http.Request)
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	// Providers return their own listing order; the public index order is
+	// owned by the publication contract so live and static output agree.
+	publication.SortJourneys(journeys)
 
-	var list []publication.JourneyListItem
+	list := make([]publication.JourneyListItem, 0, len(journeys))
 	for _, j := range journeys {
 		mementos, err := s.repo.ListMementosByJourney(r.Context(), j.ID)
 		if err != nil {
 			respondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		// The public reader only surfaces journeys with content — an empty
-		// (draft) journey is not a valid public projection.
-		if len(mementos) == 0 {
+		// The public reader only surfaces published content — a journey
+		// without published mementos has no public projection at all.
+		published := publication.PublishedMementos(mementos)
+		if len(published) == 0 {
 			continue
 		}
-		list = append(list, publication.NewJourneyListItem(j, mementos))
+		list = append(list, publication.NewJourneyListItem(j, published))
 	}
 
 	jsonData, err := json.Marshal(list)
@@ -1058,21 +1063,6 @@ func (s *Server) handleGetPublicJourneys(w http.ResponseWriter, r *http.Request)
 	}
 
 	respondJSON(w, http.StatusOK, list)
-}
-
-type publicJourney struct {
-	ID             uuid.UUID    `json:"id"`
-	JournalID      uuid.UUID    `json:"journal_id"`
-	Slug           string       `json:"slug"`
-	SourceRef      *string      `json:"source_ref,omitempty"`
-	Title          string       `json:"title"`
-	Place          string       `json:"place"`
-	Country        *string      `json:"country,omitempty"`
-	Region         *string      `json:"region,omitempty"`
-	DateStart      string       `json:"date_start"`
-	DateEnd        string       `json:"date_end"`
-	GPSRoute       *geoJSONGeom `json:"gps_route,omitempty"`
-	AuthoredFields []string     `json:"authored_fields"`
 }
 
 func (s *Server) handleGetPublicJourneyDetails(w http.ResponseWriter, r *http.Request) {
@@ -1096,20 +1086,19 @@ func (s *Server) handleGetPublicJourneyDetails(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	pj := publicJourney{
-		ID:             j.ID,
-		JournalID:      j.JournalID,
-		Slug:           j.Slug,
-		SourceRef:      j.SourceRef,
-		Title:          j.Title,
-		Place:          j.Place,
-		Country:        j.Country,
-		Region:         j.Region,
-		DateStart:      j.DateStart.Format("2006-01-02"),
-		DateEnd:        j.DateEnd.Format("2006-01-02"),
-		GPSRoute:       toGeoJSON(j.GPSRoute),
-		AuthoredFields: j.AuthoredFields,
+	published, err := s.publishedMementos(r.Context(), j.ID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
 	}
+	// A journey without published mementos has no public projection —
+	// matching the static artifact, which emits no file for it.
+	if len(published) == 0 {
+		respondError(w, http.StatusNotFound, "journey not found")
+		return
+	}
+
+	pj := publication.NewStaticJourney(j)
 
 	jsonData, err := json.Marshal(pj)
 	if err == nil {
@@ -1119,34 +1108,14 @@ func (s *Server) handleGetPublicJourneyDetails(w http.ResponseWriter, r *http.Re
 	respondJSON(w, http.StatusOK, pj)
 }
 
-type publicMemento struct {
-	ID            uuid.UUID       `json:"id"`
-	JourneyID     uuid.UUID       `json:"journey_id"`
-	Kind          string          `json:"kind"`
-	Seq           int             `json:"seq"`
-	OccurredAt    string          `json:"occurred_at"`
-	OccurredTZ    string          `json:"occurred_tz"`
-	Geom          *geoJSONGeom    `json:"geom,omitempty"`
-	Title         string          `json:"title"`
-	Place         string          `json:"place"`
-	Vendor        *string         `json:"vendor,omitempty"`
-	Essay         *string         `json:"essay,omitempty"`
-	PriceAmount   *int64          `json:"price_amount,omitempty"`
-	PriceCurrency *string         `json:"price_currency,omitempty"`
-	KindData      json.RawMessage `json:"kind_data,omitempty"`
-	SourceRef     *string         `json:"source_ref,omitempty"`
-	Photos        []publicPhoto   `json:"photos,omitempty"`
-}
-
-type publicPhoto struct {
-	ID          uuid.UUID `json:"id"`
-	MementoID   uuid.UUID `json:"memento_id"`
-	ObjectKey   string    `json:"object_key"`
-	ContentHash string    `json:"content_hash"`
-	Caption     *string   `json:"caption,omitempty"`
-	Seq         int       `json:"seq"`
-	TakenAt     *string   `json:"taken_at,omitempty"`
-	SourceRef   *string   `json:"source_ref,omitempty"`
+// publishedMementos loads a journey's mementos through the shared publish
+// gate so every public surface exposes exactly the published projection.
+func (s *Server) publishedMementos(ctx context.Context, journeyID uuid.UUID) ([]*domain.Memento, error) {
+	mementos, err := s.repo.ListMementosByJourney(ctx, journeyID)
+	if err != nil {
+		return nil, err
+	}
+	return publication.PublishedMementos(mementos), nil
 }
 
 func (s *Server) handleGetPublicMementos(w http.ResponseWriter, r *http.Request) {
@@ -1170,62 +1139,32 @@ func (s *Server) handleGetPublicMementos(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	mementos, err := s.repo.ListMementosByJourney(r.Context(), j.ID)
+	published, err := s.publishedMementos(r.Context(), j.ID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	// A journey without published mementos has no public projection —
+	// matching the static artifact, which emits no file for it.
+	if len(published) == 0 {
+		respondError(w, http.StatusNotFound, "journey not found")
+		return
+	}
 
-	var list []publicMemento
-	for _, m := range mementos {
+	list := make([]publication.StaticMemento, 0, len(published))
+	for _, m := range published {
 		photos, err := s.repo.ListPhotosByMemento(r.Context(), m.ID)
 		if err != nil {
 			respondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+		publication.SortPhotos(photos)
 
-		var sPhotos []publicPhoto
+		sPhotos := make([]publication.StaticPhoto, 0, len(photos))
 		for _, ph := range photos {
-			var takenAtStr *string
-			if ph.TakenAt != nil {
-				tStr := ph.TakenAt.Format(time.RFC3339)
-				takenAtStr = &tStr
-			}
-			sPhotos = append(sPhotos, publicPhoto{
-				ID:          ph.ID,
-				MementoID:   ph.MementoID,
-				ObjectKey:   ph.ObjectKey,
-				ContentHash: ph.ContentHash,
-				Caption:     ph.Caption,
-				Seq:         ph.Seq,
-				TakenAt:     takenAtStr,
-				SourceRef:   ph.SourceRef,
-			})
+			sPhotos = append(sPhotos, publication.NewStaticPhoto(ph))
 		}
-
-		var kindData json.RawMessage
-		if len(m.KindData) > 0 {
-			kindData = m.KindData
-		}
-
-		list = append(list, publicMemento{
-			ID:            m.ID,
-			JourneyID:     m.JourneyID,
-			Kind:          m.Kind,
-			Seq:           m.Seq,
-			OccurredAt:    m.OccurredAt.Format(time.RFC3339),
-			OccurredTZ:    m.OccurredTZ,
-			Geom:          toGeoJSON(m.Geom),
-			Title:         m.Title,
-			Place:         m.Place,
-			Vendor:        m.Vendor,
-			Essay:         m.Essay,
-			PriceAmount:   m.PriceAmount,
-			PriceCurrency: m.PriceCurrency,
-			KindData:      kindData,
-			SourceRef:     m.SourceRef,
-			Photos:        sPhotos,
-		})
+		list = append(list, publication.NewStaticMemento(m, sPhotos))
 	}
 
 	jsonData, err := json.Marshal(list)

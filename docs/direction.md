@@ -1,9 +1,12 @@
 # felicia — Direction
 
-> **Stage: research.** Deliberately unhurried (~6-month horizon). This doc is the light
-> north star — _what felicia is_ and _which way we're pointed_ — not a spec. Detailed
-> design thinking is parked in `archive/` and drawn on when we choose to move
-> to the spec stage. Exploration lives in `research/`.
+> **Stage: implementation** (updated 2026-07-18; the research trail continues).
+> Still deliberately unhurried (~6-month horizon). This doc is the light
+> north star — _what felicia is_ and _which way we're pointed_ — not a spec.
+> The decisions now live in `adr/`; delivery status lives in
+> [`roadmap.md`](roadmap.md) and the target end-to-end journey in
+> [`roadmap/user-journey.md`](roadmap/user-journey.md). Detailed early design
+> thinking is parked in `archive/`; exploration lives in `research/`.
 
 ## The idea (one paragraph)
 

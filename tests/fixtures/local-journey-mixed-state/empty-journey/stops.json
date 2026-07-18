@@ -1,0 +1,15 @@
+{
+  "schema": "felicia.local.stops.v1",
+  "stops": [
+    {
+      "candidate_key": "harbor",
+      "selected": true,
+      "label": "Harbor Walk",
+      "coord": [135.18, 34.68],
+      "arrive": "2026-05-10T09:00:00+09:00",
+      "depart": "2026-05-10T10:00:00+09:00",
+      "confidence": 0.8,
+      "review_note": "The only stop kept from this short trip."
+    }
+  ]
+}

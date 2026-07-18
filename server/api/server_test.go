@@ -590,6 +590,12 @@ func TestPublicJourneyOmitsEmptyGPSRoute(t *testing.T) {
 		AuthoredFields: []string{},
 	}
 	repo.journeys[journey.ID] = journey
+	published := &domain.Memento{
+		ID: uuid.New(), JourneyID: journey.ID, Kind: "stamp", Place: "Tokyo",
+		OccurredAt: time.Date(2026, 3, 20, 10, 0, 0, 0, time.UTC), Geom: orb.Point{139.7, 35.6},
+		State: domain.MementoPublished,
+	}
+	repo.mementos[published.ID] = published
 	handler := api.NewServer(repo, nil, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{}).Handler()
 
 	w := httptest.NewRecorder()
@@ -617,7 +623,7 @@ func TestGetPublicJourneysExcludesEmpty(t *testing.T) {
 	repo.journeys[empty.ID] = empty
 	repo.mementos[uuid.New()] = &domain.Memento{
 		ID: uuid.New(), JourneyID: withMementos.ID, Kind: "stamp", Place: "Kagoshima",
-		OccurredAt: base, Geom: orb.Point{130.6, 31.6},
+		OccurredAt: base, Geom: orb.Point{130.6, 31.6}, State: domain.MementoPublished,
 	}
 
 	handler := api.NewServer(repo, nil, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{}).Handler()
@@ -639,5 +645,92 @@ func TestGetPublicJourneysExcludesEmpty(t *testing.T) {
 	}
 	if list[0].Slug != "kyushu" || list[0].MementoCount == 0 {
 		t.Errorf("expected the journey with mementos, got %+v", list[0])
+	}
+}
+
+func TestPublicEndpointsExposeOnlyPublishedMementos(t *testing.T) {
+	repo := newMockRepository()
+	base := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+
+	publishedJourney := &domain.Journey{ID: uuid.New(), JournalID: uuid.New(), Slug: "tokyo", Title: "Tokyo", Place: "Tokyo",
+		DateStart: base, DateEnd: base.AddDate(0, 0, 2), AuthoredFields: []string{}}
+	draftJourney := &domain.Journey{ID: uuid.New(), JournalID: publishedJourney.JournalID, Slug: "osaka-draft", Title: "Osaka draft", Place: "Osaka",
+		DateStart: base.AddDate(0, 1, 0), DateEnd: base.AddDate(0, 1, 1), AuthoredFields: []string{}}
+	repo.journeys[publishedJourney.ID] = publishedJourney
+	repo.journeys[draftJourney.ID] = draftJourney
+
+	essay := "published essay"
+	draftEssay := "draft essay must not leak"
+	published := &domain.Memento{ID: uuid.New(), JourneyID: publishedJourney.ID, Kind: "stamp", Seq: 1,
+		OccurredAt: base.Add(12 * time.Hour), OccurredTZ: "Asia/Tokyo", Geom: orb.Point{139.7, 35.6},
+		Title: "published stub", Place: "Akihabara", Essay: &essay, State: domain.MementoPublished}
+	draft := &domain.Memento{ID: uuid.New(), JourneyID: publishedJourney.ID, Kind: "stamp", Seq: 2,
+		OccurredAt: base.Add(13 * time.Hour), OccurredTZ: "Asia/Tokyo", Geom: orb.Point{139.8, 35.7},
+		Title: "secret draft", Place: "Ueno", Essay: &draftEssay, State: domain.MementoDraft}
+	draftOnly := &domain.Memento{ID: uuid.New(), JourneyID: draftJourney.ID, Kind: "stamp", Seq: 1,
+		OccurredAt: base.AddDate(0, 1, 0), OccurredTZ: "Asia/Tokyo", Geom: orb.Point{135.5, 34.7},
+		Title: "unpublished", Place: "Namba", State: domain.MementoDraft}
+	repo.mementos[published.ID] = published
+	repo.mementos[draft.ID] = draft
+	repo.mementos[draftOnly.ID] = draftOnly
+
+	handler := api.NewServer(repo, nil, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{}).Handler()
+
+	// The index lists only journeys with published content, counting
+	// published mementos only.
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/journeys", nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("index status = %d (%s)", w.Code, w.Body)
+	}
+	var index []struct {
+		Slug         string `json:"slug"`
+		MementoCount int    `json:"memento_count"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&index); err != nil {
+		t.Fatalf("decode index: %v", err)
+	}
+	if len(index) != 1 || index[0].Slug != "tokyo" {
+		t.Fatalf("index = %+v, want only the journey with published content", index)
+	}
+	if index[0].MementoCount != 1 {
+		t.Errorf("memento_count = %d, want published-only count 1", index[0].MementoCount)
+	}
+
+	// The mementos endpoint returns only published mementos, with the
+	// authored essay present.
+	w = httptest.NewRecorder()
+	handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/journeys/"+publishedJourney.ID.String()+"/mementos", nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("mementos status = %d (%s)", w.Code, w.Body)
+	}
+	body := w.Body.String()
+	if bytes.Contains([]byte(body), []byte(draftEssay)) {
+		t.Errorf("draft memento leaked on the public API: %s", body)
+	}
+	var mementos []struct {
+		Title string  `json:"title"`
+		Essay *string `json:"essay"`
+	}
+	if err := json.Unmarshal([]byte(body), &mementos); err != nil {
+		t.Fatalf("decode mementos: %v", err)
+	}
+	if len(mementos) != 1 || mementos[0].Title != "published stub" {
+		t.Fatalf("mementos = %+v, want the single published memento", mementos)
+	}
+	if mementos[0].Essay == nil || *mementos[0].Essay != essay {
+		t.Errorf("essay = %v, want the authored essay", mementos[0].Essay)
+	}
+
+	// A journey without published mementos has no public projection.
+	w = httptest.NewRecorder()
+	handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/journeys/"+draftJourney.ID.String()+"/mementos", nil))
+	if w.Code != http.StatusNotFound {
+		t.Errorf("draft-only journey mementos status = %d, want 404 (%s)", w.Code, w.Body)
+	}
+	w = httptest.NewRecorder()
+	handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/journeys/"+draftJourney.ID.String(), nil))
+	if w.Code != http.StatusNotFound {
+		t.Errorf("draft-only journey detail status = %d, want 404 (%s)", w.Code, w.Body)
 	}
 }

@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -272,7 +271,7 @@ func importCommand(args []string, output io.Writer) error {
 		if !strings.HasPrefix(filename, "media/") {
 			continue
 		}
-		destination, err := safePath(*mediaRoot, filename)
+		destination, err := publication.SafeJoin(*mediaRoot, filename)
 		if err != nil {
 			return err
 		}
@@ -303,67 +302,19 @@ func compileCommand(args []string, output io.Writer) error {
 		return err
 	}
 	defer func() { _ = repo.Close() }()
-	writer := &fileArtifactWriter{root: *out}
-	report, err := (publication.StaticCompiler{}).Compile(context.Background(), publication.Input{}, repo, fileMediaSource{root: *mediaRoot}, writer)
+	writer := &publication.FileArtifactWriter{Root: *out}
+	report, err := (publication.StaticCompiler{}).Compile(context.Background(), publication.Input{}, repo, publication.FileMediaSource{Root: *mediaRoot}, writer)
 	if err != nil {
 		return err
 	}
+	// Reconcile a reused output directory: unpublished or deleted content
+	// from a previous compile must not stay publicly reachable.
+	removed, err := writer.Finalize()
+	if err != nil {
+		return err
+	}
+	report.Removed = len(removed)
 	return writeJSON(output, report)
-}
-
-type fileMediaSource struct{ root string }
-
-func (source fileMediaSource) Open(_ context.Context, objectKey string) (io.ReadCloser, error) {
-	filename, err := safePath(source.root, objectKey)
-	if err != nil {
-		return nil, err
-	}
-	return os.Open(filename)
-}
-
-type fileArtifactWriter struct{ root string }
-
-func (writer *fileArtifactWriter) WriteJSON(filename string, value any) error {
-	destination, err := safePath(writer.root, filename)
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
-		return err
-	}
-	data, err := json.MarshalIndent(value, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(destination, append(data, '\n'), 0o644)
-}
-
-func (writer *fileArtifactWriter) WriteMedia(filename string, source io.Reader) error {
-	destination, err := safePath(writer.root, filename)
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
-		return err
-	}
-	file, err := os.OpenFile(destination, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = file.Close() }()
-	_, err = io.Copy(file, source)
-	return err
-}
-
-func safePath(root, relative string) (string, error) {
-	if relative == "" || strings.Contains(relative, "\\") || strings.HasPrefix(relative, "/") {
-		return "", fmt.Errorf("unsafe relative path %q", relative)
-	}
-	clean := path.Clean(relative)
-	if clean == "." || clean != relative || strings.HasPrefix(clean, "../") {
-		return "", fmt.Errorf("unsafe relative path %q", relative)
-	}
-	return filepath.Join(root, filepath.FromSlash(clean)), nil
 }
 
 func writeJSON(output io.Writer, value any) error {

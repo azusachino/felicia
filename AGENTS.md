@@ -14,8 +14,10 @@ from data — see `docs/research/mementos-not-tickets.md`.)
 
 North star: [`docs/direction.md`](docs/direction.md) (direction: _personal now,
 product-ready_). Earlier design/spec drafts are parked in [`docs/archive/`](docs/archive/).
-Status: **research stage** — flow is research → spec → TDD → implementation, unhurried
-(~6-month horizon).
+Status: **implementation stage** (research trail continues), unhurried (~6-month horizon).
+Delivery status lives in [`docs/roadmap.md`](docs/roadmap.md); the selected end-to-end
+journey and its per-stage status live in
+[`docs/roadmap/user-journey.md`](docs/roadmap/user-journey.md).
 
 ## Tech Stack & Architecture
 
@@ -86,3 +88,21 @@ golangci-lint, goose, sqlc, and PostgreSQL 18 + PostGIS come from the **nix flak
 
 `make check` must pass before every commit; `make validate` before every PR (both
 hook-enforced). No `--no-verify`. Don't commit or push without explicit confirmation.
+
+## Docs-Sync Discipline (per PR)
+
+Every PR that changes system behavior, capability, or delivery progress must update
+the matching status docs **in English, in the same PR, before merge**:
+
+- the README "Status & roadmap" summary, if the overall picture changed;
+- [`docs/roadmap.md`](docs/roadmap.md) / the active epic doc, if milestone or epic
+  progress changed;
+- [`docs/roadmap/user-journey.md`](docs/roadmap/user-journey.md) — the per-stage
+  status of the selected end-to-end journey (collection → intake → authoring →
+  publish → deploy).
+
+This is checked at the PR gate alongside `make validate`; individual commits are not
+required to carry doc updates. GitHub is the single ledger for issue state — do not
+recreate local issue mirrors (the old drafts are archived under
+`docs/archive/github-issues/`); scripted issue lookups use a `GITHUB_TOKEN`
+environment variable, not interactive `gh auth login`.

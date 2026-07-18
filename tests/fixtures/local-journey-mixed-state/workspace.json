@@ -1,0 +1,19 @@
+{
+  "schema": "felicia.local.workspace.v1",
+  "version": "1",
+  "journal_id": "0190cbde-f300-7000-9000-000000000000",
+  "journeys": [
+    {
+      "path": ".",
+      "id": "0190cbde-f300-7000-9000-a00000000001",
+      "slug": "mixed-state-journey",
+      "title": "Mixed State Journey"
+    },
+    {
+      "path": "empty-journey",
+      "id": "0190cbde-f300-7000-9000-a00000000002",
+      "slug": "zero-published-journey",
+      "title": "Zero Published Journey"
+    }
+  ]
+}

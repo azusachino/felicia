@@ -1,0 +1,21 @@
+{
+  "schema": "felicia.local.mementos.v1",
+  "mementos": [
+    {
+      "id": "0190cbde-f300-7000-9000-c00000000001",
+      "stop_key": "harbor",
+      "seq": 1,
+      "kind": "goods",
+      "occurred_at": "2026-05-10T09:15:00+09:00",
+      "occurred_tz": "Asia/Tokyo",
+      "state": "draft",
+      "title": "Harbor draft that never got published",
+      "place": "Kobe",
+      "geom": [135.18, 34.68],
+      "kind_data": {},
+      "media": [
+        {"path": "apps/web-public/public/tokyo_night.jpg", "caption": "harbor draft photo"}
+      ]
+    }
+  ]
+}

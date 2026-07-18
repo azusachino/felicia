@@ -24,3 +24,4 @@ The living research-stage docs are one level up:
 | `device-walkthroughs.md`       | per-kit rituals, "decisions baked in"           | useful, but asserts locked decisions                    |
 | `plan.md` / `todo.md`          | milestone plan + task list                      | planning ahead of the research stage                    |
 | `architecture.md` / `setup.md` | infra/setup notes                               | tied to the locked self-hosted design                   |
+| `github-issues/pages-01.*.md`  | local drafts of Pages-epic issues #40–50        | filed on GitHub 2026-07; the tracker is the ledger now  |

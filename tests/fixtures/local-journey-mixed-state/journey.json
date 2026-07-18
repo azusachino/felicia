@@ -1,0 +1,13 @@
+{
+  "schema": "felicia.local.journey.v1",
+  "id": "0190cbde-f300-7000-9000-a00000000001",
+  "journal_id": "0190cbde-f300-7000-9000-000000000000",
+  "slug": "mixed-state-journey",
+  "title": "Mixed State Journey",
+  "place": "Osaka",
+  "country": "JPN",
+  "region": "Kansai",
+  "date_start": "2026-05-01",
+  "date_end": "2026-05-02",
+  "source_ref": "route.gpx"
+}

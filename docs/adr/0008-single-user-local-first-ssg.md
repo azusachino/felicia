@@ -5,11 +5,19 @@ status: "accepted"
 date: "2026-07-09"
 decisions:
   - "felicia:decision:pg18-ssg-compiler"
-related: []
+related: ["0017", "0025", "0027"]
 supersedes: []
 ---
 
 # ADR 0008: PostgreSQL 18 & SSG Compiler Model
+
+> **SUPERSEDED (storage): see [ADR-0017](0017-sqlite-first-storage.md).**
+> The "PostgreSQL 18 + PostGIS as the sole database engine, no SQLite fallback"
+> decision below was reversed on 2026-07-14: SQLite is now the default local
+> provider and PostgreSQL/PostGIS is optional ([ADR-0017](0017-sqlite-first-storage.md),
+> reaffirmed by [ADR-0027](0027-provider-matrix-and-application-composition.md)).
+> The SSG compiler model and local admin workflow in this ADR still stand
+> ([ADR-0025](0025-static-and-self-hosted-modes.md)).
 
 ## Context
 
