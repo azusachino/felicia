@@ -60,10 +60,8 @@ The contract is usable for the local-first workflow, with explicit boundaries:
 
 1. Type the `plan.json` route/visit/stop/memento evidence arrays instead of
    validating them only as arrays.
-2. Add a root multi-journey workspace manifest; v1 currently uses one workspace
-   and package per journey.
-3. Implement agent suggestion storage and an explicit review transition.
-4. Add the future media attachment model for video, audio, documents, and
+2. Implement agent suggestion storage and an explicit review transition.
+3. Add the future media attachment model for video, audio, documents, and
    trusted embeds.
 
 Conclusion: schema v1 is suitable for the current offline authoring and static
