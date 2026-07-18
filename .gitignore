@@ -36,3 +36,4 @@ __pycache__/
 
 # Asobi project-local database
 /.asobi/
+/cli/felicia
