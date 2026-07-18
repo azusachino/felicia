@@ -378,7 +378,7 @@
 
           {#if selected.photos.length}
             <div class="gallery">
-              {#each selected.photos as photo (photo.src)}
+              {#each selected.photos as photo, index (`${photo.src}:${index}`)}
                 <figure>
                   <img src={photo.src} alt={t(selected.title)} />
                   <figcaption>{t(photo.caption)}</figcaption>

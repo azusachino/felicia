@@ -144,7 +144,7 @@
 
             {#if memento.photos.length}
               <div class="gallery">
-                {#each memento.photos as photo (photo.src)}
+                {#each memento.photos as photo, index (`${photo.src}:${index}`)}
                   <figure>
                     <img src={photo.src} alt={t(memento.title)} />
                     <figcaption>{t(photo.caption)}</figcaption>

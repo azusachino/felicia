@@ -1,0 +1,35 @@
+{
+  "schema": "felicia.local.stops.v1",
+  "stops": [
+    {
+      "candidate_key": "osaka-night",
+      "selected": true,
+      "label": "Dotonbori Night Walk",
+      "coord": [135.5016, 34.6687],
+      "arrive": "2026-04-01T10:00:00+09:00",
+      "depart": "2026-04-02T09:00:00+09:00",
+      "confidence": 0.95,
+      "review_note": "A kept city stop, not every GPS cluster."
+    },
+    {
+      "candidate_key": "kobe-harbor",
+      "selected": true,
+      "label": "Kobe Harbor",
+      "coord": [135.1878, 34.6794],
+      "arrive": "2026-04-02T12:00:00+09:00",
+      "depart": "2026-04-03T08:00:00+09:00",
+      "confidence": 0.91,
+      "review_note": "Transit and food memories share this stop."
+    },
+    {
+      "candidate_key": "nara-park",
+      "selected": true,
+      "label": "Nara Park",
+      "coord": [135.8398, 34.6851],
+      "arrive": "2026-04-03T10:00:00+09:00",
+      "depart": "2026-04-04T09:00:00+09:00",
+      "confidence": 0.89,
+      "review_note": "The attraction was selected by the author after preprocessing."
+    }
+  ]
+}
