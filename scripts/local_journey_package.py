@@ -15,7 +15,7 @@ except ImportError:
     from local_journey_common import NAMESPACE, read_json, safe_media_path
 
 
-def package(args: Namespace) -> Path:
+def build_package(args: Namespace) -> Path:
     workspace = args.workspace.resolve()
     journey = read_json(workspace / "journey.json")
     stop_data = read_json(workspace / "stops.json")

@@ -3,7 +3,7 @@ package importer
 import (
 	"testing"
 
-	journeypackage "github.com/azusachino/felicia/core/package"
+	journeypackage "github.com/azusachino/felicia/core/journeypackage"
 )
 
 func TestDecodePackageNormalizesRouteMementoAndMedia(t *testing.T) {

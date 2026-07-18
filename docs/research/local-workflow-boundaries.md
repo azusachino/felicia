@@ -36,6 +36,6 @@ When a new concern appears, place it at the narrowest seam:
 
 - source extraction or candidate derivation → `runtime/intake` or a provider;
 - authored workspace interaction → `scripts/local_journey_author.py`;
-- package/media transport → `scripts/local_journey_package.py` and `core/package`;
+- package/media transport → `scripts/local_journey_package.py` and `core/journeypackage`;
 - public shape or duplicate-safe UI keys → `publication` or `apps/web-public/src/api`;
 - visual behavior → the relevant design component, not the API loader.

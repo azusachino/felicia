@@ -12,7 +12,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	journeypackage "github.com/azusachino/felicia/core/package"
+	journeypackage "github.com/azusachino/felicia/core/journeypackage"
 )
 
 func TestCLIImportAndStaticCompileEndToEnd(t *testing.T) {

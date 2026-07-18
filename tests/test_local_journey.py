@@ -5,7 +5,7 @@ import zipfile
 from argparse import Namespace
 from pathlib import Path
 
-from scripts.local_journey import package
+from scripts.local_journey import build_package
 
 
 class LocalJourneyWorkflowTest(unittest.TestCase):
@@ -71,7 +71,7 @@ class LocalJourneyWorkflowTest(unittest.TestCase):
             (workspace / "route.gpx").write_text("<gpx />")
             (workspace / "ticket.jpg").write_bytes(b"ticket")
 
-            output = package(Namespace(workspace=workspace))
+            output = build_package(Namespace(workspace=workspace))
 
             with zipfile.ZipFile(output) as archive:
                 mementos = json.loads(archive.read("mementos.yaml"))

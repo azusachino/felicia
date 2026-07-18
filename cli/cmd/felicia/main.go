@@ -18,7 +18,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/azusachino/felicia/core/domain"
-	journeypackage "github.com/azusachino/felicia/core/package"
+	journeypackage "github.com/azusachino/felicia/core/journeypackage"
 	"github.com/azusachino/felicia/providers/local"
 	"github.com/azusachino/felicia/providers/sqlite"
 	"github.com/azusachino/felicia/publication"

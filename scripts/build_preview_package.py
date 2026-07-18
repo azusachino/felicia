@@ -8,7 +8,7 @@ import shutil
 from argparse import Namespace
 from pathlib import Path
 
-from local_journey import package
+from local_journey import build_package
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -41,7 +41,7 @@ def build_from_local_workspace(source: Path, workspace: Path) -> Path:
     print(f"journey: {journey['title']} ({journey['date_start']} → {journey['date_end']})")
     print(f"curated stops: {len([stop for stop in stops if stop.get('selected')])}")
     print(f"authored mementos: {len(mementos)}")
-    return package(Namespace(workspace=workspace))
+    return build_package(Namespace(workspace=workspace))
 
 
 def main() -> None:

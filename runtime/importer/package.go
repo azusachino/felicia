@@ -13,7 +13,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/azusachino/felicia/core/domain"
-	journeypackage "github.com/azusachino/felicia/core/package"
+	journeypackage "github.com/azusachino/felicia/core/journeypackage"
 )
 
 // PackageDocument is the normalized, database-independent import document.

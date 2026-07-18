@@ -14,11 +14,11 @@ from pathlib import Path
 try:
     from .local_journey_author import interactive_author
     from .local_journey_common import CLI, NAMESPACE, ROOT, as_coord, candidate_key, ensure_cli, run, write_json
-    from .local_journey_package import package
+    from .local_journey_package import build_package
 except ImportError:
     from local_journey_author import interactive_author
     from local_journey_common import CLI, NAMESPACE, ROOT, as_coord, candidate_key, ensure_cli, run, write_json
-    from local_journey_package import package
+    from local_journey_package import build_package
 
 
 def preprocess(args: argparse.Namespace) -> None:
@@ -109,7 +109,7 @@ def preprocess(args: argparse.Namespace) -> None:
 
 
 def preview(args: argparse.Namespace) -> None:
-    package_path = package(args)
+    package_path = build_package(args)
     workspace = args.workspace.resolve()
     database = workspace / "felicia.sqlite"
     media_root = workspace / "media"
@@ -145,7 +145,7 @@ def main() -> None:
             interactive_author(args)
             preview(args)
     elif args.command == "package":
-        package(args)
+        build_package(args)
     else:
         preview(args)
 
