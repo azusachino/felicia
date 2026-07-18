@@ -2,8 +2,9 @@
 
 Epics: [SQLite-backed GitHub Pages publication](roadmap/pages-v1-epic.md)
 (shipped — PR #55 merged and the Pages workflow runs on `main`) and the
-active [admin GUI MVP](roadmap/admin-gui-v1-epic.md) (M1 + M2 landed —
-journey shell, import/preview triggers, intake inbox; memento editor next).
+active [admin GUI MVP](roadmap/admin-gui-v1-epic.md) (epic milestones
+M1 + M2 landed — journey shell, import/preview triggers, intake inbox;
+memento editor next).
 The selected end-to-end journey and its per-stage status: [User journey](roadmap/user-journey.md).
 
 > Drafted 2026-07-16. This is a delivery roadmap, not a commitment to build every future seam in the current release.
@@ -44,7 +45,14 @@ The map remains the index. A memento is the story's click target. The first rele
 
 ## Milestones
 
-### M0 — Product and content lock
+> Numbering convention: roadmap-level milestones are **R0–R5**. Each epic
+> under `roadmap/` keeps its own local **M1–M4**, always read scoped to that
+> epic (e.g. "ADMIN-01 M2" is the admin GUI epic's second milestone, not a
+> roadmap milestone). The delivery phases in
+> [user-journey.md](roadmap/user-journey.md) (Phase 1 = static publication,
+> Phase 2 = admin GUI) cut across R2–R5.
+
+### R0 — Product and content lock
 
 Turn the research decisions into a small executable spec before expanding the UI.
 
@@ -59,7 +67,7 @@ Deliverables:
 
 Exit check: a reviewer can describe the complete author and reader journey without falling back to an archived design draft.
 
-### M1 — Canonical storage and public API
+### R1 — Canonical storage and public API
 
 Make the existing domain and provider work the source of truth for the reader.
 
@@ -75,7 +83,7 @@ Deliverables:
 
 Exit check: the public app can run entirely from the API against a clean SQLite database, with no fixture-only behavior in the production path.
 
-### M2 — Public reader v1
+### R2 — Public reader v1
 
 Replace the design showcase with the first coherent Felicia reading experience.
 
@@ -90,7 +98,7 @@ Deliverables:
 
 Exit check: a first-time visitor can discover a journey, open a memento, read its story, view its photos, and return to the index on desktop and mobile.
 
-### M3 — Authoring and publish flow
+### R3 — Authoring and publish flow
 
 Give the single author a reliable private surface for producing the public artifact.
 
@@ -106,7 +114,7 @@ Deliverables:
 
 Exit check: the selected real journey can be created or repaired through the admin UI, previewed, published, and then read through the same public API as any other journey.
 
-### M4 — Ingestion and route enrichment
+### R4 — Ingestion and route enrichment
 
 Automate the parts that are repetitive while preserving author control.
 
@@ -123,7 +131,7 @@ Deliverables:
 
 Exit check: re-running an import produces no duplicates, does not overwrite authored fields, and leaves an auditable result when source data is incomplete.
 
-### M5 — Production deployment and v1 acceptance
+### R5 — Production deployment and v1 acceptance
 
 Make the result dependable as a personal service.
 
@@ -151,12 +159,12 @@ Every milestone keeps the smallest relevant gate green:
 
 ## Suggested order of work
 
-1. M0 product/content lock.
-2. M1 API and storage contract.
-3. M2 public reader using one real journey.
-4. M3 authoring and publish.
-5. M4 ingestion automation.
-6. M5 deployment and acceptance.
+1. R0 product/content lock.
+2. R1 API and storage contract.
+3. R2 public reader using one real journey.
+4. R3 authoring and publish.
+5. R4 ingestion automation.
+6. R5 deployment and acceptance.
 
 The important cut is to reach a complete public reader with one real journey before investing in the full Immich/Dawarich automation. The importer is valuable, but it is not the proof of Felicia's
 core experience.

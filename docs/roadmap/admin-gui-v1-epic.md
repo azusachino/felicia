@@ -138,6 +138,9 @@ E2E script passes locally against the disposable server.
 
 ## Milestones
 
+Milestone numbers here are **epic-local** (they are not the roadmap's
+R-milestones — see the numbering note in [`../roadmap.md`](../roadmap.md)).
+
 - **M1** = 01.1 + 01.2 (navigate + import/preview)
 - **M2** = 01.3a + 01.3b (intake over HTTP, then the inbox)
 - **M3** = 01.4 + 01.5 (editor + concurrency)
