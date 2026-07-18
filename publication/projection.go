@@ -95,11 +95,14 @@ type Input struct {
 	JourneyIDs []uuid.UUID
 }
 
-// BuildReport describes the generated public artifact.
+// BuildReport describes the generated public artifact. Removed counts the
+// stale artifacts a reused output directory had to drop (see
+// FileArtifactWriter.Finalize); a compile into a fresh directory reports 0.
 type BuildReport struct {
 	Journeys int
 	Mementos int
 	Media    int
+	Removed  int
 }
 
 // Compiler is the shared publication boundary used by CLI and server modes.
