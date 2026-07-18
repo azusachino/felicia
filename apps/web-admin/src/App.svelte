@@ -1,6 +1,22 @@
 <script lang="ts">
+  import { onMount } from "svelte"
+  import { loadAdminOverview, type AdminOverview } from "./api"
+
   const navItems = ["Overview", "Inbox", "Journeys", "Mementos", "Settings"]
   let active = $state("Overview")
+  let overview = $state<AdminOverview>({ journeys: [], mementos: [] })
+  let loading = $state(true)
+  let error = $state("")
+
+  onMount(async () => {
+    try {
+      overview = await loadAdminOverview()
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : "Unable to load the local workspace"
+    } finally {
+      loading = false
+    }
+  })
 </script>
 
 <svelte:head>
@@ -48,9 +64,16 @@
 
       <section class="cards" aria-label="Workspace summary">
         <article><span class="card-label">Inbox</span><strong>0</strong><span class="card-note">packages to review</span></article>
-        <article><span class="card-label">Journeys</span><strong>1</strong><span class="card-note">local preview journey</span></article>
-        <article><span class="card-label">Draft mementos</span><strong>0</strong><span class="card-note">ready for curation</span></article>
+        <article><span class="card-label">Journeys</span><strong>{loading ? "—" : overview.journeys.length}</strong><span class="card-note">from the admin API</span></article>
+        <article>
+          <span class="card-label">Draft mementos</span><strong>{loading ? "—" : overview.mementos.filter((memento) => ["candidate", "draft"].includes(memento.state)).length}</strong><span
+            class="card-note">ready for curation</span
+          >
+        </article>
       </section>
+      {#if error}
+        <p class="api-error" role="alert">{error}. Start the local API to load authoring data.</p>
+      {/if}
     {:else}
       <section class="empty-state">
         <span class="empty-icon">{active.slice(0, 1)}</span>
