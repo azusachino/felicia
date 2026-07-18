@@ -226,7 +226,11 @@ func packageCommand(args []string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	return writeJSON(output, map[string]any{"package_id": pkg.Manifest.PackageID, "schema_version": pkg.Manifest.SchemaVersion, "files": len(pkg.Files)})
+	document, err := importer.DecodePackage(pkg)
+	if err != nil {
+		return fmt.Errorf("validate package contents: %w", err)
+	}
+	return writeJSON(output, map[string]any{"package_id": pkg.Manifest.PackageID, "schema_version": pkg.Manifest.SchemaVersion, "files": len(pkg.Files), "journeys": 1, "mementos": len(document.Mementos), "photos": len(document.Photos)})
 }
 
 func importCommand(args []string, output io.Writer) error {

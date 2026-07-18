@@ -6,15 +6,26 @@ from argparse import Namespace
 from pathlib import Path
 
 from scripts.local_journey import build_package
+from scripts.validate_local_authoring import validate_workspace
 
 
 class LocalJourneyWorkflowTest(unittest.TestCase):
+    def test_preview_workspaces_validate_as_independent_journeys(self):
+        root = Path(__file__).resolve().parents[1] / "examples" / "preview" / "local-journey"
+        workspaces = [root, root / "kansai-ramble"]
+        for workspace in workspaces:
+            validate_workspace(workspace)
+            self.assertTrue((workspace / "journey.json").is_file())
+            self.assertTrue((workspace / "stops.json").is_file())
+            self.assertTrue((workspace / "mementos.json").is_file())
+
     def test_package_keeps_only_selected_stops_and_copies_media(self):
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
             (workspace / "journey.json").write_text(
                 json.dumps(
                     {
+                        "schema": "felicia.local.journey.v1",
                         "id": "0190cbde-f300-7000-8000-111111111111",
                         "journal_id": "0190cbde-f300-7000-8000-000000000000",
                         "slug": "osaka-five-days",
@@ -28,9 +39,10 @@ class LocalJourneyWorkflowTest(unittest.TestCase):
             (workspace / "stops.json").write_text(
                 json.dumps(
                     {
+                        "schema": "felicia.local.stops.v1",
                         "stops": [
-                            {"candidate_key": "osaka", "selected": True},
-                            {"candidate_key": "noise", "selected": False},
+                            {"candidate_key": "osaka", "selected": True, "label": "Osaka"},
+                            {"candidate_key": "noise", "selected": False, "label": "Noise"},
                         ]
                     }
                 )
@@ -38,6 +50,7 @@ class LocalJourneyWorkflowTest(unittest.TestCase):
             (workspace / "mementos.json").write_text(
                 json.dumps(
                     {
+                        "schema": "felicia.local.mementos.v1",
                         "mementos": [
                             {
                                 "id": "0190cbde-f300-7000-8000-a00000000001",
@@ -62,11 +75,12 @@ class LocalJourneyWorkflowTest(unittest.TestCase):
                                 "id": "0190cbde-f300-7000-8000-a00000000002",
                                 "stop_key": "noise",
                                 "seq": 2,
-                                "kind": "note",
+                                "kind": "goods",
                                 "occurred_at": "2026-04-01T10:00:00Z",
                                 "occurred_tz": "UTC",
                                 "title": "Noise",
                                 "state": "draft",
+                                "kind_data": {},
                                 "media": [],
                             },
                         ]
@@ -89,9 +103,9 @@ class LocalJourneyWorkflowTest(unittest.TestCase):
     def test_package_rejects_private_and_unsupported_media(self):
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
-            (workspace / "journey.json").write_text(json.dumps({"id": "0190cbde-f300-7000-8000-111111111111", "journal_id": "0190cbde-f300-7000-8000-000000000000", "slug": "test", "title": "Test", "date_start": "2026-04-01", "date_end": "2026-04-01"}))
-            (workspace / "stops.json").write_text(json.dumps({"stops": [{"candidate_key": "stop", "selected": True}]}))
-            (workspace / "mementos.json").write_text(json.dumps({"mementos": [{"id": "0190cbde-f300-7000-8000-a00000000001", "stop_key": "stop", "seq": 1, "kind": "goods", "occurred_at": "2026-04-01T09:00:00Z", "media": [{"path": "secret.mp4", "kind": "video"}]}]}))
+            (workspace / "journey.json").write_text(json.dumps({"schema": "felicia.local.journey.v1", "id": "0190cbde-f300-7000-8000-111111111111", "journal_id": "0190cbde-f300-7000-8000-000000000000", "slug": "test", "title": "Test", "date_start": "2026-04-01", "date_end": "2026-04-01"}))
+            (workspace / "stops.json").write_text(json.dumps({"schema": "felicia.local.stops.v1", "stops": [{"candidate_key": "stop", "selected": True, "label": "Stop"}]}))
+            (workspace / "mementos.json").write_text(json.dumps({"schema": "felicia.local.mementos.v1", "mementos": [{"id": "0190cbde-f300-7000-8000-a00000000001", "stop_key": "stop", "seq": 1, "kind": "goods", "occurred_at": "2026-04-01T09:00:00Z", "state": "draft", "title": "Video", "kind_data": {}, "media": [{"path": "secret.mp4", "kind": "video"}]}]}))
             (workspace / "route.gpx").write_text("<gpx />")
             (workspace / "secret.mp4").write_bytes(b"video")
 

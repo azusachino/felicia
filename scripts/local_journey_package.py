@@ -12,12 +12,18 @@ from pathlib import Path
 
 try:
     from .local_journey_common import NAMESPACE, read_json, safe_media_path
+    from .validate_local_authoring import validate_workspace
 except ImportError:
     from local_journey_common import NAMESPACE, read_json, safe_media_path
+    from validate_local_authoring import validate_workspace
 
 
 def build_package(args: Namespace) -> Path:
     workspace = args.workspace.resolve()
+    try:
+        validate_workspace(workspace)
+    except ValueError as error:
+        raise SystemExit(str(error)) from error
     journey = read_json(workspace / "journey.json")
     stop_data = read_json(workspace / "stops.json")
     memento_data = read_json(workspace / "mementos.json")
