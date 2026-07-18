@@ -37,6 +37,54 @@ export interface AdminStopCandidate {
   confidence: number
   arrive: string
   depart: string
+  // Optimistic-concurrency token: every review/promote call should echo this
+  // back as expected_revision so a concurrent reviewer's write conflicts
+  // instead of silently overwriting (ADMIN-01.3b conflict handling).
+  revision: number
+}
+
+// intake/plan response (ADMIN-01.3a): the planner's diagnostics alongside the
+// proposed stops, so the "Plan intake" trigger can report both counts.
+export interface AdminIntakeIssue {
+  severity: "info" | "warning" | "error"
+  code: string
+  message: string
+}
+
+export interface PlanIntakeResult {
+  journey_id: string
+  stops: AdminStopCandidate[]
+  issues: AdminIntakeIssue[]
+}
+
+// GET /api/admin/templates response shape (ADMIN-01.3b kind picker). This
+// mirrors core/domain.Template/Field verbatim, including the capitalized
+// field names — those types have no `json` tags, so Go's default
+// marshaling (exported field name as-is) is what actually goes over the
+// wire.
+export interface AdminTemplateField {
+  Name: string
+  Type: string
+  Required: boolean
+  Values: string[] | null
+}
+
+export interface AdminTemplate {
+  Kind: string
+  Anchor: "point" | "edge"
+  Stub: string
+  Fields: AdminTemplateField[]
+}
+
+export type AdminTemplateRegistry = Record<string, AdminTemplate>
+
+// Request shape for the ignore/merge half of stop-candidate review (promote
+// has its own dedicated endpoint/function). Mirrors stopReviewRequest in
+// server/api/server.go.
+export interface ReviewStopCandidatePatch {
+  state: "ignored" | "merged"
+  mergedInto?: string
+  expectedRevision?: number
 }
 
 // Per-journey rollup for the journey list view (#/). Fetched alongside the
@@ -84,6 +132,23 @@ function apiURL(path: string): string {
   return `${base}${path}`
 }
 
+// ApiError carries the HTTP status alongside the server's error message so
+// callers can distinguish a write conflict (409 — someone else changed this
+// record) from any other failure without re-parsing the message string.
+export class ApiError extends Error {
+  status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = "ApiError"
+    this.status = status
+  }
+}
+
+export function isConflict(cause: unknown): cause is ApiError {
+  return cause instanceof ApiError && cause.status === 409
+}
+
 async function apiErrorMessage(response: Response): Promise<string> {
   try {
     const body = (await response.clone().json()) as { error?: string }
@@ -96,7 +161,7 @@ async function apiErrorMessage(response: Response): Promise<string> {
 
 async function getJSON<T>(path: string): Promise<T> {
   const response = await fetch(apiURL(path), { headers: { Accept: "application/json" } })
-  if (!response.ok) throw new Error(await apiErrorMessage(response))
+  if (!response.ok) throw new ApiError(await apiErrorMessage(response), response.status)
   return (await response.json()) as T
 }
 
@@ -106,7 +171,7 @@ async function postJSON<T>(path: string, body?: unknown): Promise<T> {
     headers: { Accept: "application/json", "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   })
-  if (!response.ok) throw new Error(await apiErrorMessage(response))
+  if (!response.ok) throw new ApiError(await apiErrorMessage(response), response.status)
   return (await response.json()) as T
 }
 
@@ -186,4 +251,36 @@ export function routePointCount(result: SyncRouteResult): number {
   if (!result.gps_route) return 0
   if (result.gps_route.type === "LineString") return result.gps_route.coordinates.length
   return result.gps_route.coordinates.reduce((total, line) => total + line.length, 0)
+}
+
+// Intake inbox (ADMIN-01.3b): runs the intake planner over the journey's
+// sources and persists the proposed stop candidates. Mirrors the
+// import/preview triggers' pending/success/error shape on the caller side.
+export async function planIntake(journeyId: string): Promise<PlanIntakeResult> {
+  return postJSON<PlanIntakeResult>(`/api/admin/journeys/${journeyId}/intake/plan`)
+}
+
+export async function getTemplates(): Promise<AdminTemplateRegistry> {
+  return getJSON<AdminTemplateRegistry>("/api/admin/templates")
+}
+
+// Marks a proposed stop candidate kept and creates a draft memento from it.
+// expectedRevision guards against a concurrent reviewer; a stale value (or a
+// candidate that isn't proposed anymore) surfaces as a 409 ApiError.
+export async function promoteStopCandidate(candidateId: string, kind: string, expectedRevision?: number): Promise<AdminMemento> {
+  return postJSON<AdminMemento>(`/api/admin/stop-candidates/${candidateId}/promote`, {
+    kind,
+    expected_revision: expectedRevision,
+  })
+}
+
+// Ignores or merges a stop candidate via the review endpoint (promote has
+// its own dedicated endpoint above). Returns the updated candidate so the
+// caller can patch it into the inbox list in place, without a reload.
+export async function reviewStopCandidate(candidateId: string, patch: ReviewStopCandidatePatch): Promise<AdminStopCandidate> {
+  return postJSON<AdminStopCandidate>(`/api/admin/stop-candidates/${candidateId}/review`, {
+    state: patch.state,
+    merged_into: patch.mergedInto,
+    expected_revision: patch.expectedRevision,
+  })
 }

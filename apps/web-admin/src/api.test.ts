@@ -1,13 +1,19 @@
 import { afterEach, beforeAll, describe, expect, test } from "bun:test"
 import {
+  ApiError,
   countMementosByState,
   countPendingStopCandidates,
   getJourney,
+  getTemplates,
+  isConflict,
   listJourneys,
   listMementos,
   listStopCandidates,
   loadJourneySummaries,
   photoTray,
+  planIntake,
+  promoteStopCandidate,
+  reviewStopCandidate,
   routePointCount,
   sortMementosBySeq,
   syncRoute,
@@ -67,6 +73,18 @@ const memento = (overrides: Partial<AdminMemento> = {}): AdminMemento => ({
   ...overrides,
 })
 
+const candidate = (overrides: Partial<AdminStopCandidate> = {}): AdminStopCandidate => ({
+  id: "candidate-1",
+  journey_id: "journey-1",
+  label: "Fushimi Inari",
+  state: "proposed",
+  confidence: 0.87,
+  arrive: "2026-03-21T09:00:00Z",
+  depart: "2026-03-21T10:30:00Z",
+  revision: 0,
+  ...overrides,
+})
+
 describe("listJourneys / getJourney / listMementos / listStopCandidates", () => {
   test("listJourneys maps a successful response", async () => {
     mockFetchOnce(200, [journey()])
@@ -105,9 +123,9 @@ describe("countMementosByState / countPendingStopCandidates / sortMementosBySeq"
 
   test("counts only proposed stop candidates", () => {
     const candidates: AdminStopCandidate[] = [
-      { id: "c1", journey_id: "journey-1", label: "Cafe", state: "proposed", confidence: 0.8, arrive: "", depart: "" },
-      { id: "c2", journey_id: "journey-1", label: "Station", state: "kept", confidence: 0.9, arrive: "", depart: "" },
-      { id: "c3", journey_id: "journey-1", label: "Alley", state: "proposed", confidence: 0.5, arrive: "", depart: "" },
+      { id: "c1", journey_id: "journey-1", label: "Cafe", state: "proposed", confidence: 0.8, arrive: "", depart: "", revision: 0 },
+      { id: "c2", journey_id: "journey-1", label: "Station", state: "kept", confidence: 0.9, arrive: "", depart: "", revision: 1 },
+      { id: "c3", journey_id: "journey-1", label: "Alley", state: "proposed", confidence: 0.5, arrive: "", depart: "", revision: 0 },
     ]
     expect(countPendingStopCandidates(candidates)).toBe(2)
   })
@@ -210,5 +228,101 @@ describe("import/preview triggers", () => {
     const assets = await photoTray("journey-1")
     expect(assets).toHaveLength(2)
     expect(assets[1].coord).toBeUndefined()
+  })
+})
+
+describe("intake inbox (ADMIN-01.3b)", () => {
+  test("planIntake maps the plan response, including issues", async () => {
+    mockFetchOnce(200, {
+      journey_id: "journey-1",
+      stops: [candidate()],
+      issues: [{ severity: "warning", code: "stop_label_missing", message: "stop x has no source label" }],
+    })
+    const result = await planIntake("journey-1")
+    expect(result.stops).toHaveLength(1)
+    expect(result.issues).toEqual([{ severity: "warning", code: "stop_label_missing", message: "stop x has no source label" }])
+  })
+
+  test("planIntake surfaces a service-unavailable error when the track source isn't configured", async () => {
+    mockFetchOnce(503, { error: "no track source configured" })
+    await expect(planIntake("journey-1")).rejects.toThrow("no track source configured")
+  })
+
+  test("getTemplates maps the kind registry, keyed by kind", async () => {
+    mockFetchOnce(200, {
+      transit: { Kind: "transit", Anchor: "edge", Stub: "transit-stub", Fields: [{ Name: "operator", Type: "text", Required: true, Values: null }] },
+      goods: { Kind: "goods", Anchor: "point", Stub: "goods-stub", Fields: [] },
+    })
+    const templates = await getTemplates()
+    expect(Object.keys(templates)).toEqual(["transit", "goods"])
+    expect(templates.transit.Fields[0].Name).toBe("operator")
+  })
+
+  test("promoteStopCandidate POSTs the kind and expected revision, returning the draft memento", async () => {
+    let capturedBody: unknown
+    globalThis.fetch = ((_url: string | URL, init?: RequestInit) => {
+      capturedBody = init?.body ? JSON.parse(init.body as string) : undefined
+      return Promise.resolve(Response.json(memento({ id: "memento-9", kind: "goods", state: "draft" })))
+    }) as unknown as typeof fetch
+
+    const result = await promoteStopCandidate("candidate-1", "goods", 0)
+    expect(capturedBody).toEqual({ kind: "goods", expected_revision: 0 })
+    expect(result.id).toBe("memento-9")
+    expect(result.state).toBe("draft")
+  })
+
+  test("promoteStopCandidate omits expected_revision when not given", async () => {
+    let capturedBody: unknown
+    globalThis.fetch = ((_url: string | URL, init?: RequestInit) => {
+      capturedBody = init?.body ? JSON.parse(init.body as string) : undefined
+      return Promise.resolve(Response.json(memento()))
+    }) as unknown as typeof fetch
+
+    await promoteStopCandidate("candidate-1", "goods")
+    expect(capturedBody).toEqual({ kind: "goods" })
+  })
+
+  test("promoteStopCandidate surfaces a 409 as an ApiError conflict", async () => {
+    mockFetchOnce(409, { error: "stop candidate was already reviewed" })
+    let caught: unknown
+    try {
+      await promoteStopCandidate("candidate-1", "goods", 0)
+    } catch (cause) {
+      caught = cause
+    }
+    expect(caught).toBeInstanceOf(ApiError)
+    expect(isConflict(caught)).toBe(true)
+    expect((caught as ApiError).message).toBe("stop candidate was already reviewed")
+  })
+
+  test("reviewStopCandidate POSTs the ignore patch and returns the updated candidate", async () => {
+    let capturedBody: unknown
+    globalThis.fetch = ((_url: string | URL, init?: RequestInit) => {
+      capturedBody = init?.body ? JSON.parse(init.body as string) : undefined
+      return Promise.resolve(Response.json(candidate({ state: "ignored", revision: 1 })))
+    }) as unknown as typeof fetch
+
+    const result = await reviewStopCandidate("candidate-1", { state: "ignored", expectedRevision: 0 })
+    expect(capturedBody).toEqual({ state: "ignored", expected_revision: 0 })
+    expect(result.state).toBe("ignored")
+    expect(result.revision).toBe(1)
+  })
+
+  test("reviewStopCandidate POSTs the merge patch with merged_into", async () => {
+    let capturedBody: unknown
+    globalThis.fetch = ((_url: string | URL, init?: RequestInit) => {
+      capturedBody = init?.body ? JSON.parse(init.body as string) : undefined
+      return Promise.resolve(Response.json(candidate({ id: "candidate-1", state: "merged", revision: 1 })))
+    }) as unknown as typeof fetch
+
+    const result = await reviewStopCandidate("candidate-1", { state: "merged", mergedInto: "candidate-2", expectedRevision: 0 })
+    expect(capturedBody).toEqual({ state: "merged", merged_into: "candidate-2", expected_revision: 0 })
+    expect(result.state).toBe("merged")
+  })
+
+  test("reviewStopCandidate surfaces a 409 revision conflict", async () => {
+    mockFetchOnce(409, { error: "candidate revision conflict" })
+    const failure = reviewStopCandidate("candidate-1", { state: "ignored", expectedRevision: 0 })
+    await expect(failure).rejects.toThrow("candidate revision conflict")
   })
 })
