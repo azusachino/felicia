@@ -3,7 +3,28 @@
 This is the smallest end-to-end authoring simulation for a local-first journey.
 It intentionally leaves the human or an agent in charge of the semantic choices.
 
-## 1. Preprocess
+## One-command workflow
+
+For the full human-in-the-loop flow, use one command:
+
+```sh
+uv run python scripts/local_journey.py run \
+  --journey 0190cbde-f300-7000-8000-111111111111 \
+  --gpx path/to/route.gpx \
+  --photos path/to/photos \
+  --sidecar path/to/photos.jsonl \
+  --workspace .felicia/local-journey
+```
+
+This command preprocesses the sources, asks the user to confirm/rename stops,
+allows manual stops and mementos, lets existing mementos be edited, and then
+packages, validates, imports, and compiles the local preview. No intermediate
+command is required.
+
+## Individual stages
+
+The stages remain available when an agent or a scripted experiment needs to
+inspect or edit JSON between steps.
 
 ```sh
 uv run python scripts/local_journey.py preprocess \
