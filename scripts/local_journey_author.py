@@ -73,7 +73,7 @@ def interactive_author(args: Namespace) -> None:
     for memento in mementos:
         print(f"\nEdit memento {memento.get('id')}")
         memento["title"] = ask("  title", memento.get("title", ""))
-        memento["kind"] = ask("  kind", memento.get("kind", "note"))
+        memento["kind"] = ask("  kind", memento.get("kind", "goods"))
         memento["state"] = ask("  state (draft/published)", "published")
         media_default = ",".join(item.get("path", "") for item in memento.get("media", []))
         media_paths = ask("  media paths (comma-separated)", media_default)
@@ -87,7 +87,7 @@ def interactive_author(args: Namespace) -> None:
                     "id": str(uuid.uuid5(NAMESPACE, f"{args.journey}:memento:{index}")),
                     "stop_key": stop["candidate_key"],
                     "seq": index,
-                    "kind": ask("  kind", "note"),
+                    "kind": ask("  kind", "goods"),
                     "occurred_at": ask("  occurred_at RFC3339", stop.get("arrive", "")),
                     "occurred_tz": ask("  timezone", "UTC"),
                     "title": ask("  title"),

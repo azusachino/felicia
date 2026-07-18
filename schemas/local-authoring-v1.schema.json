@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://felicia.local/schemas/local-authoring-v1.schema.json",
+  "title": "Felicia local authoring v1",
+  "description": "Definitions for the editable local journey workspace. Each file selects one definition below.",
+  "$defs": {
+    "coordinate": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "number", "minimum": -180, "maximum": 180 },
+        { "type": "number", "minimum": -90, "maximum": 90 }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "media": {
+      "type": "object",
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "caption": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "journey": {
+      "type": "object",
+      "required": ["schema", "id", "journal_id", "slug", "title", "date_start", "date_end"],
+      "properties": {
+        "schema": { "const": "felicia.local.journey.v1" },
+        "id": { "type": "string", "format": "uuid" },
+        "journal_id": { "type": "string", "format": "uuid" },
+        "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "title": { "type": "string", "minLength": 1 },
+        "place": { "type": "string" },
+        "country": { "type": "string" },
+        "region": { "type": "string" },
+        "date_start": { "type": "string", "format": "date" },
+        "date_end": { "type": "string", "format": "date" },
+        "source_ref": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "stop": {
+      "type": "object",
+      "required": ["candidate_key", "selected", "label"],
+      "properties": {
+        "candidate_key": { "type": "string", "minLength": 1 },
+        "selected": { "type": "boolean" },
+        "label": { "type": "string" },
+        "coord": { "anyOf": [{ "$ref": "#/$defs/coordinate" }, { "type": "null" }] },
+        "arrive": { "type": "string", "format": "date-time" },
+        "depart": { "type": "string", "format": "date-time" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "source_index": { "type": "integer", "minimum": 1 },
+        "review_note": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "stops_file": {
+      "type": "object",
+      "required": ["schema", "stops"],
+      "properties": {
+        "schema": { "const": "felicia.local.stops.v1" },
+        "stops": { "type": "array", "items": { "$ref": "#/$defs/stop" } }
+      },
+      "additionalProperties": false
+    },
+    "memento": {
+      "type": "object",
+      "required": ["id", "stop_key", "seq", "kind", "occurred_at", "state", "title", "kind_data", "media"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "stop_key": { "type": "string", "minLength": 1 },
+        "seq": { "type": "integer", "minimum": 1 },
+        "kind": { "enum": ["goods", "live", "transit", "stamp", "receipt"] },
+        "occurred_at": { "type": "string", "format": "date-time" },
+        "occurred_tz": { "type": "string", "minLength": 1 },
+        "state": { "enum": ["candidate", "draft", "authored", "published", "archived"] },
+        "title": { "type": "string" },
+        "place": { "type": "string" },
+        "geom": { "anyOf": [{ "$ref": "#/$defs/coordinate" }, { "type": "null" }] },
+        "kind_data": { "type": "object" },
+        "essay": { "type": "string" },
+        "vendor": { "type": "string" },
+        "price_amount": { "type": "integer" },
+        "price_currency": { "type": "string" },
+        "translations": { "type": "object" },
+        "media": { "type": "array", "items": { "$ref": "#/$defs/media" } },
+        "author_note": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "mementos_file": {
+      "type": "object",
+      "required": ["schema", "mementos"],
+      "properties": {
+        "schema": { "const": "felicia.local.mementos.v1" },
+        "mementos": { "type": "array", "items": { "$ref": "#/$defs/memento" } }
+      },
+      "additionalProperties": false
+    },
+    "plan": {
+      "type": "object",
+      "required": ["journey_id", "schema", "version", "routes", "visits", "stops", "mementos", "issues"],
+      "properties": {
+        "journey_id": { "type": "string", "format": "uuid" },
+        "schema": { "const": "felicia.intake.plan" },
+        "version": { "const": "1" },
+        "source_fingerprint": { "type": "string" },
+        "routes": { "type": "array" },
+        "visits": { "type": "array" },
+        "stops": { "type": "array" },
+        "mementos": { "type": "array" },
+        "issues": { "type": "array" }
+      },
+      "additionalProperties": false
+    }
+  }
+}
