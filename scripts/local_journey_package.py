@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import mimetypes
 import uuid
 import zipfile
 from argparse import Namespace
@@ -43,8 +44,11 @@ def build_package(args: Namespace) -> Path:
         photos = []
         for photo_index, photo in enumerate(memento.get("media", []), start=1):
             source = safe_media_path(workspace, str(photo.get("path", "")))
+            validate_public_image(photo, source)
             name = f"media/{source.name}"
             data = source.read_bytes()
+            if name in copied_media and copied_media[name] != data:
+                raise SystemExit(f"media basename collision with different files: {source.name}")
             copied_media[name] = data
             photos.append(
                 {
@@ -80,3 +84,23 @@ def build_package(args: Namespace) -> Path:
             archive.writestr(name, data)
     print(f"package ready: {output} (stops={len(selected)}, mementos={len(package_mementos)}, media={len(copied_media)})")
     return output
+
+
+def validate_public_image(attachment: dict, source: Path) -> None:
+    """Enforce the v1 public-package media boundary."""
+    visibility = attachment.get("visibility", "public")
+    if visibility != "public":
+        raise SystemExit(f"private media cannot enter a public package: {attachment.get('path', '')}")
+    kind = attachment.get("kind", "image")
+    if kind != "image":
+        raise SystemExit(f"unsupported public media kind {kind!r}: {attachment.get('path', '')}")
+    extension = source.suffix.lower()
+    if extension not in {".jpg", ".jpeg", ".png", ".webp"}:
+        raise SystemExit(f"only JPEG, PNG, and WebP images are supported in public packages: {source.name}")
+    declared_mime = attachment.get("mime")
+    detected_mime, _ = mimetypes.guess_type(source.name)
+    allowed_mime = {"image/jpeg", "image/png", "image/webp"}
+    if declared_mime and declared_mime not in allowed_mime:
+        raise SystemExit(f"unsupported public image MIME {declared_mime!r}: {source.name}")
+    if detected_mime and detected_mime not in allowed_mime:
+        raise SystemExit(f"unsupported public image MIME {detected_mime!r}: {source.name}")

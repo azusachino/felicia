@@ -27,6 +27,9 @@ The machine-readable definitions are in
   top-level so importers and readers can handle them consistently.
 - `media.path` is a local source reference in the workspace. The package
   builder resolves, hashes, and rewrites it to a safe package object key.
+- `media.kind` and `media.visibility` describe intake intent. The public v1
+  package accepts only `public` JPEG/PNG/WebP images; unsupported or private
+  attachments fail package creation and remain outside publication.
 - Unknown top-level fields are invalid in v1. The schema must be versioned before
   adding a new field; reserved authored fields are already represented even when
   the current importer has not mapped every one yet.

@@ -86,6 +86,18 @@ class LocalJourneyWorkflowTest(unittest.TestCase):
                 self.assertEqual(b"ticket", archive.read("media/ticket.jpg"))
                 self.assertIn(b"sha256:", archive.read("manifest.yaml"))
 
+    def test_package_rejects_private_and_unsupported_media(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            (workspace / "journey.json").write_text(json.dumps({"id": "0190cbde-f300-7000-8000-111111111111", "journal_id": "0190cbde-f300-7000-8000-000000000000", "slug": "test", "title": "Test", "date_start": "2026-04-01", "date_end": "2026-04-01"}))
+            (workspace / "stops.json").write_text(json.dumps({"stops": [{"candidate_key": "stop", "selected": True}]}))
+            (workspace / "mementos.json").write_text(json.dumps({"mementos": [{"id": "0190cbde-f300-7000-8000-a00000000001", "stop_key": "stop", "seq": 1, "kind": "goods", "occurred_at": "2026-04-01T09:00:00Z", "media": [{"path": "secret.mp4", "kind": "video"}]}]}))
+            (workspace / "route.gpx").write_text("<gpx />")
+            (workspace / "secret.mp4").write_bytes(b"video")
+
+            with self.assertRaisesRegex(SystemExit, "unsupported public media kind"):
+                build_package(Namespace(workspace=workspace))
+
 
 if __name__ == "__main__":
     unittest.main()

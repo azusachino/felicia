@@ -19,6 +19,9 @@
       "required": ["path"],
       "properties": {
         "path": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["image", "video", "audio", "document", "embed"] },
+        "mime": { "type": "string", "minLength": 1 },
+        "visibility": { "enum": ["public", "private"] },
         "caption": { "type": "string" }
       },
       "additionalProperties": false
