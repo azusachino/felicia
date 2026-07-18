@@ -1,0 +1,29 @@
+{
+  "schema": "felicia.local.mementos.v1",
+  "mementos": [
+    {
+      "id": "0190cbde-f300-7000-8000-a00000000001",
+      "stop_key": "naritasan",
+      "seq": 1,
+      "kind": "transit",
+      "occurred_at": "2025-10-06T10:03:00+09:00",
+      "occurred_tz": "Asia/Tokyo",
+      "state": "published",
+      "title": "Narita Express Ticket",
+      "place": "Narita",
+      "geom": [140.3933101, 35.7758714],
+      "kind_data": {
+        "operator": "JR East",
+        "line": "Narita Express",
+        "from": "Narita Airport",
+        "to": "Tokyo"
+      },
+      "media": [
+        {
+          "path": "apps/web-public/public/kyoto_temple.jpg",
+          "caption": "Ticket memory"
+        }
+      ]
+    }
+  ]
+}
