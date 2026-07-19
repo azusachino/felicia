@@ -2,6 +2,7 @@
   import {
     compileSite,
     getJourney,
+    getJourneyBuildStatus,
     getSiteInfo,
     getTemplates,
     isConflict,
@@ -204,11 +205,31 @@
     }
   }
 
+  // Pending-build tracking (memento-lifecycle staged rebuild — ADMIN-02
+  // §6). Publish/unpublish no longer eagerly rebuild the artifact; instead
+  // this drives the memento-row highlight and the Build button's count
+  // suffix below. Best-effort: a failure here just leaves nothing
+  // highlighted rather than failing the whole page.
+  let pendingMementoIds = $state<Set<string>>(new Set())
+  let pendingCount = $state(0)
+
+  async function loadBuildStatus(journeyId: string) {
+    try {
+      const status = await getJourneyBuildStatus(journeyId)
+      pendingMementoIds = new Set(status.pending_memento_ids)
+      pendingCount = status.pending_count
+    } catch {
+      pendingMementoIds = new Set()
+      pendingCount = 0
+    }
+  }
+
   // Re-runs whenever `id` changes, including a deep link straight from one
   // journey's hash to another (no full page reload).
   $effect(() => {
     loadDetail(id)
     loadStopCandidates(id)
+    loadBuildStatus(id)
   })
 
   // The kind registry is journey-independent, so it loads once per
@@ -251,9 +272,17 @@
       const report = await compileSite()
       buildState = { status: "success", message: "Build complete.", report }
       siteInfo = await getSiteInfo()
+      // The build just resolved every published<->authored toggle since the
+      // last one — refresh so the pending highlights/count clear.
+      await loadBuildStatus(id)
     } catch (cause) {
       buildState = { status: "error", message: actionErrorMessage(cause) }
     }
+  }
+
+  function buildButtonLabel(pending: number, status: BuildStatus): string {
+    if (status === "pending") return "Building…"
+    return pending > 0 ? `Build & preview (${pending})` : "Build & preview"
   }
 
   function previewUrl(port: string): string {
@@ -427,11 +456,14 @@
       {:else}
         <ul class="memento-list">
           {#each mementos as memento (memento.id)}
-            <li class="memento-row">
+            <li class="memento-row" class:memento-row--pending={pendingMementoIds.has(memento.id)}>
               <a class="memento-link" href={mementoEditHash(id, memento.id)}>
                 <span class="memento-seq">#{memento.seq}</span>
                 <span class="memento-title">{memento.title || memento.place || memento.kind}</span>
                 <span class="memento-kind">{memento.kind}</span>
+                {#if pendingMementoIds.has(memento.id)}
+                  <span class="pending-dot" title="Pending build — this memento's visibility hasn't been built yet">pending build</span>
+                {/if}
                 <span class={`badge badge--${memento.state}`}>{memento.state}</span>
               </a>
             </li>
@@ -443,7 +475,7 @@
     <section class="build-shortcut" aria-label="Build and preview">
       <div class="build-row">
         <span class="build-label">Build &amp; preview</span>
-        <button type="button" onclick={triggerJourneyBuild} disabled={buildState.status === "pending"}>{buildState.status === "pending" ? "Building…" : "Build & preview"}</button>
+        <button type="button" onclick={triggerJourneyBuild} disabled={buildState.status === "pending"}>{buildButtonLabel(pendingCount, buildState.status)}</button>
         {#if buildState.status === "success"}
           {#if buildState.report}
             <span class="trigger-status trigger-status--success build-report">
@@ -652,6 +684,33 @@
   }
   .memento-row:hover {
     border-color: #b3673a;
+  }
+  /* Pending-build highlight (memento-lifecycle staged rebuild, ADMIN-02
+     §6): a distinct left border + subtle background, plus the "pending
+     build" label inline — not color alone, so it doesn't depend on the
+     badge's hue to read. */
+  .memento-row--pending {
+    border-left: 3px solid #b3673a;
+    background: rgb(231 162 96 / 14%);
+  }
+  .pending-dot {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: #9f522d;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+  .pending-dot::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #b3673a;
   }
   .memento-link {
     display: flex;

@@ -150,7 +150,12 @@ test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
   // authored title, since the candidate's original label stopped matching
   // the memento-list row once authoring gave it a real title) rather than
   // adding a fresh memento, keeping this spec's fixture surface unchanged.
-  test("unpublishes the memento back to authored", async () => {
+  //
+  // Staged rebuild (memento-lifecycle contract §6): publish/unpublish no
+  // longer auto-rebuild. This step only flips visibility and asserts the
+  // journey is left pending-build; the following step drives the explicit
+  // Build & preview action and asserts the pending indication clears.
+  test("unpublishes the memento back to authored, staging a pending build", async () => {
     await page.goto(`/#/journey/${JOURNEY_ID}`)
     await page.locator(".memento-link").filter({ hasText: MEMENTO_TITLE }).click()
     await expect(page).toHaveURL(/#\/journey\/[^/]+\/memento\/[^/]+$/)
@@ -159,15 +164,61 @@ test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
     await expect(badge).toHaveText("published")
     await page.getByRole("button", { name: "Unpublish" }).click()
     await expect(badge).toHaveText("authored")
+
+    // No auto-rebuild: back on the journey detail, the toggle above must
+    // surface as a pending build rather than already being reflected in a
+    // freshly-compiled artifact.
+    await page.goto(`/#/journey/${JOURNEY_ID}`)
+    await expect(page.getByRole("button", { name: /^Build & preview \(\d+\)$/ })).toBeVisible()
+    await expect(page.locator(".memento-row--pending").filter({ hasText: MEMENTO_TITLE })).toBeVisible()
+  })
+
+  test("building resolves the pending unpublish", async () => {
+    await page.getByRole("button", { name: /^Build & preview \(\d+\)$/ }).click()
+    // The journey-detail build surfaces the report line on success (not the
+    // Site page's "Build complete." text).
+    await expect(page.locator(".build-report")).toBeVisible({ timeout: 15_000 })
+
+    // The build just resolved every visibility toggle since the last one —
+    // the count suffix disappears and the memento row's highlight clears.
+    await expect(page.getByRole("button", { name: "Build & preview", exact: true })).toBeVisible()
+    await expect(page.locator(".memento-row--pending").filter({ hasText: MEMENTO_TITLE })).toHaveCount(0)
   })
 
   // Re-publish so this spec leaves the fixture in the same "published, built"
   // state the earlier build/artifact assertions already exercised — the
   // unpublish step above is a self-contained round trip, not a lasting
-  // change to the journey.
-  test("re-publishes the memento", async () => {
+  // change to the journey. Symmetric to the unpublish steps: republishing
+  // stages a pending build too, and this spec resolves it explicitly so the
+  // artifact ends up matching the published essay again (the Python
+  // harness's own filesystem check runs after this spec exits).
+  test("re-publishes the memento, staging a pending build", async () => {
+    await page.locator(".memento-link").filter({ hasText: MEMENTO_TITLE }).click()
+    await expect(page).toHaveURL(/#\/journey\/[^/]+\/memento\/[^/]+$/)
+
     const badge = page.locator(".editor-header .badge")
+    await expect(badge).toHaveText("authored")
     await page.getByRole("button", { name: "Publish" }).click()
     await expect(badge).toHaveText("published")
+
+    await page.goto(`/#/journey/${JOURNEY_ID}`)
+    await expect(page.getByRole("button", { name: /^Build & preview \(\d+\)$/ })).toBeVisible()
+    await expect(page.locator(".memento-row--pending").filter({ hasText: MEMENTO_TITLE })).toBeVisible()
+  })
+
+  test("building resolves the pending republish and the artifact reflects the published essay again", async () => {
+    await page.getByRole("button", { name: /^Build & preview \(\d+\)$/ }).click()
+    await expect(page.locator(".build-report")).toBeVisible({ timeout: 15_000 })
+
+    await expect(page.getByRole("button", { name: "Build & preview", exact: true })).toBeVisible()
+    await expect(page.locator(".memento-row--pending").filter({ hasText: MEMENTO_TITLE })).toHaveCount(0)
+
+    // Same live public-API check as the first build: the compiled artifact
+    // (source of truth for what's deployed, per §6) must show the published
+    // essay again, not the gap the unpublish step opened up.
+    const publicResponse = await page.request.get(`${API_BASE}/api/v1/journeys/${JOURNEY_ID}/mementos`)
+    expect(publicResponse.ok()).toBeTruthy()
+    const publicMementos = (await publicResponse.json()) as Array<{ essay?: string; title?: string }>
+    expect(publicMementos.some((memento) => memento.essay === ESSAY_SENTINEL && memento.title === MEMENTO_TITLE)).toBeTruthy()
   })
 })

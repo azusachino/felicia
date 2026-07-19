@@ -1,11 +1,14 @@
 import { afterEach, beforeAll, describe, expect, test } from "bun:test"
 import {
   ApiError,
+  browseDirectories,
   compileSite,
   countMementosByState,
   countPendingStopCandidates,
   deleteMemento,
+  getBuildStatus,
   getJourney,
+  getJourneyBuildStatus,
   getMemento,
   getSiteInfo,
   getTemplates,
@@ -24,6 +27,7 @@ import {
   sortMementosBySeq,
   syncRoute,
   syncVisits,
+  updateSiteOutDir,
   upsertMemento,
   upsertPhoto,
   type AdminJourney,
@@ -570,5 +574,91 @@ describe("site build & preview (ADMIN-02 M0)", () => {
   test("compileSite surfaces a non-ok response as an ApiError", async () => {
     mockFetchOnce(500, { error: "compile failed" })
     await expect(compileSite()).rejects.toThrow("compile failed")
+  })
+
+  test("updateSiteOutDir PUTs the new out_dir and returns it", async () => {
+    let capturedUrl: string | undefined
+    let capturedMethod: string | undefined
+    let capturedBody: unknown
+    globalThis.fetch = ((url: string | URL, init?: RequestInit) => {
+      capturedUrl = url.toString()
+      capturedMethod = init?.method
+      capturedBody = init?.body ? JSON.parse(init.body as string) : undefined
+      return Promise.resolve(Response.json({ out_dir: "/abs/new/path" }))
+    }) as unknown as typeof fetch
+
+    const result = await updateSiteOutDir("/abs/new/path")
+
+    expect(capturedUrl).toContain("/api/admin/site")
+    expect(capturedMethod).toBe("PUT")
+    expect(capturedBody).toEqual({ out_dir: "/abs/new/path" })
+    expect(result).toEqual({ out_dir: "/abs/new/path" })
+  })
+
+  test("updateSiteOutDir surfaces a non-ok response as an ApiError", async () => {
+    mockFetchOnce(422, { error: "path is outside the allowed root" })
+    await expect(updateSiteOutDir("/etc")).rejects.toThrow("path is outside the allowed root")
+  })
+
+  test("browseDirectories GETs the root when no path is given", async () => {
+    let capturedUrl: string | undefined
+    globalThis.fetch = ((url: string | URL) => {
+      capturedUrl = url.toString()
+      return Promise.resolve(Response.json({ root: "/home/user", path: "/home/user", parent: "", dirs: [{ name: "Documents", path: "/home/user/Documents" }] }))
+    }) as unknown as typeof fetch
+
+    const result = await browseDirectories()
+
+    expect(capturedUrl).toBe("http://localhost:8080/api/admin/browse")
+    expect(result).toEqual({ root: "/home/user", path: "/home/user", parent: "", dirs: [{ name: "Documents", path: "/home/user/Documents" }] })
+  })
+
+  test("browseDirectories GETs a given path and coerces a null dirs list to empty", async () => {
+    let capturedUrl: string | undefined
+    globalThis.fetch = ((url: string | URL) => {
+      capturedUrl = url.toString()
+      return Promise.resolve(Response.json({ root: "/home/user", path: "/home/user/Documents", parent: "/home/user", dirs: null }))
+    }) as unknown as typeof fetch
+
+    const result = await browseDirectories("/home/user/Documents")
+
+    expect(capturedUrl).toBe("http://localhost:8080/api/admin/browse?path=%2Fhome%2Fuser%2FDocuments")
+    expect(result.dirs).toEqual([])
+    expect(result.parent).toBe("/home/user")
+  })
+
+  test("browseDirectories surfaces a non-ok response as an ApiError", async () => {
+    mockFetchOnce(422, { error: "path is outside the allowed root" })
+    await expect(browseDirectories("/etc")).rejects.toThrow("path is outside the allowed root")
+  })
+})
+
+describe("pending-build tracking (memento-lifecycle staged rebuild)", () => {
+  test("getJourneyBuildStatus maps the pending memento ids and count", async () => {
+    mockFetchOnce(200, { pending_memento_ids: ["memento-1", "memento-2"], pending_count: 2 })
+    const result = await getJourneyBuildStatus("journey-1")
+    expect(result).toEqual({ pending_memento_ids: ["memento-1", "memento-2"], pending_count: 2 })
+  })
+
+  test("getJourneyBuildStatus coerces a null pending_memento_ids list to empty", async () => {
+    mockFetchOnce(200, { pending_memento_ids: null, pending_count: 0 })
+    const result = await getJourneyBuildStatus("journey-1")
+    expect(result.pending_memento_ids).toEqual([])
+  })
+
+  test("getJourneyBuildStatus surfaces a non-ok response as an ApiError", async () => {
+    mockFetchOnce(404, { error: "journey not found" })
+    await expect(getJourneyBuildStatus("missing")).rejects.toThrow("journey not found")
+  })
+
+  test("getBuildStatus maps the per-journey pending counts", async () => {
+    mockFetchOnce(200, { pending_by_journey: { "journey-1": 2, "journey-2": 1 } })
+    const result = await getBuildStatus()
+    expect(result).toEqual({ pending_by_journey: { "journey-1": 2, "journey-2": 1 } })
+  })
+
+  test("getBuildStatus surfaces a non-ok response as an ApiError", async () => {
+    mockFetchOnce(500, { error: "boom" })
+    await expect(getBuildStatus()).rejects.toThrow("boom")
   })
 })

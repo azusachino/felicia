@@ -261,6 +261,8 @@ const issueMessages: Record<string, string> = {
   invalid_timezone: "Enter a recognized IANA timezone, e.g. Asia/Tokyo.",
   invalid_geometry: "A location is required before saving.",
   invalid_coordinate: "Coordinates must be valid longitude/latitude values.",
+  invalid_transition: "That state change isn't allowed — publish and unpublish move one step at a time.",
+  delete_requires_unpublish: "Unpublish this memento before deleting it.",
 }
 
 export function issueMessage(issue: AdminIssue): string {

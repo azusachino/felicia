@@ -1,10 +1,14 @@
 <script lang="ts">
   import { onMount } from "svelte"
-  import { compileSite, getSiteInfo, type AdminSiteInfo, type CompileReport } from "../api"
+  import { browseDirectories, compileSite, getSiteInfo, updateSiteOutDir, type AdminBrowseResult, type AdminSiteInfo, type CompileReport } from "../api"
 
   let info = $state<AdminSiteInfo | null>(null)
   let loading = $state(true)
   let error = $state("")
+
+  function actionErrorMessage(cause: unknown): string {
+    return cause instanceof Error ? cause.message : "Request failed"
+  }
 
   type BuildStatus = "idle" | "pending" | "success" | "error"
   interface BuildState {
@@ -20,7 +24,7 @@
     try {
       info = await getSiteInfo()
     } catch (cause) {
-      error = cause instanceof Error ? cause.message : "Unable to load site info"
+      error = actionErrorMessage(cause)
     } finally {
       loading = false
     }
@@ -36,12 +40,76 @@
       // very first build).
       await load()
     } catch (cause) {
-      build = { status: "error", message: cause instanceof Error ? cause.message : "Build failed" }
+      build = { status: "error", message: actionErrorMessage(cause) }
     }
   }
 
   function previewUrl(port: string): string {
     return `http://${location.hostname}:${port}/`
+  }
+
+  // --- Output-location picker (ADMIN-02 staged-rebuild GUI) -----------------
+  // A normal-flow panel (not position:fixed) that opens inline below the
+  // output-directory row: browseDirectories() lists the current directory's
+  // subfolders, "Up" walks to `parent` (hidden once parent === "", i.e. the
+  // server's configured root), and "Select this folder" repoints out_dir via
+  // updateSiteOutDir, then closes and refreshes site info.
+  type PickerStatus = "idle" | "loading" | "error"
+  interface PickerState {
+    open: boolean
+    status: PickerStatus
+    message: string
+    browse: AdminBrowseResult | null
+  }
+  let picker = $state<PickerState>({ open: false, status: "idle", message: "", browse: null })
+
+  async function openPicker() {
+    picker = { open: true, status: "loading", message: "", browse: null }
+    try {
+      const result = await browseDirectories(info?.out_dir)
+      picker = { open: true, status: "idle", message: "", browse: result }
+    } catch {
+      // The current out_dir may sit outside the browse root (or not exist
+      // yet) — fall back to the root listing rather than leaving the picker
+      // stuck on an error the moment it opens.
+      try {
+        const result = await browseDirectories()
+        picker = { open: true, status: "idle", message: "", browse: result }
+      } catch (rootCause) {
+        picker = { open: true, status: "error", message: actionErrorMessage(rootCause), browse: null }
+      }
+    }
+  }
+
+  async function navigateTo(path: string) {
+    picker = { ...picker, status: "loading", message: "" }
+    try {
+      const result = await browseDirectories(path)
+      picker = { ...picker, status: "idle", message: "", browse: result }
+    } catch (cause) {
+      picker = { ...picker, status: "error", message: actionErrorMessage(cause) }
+    }
+  }
+
+  function closePicker() {
+    picker = { open: false, status: "idle", message: "", browse: null }
+  }
+
+  async function selectCurrentFolder() {
+    if (!picker.browse) return
+    const path = picker.browse.path
+    picker = { ...picker, status: "loading", message: "" }
+    try {
+      await updateSiteOutDir(path)
+      closePicker()
+      await load()
+    } catch (cause) {
+      picker = { ...picker, status: "error", message: actionErrorMessage(cause) }
+    }
+  }
+
+  function pickerKeydown(event: KeyboardEvent) {
+    if (event.key === "Escape") closePicker()
   }
 
   onMount(load)
@@ -68,6 +136,7 @@
       <div class="info-row">
         <span class="info-label">Output directory</span>
         <code class="info-value">{info.out_dir}</code>
+        <button type="button" class="secondary" onclick={openPicker}>Change location…</button>
       </div>
 
       {#if info.artifact_ready}
@@ -79,6 +148,53 @@
 
       {#if !info.spa_ready}
         <p class="hint">The preview will serve the compiled JSON only until the public SPA is built (run <code>make web-build</code>) — the built-in server overlays the artifact on that build.</p>
+      {/if}
+
+      {#if picker.open}
+        <!--
+          A normal-flow panel, not position:fixed — it lives right in this
+          section's document flow and pushes surrounding content down,
+          avoiding the classic position:fixed pitfalls (stacking-context
+          surprises, iOS viewport-resize jumps, needing a separate scroll
+          lock). role="dialog" + aria-modal + the Escape handler keep it
+          keyboard-accessible without those tradeoffs.
+        -->
+        <div class="picker-panel" role="dialog" aria-modal="true" aria-label="Choose output location" onkeydown={pickerKeydown} tabindex="-1">
+          <div class="picker-head">
+            <h3>Choose output location</h3>
+            <button type="button" class="secondary" onclick={closePicker} aria-label="Close">Close</button>
+          </div>
+
+          {#if picker.status === "loading"}
+            <p class="hint">Loading…</p>
+          {:else if picker.status === "error"}
+            <p class="trigger-status trigger-status--error" role="alert">{picker.message}</p>
+          {:else if picker.browse}
+            {@const browse = picker.browse}
+            <p class="picker-path">
+              <code>{browse.path || browse.root}</code>
+            </p>
+            <ul class="picker-dirs">
+              {#if browse.parent !== ""}
+                <li>
+                  <button type="button" class="picker-entry" onclick={() => navigateTo(browse.parent)}>.. (up)</button>
+                </li>
+              {/if}
+              {#each browse.dirs as dir (dir.path)}
+                <li>
+                  <button type="button" class="picker-entry" onclick={() => navigateTo(dir.path)}>{dir.name}</button>
+                </li>
+              {/each}
+              {#if browse.dirs.length === 0}
+                <li class="hint">No subfolders here.</li>
+              {/if}
+            </ul>
+            <div class="picker-actions">
+              <button type="button" onclick={selectCurrentFolder}>Select this folder</button>
+              <button type="button" class="secondary" onclick={closePicker}>Cancel</button>
+            </div>
+          {/if}
+        </div>
       {/if}
     </section>
 
@@ -160,6 +276,94 @@
   .preview-link {
     color: #9f522d;
     font-weight: 500;
+  }
+  .info-row .secondary {
+    border: 1px solid #d8cdbb;
+    border-radius: 7px;
+    padding: 7px 12px;
+    color: #6b5137;
+    background: #fffaf2;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .picker-panel {
+    margin-top: 18px;
+    padding: 16px 18px;
+    border: 1px solid #dfd4c1;
+    border-radius: 10px;
+    background: rgb(255 255 255 / 55%);
+  }
+  .picker-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .picker-head h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .picker-head button {
+    border: 1px solid #d8cdbb;
+    border-radius: 7px;
+    padding: 6px 10px;
+    color: #6b5137;
+    background: #fffaf2;
+    font-size: 12px;
+  }
+  .picker-path {
+    margin: 12px 0 0;
+    font-size: 12px;
+    color: #766956;
+  }
+  .picker-path code {
+    padding: 3px 7px;
+    border-radius: 6px;
+    background: rgb(255 255 255 / 60%);
+  }
+  .picker-dirs {
+    display: grid;
+    gap: 4px;
+    margin: 10px 0 0;
+    padding: 0;
+    list-style: none;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  .picker-entry {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 8px 10px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    color: #342a1e;
+    background: transparent;
+    font-size: 13px;
+  }
+  .picker-entry:hover,
+  .picker-entry:focus-visible {
+    border-color: #d8cdbb;
+    background: rgb(255 255 255 / 70%);
+  }
+  .picker-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .picker-actions button {
+    border: 0;
+    border-radius: 7px;
+    padding: 8px 14px;
+    color: #fffaf2;
+    background: #9f522d;
+    font-size: 13px;
+  }
+  .picker-actions button.secondary {
+    color: #6b5137;
+    background: transparent;
+    border: 1px solid #d8cdbb;
   }
   .build {
     margin-top: 40px;

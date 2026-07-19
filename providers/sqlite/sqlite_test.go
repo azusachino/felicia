@@ -49,13 +49,18 @@ func TestRepositoryJourneyWorkflow(t *testing.T) {
 		t.Fatalf("unexpected draft: %#v", fetched)
 	}
 
+	// Advance one legal step at a time (docs/contracts/memento-lifecycle.md §3):
+	// a direct draft→published jump is illegal.
 	occurred := time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)
-	complete := &domain.Memento{ID: memento.ID, JourneyID: journey.ID, Kind: "live", Seq: 1, OccurredAt: occurred, OccurredTZ: "Asia/Tokyo", Geom: orb.Point{139.75, 35.69}, Title: "Live show", Place: "Tokyo", KindData: json.RawMessage(`{"artist":"羊文学"}`), State: domain.MementoPublished}
-	if err := repo.ApplyManualMementoPatch(ctx, &domain.ManualMementoPatch{Memento: complete, Fields: []string{"occurred_at", "occurred_tz", "geom", "title", "place", "kind_data"}, State: domain.MementoPublished, ExpectedRevision: int64Ptr(1)}); err != nil {
+	complete := &domain.Memento{ID: memento.ID, JourneyID: journey.ID, Kind: "live", Seq: 1, OccurredAt: occurred, OccurredTZ: "Asia/Tokyo", Geom: orb.Point{139.75, 35.69}, Title: "Live show", Place: "Tokyo", KindData: json.RawMessage(`{"artist":"羊文学"}`), State: domain.MementoAuthored}
+	if err := repo.ApplyManualMementoPatch(ctx, &domain.ManualMementoPatch{Memento: complete, Fields: []string{"occurred_at", "occurred_tz", "geom", "title", "place", "kind_data"}, State: domain.MementoAuthored, ExpectedRevision: int64Ptr(1)}); err != nil {
+		t.Fatalf("author memento: %v", err)
+	}
+	if err := repo.ApplyManualMementoPatch(ctx, &domain.ManualMementoPatch{Memento: &domain.Memento{ID: memento.ID, JourneyID: journey.ID}, State: domain.MementoPublished, ExpectedRevision: int64Ptr(2)}); err != nil {
 		t.Fatalf("publish memento: %v", err)
 	}
 	fetched, err = repo.GetMemento(ctx, memento.ID)
-	if err != nil || fetched.State != domain.MementoPublished || fetched.Revision != 2 {
+	if err != nil || fetched.State != domain.MementoPublished || fetched.Revision != 3 {
 		t.Fatalf("unexpected published memento: %v %#v", err, fetched)
 	}
 

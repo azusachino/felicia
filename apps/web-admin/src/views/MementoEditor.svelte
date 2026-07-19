@@ -23,6 +23,7 @@
     fromRFC3339,
     geomToLatLngInputs,
     groupIssuesByField,
+    issueMessage,
     lifecycleActionLabel,
     nextLifecycleState,
     parseKindData,
@@ -246,6 +247,18 @@
     await loadAll()
   }
 
+  // "Save & back to journey" (ADMIN-02 staged-rebuild GUI): the same save
+  // path as the plain Save button, then — only on success, so a conflict or
+  // validation error keeps the author on this page to fix it — navigate
+  // back to the journey detail, where the pending-build highlight/count
+  // now reflects any published<->authored toggle this save just made.
+  async function saveAndBack() {
+    await save()
+    if (saveState.status === "success") {
+      location.hash = journeyDetailHash(journeyId)
+    }
+  }
+
   // Delete (ADMIN-02 M1 02.1b): a permanent, hard delete with an inline
   // two-step confirm rather than a native confirm() dialog, so the copy can
   // spell out what's irreversible (photos cascade) and what isn't (a future
@@ -253,6 +266,14 @@
   // this is a plain delete, no tombstone).
   type DeleteStatus = "idle" | "confirming" | "pending" | "error"
   let deleteState = $state<{ status: DeleteStatus; message: string }>({ status: "idle", message: "" })
+
+  // Delete is gated to candidate/draft/authored (contract §3) — a published
+  // memento must be unpublished first. The GUI mirrors that guard rather
+  // than only relying on the server's 422, so the "unpublish first" hint is
+  // always visible instead of only appearing after a failed attempt.
+  function deleteBlockedByPublishedState(): boolean {
+    return memento?.state === "published"
+  }
 
   function requestDelete() {
     deleteState = { status: "confirming", message: "" }
@@ -269,6 +290,13 @@
       await deleteMemento(memento.id)
       location.hash = journeyDetailHash(journeyId)
     } catch (cause) {
+      // A 422 (delete_requires_unpublish, or in principle invalid_transition)
+      // carries a structured issue — surface its friendly message rather
+      // than the raw error string.
+      if (cause instanceof ApiError && cause.issues && cause.issues.length > 0) {
+        deleteState = { status: "error", message: cause.issues.map(issueMessage).join(" ") }
+        return
+      }
       deleteState = { status: "error", message: actionErrorMessage(cause) }
     }
   }
@@ -547,6 +575,9 @@
 
     <section class="actions" aria-label="Save and publish actions">
       <button type="button" onclick={() => save()} disabled={saveState.status === "pending"}>{saveState.status === "pending" ? "Saving…" : "Save"}</button>
+      <button type="button" class="secondary" onclick={saveAndBack} disabled={saveState.status === "pending"}>
+        {saveState.status === "pending" ? "Saving…" : "Save & back to journey"}
+      </button>
       {#if unpublishActionLabel(memento.state) && previousLifecycleState(memento.state)}
         <button type="button" class="secondary" onclick={retreatLifecycle} disabled={saveState.status === "pending"}>
           {unpublishActionLabel(memento.state)}
@@ -562,7 +593,10 @@
     <section class="danger-zone" aria-label="Delete memento">
       <h2>Delete this memento</h2>
       <p class="trigger-note">Permanent — this cannot be undone, and its photos are removed with it. If this memento was derived from an import source, a future import may re-create it.</p>
-      {#if deleteState.status === "confirming" || deleteState.status === "pending"}
+      {#if deleteBlockedByPublishedState()}
+        <p class="hint">Unpublish this memento before deleting it — a published memento can't be deleted directly.</p>
+        <button type="button" class="danger" disabled title="Unpublish first">Delete</button>
+      {:else if deleteState.status === "confirming" || deleteState.status === "pending"}
         <div class="confirm-strip" role="alert">
           <p>Delete this memento permanently? Photos are removed too. A future import may re-create a source-derived memento like this one.</p>
           <div class="confirm-actions">
@@ -782,6 +816,7 @@
   }
   .actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 12px;
     margin: 32px 0 8px;
   }

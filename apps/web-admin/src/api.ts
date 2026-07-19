@@ -298,6 +298,19 @@ async function postJSON<T>(path: string, body?: unknown): Promise<T> {
   return (await response.json()) as T
 }
 
+async function putJSON<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(apiURL(path), {
+    method: "PUT",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+  if (!response.ok) {
+    const { message, issues } = await apiErrorDetail(response)
+    throw new ApiError(message, response.status, issues)
+  }
+  return (await response.json()) as T
+}
+
 async function deleteJSON<T>(path: string): Promise<T> {
   const response = await fetch(apiURL(path), {
     method: "DELETE",
@@ -491,4 +504,59 @@ export async function getSiteInfo(): Promise<AdminSiteInfo> {
 // output, which is exactly what the built-in preview server serves.
 export async function compileSite(): Promise<CompileReport> {
   return postJSON<CompileReport>("/api/admin/compile", {})
+}
+
+// Repoints the static output location (ADMIN-02 staged-rebuild GUI). The
+// server rejects anything outside its configured browse root, same as
+// browseDirectories below — this call surfaces that as a plain ApiError.
+export async function updateSiteOutDir(outDir: string): Promise<{ out_dir: string }> {
+  return putJSON<{ out_dir: string }>("/api/admin/site", { out_dir: outDir })
+}
+
+// Local directory picker (ADMIN-02 staged-rebuild GUI): lists the
+// subdirectories of `path` (server-side root when path is omitted/empty) so
+// the Site & Deploy page can navigate into one and select it as the new
+// out_dir. `parent` is "" at the root — the GUI's cue to hide the "up"
+// affordance. The server refuses to walk above its configured root.
+export interface AdminBrowseEntry {
+  name: string
+  path: string
+}
+
+export interface AdminBrowseResult {
+  root: string
+  path: string
+  parent: string
+  dirs: AdminBrowseEntry[]
+}
+
+export async function browseDirectories(path?: string): Promise<AdminBrowseResult> {
+  const query = path ? `?path=${encodeURIComponent(path)}` : ""
+  const result = await getJSON<Omit<AdminBrowseResult, "dirs"> & { dirs: AdminBrowseEntry[] | null }>(`/api/admin/browse${query}`)
+  return { ...result, dirs: asArray(result.dirs) }
+}
+
+// Pending-build tracking (memento-lifecycle staged rebuild —
+// docs/contracts/memento-lifecycle.md §6). Publish/unpublish no longer
+// eagerly rebuild; instead a published<->authored visibility toggle since
+// the last build is tracked and surfaced here so the GUI can highlight it
+// and offer an explicit one-click Build.
+
+export interface AdminJourneyBuildStatus {
+  pending_memento_ids: string[]
+  pending_count: number
+}
+
+export async function getJourneyBuildStatus(journeyId: string): Promise<AdminJourneyBuildStatus> {
+  const result = await getJSON<Omit<AdminJourneyBuildStatus, "pending_memento_ids"> & { pending_memento_ids: string[] | null }>(`/api/admin/journeys/${journeyId}/build-status`)
+  return { ...result, pending_memento_ids: asArray(result.pending_memento_ids) }
+}
+
+export interface AdminBuildStatus {
+  pending_by_journey: Record<string, number>
+}
+
+export async function getBuildStatus(): Promise<AdminBuildStatus> {
+  const result = await getJSON<AdminBuildStatus>("/api/admin/build-status")
+  return { pending_by_journey: result.pending_by_journey ?? {} }
 }
