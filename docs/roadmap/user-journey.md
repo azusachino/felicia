@@ -87,6 +87,13 @@ projection:
 
 ## Status log
 
+- **2026-07-19 (epic ADMIN-02 M1)** — Authoring controls from the hands-on
+  M0 review: unpublish (published → authored, bidirectional lifecycle),
+  memento deletion (new DELETE endpoint across both providers, photos
+  cascade, informed two-step confirm), the inbox's discard action named
+  and explained, a Build & preview shortcut on journey detail, and topbar
+  spacing. The closed-loop E2E now covers an unpublish → re-publish round
+  trip (8 steps).
 - **2026-07-19 (epic ADMIN-02 M0)** — Offline local deployment landed: the
   GUI's new Site & Deploy page builds the static artifact with one action
   (compile now defaults to the configured `site.out_dir`) and links a
