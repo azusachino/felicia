@@ -444,3 +444,32 @@ export async function upsertPhoto(payload: UpsertPhotoRequest): Promise<{ status
 export async function listMementoPhotos(mementoId: string): Promise<AdminMementoPhoto[]> {
   return asArray(await getJSON<AdminMementoPhoto[] | null>(`/api/admin/mementos/${mementoId}/photos`))
 }
+
+// Site build & preview (ADMIN-02 M0).
+
+export interface AdminSiteInfo {
+  out_dir: string
+  preview_port: string
+  spa_ready: boolean
+  artifact_ready: boolean
+}
+
+// BuildReport from POST /api/admin/compile — Go's publication.BuildReport
+// carries no json tags, so fields arrive capitalized (like the templates
+// payload).
+export interface CompileReport {
+  Journeys: number
+  Mementos: number
+  Media: number
+  Removed: number
+}
+
+export async function getSiteInfo(): Promise<AdminSiteInfo> {
+  return getJSON<AdminSiteInfo>("/api/admin/site")
+}
+
+// Omitting out_dir on purpose: the server compiles into its configured site
+// output, which is exactly what the built-in preview server serves.
+export async function compileSite(): Promise<CompileReport> {
+  return postJSON<CompileReport>("/api/admin/compile", {})
+}

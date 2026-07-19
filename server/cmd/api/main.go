@@ -89,9 +89,23 @@ func run(logger *slog.Logger) error {
 		MediaRoot:             cfg.MediaRoot,
 		RatePerSecond:         cfg.RatePerSecond,
 		RateBurst:             cfg.RateBurst,
+		SiteOutDir:            cfg.SiteOutDir,
+		SitePreviewPort:       cfg.SitePreviewPort,
+		SiteSpaDist:           cfg.SiteSpaDist,
 	})
 
-	// 4. Start local admin web server
+	// 4. Serve the compiled site on a second local port so the author can
+	// verify a build exactly as a static host would deliver it. Losing the
+	// preview listener degrades the Site page but must not take the admin
+	// API down with it.
+	go func() {
+		logger.Info("starting site preview server", "url", "http://localhost:"+cfg.SitePreviewPort)
+		if err := http.ListenAndServe(":"+cfg.SitePreviewPort, api.PreviewHandler(cfg.SiteOutDir, cfg.SiteSpaDist)); err != nil {
+			logger.Error("site preview server stopped", "err", err)
+		}
+	}()
+
+	// 5. Start local admin web server
 	logger.Info("starting admin server", "url", "http://localhost:"+cfg.Port)
 	return http.ListenAndServe(":"+cfg.Port, server.Handler())
 }

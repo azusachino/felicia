@@ -44,6 +44,9 @@ type Server struct {
 	allowedOrigin         string
 	rateLimiter           *clientRateLimiter
 	mediaRoot             string
+	siteOutDir            string
+	sitePreviewPort       string
+	siteSpaDist           string
 }
 
 const defaultTransitSegmentLengthM = 100000
@@ -53,6 +56,7 @@ const (
 	defaultRatePerSecond  = 1
 	defaultRateBurst      = 20
 	defaultMediaRoot      = ".felicia/media"
+	defaultSiteOutDir     = ".felicia/site"
 )
 
 // RouteConfig controls the route-curation values used by HTTP handlers.
@@ -66,6 +70,12 @@ type RouteConfig struct {
 	// MediaRoot is the private local media root the compile endpoint reads
 	// from, mirroring the CLI's --media-root flag.
 	MediaRoot string
+	// SiteOutDir is the default compile output when a build request omits
+	// out_dir; the built-in preview server (SitePreviewPort) serves it,
+	// overlaying the pre-built public SPA at SiteSpaDist.
+	SiteOutDir      string
+	SitePreviewPort string
+	SiteSpaDist     string
 }
 
 // NewServer creates a new API server instance. A nil logger falls back to
@@ -92,6 +102,9 @@ func NewServer(repo domain.Repository, registry *domain.Registry, cache *CacheMa
 	if routeConfig.MediaRoot == "" {
 		routeConfig.MediaRoot = defaultMediaRoot
 	}
+	if routeConfig.SiteOutDir == "" {
+		routeConfig.SiteOutDir = defaultSiteOutDir
+	}
 	var candidateStore ports.StopCandidateStore
 	if store, ok := repo.(ports.StopCandidateStore); ok {
 		candidateStore = store
@@ -111,6 +124,9 @@ func NewServer(repo domain.Repository, registry *domain.Registry, cache *CacheMa
 		allowedOrigin:         routeConfig.AllowedOrigin,
 		rateLimiter:           newClientRateLimiter(routeConfig.RatePerSecond, routeConfig.RateBurst),
 		mediaRoot:             routeConfig.MediaRoot,
+		siteOutDir:            routeConfig.SiteOutDir,
+		sitePreviewPort:       routeConfig.SitePreviewPort,
+		siteSpaDist:           routeConfig.SiteSpaDist,
 	}
 }
 
@@ -183,6 +199,7 @@ func (s *Server) Handler() http.Handler {
 		r.Post("/photos", s.handleUpsertPhoto)
 		r.Post("/stop-candidates/{id}/review", s.handleReviewStopCandidate)
 		r.Post("/stop-candidates/{id}/promote", s.handlePromoteStopCandidate)
+		r.Get("/site", s.handleSiteInfo)
 		r.Post("/compile", s.handleCompile)
 
 		// Ingest triggers (auto-seed from the configured sources)
@@ -1143,8 +1160,9 @@ func (s *Server) handleCompile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.OutDir == "" {
-		respondError(w, http.StatusBadRequest, "out_dir is required")
-		return
+		// The GUI's build action omits out_dir on purpose: the default site
+		// output is what the built-in preview server serves.
+		req.OutDir = s.siteOutDir
 	}
 	writer := &publication.FileArtifactWriter{Root: req.OutDir}
 	media := publication.FileMediaSource{Root: s.mediaRoot}

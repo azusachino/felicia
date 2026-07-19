@@ -1,10 +1,12 @@
 import { afterEach, beforeAll, describe, expect, test } from "bun:test"
 import {
   ApiError,
+  compileSite,
   countMementosByState,
   countPendingStopCandidates,
   getJourney,
   getMemento,
+  getSiteInfo,
   getTemplates,
   isConflict,
   listJourneys,
@@ -500,5 +502,44 @@ describe("memento editor (ADMIN-01.4 / ADMIN-01.5)", () => {
     expect(await listStopCandidates("journey-1")).toEqual([])
     globalThis.fetch = (() => Promise.resolve(Response.json(null))) as unknown as typeof fetch
     expect(await listMementoPhotos("memento-1")).toEqual([])
+  })
+})
+
+describe("site build & preview (ADMIN-02 M0)", () => {
+  test("getSiteInfo maps the site info payload", async () => {
+    mockFetchOnce(200, {
+      out_dir: ".felicia/site",
+      preview_port: "8081",
+      spa_ready: false,
+      artifact_ready: true,
+    })
+    const info = await getSiteInfo()
+    expect(info).toEqual({
+      out_dir: ".felicia/site",
+      preview_port: "8081",
+      spa_ready: false,
+      artifact_ready: true,
+    })
+  })
+
+  test("compileSite POSTs an empty body to /api/admin/compile and returns the capitalized report", async () => {
+    let capturedUrl: string | undefined
+    let capturedBody: unknown
+    globalThis.fetch = ((url: string | URL, init?: RequestInit) => {
+      capturedUrl = url.toString()
+      capturedBody = init?.body ? JSON.parse(init.body as string) : undefined
+      return Promise.resolve(Response.json({ Journeys: 1, Mementos: 3, Media: 2, Removed: 0 }))
+    }) as unknown as typeof fetch
+
+    const report = await compileSite()
+
+    expect(capturedUrl).toContain("/api/admin/compile")
+    expect(capturedBody).toEqual({})
+    expect(report).toEqual({ Journeys: 1, Mementos: 3, Media: 2, Removed: 0 })
+  })
+
+  test("compileSite surfaces a non-ok response as an ApiError", async () => {
+    mockFetchOnce(500, { error: "compile failed" })
+    await expect(compileSite()).rejects.toThrow("compile failed")
   })
 })

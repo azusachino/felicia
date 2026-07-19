@@ -6,12 +6,14 @@
 // scripts/e2e_admin_gui.py, which invokes this spec via `bunx playwright
 // test` and passes the context it already set up through env vars:
 //   - E2E_BASE_URL  the web-admin dev server (playwright.config.ts baseURL)
-//   - E2E_API_BASE  the disposable admin API server (for the compile
-//                   fallback and the live public-API assertion below)
+//   - E2E_API_BASE  the disposable admin API server (for the live
+//                   public-API assertion below)
 //   - E2E_JOURNEY_ID the UUID of the journey seeded via the CLI import path
-//   - E2E_OUT_DIR    where the compile step should write the static artifact
-//                    (scripts/e2e_admin_gui.py re-reads it off disk after
-//                    this spec exits, as a second, independent check)
+//   - E2E_OUT_DIR    informational only from this spec's point of view: the
+//                    server compiles into SITE_OUT_DIR (set on the server
+//                    process, not here), which scripts/e2e_admin_gui.py sets
+//                    equal to this same directory and re-reads off disk
+//                    after this spec exits, as a second, independent check
 //
 // The intake candidate this spec reviews comes from scripts/mock_upstream.py's
 // fixed Dawarich visits fixture (fetched live over HTTP by the real intake
@@ -115,17 +117,24 @@ test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
     await expect(badge).toHaveText("published")
   })
 
-  test("compiles and the artifact reflects the authored essay", async () => {
-    // None of JourneyDetail/JourneyList/MementoEditor expose a compile
-    // trigger (ADMIN-01.6's publish-and-compile action isn't wired into
-    // these views yet) — documented fallback: call the endpoint directly.
-    // scripts/e2e_admin_gui.py re-reads the same E2E_OUT_DIR off disk after
-    // this test run as a second, independent filesystem-side check.
-    const outDir = requireEnv("E2E_OUT_DIR")
-    const compileResponse = await page.request.post(`${API_BASE}/api/admin/compile`, { data: { out_dir: outDir } })
-    expect(compileResponse.ok()).toBeTruthy()
-    const report = (await compileResponse.json()) as { Journeys?: number }
-    expect(report.Journeys ?? 0).toBeGreaterThanOrEqual(1)
+  test("builds the site from the GUI and the artifact reflects the authored essay", async () => {
+    // ADMIN-02 M0: the Site & Deploy page now exposes the compile trigger
+    // (apps/web-admin/src/views/SiteDeploy.svelte), so this drives the real
+    // GUI flow instead of posting to /api/admin/compile directly. The
+    // server compiles into its configured SITE_OUT_DIR (env var), which
+    // scripts/e2e_admin_gui.py sets equal to its own `out_dir` — so there is
+    // no request body to carry out_dir in anymore, and that script re-reads
+    // the same directory off disk after this test run as a second,
+    // independent filesystem-side check.
+    await page.goto("/#/site")
+    await expect(page.getByRole("heading", { name: "Site & Deploy" })).toBeVisible()
+
+    await page.getByRole("button", { name: "Build site" }).click()
+    await expect(page.getByText("Build complete.")).toBeVisible({ timeout: 15_000 })
+
+    const journeysCell = page.locator(".report-cell").filter({ has: page.locator("dt", { hasText: "Journeys" }) })
+    await expect(journeysCell.locator("dd")).toBeVisible()
+    expect(Number(await journeysCell.locator("dd").innerText())).toBeGreaterThanOrEqual(1)
 
     // The GUI already reflects "published" (previous step's badge assertion);
     // this confirms the live public API — the same surface the compiled

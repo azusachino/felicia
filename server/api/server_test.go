@@ -1086,14 +1086,21 @@ func TestServerCompile(t *testing.T) {
 	}
 }
 
-func TestServerCompileRequiresOutDir(t *testing.T) {
-	handler := api.NewServer(newMockRepository(), nil, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{}).Handler()
+func TestServerCompileDefaultsToSiteOutDir(t *testing.T) {
+	siteOutDir := t.TempDir()
+	handler := api.NewServer(newMockRepository(), nil, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{SiteOutDir: siteOutDir}).Handler()
 
+	// The GUI's build action omits out_dir on purpose (ADMIN-02 M0): the
+	// server compiles into its configured site output, which the built-in
+	// preview server serves.
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/admin/compile", bytes.NewBufferString(`{}`))
 	req.Header.Set("Content-Type", "application/json")
 	handler.ServeHTTP(w, req)
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400 when out_dir is missing, got %d (%s)", w.Code, w.Body)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 when out_dir is omitted, got %d (%s)", w.Code, w.Body)
+	}
+	if _, err := os.Stat(filepath.Join(siteOutDir, "api", "v1", "manifest.json")); err != nil {
+		t.Errorf("expected the artifact manifest in the configured site out_dir: %v", err)
 	}
 }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { journeyDetailHash, listHash, mementoEditHash, parseRoute } from "./router"
+import { journeyDetailHash, listHash, mementoEditHash, parseRoute, siteHash } from "./router"
 
 describe("parseRoute", () => {
   test("treats an empty hash as the journey list", () => {
@@ -73,5 +73,26 @@ describe("mementoEditHash", () => {
   test("round-trips through parseRoute, encoding both ids", () => {
     const hash = mementoEditHash("j/1", "m/1")
     expect(parseRoute(hash)).toEqual({ name: "memento", journeyId: "j/1", id: "m/1" })
+  })
+})
+
+describe("site route (ADMIN-02 M0)", () => {
+  test("parses '#/site' as the site route", () => {
+    expect(parseRoute("#/site")).toEqual({ name: "site" })
+  })
+
+  test("tolerates a trailing slash on the site hash", () => {
+    expect(parseRoute("#/site/")).toEqual({ name: "site" })
+  })
+
+  test("siteHash resolves back to the site route", () => {
+    expect(siteHash).toBe("#/site")
+    expect(parseRoute(siteHash)).toEqual({ name: "site" })
+  })
+
+  test("unknown hashes still fall back to the journey list, not the site route", () => {
+    expect(parseRoute("#/sit")).toEqual({ name: "list" })
+    expect(parseRoute("#/sites")).toEqual({ name: "list" })
+    expect(parseRoute("#/unknown")).toEqual({ name: "list" })
   })
 })

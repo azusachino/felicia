@@ -229,6 +229,28 @@ def seed_journey(db_path: Path, media_root: Path, workspace_root: Path) -> str:
     return ids.journey
 
 
+def assert_preview_server(preview_port: int) -> None:
+    """Confirms the server's built-in preview listener (server/api/preview.go)
+    is actually serving the compiled artifact on site.preview_port, not just
+    that the compile step wrote files to disk. The SPA dist is absent in
+    this harness (no `make web-build` here), so this only asserts the
+    artifact side of the union file server: api/v1/manifest.json, written by
+    the compile the GUI step just triggered.
+    """
+    url = f"http://127.0.0.1:{preview_port}/api/v1/manifest.json"
+    with urllib.request.urlopen(url, timeout=5) as response:
+        if response.status != 200:
+            raise AssertionError(
+                f"preview server at {url} returned status {response.status}, expected 200"
+            )
+        payload = json.loads(response.read().decode("utf-8"))
+    if not isinstance(payload, dict):
+        raise AssertionError(
+            f"preview server at {url} did not return a JSON object: {payload!r}"
+        )
+    print("preview server serves the compiled manifest -- preview-port check passed")
+
+
 def assert_compiled_artifact(out_dir: Path, journey_id: str) -> None:
     """Defense-in-depth: re-reads the artifact the GUI's compile step wrote
     directly off disk (mirrors run_static_parity_check's read_static_file in
@@ -265,6 +287,7 @@ def run_admin_gui_e2e() -> None:
         mock_port = find_free_port()
         api_port = find_free_port()
         gui_port = find_free_port()
+        preview_port = find_free_port()
         mock_base = f"http://127.0.0.1:{mock_port}"
         api_base = f"http://127.0.0.1:{api_port}"
 
@@ -279,6 +302,12 @@ def run_admin_gui_e2e() -> None:
             # mid-flow, so the disposable server gets a test-only allowance.
             "RATE_PER_SECOND": "50",
             "RATE_BURST": "200",
+            # The server now compiles into its configured site output (the
+            # GUI's Build button omits out_dir), so out_dir is set here
+            # instead of passed in the compile request — kept equal to the
+            # `out_dir` this script already reads back off disk below.
+            "SITE_OUT_DIR": str(out_dir),
+            "SITE_PREVIEW_PORT": str(preview_port),
         }
 
         with mock_upstream(mock_port):
@@ -300,6 +329,13 @@ def run_admin_gui_e2e() -> None:
                         raise RuntimeError(
                             f"playwright test failed with exit code {result.returncode}"
                         )
+
+                # The Playwright spec's own "Build site" click already
+                # compiled into SITE_OUT_DIR; the disposable API server (and
+                # therefore its preview listener) is still up at this point,
+                # so this checks the live preview port before the server
+                # process is torn down.
+                assert_preview_server(preview_port)
 
         assert_compiled_artifact(out_dir, journey_id)
 

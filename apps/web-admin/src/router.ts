@@ -3,7 +3,7 @@
 // shell re-derives on the `hashchange` event so deep links and back/forward
 // both work for free.
 
-export type Route = { name: "list" } | { name: "detail"; id: string } | { name: "memento"; journeyId: string; id: string }
+export type Route = { name: "list" } | { name: "detail"; id: string } | { name: "memento"; journeyId: string; id: string } | { name: "site" }
 
 const LIST: Route = { name: "list" }
 
@@ -14,6 +14,7 @@ const LIST: Route = { name: "list" }
 export function parseRoute(hash: string): Route {
   const trimmed = hash.replace(/^#/, "").replace(/\/+$/, "")
   if (trimmed === "" || trimmed === "/") return LIST
+  if (trimmed === "/site") return { name: "site" }
 
   const mementoMatch = /^\/journey\/([^/]+)\/memento\/([^/]+)$/.exec(trimmed)
   if (mementoMatch && mementoMatch[1] && mementoMatch[2]) {
@@ -35,3 +36,5 @@ export function mementoEditHash(journeyId: string, mementoId: string): string {
 }
 
 export const listHash = "#/"
+
+export const siteHash = "#/site"

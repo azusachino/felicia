@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { parseRoute, listHash } from "./router"
+  import { parseRoute, listHash, siteHash } from "./router"
   import JourneyList from "./views/JourneyList.svelte"
   import JourneyDetail from "./views/JourneyDetail.svelte"
   import MementoEditor from "./views/MementoEditor.svelte"
+  import SiteDeploy from "./views/SiteDeploy.svelte"
 
   let hash = $state(location.hash)
   const route = $derived(parseRoute(hash))
@@ -22,7 +23,8 @@
     </div>
     <p class="eyebrow">Authoring workspace</p>
     <nav aria-label="Admin navigation">
-      <a class="active" href={listHash}>Journeys</a>
+      <a class:active={route.name !== "site"} href={listHash}>Journeys</a>
+      <a class:active={route.name === "site"} href={siteHash}>Site &amp; Deploy</a>
     </nav>
     <div class="sidebar-footer">
       <span class="status-dot"></span>
@@ -46,6 +48,8 @@
       {#key `${route.journeyId}/${route.id}`}
         <MementoEditor journeyId={route.journeyId} id={route.id} />
       {/key}
+    {:else if route.name === "site"}
+      <SiteDeploy />
     {:else}
       <JourneyList />
     {/if}

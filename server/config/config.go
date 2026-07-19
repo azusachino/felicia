@@ -22,6 +22,9 @@ const (
 	defaultTransitSegmentLenM = 100000
 	defaultConfigPath         = "felicia.toml"
 	defaultMediaRoot          = ".felicia/media"
+	defaultSiteOutDir         = ".felicia/site"
+	defaultSitePreviewPort    = "8081"
+	defaultSiteSpaDist        = "apps/web-public/dist"
 )
 
 // SourceConfig describes one authenticated upstream source.
@@ -51,6 +54,15 @@ type Config struct {
 	// static artifact (server/api's /api/admin/compile), the same root the CLI
 	// resolves via its --media-root flag.
 	MediaRoot string `koanf:"media.root"`
+	// SiteOutDir is the default compile output directory used when the GUI's
+	// build action omits out_dir; the built-in preview server reads it.
+	SiteOutDir string `koanf:"site.out_dir"`
+	// SitePreviewPort is the second local port serving the compiled site
+	// (artifact union SPA) so the author can verify a build in the browser.
+	SitePreviewPort string `koanf:"site.preview_port"`
+	// SiteSpaDist points at a pre-built web-public dist that the preview
+	// server overlays under the compiled artifact.
+	SiteSpaDist string `koanf:"site.spa_dist"`
 }
 
 // LoadFromEnv loads felicia.toml, or the path selected by FELICIA_CONFIG, then
@@ -105,6 +117,9 @@ func load(path string, lookup func(string) (string, bool), required bool) (Confi
 		RDPEpsilon:         k.Float64("ingest.rdp_epsilon"),
 		TransitSegmentLenM: k.Float64("ingest.transit_segment_length_m"),
 		MediaRoot:          k.String("media.root"),
+		SiteOutDir:         k.String("site.out_dir"),
+		SitePreviewPort:    k.String("site.preview_port"),
+		SiteSpaDist:        k.String("site.spa_dist"),
 	}
 	if err := cfg.Validate(); err != nil {
 		return Config{}, err
@@ -135,6 +150,12 @@ func (c Config) Validate() error {
 	if c.MediaRoot == "" {
 		return errors.New("media root is required")
 	}
+	if c.SiteOutDir == "" {
+		return errors.New("site out_dir is required")
+	}
+	if c.SitePreviewPort == "" {
+		return errors.New("site preview_port is required")
+	}
 	return nil
 }
 
@@ -148,6 +169,11 @@ func defaults() map[string]any {
 			"transit_segment_length_m": defaultTransitSegmentLenM,
 		},
 		"media": map[string]any{"root": defaultMediaRoot},
+		"site": map[string]any{
+			"out_dir":      defaultSiteOutDir,
+			"preview_port": defaultSitePreviewPort,
+			"spa_dist":     defaultSiteSpaDist,
+		},
 	}
 }
 
@@ -175,5 +201,8 @@ func environmentOverrides(lookup func(string) (string, bool)) map[string]any {
 	set("ingest.rdp_epsilon", "FELICIA_RDP_EPSILON", "RDP_EPSILON")
 	set("ingest.transit_segment_length_m", "FELICIA_TRANSIT_SEGMENT_LENGTH_M", "TRANSIT_SEGMENT_LENGTH_M")
 	set("media.root", "FELICIA_MEDIA_ROOT", "MEDIA_ROOT")
+	set("site.out_dir", "FELICIA_SITE_OUT_DIR", "SITE_OUT_DIR")
+	set("site.preview_port", "FELICIA_SITE_PREVIEW_PORT", "SITE_PREVIEW_PORT")
+	set("site.spa_dist", "FELICIA_SITE_SPA_DIST", "SITE_SPA_DIST")
 	return values
 }
