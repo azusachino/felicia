@@ -298,8 +298,16 @@ async function postJSON<T>(path: string, body?: unknown): Promise<T> {
   return (await response.json()) as T
 }
 
+// The Go handlers respond with domain slices directly, and an empty Go slice
+// is often nil — which encodes as JSON `null`, not `[]`. Every list boundary
+// coerces here so view code can rely on a real array (a journey with zero
+// mementos/candidates is a legitimate state, e.g. right after route import).
+function asArray<T>(value: T[] | null): T[] {
+  return value ?? []
+}
+
 export async function listJourneys(): Promise<AdminJourney[]> {
-  return getJSON<AdminJourney[]>("/api/admin/journeys")
+  return asArray(await getJSON<AdminJourney[] | null>("/api/admin/journeys"))
 }
 
 export async function getJourney(journeyId: string): Promise<AdminJourney> {
@@ -307,11 +315,11 @@ export async function getJourney(journeyId: string): Promise<AdminJourney> {
 }
 
 export async function listMementos(journeyId: string): Promise<AdminMemento[]> {
-  return getJSON<AdminMemento[]>(`/api/admin/journeys/${journeyId}/mementos`)
+  return asArray(await getJSON<AdminMemento[] | null>(`/api/admin/journeys/${journeyId}/mementos`))
 }
 
 export async function listStopCandidates(journeyId: string): Promise<AdminStopCandidate[]> {
-  return getJSON<AdminStopCandidate[]>(`/api/admin/journeys/${journeyId}/stop-candidates`)
+  return asArray(await getJSON<AdminStopCandidate[] | null>(`/api/admin/journeys/${journeyId}/stop-candidates`))
 }
 
 export function countMementosByState(mementos: AdminMemento[]): Partial<Record<MementoState, number>> {
@@ -361,11 +369,11 @@ export async function syncRoute(journeyId: string): Promise<SyncRouteResult> {
 }
 
 export async function syncVisits(journeyId: string): Promise<AdminVisitPreview[]> {
-  return getJSON<AdminVisitPreview[]>(`/api/admin/journeys/${journeyId}/visits`)
+  return asArray(await getJSON<AdminVisitPreview[] | null>(`/api/admin/journeys/${journeyId}/visits`))
 }
 
 export async function photoTray(journeyId: string): Promise<AdminPhotoTrayItem[]> {
-  return getJSON<AdminPhotoTrayItem[]>(`/api/admin/journeys/${journeyId}/tray`)
+  return asArray(await getJSON<AdminPhotoTrayItem[] | null>(`/api/admin/journeys/${journeyId}/tray`))
 }
 
 // Flattens a sync-route response's geometry into a point count for the
@@ -434,5 +442,5 @@ export async function upsertPhoto(payload: UpsertPhotoRequest): Promise<{ status
 }
 
 export async function listMementoPhotos(mementoId: string): Promise<AdminMementoPhoto[]> {
-  return getJSON<AdminMementoPhoto[]>(`/api/admin/mementos/${mementoId}/photos`)
+  return asArray(await getJSON<AdminMementoPhoto[] | null>(`/api/admin/mementos/${mementoId}/photos`))
 }

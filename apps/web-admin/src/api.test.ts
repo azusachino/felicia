@@ -492,4 +492,13 @@ describe("memento editor (ADMIN-01.4 / ADMIN-01.5)", () => {
     expect(photos[0].object_key).toBe("media/abc.jpg")
     expect(photos[0].seq).toBe(0)
   })
+
+  test("list endpoints coerce a null JSON body (Go nil slice) to an empty array", async () => {
+    globalThis.fetch = (() => Promise.resolve(Response.json(null))) as unknown as typeof fetch
+    expect(await listMementos("journey-1")).toEqual([])
+    globalThis.fetch = (() => Promise.resolve(Response.json(null))) as unknown as typeof fetch
+    expect(await listStopCandidates("journey-1")).toEqual([])
+    globalThis.fetch = (() => Promise.resolve(Response.json(null))) as unknown as typeof fetch
+    expect(await listMementoPhotos("memento-1")).toEqual([])
+  })
 })
