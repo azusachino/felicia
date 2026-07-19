@@ -87,6 +87,15 @@ projection:
 
 ## Status log
 
+- **2026-07-19 (epic ADMIN-02 M0)** — Offline local deployment landed: the
+  GUI's new Site & Deploy page builds the static artifact with one action
+  (compile now defaults to the configured `site.out_dir`) and links a
+  built-in preview server on a second local port that serves the compiled
+  site exactly as a static host would (artifact overlaid on the pre-built
+  public SPA). The closed-loop E2E builds through the GUI and asserts the
+  preview port serves the compiled manifest. Design pick/style, GitHub
+  Pages deploy with URL confirmation, and GUI resource uploads are planned
+  in [FELICIA-ADMIN-02](admin-gui-v2-epic.md).
 - **2026-07-19 (Phase 2 complete — epic ADMIN-01 M4)** — Closed-loop E2E
   verification landed (ADMIN-01.8): `make test-admin-e2e` drives the real
   GUI in Playwright/chromium against the disposable server — plan intake
