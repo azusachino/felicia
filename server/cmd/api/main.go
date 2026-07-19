@@ -23,6 +23,9 @@ import (
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	// Provider lifecycle logs (LogMementoStateChange with a nil logger) fall
+	// back to the default; route them into the same JSON stream.
+	slog.SetDefault(logger)
 	if err := run(logger); err != nil {
 		logger.Error("server exited", "err", err)
 		os.Exit(1)

@@ -182,6 +182,14 @@ func (s *Server) Handler() http.Handler {
 
 	// Authoring Admin API (Valkey Invalidation on Write)
 	r.Route("/api/admin", func(r chi.Router) {
+		// Label every admin write's lifecycle log line as admin-api
+		// (docs/contracts/memento-lifecycle.md §8). The promote handler
+		// overrides this to "promote" for its own write.
+		r.Use(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				next.ServeHTTP(w, r.WithContext(domain.WithEventSource(r.Context(), domain.EventSourceAdminAPI)))
+			})
+		})
 		r.Get("/templates", s.handleGetTemplates)
 		r.Post("/journals", s.handleCreateJournal)
 		r.Post("/journals/{id}/reset-mock", s.handleResetMockJournal)
@@ -853,7 +861,7 @@ func (s *Server) handlePromoteStopCandidate(w http.ResponseWriter, r *http.Reque
 		SourceRef:  &sourceRef,
 	}
 
-	if err := s.mementoWriter.ApplyManualPatch(r.Context(), &domain.ManualMementoPatch{
+	if err := s.mementoWriter.ApplyManualPatch(domain.WithEventSource(r.Context(), domain.EventSourcePromote), &domain.ManualMementoPatch{
 		Memento: memento,
 		Fields:  fields,
 		State:   domain.MementoDraft,
@@ -936,6 +944,23 @@ func (s *Server) handleDeleteMemento(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "invalid memento UUID")
 		return
 	}
+	// Load first: the delete guard needs the current state, and the lifecycle
+	// log needs the prior state (docs/contracts/memento-lifecycle.md §3, §8).
+	memento, err := s.repo.GetMemento(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "memento not found")
+		return
+	}
+	// Deletion is permitted only from non-public states; a published memento
+	// must be unpublished first so it can never be removed while it is live.
+	if !domain.CanDeleteMementoState(memento.State) {
+		guard := &domain.DeleteRequiresUnpublishError{State: memento.State}
+		respondJSON(w, http.StatusUnprocessableEntity, map[string]any{
+			"error":  "validation failed",
+			"issues": guard.Issues(),
+		})
+		return
+	}
 	if err := s.repo.DeleteMemento(r.Context(), id); err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			respondError(w, http.StatusNotFound, "memento not found")
@@ -944,6 +969,7 @@ func (s *Server) handleDeleteMemento(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	domain.LogMementoStateChange(r.Context(), s.logger, memento, memento.State, "deleted")
 	s.cache.InvalidateAll(r.Context())
 	respondJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
@@ -981,9 +1007,17 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "invalid request JSON")
 		return
 	}
+	// Omitting state means "keep the current state" for an existing memento;
+	// only a brand-new memento with no state defaults to draft
+	// (docs/contracts/memento-lifecycle.md §5). This avoids a silent
+	// published→draft downgrade when a client omits state on a save.
 	state := domain.MementoState(req.State)
 	if state == "" {
-		state = domain.MementoDraft
+		if existing, err := s.repo.GetMemento(r.Context(), req.ID); err == nil {
+			state = existing.State
+		} else {
+			state = domain.MementoDraft
+		}
 	}
 
 	// 1. Template registry validation
@@ -1114,6 +1148,14 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 	}); err != nil {
 		if errors.Is(err, domain.ErrWriteConflict) {
 			respondError(w, http.StatusConflict, "memento was modified; reload before saving")
+			return
+		}
+		var transition *domain.InvalidTransitionError
+		if errors.As(err, &transition) {
+			respondJSON(w, http.StatusUnprocessableEntity, map[string]any{
+				"error":  "validation failed",
+				"issues": transition.Issues(),
+			})
 			return
 		}
 		respondError(w, http.StatusInternalServerError, err.Error())

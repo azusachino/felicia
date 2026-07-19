@@ -42,6 +42,9 @@ type ImportReport struct {
 // fields are applied through the ingest boundary; authored fields are never
 // supplied by this operation.
 func ApplyPackage(ctx context.Context, document *PackageDocument, store PackageStore) (ImportReport, error) {
+	// Label every memento write this import performs as importer-sourced in the
+	// lifecycle log (docs/contracts/memento-lifecycle.md §8).
+	ctx = domain.WithEventSource(ctx, domain.EventSourceImporter)
 	if document == nil || document.Journey == nil {
 		return ImportReport{}, fmt.Errorf("package document and journey are required")
 	}

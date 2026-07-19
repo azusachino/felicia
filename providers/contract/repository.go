@@ -4,6 +4,7 @@ package contract
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -66,6 +67,9 @@ func Run(t *testing.T, repo domain.Repository) {
 		t.Fatalf("unexpected memento list: %#v", listed)
 	}
 
+	// Advance one legal step at a time (docs/contracts/memento-lifecycle.md §3):
+	// draft→authored, then authored→published. A direct draft→published jump is
+	// now illegal and is asserted separately below.
 	occurred := time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)
 	if err := repo.ApplyManualMementoPatch(ctx, &domain.ManualMementoPatch{
 		Memento: &domain.Memento{
@@ -76,11 +80,18 @@ func Run(t *testing.T, repo domain.Repository) {
 			Geom:       orb.Point{139.75, 35.69},
 			Title:      "Memory video",
 			Place:      "Tokyo",
-			State:      domain.MementoPublished,
+			State:      domain.MementoAuthored,
 		},
 		Fields:           []string{"occurred_at", "occurred_tz", "geom", "title", "place"},
-		State:            domain.MementoPublished,
+		State:            domain.MementoAuthored,
 		ExpectedRevision: int64Ptr(1),
+	}); err != nil {
+		t.Fatalf("author memento: %v", err)
+	}
+	if err := repo.ApplyManualMementoPatch(ctx, &domain.ManualMementoPatch{
+		Memento:          &domain.Memento{ID: memento.ID, JourneyID: journey.ID},
+		State:            domain.MementoPublished,
+		ExpectedRevision: int64Ptr(2),
 	}); err != nil {
 		t.Fatalf("publish memento: %v", err)
 	}
@@ -88,8 +99,27 @@ func Run(t *testing.T, repo domain.Repository) {
 	if err != nil {
 		t.Fatalf("get published memento: %v", err)
 	}
-	if fetched.State != domain.MementoPublished || fetched.Revision != 2 || fetched.Title != "Memory video" {
+	if fetched.State != domain.MementoPublished || fetched.Revision != 3 || fetched.Title != "Memory video" {
 		t.Fatalf("unexpected published memento: %#v", fetched)
+	}
+
+	// An illegal transition on an existing row is rejected as InvalidTransitionError.
+	var invalid *domain.InvalidTransitionError
+	if err := repo.ApplyManualMementoPatch(ctx, &domain.ManualMementoPatch{
+		Memento:          &domain.Memento{ID: memento.ID, JourneyID: journey.ID},
+		State:            domain.MementoDraft,
+		ExpectedRevision: int64Ptr(3),
+	}); !errors.As(err, &invalid) {
+		t.Fatalf("published→draft error = %v, want InvalidTransitionError", err)
+	}
+	// Same-state save is always legal.
+	if err := repo.ApplyManualMementoPatch(ctx, &domain.ManualMementoPatch{
+		Memento:          &domain.Memento{ID: memento.ID, JourneyID: journey.ID, Place: "Tokyo (same)"},
+		Fields:           []string{"place"},
+		State:            domain.MementoPublished,
+		ExpectedRevision: int64Ptr(3),
+	}); err != nil {
+		t.Fatalf("same-state save: %v", err)
 	}
 
 	if err := repo.ApplyManualMementoPatch(ctx, &domain.ManualMementoPatch{

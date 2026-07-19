@@ -210,12 +210,23 @@ func (r *Repository) ApplyManualMementoPatch(ctx context.Context, patch *domain.
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return err
 	}
-	if errors.Is(err, sql.ErrNoRows) {
+	exists := err == nil
+	var fromState domain.MementoState
+	if exists {
+		fromState = current.State
+	} else {
 		current = &domain.Memento{ID: patch.Memento.ID, JourneyID: patch.Memento.JourneyID}
 	}
 	if patch.ExpectedRevision != nil && current.Revision != 0 && current.Revision != *patch.ExpectedRevision {
 		return domain.ErrWriteConflict
 	}
+	// Lifecycle guard: an existing row may only change state along a legal
+	// transition (docs/contracts/memento-lifecycle.md §3). Creation is
+	// unconstrained (no prior state to transition from).
+	if exists && patch.State != "" && !domain.CanTransitionMementoState(fromState, patch.State) {
+		return &domain.InvalidTransitionError{From: fromState, To: patch.State}
+	}
+	prevRevision := current.Revision
 	mergeMemento(current, patch.Memento, patch.Fields)
 	current.AuthoredFields = unionFields(current.AuthoredFields, patch.Fields)
 	if patch.State != "" {
@@ -224,7 +235,21 @@ func (r *Repository) ApplyManualMementoPatch(ctx context.Context, patch *domain.
 	if current.Revision == 0 {
 		current.Revision = 1
 	}
-	return r.upsertMemento(ctx, current, patch.ExpectedRevision)
+	toState := current.State
+	if err := r.upsertMemento(ctx, current, patch.ExpectedRevision); err != nil {
+		return err
+	}
+	if !exists || fromState != toState {
+		logFrom := fromState
+		if !exists {
+			logFrom = ""
+			current.Revision = 1
+		} else {
+			current.Revision = prevRevision + 1
+		}
+		domain.LogMementoStateChange(ctx, nil, current, logFrom, toState)
+	}
+	return nil
 }
 
 // ApplyIngestMementoPatch applies source fields without taking authorship.
@@ -240,8 +265,10 @@ func (r *Repository) ApplyIngestMementoPatch(ctx context.Context, patch *domain.
 	if errors.Is(err, sql.ErrNoRows) || current == nil {
 		current, err = r.GetMemento(ctx, patch.Memento.ID)
 	}
+	created := false
 	if errors.Is(err, sql.ErrNoRows) {
 		current = &domain.Memento{ID: patch.Memento.ID, JourneyID: patch.Memento.JourneyID, State: patch.Memento.State}
+		created = true
 		err = nil
 	}
 	if err != nil {
@@ -262,7 +289,16 @@ func (r *Repository) ApplyIngestMementoPatch(ctx context.Context, patch *domain.
 			current.State = domain.MementoCandidateState
 		}
 	}
-	return r.UpsertMemento(ctx, current)
+	if err := r.UpsertMemento(ctx, current); err != nil {
+		return err
+	}
+	// Ingest never changes an existing row's state; only creation is a
+	// lifecycle event worth logging.
+	if created {
+		current.Revision = 1
+		domain.LogMementoStateChange(ctx, nil, current, "", current.State)
+	}
+	return nil
 }
 
 func mergeMemento(dst, src *domain.Memento, fields []string) {

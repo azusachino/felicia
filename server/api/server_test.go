@@ -169,6 +169,11 @@ func (m *mockRepository) ApplyManualMementoPatch(_ context.Context, patch *domai
 		if patch.ExpectedRevision != nil && *patch.ExpectedRevision != existing.Revision {
 			return domain.ErrWriteConflict
 		}
+		// Mirror the real providers' lifecycle guard so handler tests exercise
+		// the 422 mapping (docs/contracts/memento-lifecycle.md §3).
+		if patch.State != "" && !domain.CanTransitionMementoState(existing.State, patch.State) {
+			return &domain.InvalidTransitionError{From: existing.State, To: patch.State}
+		}
 		patch.Memento.Revision = existing.Revision + 1
 	} else {
 		patch.Memento.Revision = 1
@@ -1116,6 +1121,101 @@ func TestServerDeleteMemento(t *testing.T) {
 	handler.ServeHTTP(w, httptest.NewRequest(http.MethodDelete, "/api/admin/mementos/"+id.String(), nil))
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("second delete status = %d, want 404", w.Code)
+	}
+}
+
+func TestServerDeletePublishedMementoRejected(t *testing.T) {
+	repo := newMockRepository()
+	id := uuid.New()
+	repo.mementos[id] = &domain.Memento{ID: id, JourneyID: uuid.New(), Kind: "goods", State: domain.MementoPublished}
+	handler := api.NewServer(repo, nil, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{}).Handler()
+
+	// A published memento must be unpublished before it can be deleted.
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, httptest.NewRequest(http.MethodDelete, "/api/admin/mementos/"+id.String(), nil))
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("delete published status = %d, want 422 (%s)", w.Code, w.Body)
+	}
+	var res map[string]any
+	_ = json.NewDecoder(w.Body).Decode(&res)
+	issues, _ := res["issues"].([]any)
+	if len(issues) != 1 {
+		t.Fatalf("expected one issue, got %v", res["issues"])
+	}
+	issue, _ := issues[0].(map[string]any)
+	if issue["Field"] != "state" || issue["Code"] != domain.CodeDeleteRequiresUnpublish {
+		t.Fatalf("unexpected issue: %v", issue)
+	}
+	if _, ok := repo.mementos[id]; !ok {
+		t.Fatal("published memento must not have been deleted")
+	}
+}
+
+func TestServerUpsertMementoRejectsIllegalTransition(t *testing.T) {
+	reg := loadKinds(t)
+	repo := newMockRepository()
+	journeyID := uuid.New()
+	id := uuid.New()
+	repo.mementos[id] = &domain.Memento{ID: id, JourneyID: journeyID, Kind: "goods", State: domain.MementoPublished, Revision: 3}
+	handler := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{}).Handler()
+
+	// published→draft is illegal (backward beyond unpublish).
+	payload := map[string]any{
+		"id": id, "journey_id": journeyID, "kind": "goods", "seq": 1,
+		"occurred_at": time.Now().Format(time.RFC3339), "occurred_tz": "Asia/Tokyo",
+		"geom":  map[string]any{"type": "Point", "coordinates": []float64{139.7, 35.6}},
+		"title": "G", "place": "P", "state": "draft",
+		"kind_data":         map[string]any{"name": "thing"},
+		"expected_revision": 3,
+	}
+	body, _ := json.Marshal(payload)
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/mementos", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("illegal transition status = %d, want 422 (%s)", w.Code, w.Body)
+	}
+	var res map[string]any
+	_ = json.NewDecoder(w.Body).Decode(&res)
+	issues, _ := res["issues"].([]any)
+	if len(issues) != 1 {
+		t.Fatalf("expected one issue, got %v", res["issues"])
+	}
+	issue, _ := issues[0].(map[string]any)
+	if issue["Code"] != domain.CodeInvalidTransition {
+		t.Fatalf("unexpected issue: %v", issue)
+	}
+}
+
+func TestServerUpsertMementoOmittedStateKeepsCurrent(t *testing.T) {
+	reg := loadKinds(t)
+	repo := newMockRepository()
+	journeyID := uuid.New()
+	id := uuid.New()
+	repo.mementos[id] = &domain.Memento{ID: id, JourneyID: journeyID, Kind: "goods", State: domain.MementoPublished, Revision: 2}
+	handler := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{}).Handler()
+
+	// Omitting state on an existing published memento keeps it published
+	// (must not silently downgrade to draft).
+	payload := map[string]any{
+		"id": id, "journey_id": journeyID, "kind": "goods", "seq": 1,
+		"occurred_at": time.Now().Format(time.RFC3339), "occurred_tz": "Asia/Tokyo",
+		"geom":  map[string]any{"type": "Point", "coordinates": []float64{139.7, 35.6}},
+		"title": "G", "place": "P",
+		"kind_data":         map[string]any{"name": "thing"},
+		"expected_revision": 2,
+	}
+	body, _ := json.Marshal(payload)
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/mementos", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("omitted-state save status = %d, want 200 (%s)", w.Code, w.Body)
+	}
+	if got := repo.mementos[id].State; got != domain.MementoPublished {
+		t.Fatalf("state after omitted-state save = %q, want published", got)
 	}
 }
 

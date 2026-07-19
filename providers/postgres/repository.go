@@ -343,15 +343,40 @@ func (r *pgRepository) ApplyManualMementoPatch(ctx context.Context, patch *domai
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("load memento patch target %s: %w", patch.Memento.ID, err)
 	}
-	if err != nil {
+	exists := err == nil
+	var fromState domain.MementoState
+	if exists {
+		fromState = current.State
+	} else {
 		current = &domain.Memento{ID: patch.Memento.ID, JourneyID: patch.Memento.JourneyID}
 	}
+	// Lifecycle guard: an existing row may only change state along a legal
+	// transition (docs/contracts/memento-lifecycle.md §3). Creation is
+	// unconstrained.
+	if exists && patch.State != "" && !domain.CanTransitionMementoState(fromState, patch.State) {
+		return &domain.InvalidTransitionError{From: fromState, To: patch.State}
+	}
+	prevRevision := current.Revision
 	mergeMementoFields(current, patch.Memento, patch.Fields)
 	current.AuthoredFields = unionFields(current.AuthoredFields, patch.Fields)
 	if patch.State != "" {
 		current.State = patch.State
 	}
-	return r.upsertManualMemento(ctx, current, patch.ExpectedRevision)
+	toState := current.State
+	if err := r.upsertManualMemento(ctx, current, patch.ExpectedRevision); err != nil {
+		return err
+	}
+	if !exists || fromState != toState {
+		logFrom := fromState
+		if !exists {
+			logFrom = ""
+			current.Revision = 1
+		} else {
+			current.Revision = prevRevision + 1
+		}
+		domain.LogMementoStateChange(ctx, nil, current, logFrom, toState)
+	}
+	return nil
 }
 
 // ApplyMementoAggregate persists the authored memento and child content in a
@@ -407,8 +432,14 @@ func (r *pgRepository) ApplyIngestMementoPatch(ctx context.Context, patch *domai
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("load memento ingest target %s: %w", patch.Memento.ID, err)
 	}
+	created := false
 	if err != nil {
-		current = &domain.Memento{ID: patch.Memento.ID, JourneyID: patch.Memento.JourneyID, State: domain.MementoCandidateState}
+		// Honor the package-supplied creation state (matches the sqlite
+		// provider); fall back to candidate only when unset. Without this,
+		// importing a published fixture row would create it as candidate and
+		// then require an illegal candidate→published jump on the next patch.
+		current = &domain.Memento{ID: patch.Memento.ID, JourneyID: patch.Memento.JourneyID, State: patch.Memento.State}
+		created = true
 	}
 	mergeMementoFields(current, patch.Memento, patch.Fields)
 	if hasIdentity {
@@ -421,7 +452,14 @@ func (r *pgRepository) ApplyIngestMementoPatch(ctx context.Context, patch *domai
 	if current.State == "" {
 		current.State = domain.MementoCandidateState
 	}
-	return r.UpsertMemento(ctx, current)
+	if err := r.UpsertMemento(ctx, current); err != nil {
+		return err
+	}
+	if created {
+		current.Revision = 1
+		domain.LogMementoStateChange(ctx, nil, current, "", current.State)
+	}
+	return nil
 }
 
 func sourceIdentity(memento *domain.Memento) (domain.SourceIdentity, bool) {
