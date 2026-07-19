@@ -87,6 +87,22 @@ projection:
 
 ## Status log
 
+- **2026-07-19 (memento lifecycle + staged rebuild)** — Formalized the
+  memento lifecycle as a binding contract
+  ([docs/contracts/memento-lifecycle.md](../contracts/memento-lifecycle.md))
+  and enforced it in code: a transition table with provider- and API-level
+  guards (illegal jumps → 422 `invalid_transition`), structured state-change
+  logging with an event source, delete restricted to non-public states
+  (published must be unpublished first → 422 `delete_requires_unpublish`),
+  and an omitted state that keeps the current one instead of downgrading.
+  Publish/unpublish no longer rebuild eagerly; instead a change to what is
+  public is tracked as **pending-build** (compared against the deployed
+  artifact, stateless) and shown as highlighted rows plus a `(N)` count on
+  the journey-detail and journeys-list Build actions — the author batches
+  edits and resolves them with one explicit build. Site & Deploy became the
+  output-location chooser with a local directory picker. Verified in the
+  containerized toolchain; the closed-loop E2E now drives the staged
+  unpublish → pending → build → cleared round trip (10/10).
 - **2026-07-19 (epic ADMIN-02 M1)** — Authoring controls from the hands-on
   M0 review: unpublish (published → authored, bidirectional lifecycle),
   memento deletion (new DELETE endpoint across both providers, photos
