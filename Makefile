@@ -23,7 +23,7 @@ COMPOSE ?= $(shell \
 	elif command -v docker >/dev/null 2>&1; then echo docker compose; \
 	else echo ''; fi)
 
-.PHONY: help fmt fmt-check vet lint test test-api test-features test-sqlite test-postgres check build cli-build experiment-intake journey-local validate tidy db-up db-down migrate seed dev dev-sqlite dev-postgres test-workflow test-workflow-postgres mock-up mock-down web-install web-check web-build web-admin-check web-admin-build static-build static-validate static-publish pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
+.PHONY: help fmt fmt-check vet lint test test-api test-features test-sqlite test-postgres check build cli-build experiment-intake journey-local validate tidy db-up db-down migrate seed dev dev-sqlite dev-postgres test-workflow test-workflow-postgres test-admin-e2e mock-up mock-down web-install web-check web-build web-admin-check web-admin-build static-build static-validate static-publish pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -111,6 +111,9 @@ test-workflow-postgres: ## Run full journey workflow against disposable PostgreS
 		DATABASE_DSN="$(FELICIA_TEST_DATABASE_DSN)" $(MAKE) migrate; \
 		FELICIA_TEST_DATABASE_DSN="$(FELICIA_TEST_DATABASE_DSN)" $(UV_RUN) run python scripts/test_journey_workflow.py --start-server --database-driver postgres; \
 	fi
+
+test-admin-e2e: ## Run the admin GUI closed-loop E2E pass (disposable server + bun run dev + Playwright/chromium) — ADMIN-01.8, local-only (not part of validate)
+	$(UV_RUN) run python scripts/e2e_admin_gui.py
 
 test-sqlite: ## Run all tests with SQLite as the only enabled provider
 	DATABASE_DSN= FELICIA_TEST_DATABASE_DSN= $(MAKE) test

@@ -29,6 +29,10 @@ __pycache__/
 .DS_Store
 *.swp
 
+# Admin GUI E2E (ADMIN-01.8, Playwright)
+/apps/web-admin/playwright-report/
+/apps/web-admin/test-results/
+
 # Agent session scratch (asobi is canonical; these are fallback only)
 .agents/CONTEXT.md
 .agents/CURRENT_TASK.md

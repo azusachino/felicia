@@ -37,6 +37,20 @@
             # cannot exec inside non-FHS (nix) containers.
             python314
           ];
+          # Browsers for the admin-GUI E2E pass come from nix so they run in
+          # non-FHS containers too; @playwright/test in apps/web-admin must
+          # stay on the same version as this playwright-driver (1.60.0).
+          PLAYWRIGHT_BROWSERS_PATH = pkgs.playwright-driver.browsers.override {
+            withFirefox = false;
+            withWebkit = false;
+          };
+          PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = "true";
+          # Headless chromium needs at least one font to lay text out
+          # (containers ship none; zero-size text reads as "hidden" to
+          # Playwright's visibility checks).
+          FONTCONFIG_FILE = pkgs.makeFontsConf {
+            fontDirectories = [ pkgs.dejavu_fonts ];
+          };
         };
       });
     };

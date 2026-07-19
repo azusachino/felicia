@@ -507,7 +507,14 @@ def disposable_postgres_database(admin_dsn: str):
 
 
 @contextmanager
-def disposable_server(port: int, driver: str, database_path: str, database_dsn: str, postgres_admin_dsn: str):
+def disposable_server(
+    port: int,
+    driver: str,
+    database_path: str,
+    database_dsn: str,
+    postgres_admin_dsn: str,
+    extra_env: dict[str, str] | None = None,
+):
     global BASE_URL
     ids = workflow_ids()
     with tempfile.TemporaryDirectory(prefix="felicia-workflow-") as temp_dir:
@@ -538,6 +545,11 @@ def disposable_server(port: int, driver: str, database_path: str, database_dsn: 
                 "DATABASE_DRIVER": driver,
                 "CACHE_ADDR": "",
                 "PORT": str(selected_port),
+                # Lets a caller wire optional ingest sources (DAWARICH_URL/
+                # IMMICH_URL/etc. — see server/config/config.go) or override
+                # MEDIA_ROOT without this function needing to know about
+                # every one of them. Unused by the workflow test itself.
+                **(extra_env or {}),
             }
             if driver == "sqlite":
                 environment["DATABASE_PATH"] = database_path

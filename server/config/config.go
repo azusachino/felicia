@@ -32,10 +32,16 @@ type SourceConfig struct {
 
 // Config is the complete runtime configuration for the local API server.
 type Config struct {
-	DatabaseDriver     string       `koanf:"database.driver"`
-	DatabaseDSN        string       `koanf:"database.dsn"`
-	DatabasePath       string       `koanf:"database.path"`
-	Port               string       `koanf:"server.port"`
+	DatabaseDriver string `koanf:"database.driver"`
+	DatabaseDSN    string `koanf:"database.dsn"`
+	DatabasePath   string `koanf:"database.path"`
+	Port           string `koanf:"server.port"`
+	// RatePerSecond/RateBurst tune the per-client API rate limiter; zero
+	// keeps the server's built-in defaults. Test harnesses raise them so
+	// machine-paced drivers (e.g. the admin-GUI E2E) don't trip the limiter
+	// a human author would never reach.
+	RatePerSecond      float64      `koanf:"server.rate_per_second"`
+	RateBurst          int          `koanf:"server.rate_burst"`
 	CacheAddr          string       `koanf:"cache.addr"`
 	Dawarich           SourceConfig `koanf:"dawarich"`
 	Immich             SourceConfig `koanf:"immich"`
@@ -91,6 +97,8 @@ func load(path string, lookup func(string) (string, bool), required bool) (Confi
 		DatabaseDSN:        k.String("database.dsn"),
 		DatabasePath:       k.String("database.path"),
 		Port:               k.String("server.port"),
+		RatePerSecond:      k.Float64("server.rate_per_second"),
+		RateBurst:          k.Int("server.rate_burst"),
 		CacheAddr:          k.String("cache.addr"),
 		Dawarich:           SourceConfig{URL: k.String("dawarich.url"), APIKey: k.String("dawarich.api_key")},
 		Immich:             SourceConfig{URL: k.String("immich.url"), APIKey: k.String("immich.api_key")},
@@ -157,6 +165,8 @@ func environmentOverrides(lookup func(string) (string, bool)) map[string]any {
 	set("database.driver", "FELICIA_DATABASE_DRIVER", "DATABASE_DRIVER")
 	set("database.path", "FELICIA_DATABASE_PATH", "DATABASE_PATH")
 	set("server.port", "FELICIA_PORT", "PORT")
+	set("server.rate_per_second", "FELICIA_RATE_PER_SECOND", "RATE_PER_SECOND")
+	set("server.rate_burst", "FELICIA_RATE_BURST", "RATE_BURST")
 	set("cache.addr", "FELICIA_CACHE_ADDR", "CACHE_ADDR")
 	set("dawarich.url", "FELICIA_DAWARICH_URL", "DAWARICH_URL")
 	set("dawarich.api_key", "FELICIA_DAWARICH_API_KEY", "DAWARICH_API_KEY")
