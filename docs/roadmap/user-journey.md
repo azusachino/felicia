@@ -35,13 +35,13 @@ Invariants that must hold at every step:
 
 ## Per-stage status
 
-| #   | Stage               | Status                             | Where it lives                                                                                                                                                                                                                                                                                      |
-| --- | ------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **Data collection** | ✅ Done                            | Dawarich client (`providers/dawarich/`), Immich client (`providers/immich/`), local GPX + photo/sidecar source (`providers/local/`), mock upstream (`scripts/mock_upstream.py`)                                                                                                                     |
-| 2   | **Import / intake** | ✅ Done (deterministic)            | Field-scoped importer (`runtime/importer/`), dwell-cluster intake planner (`runtime/intake/planner.go`), SQLite + PostgreSQL providers behind shared contract tests                                                                                                                                 |
-| 3   | **Authoring**       | ⚠️ GUI in progress (epic ADMIN-01) | Schema v1 + CLI path complete; admin API grew intake-plan/promote, compile, and photo-list endpoints; `apps/web-admin` has a navigable journey shell with import/preview triggers, an intake inbox, and a memento editor with revision-conflict handling — closed-loop E2E verification (01.8) next |
-| 4   | **Publication**     | ✅ Done                            | Published-only static compiler (`publication/compiler.go`); live/static content parity is enforced by a shared projection layer (`publication/public.go`) and a workflow parity check                                                                                                               |
-| 5   | **Deployment**      | ✅ Done                            | Pages workflow builds and deploys the real compiled artifact (artifact-based `upload-pages-artifact` → `deploy-pages`, nothing committed); first remote run succeeded on `main` after PR #55 merged — epic [FELICIA-PAGES-01](pages-v1-epic.md)                                                     |
+| #   | Stage               | Status                  | Where it lives                                                                                                                                                                                                                                                                                                                                            |
+| --- | ------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Data collection** | ✅ Done                 | Dawarich client (`providers/dawarich/`), Immich client (`providers/immich/`), local GPX + photo/sidecar source (`providers/local/`), mock upstream (`scripts/mock_upstream.py`)                                                                                                                                                                           |
+| 2   | **Import / intake** | ✅ Done (deterministic) | Field-scoped importer (`runtime/importer/`), dwell-cluster intake planner (`runtime/intake/planner.go`), SQLite + PostgreSQL providers behind shared contract tests                                                                                                                                                                                       |
+| 3   | **Authoring**       | ✅ Done (GUI MVP)       | Schema v1 + CLI path complete; `apps/web-admin` closes the authoring loop — journey shell with import/preview triggers, intake inbox, memento editor with revision-conflict handling — proven end to end in a real browser (`make test-admin-e2e`, epic [FELICIA-ADMIN-01](admin-gui-v1-epic.md)); the registry-driven dynamic form engine stays deferred |
+| 4   | **Publication**     | ✅ Done                 | Published-only static compiler (`publication/compiler.go`); live/static content parity is enforced by a shared projection layer (`publication/public.go`) and a workflow parity check                                                                                                                                                                     |
+| 5   | **Deployment**      | ✅ Done                 | Pages workflow builds and deploys the real compiled artifact (artifact-based `upload-pages-artifact` → `deploy-pages`, nothing committed); first remote run succeeded on `main` after PR #55 merged — epic [FELICIA-PAGES-01](pages-v1-epic.md)                                                                                                           |
 
 Deliberately deferred (not gaps): AI enrichment
 ([ADR-0024](../adr/0024-optional-ai-enrichment.md)), R2/S3 object storage
@@ -87,6 +87,16 @@ projection:
 
 ## Status log
 
+- **2026-07-19 (Phase 2 complete — epic ADMIN-01 M4)** — Closed-loop E2E
+  verification landed (ADMIN-01.8): `make test-admin-e2e` drives the real
+  GUI in Playwright/chromium against the disposable server — plan intake
+  from a mock Dawarich upstream, promote a candidate, author, publish,
+  compile, and assert the artifact carries the authored essay (asserted in
+  the browser and again from the filesystem). The pass immediately caught
+  and fixed two real bugs: a SQLite single-connection deadlock in the
+  stop-candidate list (evidence queried while the candidate rows were
+  still open) and a journey-list crash on Go nil slices encoding as JSON
+  `null`. Every epic milestone (M1–M4) is now landed and verified.
 - **2026-07-19 (Phase 2 M3)** — Memento editor landed in `apps/web-admin`
   (ADMIN-01.4 + 01.5): common fields, lat/lng inputs with snap-to-route,
   registry-aligned hardcoded `transit`/`goods` kind_data forms (other kinds

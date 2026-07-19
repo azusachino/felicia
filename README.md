@@ -151,11 +151,11 @@ plan/apply/review`, `static compile` with stale-artifact reconciliation), and
 the published-only static compiler shared verbatim by the live API and the
 static artifact. GitHub Pages publication runs the real SQLite pipeline —
 live/static contract parity is proven in the workflow harness and the Pages
-workflow has run end to end on `main` (PR #55). Remaining gaps:
-the admin authoring GUI (journey shell, intake inbox, and memento editor
-landed; the closed-loop E2E pass remains — epic
-[FELICIA-ADMIN-01](docs/roadmap/admin-gui-v1-epic.md)) and the deliberately
-deferred AI enrichment / object storage seams.
+workflow has run end to end on `main` (PR #55). The admin authoring GUI MVP
+is complete: journey shell, intake inbox, memento editor, and a closed-loop
+browser E2E (epic [FELICIA-ADMIN-01](docs/roadmap/admin-gui-v1-epic.md)).
+Remaining gaps are the deliberately deferred AI enrichment / object storage
+seams and the registry-driven dynamic form engine.
 
 The single source of truth for delivery status is
 [`docs/roadmap.md`](docs/roadmap.md) and the target end-to-end journey in
