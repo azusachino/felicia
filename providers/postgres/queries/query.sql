@@ -38,7 +38,7 @@ SET orphaned_at = NOW()
 WHERE source_system = $2
   AND run_id <> $1
   AND orphaned_at IS NULL
-  AND NOT (source_external_id = ANY($3::text[]));
+  AND NOT (source_external_id = ANY(sqlc.arg(seen_external_ids)::text[]));
 
 -- name: CreateJournal :exec
 INSERT INTO tb_journal (id, created_at) VALUES ($1, $2);
@@ -99,7 +99,7 @@ ORDER BY seq ASC, occurred_at ASC;
 INSERT INTO tb_mementos (
     id, journey_id, kind, seq, occurred_at, occurred_tz, geom, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, revision, created_at, updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, ST_GeomFromWKB($7, 4326), $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, COALESCE($21, 1), NOW(), NOW()
+    $1, $2, $3, $4, $5, $6, ST_GeomFromWKB($7, 4326), $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, COALESCE(sqlc.narg(revision)::bigint, 1), NOW(), NOW()
 ) ON CONFLICT (id) DO UPDATE SET
     kind = CASE WHEN NOT (tb_mementos.authored_fields @> ARRAY['kind']) THEN EXCLUDED.kind ELSE tb_mementos.kind END,
     seq = CASE WHEN NOT (tb_mementos.authored_fields @> ARRAY['seq']) THEN EXCLUDED.seq ELSE tb_mementos.seq END,
@@ -121,13 +121,13 @@ INSERT INTO tb_mementos (
     revision = tb_mementos.revision + 1,
     authored_fields = EXCLUDED.authored_fields,
     updated_at = NOW()
-WHERE $22::bigint IS NULL OR tb_mementos.revision = $22;
+WHERE sqlc.narg(expected_revision)::bigint IS NULL OR tb_mementos.revision = sqlc.narg(expected_revision);
 
 -- name: UpsertManualMemento :exec
 INSERT INTO tb_mementos (
     id, journey_id, kind, seq, occurred_at, occurred_tz, geom, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, revision, created_at, updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, ST_GeomFromWKB($7, 4326), $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, COALESCE($21, 1), NOW(), NOW()
+    $1, $2, $3, $4, $5, $6, ST_GeomFromWKB($7, 4326), $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, COALESCE(sqlc.narg(revision)::bigint, 1), NOW(), NOW()
 ) ON CONFLICT (id) DO UPDATE SET
     journey_id = EXCLUDED.journey_id,
     kind = EXCLUDED.kind,
@@ -150,7 +150,7 @@ INSERT INTO tb_mementos (
     state = EXCLUDED.state,
     revision = tb_mementos.revision + 1,
     updated_at = NOW()
-WHERE $22::bigint IS NULL OR tb_mementos.revision = $22;
+WHERE sqlc.narg(expected_revision)::bigint IS NULL OR tb_mementos.revision = sqlc.narg(expected_revision);
 
 -- name: GetPhoto :one
 SELECT id, memento_id, object_key, content_hash, caption, seq, taken_at, source_ref, created_at
@@ -202,6 +202,9 @@ ORDER BY seq ASC, created_at ASC;
 
 -- name: DeleteTransitLeg :exec
 DELETE FROM tb_transit_legs WHERE id = $1;
+
+-- name: DeleteMemento :execrows
+DELETE FROM tb_mementos WHERE id = $1;
 
 -- name: GetDisplayRoute :one
 -- Union-at-read: the display route is the Dawarich track combined with every

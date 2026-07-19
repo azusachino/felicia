@@ -132,7 +132,7 @@ func (r *pgRepository) MarkMissingSourceObservations(ctx context.Context, runID 
 		return errors.New("run ID and source system are required")
 	}
 	if err := r.q.MarkMissingSourceObservations(ctx, db.MarkMissingSourceObservationsParams{
-		RunID: runID, SourceSystem: sourceSystem, SeenExternalIDs: seenExternalIDs,
+		RunID: runID, SourceSystem: sourceSystem, SeenExternalIds: seenExternalIDs,
 	}); err != nil {
 		return fmt.Errorf("mark missing source observations for run %s: %w", runID, err)
 	}
@@ -226,7 +226,7 @@ func (r *pgRepository) GetMementoBySourceIdentity(ctx context.Context, source do
 	if err := source.Validate(); err != nil {
 		return nil, fmt.Errorf("get memento by source identity: %w", err)
 	}
-	row, err := r.q.GetMementoBySourceIdentity(ctx, source.System, source.ExternalID)
+	row, err := r.q.GetMementoBySourceIdentity(ctx, db.GetMementoBySourceIdentityParams{SourceSystem: toText(&source.System), SourceExternalID: toText(&source.ExternalID)})
 	if err != nil {
 		return nil, fmt.Errorf("get memento by source identity %s: %w", source.Ref(), err)
 	}
@@ -284,10 +284,10 @@ func (r *pgRepository) upsertMementoWith(ctx context.Context, memento *domain.Me
 		Kind:             memento.Kind,
 		Seq:              int32(memento.Seq),
 		OccurredAt:       toTimestamptz(memento.OccurredAt),
-		OccurredTz:       memento.OccurredTZ,
+		OccurredTz:       pgtype.Text{String: memento.OccurredTZ, Valid: true},
 		StGeomfromwkb:    geomBytes,
-		Title:            memento.Title,
-		Place:            memento.Place,
+		Title:            pgtype.Text{String: memento.Title, Valid: true},
+		Place:            pgtype.Text{String: memento.Place, Valid: true},
 		Vendor:           toText(memento.Vendor),
 		Essay:            toText(memento.Essay),
 		PriceAmount:      toInt8(memento.PriceAmount),
@@ -303,7 +303,9 @@ func (r *pgRepository) upsertMementoWith(ctx context.Context, memento *domain.Me
 		ExpectedRevision: toInt8(expectedRevision),
 	}
 	if manual {
-		err = r.q.UpsertManualMemento(ctx, params)
+		// The two upsert queries share an identical parameter shape; Go's
+		// struct conversion keeps that in one place.
+		err = r.q.UpsertManualMemento(ctx, db.UpsertManualMementoParams(params))
 	} else {
 		err = r.q.UpsertMemento(ctx, params)
 	}
@@ -556,15 +558,13 @@ func (r *pgRepository) DeleteTransitLeg(ctx context.Context, id uuid.UUID) error
 	return nil
 }
 
-// DeleteMemento removes a memento; its photos cascade via the FK. Direct
-// exec rather than a generated query: the committed sqlc output predates
-// the current sqlc toolchain and regenerating it is a separate task.
+// DeleteMemento removes a memento; its photos cascade via the FK.
 func (r *pgRepository) DeleteMemento(ctx context.Context, id uuid.UUID) error {
-	tag, err := r.db.Exec(ctx, "DELETE FROM tb_mementos WHERE id = $1", id)
+	affected, err := r.q.DeleteMemento(ctx, id)
 	if err != nil {
 		return fmt.Errorf("delete memento %s: %w", id, err)
 	}
-	if tag.RowsAffected() == 0 {
+	if affected == 0 {
 		return domain.ErrNotFound
 	}
 	return nil
@@ -722,8 +722,8 @@ func toDomainJourney(
 
 func toDomainMemento(
 	id uuid.UUID, journeyID uuid.UUID, kind string, seq int32,
-	occurredAt pgtype.Timestamptz, occurredTz string, geomWkb interface{},
-	title string, place string, vendor pgtype.Text, essay pgtype.Text,
+	occurredAt pgtype.Timestamptz, occurredTz pgtype.Text, geomWkb interface{},
+	title pgtype.Text, place pgtype.Text, vendor pgtype.Text, essay pgtype.Text,
 	priceAmount pgtype.Int8, priceCurrency pgtype.Text, kindData []byte,
 	sourceSystem pgtype.Text, sourceExternalID pgtype.Text, sourceRef pgtype.Text,
 	authoredFields []string, orphanedAt pgtype.Timestamptz, state string, revision int64,
@@ -752,10 +752,10 @@ func toDomainMemento(
 		Kind:           kind,
 		Seq:            int(seq),
 		OccurredAt:     fromTimestamptz(occurredAt),
-		OccurredTZ:     occurredTz,
+		OccurredTZ:     occurredTz.String,
 		Geom:           geom,
-		Title:          title,
-		Place:          place,
+		Title:          title.String,
+		Place:          place.String,
 		Vendor:         fromText(vendor),
 		Essay:          fromText(essay),
 		PriceAmount:    fromInt8(priceAmount),

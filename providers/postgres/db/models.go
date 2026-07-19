@@ -9,12 +9,21 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type Journal struct {
+type TbImportRun struct {
+	ID           uuid.UUID
+	SourceSystem string
+	StartedAt    pgtype.Timestamptz
+	FinishedAt   pgtype.Timestamptz
+	Status       string
+	ErrorMessage pgtype.Text
+}
+
+type TbJournal struct {
 	ID        uuid.UUID
 	CreatedAt pgtype.Timestamptz
 }
 
-type Journey struct {
+type TbJourney struct {
 	ID             uuid.UUID
 	JournalID      uuid.UUID
 	Slug           string
@@ -31,33 +40,33 @@ type Journey struct {
 	UpdatedAt      pgtype.Timestamptz
 }
 
-type Memento struct {
+type TbMemento struct {
 	ID               uuid.UUID
 	JourneyID        uuid.UUID
 	Kind             string
 	Seq              int32
 	OccurredAt       pgtype.Timestamptz
-	OccurredTz       string
+	OccurredTz       pgtype.Text
 	Geom             interface{}
-	Title            string
-	Place            string
+	Title            pgtype.Text
+	Place            pgtype.Text
 	Vendor           pgtype.Text
 	Essay            pgtype.Text
 	PriceAmount      pgtype.Int8
 	PriceCurrency    pgtype.Text
 	KindData         []byte
-	SourceSystem     pgtype.Text
-	SourceExternalID pgtype.Text
 	SourceRef        pgtype.Text
 	AuthoredFields   []string
 	OrphanedAt       pgtype.Timestamptz
-	State            string
-	Revision         int64
 	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
+	State            string
+	SourceSystem     pgtype.Text
+	SourceExternalID pgtype.Text
+	Revision         int64
 }
 
-type MementoPhoto struct {
+type TbMementoPhoto struct {
 	ID          uuid.UUID
 	MementoID   uuid.UUID
 	ObjectKey   string
@@ -69,7 +78,49 @@ type MementoPhoto struct {
 	CreatedAt   pgtype.Timestamptz
 }
 
-type TransitLeg struct {
+type TbSourceObservation struct {
+	ID               uuid.UUID
+	RunID            uuid.UUID
+	SourceSystem     string
+	SourceExternalID string
+	Kind             string
+	ObservedAt       pgtype.Timestamptz
+	Confidence       float64
+	Payload          []byte
+	Changed          bool
+	OrphanedAt       pgtype.Timestamptz
+	CreatedAt        pgtype.Timestamptz
+}
+
+type TbStopCandidate struct {
+	ID                uuid.UUID
+	JourneyID         uuid.UUID
+	DerivationVersion string
+	CandidateKey      string
+	Label             string
+	AuthoredFields    []string
+	Geom              interface{}
+	Arrive            pgtype.Timestamptz
+	Depart            pgtype.Timestamptz
+	Confidence        float64
+	State             string
+	MergedInto        pgtype.UUID
+	Provenance        []byte
+	Revision          int64
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
+}
+
+type TbStopCandidateEvidence struct {
+	ID               uuid.UUID
+	CandidateID      uuid.UUID
+	Kind             string
+	SourceSystem     string
+	SourceExternalID string
+	Locator          string
+}
+
+type TbTransitLeg struct {
 	ID          uuid.UUID
 	JourneyID   uuid.UUID
 	Seq         int32
