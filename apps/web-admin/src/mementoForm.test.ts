@@ -17,7 +17,9 @@ import {
   parseLatLng,
   parsePriceAmount,
   parseSeq,
+  previousLifecycleState,
   toRFC3339,
+  unpublishActionLabel,
   FORM_LEVEL_ISSUE_KEY,
 } from "./mementoForm"
 
@@ -288,6 +290,20 @@ describe("lifecycle transitions", () => {
     expect(lifecycleActionLabel("draft")).toBe("Mark authored")
     expect(lifecycleActionLabel("authored")).toBe("Publish")
     expect(lifecycleActionLabel("published")).toBeNull()
+  })
+
+  test("published steps back to authored; nothing else has a backward step", () => {
+    expect(previousLifecycleState("published")).toBe("authored")
+    expect(previousLifecycleState("authored")).toBeNull()
+    expect(previousLifecycleState("draft")).toBeNull()
+    expect(previousLifecycleState("archived")).toBeNull()
+    expect(previousLifecycleState("candidate")).toBeNull()
+  })
+
+  test("unpublish label only appears for published", () => {
+    expect(unpublishActionLabel("published")).toBe("Unpublish")
+    expect(unpublishActionLabel("authored")).toBeNull()
+    expect(unpublishActionLabel("draft")).toBeNull()
   })
 })
 

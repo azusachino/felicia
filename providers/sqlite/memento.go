@@ -120,6 +120,19 @@ func (r *Repository) UpsertMemento(ctx context.Context, memento *domain.Memento)
 	return r.upsertMemento(ctx, memento, nil)
 }
 
+// DeleteMemento removes a memento; its photos cascade via the FK
+// (PRAGMA foreign_keys is enabled at open).
+func (r *Repository) DeleteMemento(ctx context.Context, id uuid.UUID) error {
+	result, err := r.db.ExecContext(ctx, "DELETE FROM tb_mementos WHERE id = ?", idString(id))
+	if err != nil {
+		return fmt.Errorf("delete memento %s: %w", id, err)
+	}
+	if affected, _ := result.RowsAffected(); affected == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
 func (r *Repository) upsertMemento(ctx context.Context, memento *domain.Memento, expected *int64) error {
 	geom, err := encodeGeometry(memento.Geom)
 	if err != nil {

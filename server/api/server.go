@@ -196,6 +196,7 @@ func (s *Server) Handler() http.Handler {
 		r.Get("/mementos/{id}", s.handleGetMemento)
 		r.Get("/mementos/{id}/photos", s.handleListMementoPhotos)
 		r.Post("/mementos", s.handleUpsertMemento)
+		r.Delete("/mementos/{id}", s.handleDeleteMemento)
 		r.Post("/photos", s.handleUpsertPhoto)
 		r.Post("/stop-candidates/{id}/review", s.handleReviewStopCandidate)
 		r.Post("/stop-candidates/{id}/promote", s.handlePromoteStopCandidate)
@@ -242,7 +243,7 @@ func (s *Server) cors(next http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Add("Vary", "Origin")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Request-ID")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
 		}
 		if r.Method == http.MethodOptions {
 			if origin == s.allowedOrigin {
@@ -924,6 +925,27 @@ func (s *Server) handleListMementoPhotos(w http.ResponseWriter, r *http.Request)
 		photos = []*domain.MementoPhoto{}
 	}
 	respondJSON(w, http.StatusOK, photos)
+}
+
+// handleDeleteMemento removes a memento (photos cascade). Deletion leaves no
+// tombstone: a future import may re-seed source-derived mementos, which the
+// GUI's confirm dialog states.
+func (s *Server) handleDeleteMemento(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid memento UUID")
+		return
+	}
+	if err := s.repo.DeleteMemento(r.Context(), id); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			respondError(w, http.StatusNotFound, "memento not found")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	s.cache.InvalidateAll(r.Context())
+	respondJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 
 type mementoGeom struct {

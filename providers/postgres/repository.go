@@ -556,6 +556,20 @@ func (r *pgRepository) DeleteTransitLeg(ctx context.Context, id uuid.UUID) error
 	return nil
 }
 
+// DeleteMemento removes a memento; its photos cascade via the FK. Direct
+// exec rather than a generated query: the committed sqlc output predates
+// the current sqlc toolchain and regenerating it is a separate task.
+func (r *pgRepository) DeleteMemento(ctx context.Context, id uuid.UUID) error {
+	tag, err := r.db.Exec(ctx, "DELETE FROM tb_mementos WHERE id = $1", id)
+	if err != nil {
+		return fmt.Errorf("delete memento %s: %w", id, err)
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
 func (r *pgRepository) GetDisplayRoute(ctx context.Context, journeyID uuid.UUID) (orb.MultiLineString, error) {
 	raw, err := r.q.GetDisplayRoute(ctx, journeyID)
 	if err != nil {

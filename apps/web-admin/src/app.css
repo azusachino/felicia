@@ -101,6 +101,11 @@ nav a.active {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  /* Clear separation from whatever a view renders next (e.g. JourneyList's
+     own header, whose "Refresh" button sits at the same right edge as
+     .profile below) — without this gap the two right-aligned controls sit
+     close enough to invite a mis-click (ADMIN-02 M1 02.1e). */
+  margin-bottom: 36px;
 }
 h1,
 h2 {

@@ -1,6 +1,8 @@
 <script lang="ts">
   import {
+    compileSite,
     getJourney,
+    getSiteInfo,
     getTemplates,
     isConflict,
     listMementos,
@@ -15,10 +17,12 @@
     routePointCount,
     type AdminJourney,
     type AdminMemento,
+    type AdminSiteInfo,
     type AdminStopCandidate,
     type AdminTemplateRegistry,
     type AdminVisitPreview,
     type AdminPhotoTrayItem,
+    type CompileReport,
     type PlanIntakeResult,
   } from "../api"
   import { listHash, mementoEditHash } from "../router"
@@ -165,11 +169,11 @@
   }
 
   async function reviewCandidate(candidate: AdminStopCandidate, state: "ignored" | "merged", mergedInto?: string) {
-    candidateActions = { ...candidateActions, [candidate.id]: { status: "pending", message: state === "ignored" ? "Ignoring…" : "Merging…" } }
+    candidateActions = { ...candidateActions, [candidate.id]: { status: "pending", message: state === "ignored" ? "Discarding…" : "Merging…" } }
     try {
       const updated = await reviewStopCandidate(candidate.id, { state, expectedRevision: candidate.revision, mergedInto })
       stopCandidates = stopCandidates.map((existing) => (existing.id === updated.id ? updated : existing))
-      candidateActions = { ...candidateActions, [candidate.id]: { status: "success", message: state === "ignored" ? "Ignored." : "Merged." } }
+      candidateActions = { ...candidateActions, [candidate.id]: { status: "success", message: state === "ignored" ? "Discarded." : "Merged." } }
     } catch (cause) {
       candidateActions = { ...candidateActions, [candidate.id]: candidateFailure(cause) }
     }
@@ -216,6 +220,45 @@
     .catch((cause) => {
       templatesError = actionErrorMessage(cause)
     })
+
+  // Build shortcut (ADMIN-02 M1 02.1d): the same compile endpoint the Site
+  // page uses, surfaced here so publish -> build -> preview doesn't require
+  // switching pages. Site info (for the preview link) loads once up front —
+  // journey-independent, same as the kind registry above — so the link can
+  // appear immediately if a previous build already made the artifact ready,
+  // not only after this component triggers one itself.
+  type BuildStatus = "idle" | "pending" | "success" | "error"
+  interface BuildState {
+    status: BuildStatus
+    message: string
+    report?: CompileReport
+  }
+  let buildState = $state<BuildState>({ status: "idle", message: "" })
+  let siteInfo = $state<AdminSiteInfo | null>(null)
+
+  getSiteInfo()
+    .then((result) => {
+      siteInfo = result
+    })
+    .catch(() => {
+      // Best-effort: the preview link just stays hidden until a build here
+      // succeeds and refreshes siteInfo itself.
+    })
+
+  async function triggerJourneyBuild() {
+    buildState = { status: "pending", message: "Building…" }
+    try {
+      const report = await compileSite()
+      buildState = { status: "success", message: "Build complete.", report }
+      siteInfo = await getSiteInfo()
+    } catch (cause) {
+      buildState = { status: "error", message: actionErrorMessage(cause) }
+    }
+  }
+
+  function previewUrl(port: string): string {
+    return `http://${location.hostname}:${port}/`
+  }
 </script>
 
 <section class="detail">
@@ -346,7 +389,7 @@
                     </select>
                   </label>
                   <button type="button" onclick={() => promoteCandidate(candidate)} disabled={candidateAction(candidate.id).status === "pending" || !templates}>Promote</button>
-                  <button type="button" class="secondary" onclick={() => reviewCandidate(candidate, "ignored")} disabled={candidateAction(candidate.id).status === "pending"}>Ignore</button>
+                  <button type="button" class="secondary" onclick={() => reviewCandidate(candidate, "ignored")} disabled={candidateAction(candidate.id).status === "pending"}>Discard</button>
                   <label class="candidate-field">
                     Merge into
                     <select aria-label={`Merge target for ${candidate.label || "stop"}`} bind:value={mergeTarget[candidate.id]}>
@@ -363,6 +406,7 @@
                     disabled={candidateAction(candidate.id).status === "pending" || !mergeTarget[candidate.id]}>Merge</button
                   >
                 </div>
+                <p class="trigger-note candidate-discard-hint">Discarding hides this candidate but remembers it — a future intake plan won't propose it again.</p>
               {/if}
 
               {#if candidateAction(candidate.id).status === "error" || candidateAction(candidate.id).status === "conflict"}
@@ -394,6 +438,26 @@
           {/each}
         </ul>
       {/if}
+    </section>
+
+    <section class="build-shortcut" aria-label="Build and preview">
+      <div class="build-row">
+        <span class="build-label">Build &amp; preview</span>
+        <button type="button" onclick={triggerJourneyBuild} disabled={buildState.status === "pending"}>{buildState.status === "pending" ? "Building…" : "Build & preview"}</button>
+        {#if buildState.status === "success"}
+          {#if buildState.report}
+            <span class="trigger-status trigger-status--success build-report">
+              {buildState.report.Journeys} journeys · {buildState.report.Mementos} mementos · {buildState.report.Media} media · {buildState.report.Removed} removed
+            </span>
+          {/if}
+        {:else if buildState.status === "error"}
+          <span class="trigger-status trigger-status--error">{buildState.message}</span>
+        {/if}
+        {#if siteInfo?.artifact_ready}
+          <a class="preview-link" href={previewUrl(siteInfo.preview_port)} target="_blank" rel="noreferrer">Open preview &#8599;</a>
+        {/if}
+      </div>
+      <p class="trigger-note">Compiles all published journeys and mementos — the same build the Site &amp; Deploy page runs, without leaving this page.</p>
     </section>
   {/if}
 </section>
@@ -431,6 +495,55 @@
     font-family: Georgia, serif;
     font-size: 22px;
     font-weight: 500;
+  }
+  /* Deliberately lighter than the sections above (no Georgia display
+     heading) — this is a shortcut to the Site page's build action, not a
+     second home for it (ADMIN-02 M1 02.1d). */
+  .build-shortcut {
+    margin-top: 24px;
+    padding: 14px 18px;
+    border: 1px solid #dfd4c1;
+    border-radius: 10px;
+    background: rgb(255 250 242 / 55%);
+  }
+  .build-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+  }
+  .build-label {
+    color: #6b5137;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .build-row button {
+    border: 0;
+    border-radius: 7px;
+    padding: 8px 12px;
+    color: #fffaf2;
+    background: #9f522d;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .build-row button:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+  .build-row .trigger-status {
+    margin: 0;
+  }
+  .preview-link {
+    color: #9f522d;
+    font-weight: 500;
+    font-size: 13px;
+    text-decoration: none;
+  }
+  .preview-link:hover {
+    text-decoration: underline;
+  }
+  .candidate-discard-hint {
+    margin-top: 8px;
   }
   .inbox-head {
     display: flex;

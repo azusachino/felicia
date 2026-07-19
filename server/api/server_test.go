@@ -156,6 +156,14 @@ func (m *mockRepository) UpsertMemento(_ context.Context, memento *domain.Mement
 	return nil
 }
 
+func (m *mockRepository) DeleteMemento(_ context.Context, id uuid.UUID) error {
+	if _, ok := m.mementos[id]; !ok {
+		return domain.ErrNotFound
+	}
+	delete(m.mementos, id)
+	return nil
+}
+
 func (m *mockRepository) ApplyManualMementoPatch(_ context.Context, patch *domain.ManualMementoPatch) error {
 	if existing, ok := m.mementos[patch.Memento.ID]; ok {
 		if patch.ExpectedRevision != nil && *patch.ExpectedRevision != existing.Revision {
@@ -1083,6 +1091,31 @@ func TestServerCompile(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(outDir, "img", "1.jpg")); err != nil {
 		t.Errorf("expected media file to be written: %v", err)
+	}
+}
+
+func TestServerDeleteMemento(t *testing.T) {
+	repo := newMockRepository()
+	id := uuid.New()
+	repo.mementos[id] = &domain.Memento{ID: id, JourneyID: uuid.New(), Kind: "goods", State: domain.MementoDraft}
+	handler := api.NewServer(repo, nil, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{}).Handler()
+
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, httptest.NewRequest(http.MethodDelete, "/api/admin/mementos/"+id.String(), nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("delete status = %d (%s)", w.Code, w.Body)
+	}
+
+	w = httptest.NewRecorder()
+	handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/admin/mementos/"+id.String(), nil))
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("get after delete status = %d, want 404", w.Code)
+	}
+
+	w = httptest.NewRecorder()
+	handler.ServeHTTP(w, httptest.NewRequest(http.MethodDelete, "/api/admin/mementos/"+id.String(), nil))
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("second delete status = %d, want 404", w.Code)
 	}
 }
 

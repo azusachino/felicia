@@ -81,6 +81,22 @@ func TestRepositoryJourneyWorkflow(t *testing.T) {
 	if err := repo.FinishImportRun(ctx, run.ID, domain.ImportRunSucceeded, time.Now().UTC(), nil); err != nil {
 		t.Fatalf("finish import run: %v", err)
 	}
+
+	if err := repo.DeleteMemento(ctx, memento.ID); err != nil {
+		t.Fatalf("delete memento: %v", err)
+	}
+	// GetMemento's not-found contract is today the driver's raw no-rows
+	// error (internal patch/import paths depend on that); this asserts the
+	// row is gone without pinning which sentinel comes back.
+	if _, err := repo.GetMemento(ctx, memento.ID); err == nil {
+		t.Fatal("get deleted memento should fail")
+	}
+	if photos, err := repo.ListPhotosByMemento(ctx, memento.ID); err != nil || len(photos) != 0 {
+		t.Fatalf("photos should cascade on delete: %v (%d)", err, len(photos))
+	}
+	if err := repo.DeleteMemento(ctx, memento.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("second delete error = %v, want not found", err)
+	}
 }
 
 func TestStopCandidateReviewSurvivesReimport(t *testing.T) {

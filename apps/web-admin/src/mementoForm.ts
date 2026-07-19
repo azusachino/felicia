@@ -310,6 +310,30 @@ export function lifecycleActionLabel(state: string): string | null {
   }
 }
 
+// The one backward step the editor exposes (ADMIN-02 M1 02.1a): a published
+// memento can be withdrawn to authored. The server's upsert already accepts
+// any target state (it only validates the target's completeness), so this is
+// purely a GUI-side affordance — no new endpoint, no new save path. Nothing
+// else steps backward (draft has nothing earlier to return to, and archived
+// isn't part of this lifecycle's forward/backward pair).
+export function previousLifecycleState(state: string): string | null {
+  switch (state) {
+    case "published":
+      return "authored"
+    default:
+      return null
+  }
+}
+
+export function unpublishActionLabel(state: string): string | null {
+  switch (state) {
+    case "published":
+      return "Unpublish"
+    default:
+      return null
+  }
+}
+
 // --- Photos (metadata-only caption/seq editing) -----------------------------
 
 export interface PhotoFormFields {

@@ -144,4 +144,30 @@ test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
     const publicMementos = (await publicResponse.json()) as Array<{ essay?: string; title?: string }>
     expect(publicMementos.some((memento) => memento.essay === ESSAY_SENTINEL && memento.title === MEMENTO_TITLE)).toBeTruthy()
   })
+
+  // ADMIN-02 M1 02.1a: the lifecycle now steps backward too. This reuses the
+  // same memento the earlier steps authored and published (found by its
+  // authored title, since the candidate's original label stopped matching
+  // the memento-list row once authoring gave it a real title) rather than
+  // adding a fresh memento, keeping this spec's fixture surface unchanged.
+  test("unpublishes the memento back to authored", async () => {
+    await page.goto(`/#/journey/${JOURNEY_ID}`)
+    await page.locator(".memento-link").filter({ hasText: MEMENTO_TITLE }).click()
+    await expect(page).toHaveURL(/#\/journey\/[^/]+\/memento\/[^/]+$/)
+
+    const badge = page.locator(".editor-header .badge")
+    await expect(badge).toHaveText("published")
+    await page.getByRole("button", { name: "Unpublish" }).click()
+    await expect(badge).toHaveText("authored")
+  })
+
+  // Re-publish so this spec leaves the fixture in the same "published, built"
+  // state the earlier build/artifact assertions already exercised — the
+  // unpublish step above is a self-contained round trip, not a lasting
+  // change to the journey.
+  test("re-publishes the memento", async () => {
+    const badge = page.locator(".editor-header .badge")
+    await page.getByRole("button", { name: "Publish" }).click()
+    await expect(badge).toHaveText("published")
+  })
 })

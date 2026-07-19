@@ -298,6 +298,18 @@ async function postJSON<T>(path: string, body?: unknown): Promise<T> {
   return (await response.json()) as T
 }
 
+async function deleteJSON<T>(path: string): Promise<T> {
+  const response = await fetch(apiURL(path), {
+    method: "DELETE",
+    headers: { Accept: "application/json" },
+  })
+  if (!response.ok) {
+    const { message, issues } = await apiErrorDetail(response)
+    throw new ApiError(message, response.status, issues)
+  }
+  return (await response.json()) as T
+}
+
 // The Go handlers respond with domain slices directly, and an empty Go slice
 // is often nil — which encodes as JSON `null`, not `[]`. Every list boundary
 // coerces here so view code can rely on a real array (a journey with zero
@@ -443,6 +455,13 @@ export async function upsertPhoto(payload: UpsertPhotoRequest): Promise<{ status
 
 export async function listMementoPhotos(mementoId: string): Promise<AdminMementoPhoto[]> {
   return asArray(await getJSON<AdminMementoPhoto[] | null>(`/api/admin/mementos/${mementoId}/photos`))
+}
+
+// Permanently deletes a memento (photos cascade server-side). Leaves no
+// tombstone — a future import may re-seed a source-derived memento with the
+// same identity, which the editor's confirm copy states (ADMIN-02 M1 02.1b).
+export async function deleteMemento(id: string): Promise<{ status: string }> {
+  return deleteJSON<{ status: string }>(`/api/admin/mementos/${id}`)
 }
 
 // Site build & preview (ADMIN-02 M0).

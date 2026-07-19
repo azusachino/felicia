@@ -1,5 +1,6 @@
 <script lang="ts">
   import {
+    deleteMemento,
     getMemento,
     getTemplates,
     isConflict,
@@ -27,7 +28,9 @@
     parseKindData,
     parseLatLng,
     photoFormFieldsFromRequest,
+    previousLifecycleState,
     priceFormFieldsFromMemento,
+    unpublishActionLabel,
     FORM_LEVEL_ISSUE_KEY,
     type CommonFormFields,
     type KindFormState,
@@ -126,6 +129,16 @@
     if (!memento) return
     const next = nextLifecycleState(memento.state)
     if (next) void save(next)
+  }
+
+  // The one backward step (ADMIN-02 M1 02.1a): published -> authored, via
+  // the same save(targetState) path forward moves already use — it already
+  // refetches and handles conflicts/validation, so unpublishing needs no new
+  // machinery, just a different target state.
+  function retreatLifecycle() {
+    if (!memento) return
+    const previous = previousLifecycleState(memento.state)
+    if (previous) void save(previous)
   }
 
   // Rehydrates every piece of local form state from a freshly-fetched
@@ -231,6 +244,33 @@
 
   async function reloadAfterConflict() {
     await loadAll()
+  }
+
+  // Delete (ADMIN-02 M1 02.1b): a permanent, hard delete with an inline
+  // two-step confirm rather than a native confirm() dialog, so the copy can
+  // spell out what's irreversible (photos cascade) and what isn't (a future
+  // import may re-seed a source-derived memento with the same identity —
+  // this is a plain delete, no tombstone).
+  type DeleteStatus = "idle" | "confirming" | "pending" | "error"
+  let deleteState = $state<{ status: DeleteStatus; message: string }>({ status: "idle", message: "" })
+
+  function requestDelete() {
+    deleteState = { status: "confirming", message: "" }
+  }
+
+  function cancelDelete() {
+    deleteState = { status: "idle", message: "" }
+  }
+
+  async function confirmDelete() {
+    if (!memento) return
+    deleteState = { status: "pending", message: "Deleting…" }
+    try {
+      await deleteMemento(memento.id)
+      location.hash = journeyDetailHash(journeyId)
+    } catch (cause) {
+      deleteState = { status: "error", message: actionErrorMessage(cause) }
+    }
   }
 
   async function snapPoint(index: number) {
@@ -507,10 +547,36 @@
 
     <section class="actions" aria-label="Save and publish actions">
       <button type="button" onclick={() => save()} disabled={saveState.status === "pending"}>{saveState.status === "pending" ? "Saving…" : "Save"}</button>
+      {#if unpublishActionLabel(memento.state) && previousLifecycleState(memento.state)}
+        <button type="button" class="secondary" onclick={retreatLifecycle} disabled={saveState.status === "pending"}>
+          {unpublishActionLabel(memento.state)}
+        </button>
+      {/if}
       {#if lifecycleActionLabel(memento.state) && nextLifecycleState(memento.state)}
         <button type="button" class="primary" onclick={advanceLifecycle} disabled={saveState.status === "pending"}>
           {lifecycleActionLabel(memento.state)}
         </button>
+      {/if}
+    </section>
+
+    <section class="danger-zone" aria-label="Delete memento">
+      <h2>Delete this memento</h2>
+      <p class="trigger-note">Permanent — this cannot be undone, and its photos are removed with it. If this memento was derived from an import source, a future import may re-create it.</p>
+      {#if deleteState.status === "confirming" || deleteState.status === "pending"}
+        <div class="confirm-strip" role="alert">
+          <p>Delete this memento permanently? Photos are removed too. A future import may re-create a source-derived memento like this one.</p>
+          <div class="confirm-actions">
+            <button type="button" class="danger" onclick={confirmDelete} disabled={deleteState.status === "pending"}>
+              {deleteState.status === "pending" ? "Deleting…" : "Confirm delete"}
+            </button>
+            <button type="button" class="secondary" onclick={cancelDelete} disabled={deleteState.status === "pending"}>Cancel</button>
+          </div>
+        </div>
+      {:else}
+        <button type="button" class="danger" onclick={requestDelete}>Delete</button>
+      {/if}
+      {#if deleteState.status === "error"}
+        <p class="trigger-status trigger-status--error" role="alert">{deleteState.message}</p>
       {/if}
     </section>
   {/if}
@@ -646,7 +712,8 @@
   .point-row button,
   .actions button,
   .inbox-head button,
-  .photo-row button {
+  .photo-row button,
+  .danger-zone button {
     border: 0;
     border-radius: 7px;
     padding: 9px 14px;
@@ -655,10 +722,16 @@
     font-size: 13px;
     white-space: nowrap;
   }
-  .point-row button.secondary {
+  .point-row button.secondary,
+  .actions button.secondary,
+  .danger-zone button.secondary {
     color: #6b5137;
     background: transparent;
     border: 1px solid #d8cdbb;
+  }
+  .danger-zone button.danger {
+    color: #fffaf2;
+    background: #a84a34;
   }
   .kind-data-json {
     margin: 0;
@@ -714,6 +787,42 @@
   }
   .actions button.primary {
     background: #3f7a52;
+  }
+  .danger-zone {
+    margin: 36px 0 8px;
+    padding: 18px 20px;
+    border: 1px solid rgb(168 74 52 / 35%);
+    border-radius: 10px;
+    background: rgb(168 74 52 / 6%);
+  }
+  .danger-zone h2 {
+    margin: 0 0 8px;
+    color: #a84a34;
+    font-family: Georgia, serif;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .confirm-strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 12px;
+    padding: 12px 14px;
+    border: 1px solid rgb(168 74 52 / 45%);
+    border-radius: 8px;
+    background: rgb(168 74 52 / 10%);
+  }
+  .confirm-strip p {
+    margin: 0;
+    color: #7a3524;
+    font-size: 13px;
+  }
+  .confirm-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
   }
   button:disabled {
     opacity: 0.6;
