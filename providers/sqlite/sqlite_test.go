@@ -121,6 +121,52 @@ func TestStopCandidateReviewSurvivesReimport(t *testing.T) {
 	}
 }
 
+// The pool is capped at one connection, so listing candidates must not issue
+// the per-candidate evidence query while the candidate rows are still open —
+// that deadlocks until the context deadline. Regression for the intake inbox:
+// listing a journey with evidence-bearing candidates has to return promptly.
+func TestListStopCandidatesWithEvidenceDoesNotDeadlock(t *testing.T) {
+	repo, err := sqlite.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer repo.Close()
+	ctx := context.Background()
+	journal := &domain.Journal{ID: mustUUID(t), CreatedAt: time.Now().UTC()}
+	if err := repo.CreateJournal(ctx, journal); err != nil {
+		t.Fatal(err)
+	}
+	journey := &domain.Journey{ID: mustUUID(t), JournalID: journal.ID, Slug: "candidate-list", Title: "Candidate list", Place: "Nara", DateStart: time.Now().UTC(), DateEnd: time.Now().UTC()}
+	if err := repo.UpsertJourney(ctx, journey); err != nil {
+		t.Fatal(err)
+	}
+	arrive := time.Date(2026, 7, 2, 9, 0, 0, 0, time.UTC)
+	for index := range 2 {
+		candidate := &domain.StopCandidate{
+			ID:        mustUUID(t),
+			JourneyID: journey.ID,
+			Identity:  domain.CandidateIdentity{DerivationVersion: "gpx-stops-v1", Key: "stop-" + string(rune('a'+index))},
+			Label:     "Stop",
+			Coord:     orb.Point{135.8, 34.68},
+			Arrive:    arrive.Add(time.Duration(index) * time.Hour),
+			Depart:    arrive.Add(time.Duration(index)*time.Hour + 30*time.Minute),
+			Evidence:  []domain.EvidenceRef{{Kind: domain.EvidenceVisit, Source: domain.SourceIdentity{System: "visit", ExternalID: "visit-1"}, Locator: "visit-1"}},
+		}
+		if err := repo.UpsertStopCandidate(ctx, candidate); err != nil {
+			t.Fatal(err)
+		}
+	}
+	listCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	candidates, err := repo.ListStopCandidatesByJourney(listCtx, journey.ID)
+	if err != nil {
+		t.Fatalf("list stop candidates: %v", err)
+	}
+	if len(candidates) != 2 || len(candidates[0].Evidence) != 1 || len(candidates[1].Evidence) != 1 {
+		t.Fatalf("unexpected candidates: %#v", candidates)
+	}
+}
+
 func mustUUID(t *testing.T) uuid.UUID {
 	t.Helper()
 	id, err := uuid.NewV7()
