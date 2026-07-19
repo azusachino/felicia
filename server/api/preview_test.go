@@ -18,7 +18,7 @@ func TestPreviewHandlerServesArtifactOverSPA(t *testing.T) {
 	mustWrite(t, filepath.Join(spaDist, "assets", "app.js"), "console.log(1)")
 	mustWrite(t, filepath.Join(outDir, "api", "v1", "journeys.json"), "[]")
 
-	handler := api.PreviewHandler(outDir, spaDist)
+	handler := api.PreviewHandler(func() string { return outDir }, spaDist)
 
 	cases := []struct {
 		path string
@@ -45,7 +45,7 @@ func TestPreviewHandlerRejectsTraversal(t *testing.T) {
 	spaDist := t.TempDir()
 	mustWrite(t, filepath.Join(spaDist, "index.html"), "spa")
 
-	handler := api.PreviewHandler(outDir, spaDist)
+	handler := api.PreviewHandler(func() string { return outDir }, spaDist)
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/", nil)
 	request.URL.Path = "/../../etc/passwd"

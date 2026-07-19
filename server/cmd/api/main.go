@@ -95,6 +95,8 @@ func run(logger *slog.Logger) error {
 		SiteOutDir:            cfg.SiteOutDir,
 		SitePreviewPort:       cfg.SitePreviewPort,
 		SiteSpaDist:           cfg.SiteSpaDist,
+		SiteBrowseRoot:        cfg.SiteBrowseRoot,
+		ConfigPath:            cfg.ConfigPath,
 	})
 
 	// 4. Serve the compiled site on a second local port so the author can
@@ -103,7 +105,7 @@ func run(logger *slog.Logger) error {
 	// API down with it.
 	go func() {
 		logger.Info("starting site preview server", "url", "http://localhost:"+cfg.SitePreviewPort)
-		if err := http.ListenAndServe(":"+cfg.SitePreviewPort, api.PreviewHandler(cfg.SiteOutDir, cfg.SiteSpaDist)); err != nil {
+		if err := http.ListenAndServe(":"+cfg.SitePreviewPort, api.PreviewHandler(server.SiteOutDir, cfg.SiteSpaDist)); err != nil {
 			logger.Error("site preview server stopped", "err", err)
 		}
 	}()

@@ -44,9 +44,29 @@ type Server struct {
 	allowedOrigin         string
 	rateLimiter           *clientRateLimiter
 	mediaRoot             string
-	siteOutDir            string
-	sitePreviewPort       string
-	siteSpaDist           string
+	// siteOutDir is mutable: the GUI's Site & Deploy page can repoint the
+	// static output location at runtime, so reads go through SiteOutDir()
+	// under siteMu and the preview server reads the same getter.
+	siteMu          sync.RWMutex
+	siteOutDir      string
+	siteBrowseRoot  string
+	sitePreviewPort string
+	siteSpaDist     string
+	configPath      string
+}
+
+// SiteOutDir returns the current static-output directory (mutable via the
+// Site & Deploy page).
+func (s *Server) SiteOutDir() string {
+	s.siteMu.RLock()
+	defer s.siteMu.RUnlock()
+	return s.siteOutDir
+}
+
+func (s *Server) setSiteOutDir(dir string) {
+	s.siteMu.Lock()
+	defer s.siteMu.Unlock()
+	s.siteOutDir = dir
 }
 
 const defaultTransitSegmentLengthM = 100000
@@ -76,6 +96,12 @@ type RouteConfig struct {
 	SiteOutDir      string
 	SitePreviewPort string
 	SiteSpaDist     string
+	// SiteBrowseRoot bounds the Site & Deploy directory picker; the browse
+	// endpoint refuses to leave this root. Defaults to the user's home.
+	SiteBrowseRoot string
+	// ConfigPath is where PUT /api/admin/site persists a changed out_dir so
+	// it survives a restart. Empty disables persistence (session-only).
+	ConfigPath string
 }
 
 // NewServer creates a new API server instance. A nil logger falls back to
@@ -125,8 +151,10 @@ func NewServer(repo domain.Repository, registry *domain.Registry, cache *CacheMa
 		rateLimiter:           newClientRateLimiter(routeConfig.RatePerSecond, routeConfig.RateBurst),
 		mediaRoot:             routeConfig.MediaRoot,
 		siteOutDir:            routeConfig.SiteOutDir,
+		siteBrowseRoot:        routeConfig.SiteBrowseRoot,
 		sitePreviewPort:       routeConfig.SitePreviewPort,
 		siteSpaDist:           routeConfig.SiteSpaDist,
+		configPath:            routeConfig.ConfigPath,
 	}
 }
 
@@ -209,6 +237,10 @@ func (s *Server) Handler() http.Handler {
 		r.Post("/stop-candidates/{id}/review", s.handleReviewStopCandidate)
 		r.Post("/stop-candidates/{id}/promote", s.handlePromoteStopCandidate)
 		r.Get("/site", s.handleSiteInfo)
+		r.Put("/site", s.handlePutSite)
+		r.Get("/browse", s.handleBrowseDirectories)
+		r.Get("/build-status", s.handleBuildStatus)
+		r.Get("/journeys/{id}/build-status", s.handleJourneyBuildStatus)
 		r.Post("/compile", s.handleCompile)
 
 		// Ingest triggers (auto-seed from the configured sources)
@@ -1226,7 +1258,7 @@ func (s *Server) handleCompile(w http.ResponseWriter, r *http.Request) {
 	if req.OutDir == "" {
 		// The GUI's build action omits out_dir on purpose: the default site
 		// output is what the built-in preview server serves.
-		req.OutDir = s.siteOutDir
+		req.OutDir = s.SiteOutDir()
 	}
 	writer := &publication.FileArtifactWriter{Root: req.OutDir}
 	media := publication.FileMediaSource{Root: s.mediaRoot}

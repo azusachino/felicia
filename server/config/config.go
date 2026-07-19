@@ -63,6 +63,12 @@ type Config struct {
 	// SiteSpaDist points at a pre-built web-public dist that the preview
 	// server overlays under the compiled artifact.
 	SiteSpaDist string `koanf:"site.spa_dist"`
+	// SiteBrowseRoot bounds the Site & Deploy directory picker (defaults to
+	// the user's home directory when unset).
+	SiteBrowseRoot string `koanf:"site.browse_root"`
+	// ConfigPath is the TOML file the server loaded; PUT /api/admin/site
+	// persists a changed out_dir back into it.
+	ConfigPath string `koanf:"-"`
 }
 
 // LoadFromEnv loads felicia.toml, or the path selected by FELICIA_CONFIG, then
@@ -120,6 +126,8 @@ func load(path string, lookup func(string) (string, bool), required bool) (Confi
 		SiteOutDir:         k.String("site.out_dir"),
 		SitePreviewPort:    k.String("site.preview_port"),
 		SiteSpaDist:        k.String("site.spa_dist"),
+		SiteBrowseRoot:     k.String("site.browse_root"),
+		ConfigPath:         path,
 	}
 	if err := cfg.Validate(); err != nil {
 		return Config{}, err
@@ -204,5 +212,6 @@ func environmentOverrides(lookup func(string) (string, bool)) map[string]any {
 	set("site.out_dir", "FELICIA_SITE_OUT_DIR", "SITE_OUT_DIR")
 	set("site.preview_port", "FELICIA_SITE_PREVIEW_PORT", "SITE_PREVIEW_PORT")
 	set("site.spa_dist", "FELICIA_SITE_SPA_DIST", "SITE_SPA_DIST")
+	set("site.browse_root", "FELICIA_SITE_BROWSE_ROOT", "SITE_BROWSE_ROOT")
 	return values
 }
