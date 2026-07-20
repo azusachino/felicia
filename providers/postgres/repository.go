@@ -350,6 +350,14 @@ func (r *pgRepository) ApplyManualMementoPatch(ctx context.Context, patch *domai
 	} else {
 		current = &domain.Memento{ID: patch.Memento.ID, JourneyID: patch.Memento.JourneyID}
 	}
+	// Optimistic-concurrency pre-check, mirroring the sqlite provider: the
+	// UpsertManualMemento query is sqlc `:exec`, so a stale-revision UPDATE
+	// silently affects zero rows without surfacing an error. Detect the
+	// conflict here off the already-loaded row instead. Creation (revision 0)
+	// is exempt.
+	if patch.ExpectedRevision != nil && current.Revision != 0 && current.Revision != *patch.ExpectedRevision {
+		return domain.ErrWriteConflict
+	}
 	// Lifecycle guard: an existing row may only change state along a legal
 	// transition (docs/contracts/memento-lifecycle.md §3). Creation is
 	// unconstrained.
