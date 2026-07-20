@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/pelletier/go-toml/v2"
+
+	"github.com/azusachino/felicia/publication"
 )
 
 // Site & Deploy settings: the directory picker (browse) and persisting a new
@@ -33,7 +35,10 @@ func (s *Server) handleBrowseDirectories(w http.ResponseWriter, r *http.Request)
 			root = "."
 		}
 	}
-	absRoot, err := filepath.Abs(root)
+	// Resolve symlinks on the root so all confinement checks compare
+	// fully-evaluated paths (filepath.Abs/Rel are lexical and would let a
+	// symlink under the root escape it).
+	absRoot, err := resolvePath(root)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "browse root is unavailable")
 		return
@@ -43,7 +48,10 @@ func (s *Server) handleBrowseDirectories(w http.ResponseWriter, r *http.Request)
 	if target == "" {
 		target = absRoot
 	}
-	absTarget, err := filepath.Abs(target)
+	// Evaluate the target's symlinks too, then confine the *resolved* path:
+	// a symlink inside the root that points outside (e.g. link -> /etc) must
+	// not slip past a purely lexical check.
+	absTarget, err := resolvePath(target)
 	if err != nil || !withinRoot(absRoot, absTarget) {
 		respondError(w, http.StatusBadRequest, "path is outside the browse root")
 		return
@@ -57,7 +65,13 @@ func (s *Server) handleBrowseDirectories(w http.ResponseWriter, r *http.Request)
 	dirs := []browseEntry{}
 	for _, e := range entries {
 		if e.IsDir() && e.Name()[0] != '.' {
-			dirs = append(dirs, browseEntry{Name: e.Name(), Path: filepath.Join(absTarget, e.Name())})
+			// Skip any child that is a symlink escaping the root — the picker
+			// must only offer locations genuinely under it.
+			child, err := resolvePath(filepath.Join(absTarget, e.Name()))
+			if err != nil || !withinRoot(absRoot, child) {
+				continue
+			}
+			dirs = append(dirs, browseEntry{Name: e.Name(), Path: child})
 		}
 	}
 	sort.Slice(dirs, func(i, j int) bool { return dirs[i].Name < dirs[j].Name })
@@ -75,7 +89,21 @@ func (s *Server) handleBrowseDirectories(w http.ResponseWriter, r *http.Request)
 	})
 }
 
-// withinRoot reports whether target is root or nested under it.
+// resolvePath returns the absolute, symlink-evaluated form of p. Both steps
+// matter for confinement: Abs handles ".." lexically, EvalSymlinks defeats a
+// symlink that would otherwise redirect a lexically-valid path outside the
+// root. It errors when the path does not exist, which callers treat as "not a
+// browsable location under the root".
+func resolvePath(p string) (string, error) {
+	abs, err := filepath.Abs(p)
+	if err != nil {
+		return "", err
+	}
+	return filepath.EvalSymlinks(abs)
+}
+
+// withinRoot reports whether target is root or nested under it. Both arguments
+// are expected to be already symlink-resolved (see resolvePath).
 func withinRoot(root, target string) bool {
 	rel, err := filepath.Rel(root, target)
 	if err != nil {
@@ -101,6 +129,18 @@ func (s *Server) handlePutSite(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "out_dir is required")
 		return
 	}
+	// A compile writes artifact files into out_dir and Finalize reconciles it
+	// against the artifact manifest. Only an empty directory or a prior felicia
+	// site output (identified by its manifest) is a safe target; refuse to
+	// repoint output at an unrelated non-empty directory so a stray path can
+	// neither be scattered with compiler files nor reconciled unexpectedly.
+	if ok, err := outDirIsSafeTarget(req.OutDir); err != nil {
+		respondError(w, http.StatusBadRequest, "cannot inspect the output directory")
+		return
+	} else if !ok {
+		respondError(w, http.StatusBadRequest, "output directory is not empty and is not a felicia site output; choose an empty directory or an existing site output")
+		return
+	}
 	if err := os.MkdirAll(req.OutDir, 0o755); err != nil {
 		respondError(w, http.StatusBadRequest, "cannot create the output directory")
 		return
@@ -112,6 +152,29 @@ func (s *Server) handlePutSite(w http.ResponseWriter, r *http.Request) {
 		s.logger.WarnContext(r.Context(), "could not persist site out_dir", "err", err, "path", s.configPath)
 	}
 	respondJSON(w, http.StatusOK, map[string]any{"out_dir": req.OutDir})
+}
+
+// outDirIsSafeTarget reports whether dir may be used as the static output
+// location. A missing path (created fresh by MkdirAll) and an empty directory
+// are safe; a non-empty directory is safe only if it already holds a felicia
+// artifact manifest, marking it as a prior site output the compiler owns.
+func outDirIsSafeTarget(dir string) (bool, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return true, nil
+		}
+		return false, err
+	}
+	if len(entries) == 0 {
+		return true, nil
+	}
+	if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(publication.ManifestPath))); err == nil {
+		return true, nil
+	} else if !os.IsNotExist(err) {
+		return false, err
+	}
+	return false, nil
 }
 
 // persistSiteOutDir writes site.out_dir into the TOML config, merging with any
