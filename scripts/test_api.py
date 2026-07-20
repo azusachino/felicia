@@ -170,10 +170,7 @@ def test_memento_lifecycle():
     codes = [issue["Code"] for issue in body.get("issues", [])]
     assert "required_missing" in codes, f"Expected required_missing issue, got {body}"
 
-    published = {
-        **draft,
-        "state": "published",
-        "expected_revision": 1,
+    complete_fields = {
         "occurred_at": "2026-03-20T10:00:00Z",
         "occurred_tz": "Asia/Tokyo",
         "geom": {"type": "Point", "coordinates": [139.7495, 35.6933]},
@@ -183,13 +180,22 @@ def test_memento_lifecycle():
             "date": "2026-03-22T18:30:00+09:00",
         },
     }
+
+    # Advance one legal step at a time (docs/contracts/memento-lifecycle.md §3):
+    # draft→authored, then authored→published. A direct draft→published jump is
+    # rejected by the lifecycle guard (422 invalid_transition).
+    authored = {**draft, **complete_fields, "state": "authored", "expected_revision": 1}
+    status, body = request("/api/admin/mementos", method="POST", data=authored)
+    assert status == 200, f"Expected authored save 200, got {status} ({body})"
+
+    published = {**draft, **complete_fields, "state": "published", "expected_revision": 2}
     status, body = request("/api/admin/mementos", method="POST", data=published)
     assert status == 200, f"Expected complete publish 200, got {status} ({body})"
 
     status, body = request(f"/api/admin/mementos/{memento_id}")
     assert status == 200, f"Expected published GET 200, got {status}"
     assert body["state"] == "published", f"Expected published state, got {body.get('state')}"
-    assert body["revision"] == 2, f"Expected revision 2, got {body.get('revision')}"
+    assert body["revision"] == 3, f"Expected revision 3, got {body.get('revision')}"
     print("✓ Memento lifecycle and optimistic revision OK")
 
 def test_memento_revision_conflict():
