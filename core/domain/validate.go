@@ -27,6 +27,12 @@ const (
 	CodeInvalidTimezone   = "invalid_timezone"
 	CodeInvalidGeometry   = "invalid_geometry"
 	CodeInvalidCoordinate = "invalid_coordinate"
+	// CodeInvalidTransition marks an illegal lifecycle state jump on an
+	// existing memento (see lifecycle.go and docs/contracts/memento-lifecycle.md).
+	CodeInvalidTransition = "invalid_transition"
+	// CodeDeleteRequiresUnpublish marks a delete rejected because the memento
+	// is still published; the author must unpublish it first.
+	CodeDeleteRequiresUnpublish = "delete_requires_unpublish"
 )
 
 var (

@@ -22,6 +22,7 @@ func (s *fakeStore) ListMementosByJourney(context.Context, uuid.UUID) ([]*domain
 	return nil, nil
 }
 func (s *fakeStore) UpsertMemento(context.Context, *domain.Memento) error { return nil }
+func (s *fakeStore) DeleteMemento(context.Context, uuid.UUID) error       { return nil }
 func (s *fakeStore) ApplyManualMementoPatch(_ context.Context, patch *domain.ManualMementoPatch) error {
 	s.patch = patch
 	return nil

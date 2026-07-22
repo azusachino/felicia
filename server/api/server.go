@@ -43,6 +43,30 @@ type Server struct {
 	maxBodyBytes          int64
 	allowedOrigin         string
 	rateLimiter           *clientRateLimiter
+	mediaRoot             string
+	// siteOutDir is mutable: the GUI's Site & Deploy page can repoint the
+	// static output location at runtime, so reads go through SiteOutDir()
+	// under siteMu and the preview server reads the same getter.
+	siteMu          sync.RWMutex
+	siteOutDir      string
+	siteBrowseRoot  string
+	sitePreviewPort string
+	siteSpaDist     string
+	configPath      string
+}
+
+// SiteOutDir returns the current static-output directory (mutable via the
+// Site & Deploy page).
+func (s *Server) SiteOutDir() string {
+	s.siteMu.RLock()
+	defer s.siteMu.RUnlock()
+	return s.siteOutDir
+}
+
+func (s *Server) setSiteOutDir(dir string) {
+	s.siteMu.Lock()
+	defer s.siteMu.Unlock()
+	s.siteOutDir = dir
 }
 
 const defaultTransitSegmentLengthM = 100000
@@ -51,6 +75,8 @@ const (
 	defaultMaxBodyBytes   = 2 << 20
 	defaultRatePerSecond  = 1
 	defaultRateBurst      = 20
+	defaultMediaRoot      = ".felicia/media"
+	defaultSiteOutDir     = ".felicia/site"
 )
 
 // RouteConfig controls the route-curation values used by HTTP handlers.
@@ -61,6 +87,21 @@ type RouteConfig struct {
 	AllowedOrigin         string
 	RatePerSecond         float64
 	RateBurst             int
+	// MediaRoot is the private local media root the compile endpoint reads
+	// from, mirroring the CLI's --media-root flag.
+	MediaRoot string
+	// SiteOutDir is the default compile output when a build request omits
+	// out_dir; the built-in preview server (SitePreviewPort) serves it,
+	// overlaying the pre-built public SPA at SiteSpaDist.
+	SiteOutDir      string
+	SitePreviewPort string
+	SiteSpaDist     string
+	// SiteBrowseRoot bounds the Site & Deploy directory picker; the browse
+	// endpoint refuses to leave this root. Defaults to the user's home.
+	SiteBrowseRoot string
+	// ConfigPath is where PUT /api/admin/site persists a changed out_dir so
+	// it survives a restart. Empty disables persistence (session-only).
+	ConfigPath string
 }
 
 // NewServer creates a new API server instance. A nil logger falls back to
@@ -84,6 +125,12 @@ func NewServer(repo domain.Repository, registry *domain.Registry, cache *CacheMa
 	if routeConfig.RateBurst <= 0 {
 		routeConfig.RateBurst = defaultRateBurst
 	}
+	if routeConfig.MediaRoot == "" {
+		routeConfig.MediaRoot = defaultMediaRoot
+	}
+	if routeConfig.SiteOutDir == "" {
+		routeConfig.SiteOutDir = defaultSiteOutDir
+	}
 	var candidateStore ports.StopCandidateStore
 	if store, ok := repo.(ports.StopCandidateStore); ok {
 		candidateStore = store
@@ -102,6 +149,12 @@ func NewServer(repo domain.Repository, registry *domain.Registry, cache *CacheMa
 		maxBodyBytes:          routeConfig.MaxBodyBytes,
 		allowedOrigin:         routeConfig.AllowedOrigin,
 		rateLimiter:           newClientRateLimiter(routeConfig.RatePerSecond, routeConfig.RateBurst),
+		mediaRoot:             routeConfig.MediaRoot,
+		siteOutDir:            routeConfig.SiteOutDir,
+		siteBrowseRoot:        routeConfig.SiteBrowseRoot,
+		sitePreviewPort:       routeConfig.SitePreviewPort,
+		siteSpaDist:           routeConfig.SiteSpaDist,
+		configPath:            routeConfig.ConfigPath,
 	}
 }
 
@@ -157,6 +210,14 @@ func (s *Server) Handler() http.Handler {
 
 	// Authoring Admin API (Valkey Invalidation on Write)
 	r.Route("/api/admin", func(r chi.Router) {
+		// Label every admin write's lifecycle log line as admin-api
+		// (docs/contracts/memento-lifecycle.md §8). The promote handler
+		// overrides this to "promote" for its own write.
+		r.Use(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				next.ServeHTTP(w, r.WithContext(domain.WithEventSource(r.Context(), domain.EventSourceAdminAPI)))
+			})
+		})
 		r.Get("/templates", s.handleGetTemplates)
 		r.Post("/journals", s.handleCreateJournal)
 		r.Post("/journals/{id}/reset-mock", s.handleResetMockJournal)
@@ -167,10 +228,20 @@ func (s *Server) Handler() http.Handler {
 		r.Post("/journeys/{id}/snap", s.handleSnapToRoute)
 		r.Get("/journeys/{id}/mementos", s.handleListMementos)
 		r.Get("/journeys/{id}/stop-candidates", s.handleListStopCandidates)
+		r.Post("/journeys/{id}/intake/plan", s.handlePlanIntake)
 		r.Get("/mementos/{id}", s.handleGetMemento)
+		r.Get("/mementos/{id}/photos", s.handleListMementoPhotos)
 		r.Post("/mementos", s.handleUpsertMemento)
+		r.Delete("/mementos/{id}", s.handleDeleteMemento)
 		r.Post("/photos", s.handleUpsertPhoto)
 		r.Post("/stop-candidates/{id}/review", s.handleReviewStopCandidate)
+		r.Post("/stop-candidates/{id}/promote", s.handlePromoteStopCandidate)
+		r.Get("/site", s.handleSiteInfo)
+		r.Put("/site", s.handlePutSite)
+		r.Get("/browse", s.handleBrowseDirectories)
+		r.Get("/build-status", s.handleBuildStatus)
+		r.Get("/journeys/{id}/build-status", s.handleJourneyBuildStatus)
+		r.Post("/compile", s.handleCompile)
 
 		// Ingest triggers (auto-seed from the configured sources)
 		r.Post("/journeys/{id}/sync-route", s.handleSyncRoute)
@@ -212,7 +283,7 @@ func (s *Server) cors(next http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Add("Vary", "Origin")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Request-ID")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
 		}
 		if r.Method == http.MethodOptions {
 			if origin == s.allowedOrigin {
@@ -608,6 +679,62 @@ func (s *Server) handleListStopCandidates(w http.ResponseWriter, r *http.Request
 	respondJSON(w, http.StatusOK, candidates)
 }
 
+// handlePlanIntake runs the intake planner over the journey's configured
+// sources and persists the proposed stop candidates (ADMIN-01.3a). It shares
+// the same runtime/intake.Service Plan+Apply path the CLI's `journey
+// plan`/`journey apply` commands use, so there is exactly one planning
+// implementation.
+func (s *Server) handlePlanIntake(w http.ResponseWriter, r *http.Request) {
+	if !s.ingestReady(w) {
+		return
+	}
+	journeyID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid journey UUID")
+		return
+	}
+	tracks := s.importer.Tracks()
+	if tracks == nil {
+		respondError(w, http.StatusServiceUnavailable, importer.ErrNoTrackSource.Error())
+		return
+	}
+	journey, err := s.repo.GetJourney(r.Context(), journeyID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "journey not found")
+		return
+	}
+	plan, err := s.intakeService.Plan(r.Context(), intake.PlanRequest{
+		JourneyID: journeyID,
+		From:      journey.DateStart,
+		To:        endOfJourneyDay(journey.DateEnd),
+		Sources:   intake.SourceSet{Routes: tracks, Visits: tracks, Media: s.importer.Photos()},
+	})
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if err := s.intakeService.Apply(r.Context(), plan); err != nil {
+		if errors.Is(err, intake.ErrNoCandidateStore) {
+			respondError(w, http.StatusServiceUnavailable, "intake candidate storage is unavailable")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	respondJSON(w, http.StatusOK, map[string]any{
+		"journey_id": plan.JourneyID,
+		"stops":      plan.Stops,
+		"issues":     plan.Issues,
+	})
+}
+
+// endOfJourneyDay returns the inclusive end of the journey's last date, so a
+// visit or route point anywhere on that day is captured — matching the
+// importer's Sync* overlap window.
+func endOfJourneyDay(d time.Time) time.Time {
+	return d.AddDate(0, 0, 1).Add(-time.Second)
+}
+
 type stopReviewRequest struct {
 	State            domain.CandidateState `json:"state"`
 	Label            *string               `json:"label,omitempty"`
@@ -651,6 +778,139 @@ func (s *Server) handleReviewStopCandidate(w http.ResponseWriter, r *http.Reques
 	respondJSON(w, http.StatusOK, candidate)
 }
 
+type promoteStopCandidateRequest struct {
+	Kind             string `json:"kind"`
+	ExpectedRevision *int64 `json:"expected_revision,omitempty"`
+}
+
+// handlePromoteStopCandidate marks a proposed stop candidate kept and creates
+// a draft memento carrying its geometry, occurred window, and source ref
+// (ADMIN-01.3a). A candidate that is not currently proposed — because it was
+// already promoted, ignored, or merged — conflicts instead of creating a
+// duplicate memento; ExpectedRevision (defaulting to the candidate's current
+// revision) guards the same transition against a concurrent reviewer.
+func (s *Server) handlePromoteStopCandidate(w http.ResponseWriter, r *http.Request) {
+	candidateID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid candidate UUID")
+		return
+	}
+	var req promoteStopCandidateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request JSON")
+		return
+	}
+	if req.Kind == "" {
+		respondError(w, http.StatusBadRequest, "kind is required")
+		return
+	}
+	tpl, ok := s.registry.Template(req.Kind)
+	if !ok {
+		respondJSON(w, http.StatusBadRequest, map[string]any{
+			"error":  "kind template not registered",
+			"issues": []domain.Issue{{Code: "kind_not_registered"}},
+		})
+		return
+	}
+
+	candidate, err := s.intakeService.Get(r.Context(), candidateID)
+	if errors.Is(err, intake.ErrNoCandidateStore) {
+		respondError(w, http.StatusServiceUnavailable, "intake candidate storage is unavailable")
+		return
+	}
+	if errors.Is(err, domain.ErrNotFound) {
+		respondError(w, http.StatusNotFound, "stop candidate not found")
+		return
+	}
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	// Only a still-proposed candidate can be promoted. This is the
+	// idempotency guard: a second promote of the same candidate lands here
+	// with state already "kept" (or ignored/merged) and conflicts rather than
+	// creating a duplicate memento.
+	if candidate.State != domain.CandidateProposed {
+		respondError(w, http.StatusConflict, "stop candidate was already reviewed")
+		return
+	}
+
+	expectedRevision := candidate.Revision
+	if req.ExpectedRevision != nil {
+		expectedRevision = *req.ExpectedRevision
+	}
+	reviewErr := s.intakeService.Review(r.Context(), &domain.StopReviewPatch{
+		CandidateID:      candidateID,
+		State:            domain.CandidateKept,
+		ExpectedRevision: &expectedRevision,
+	})
+	if errors.Is(reviewErr, domain.ErrWriteConflict) {
+		respondError(w, http.StatusConflict, "stop candidate revision conflict")
+		return
+	}
+	if errors.Is(reviewErr, intake.ErrNoCandidateStore) {
+		respondError(w, http.StatusServiceUnavailable, "intake candidate storage is unavailable")
+		return
+	}
+	if reviewErr != nil {
+		respondError(w, http.StatusBadRequest, reviewErr.Error())
+		return
+	}
+
+	mementos, err := s.repo.ListMementosByJourney(r.Context(), candidate.JourneyID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	seq := 0
+	for _, m := range mementos {
+		seq = max(seq, m.Seq+1)
+	}
+
+	// The candidate's coordinate only carries over as the memento's geometry
+	// for a point-anchored kind. An edge-anchored kind (e.g. transit) needs a
+	// from/to pair a single stop coordinate cannot supply on its own; its
+	// geometry comes from an authored transit leg instead, so geom stays nil
+	// here (permitted for a draft).
+	var geom orb.Geometry
+	fields := []string{"journey_id", "kind", "seq", "occurred_at", "title", "place", "kind_data", "source_ref"}
+	if tpl.Anchor == domain.AnchorPoint {
+		geom = candidate.Coord
+		fields = append(fields, "geom")
+	}
+	sourceRef := "stop-candidate:" + candidate.ID.String()
+
+	memento := &domain.Memento{
+		ID:         uuid.Must(uuid.NewV7()),
+		JourneyID:  candidate.JourneyID,
+		Kind:       req.Kind,
+		Seq:        seq,
+		OccurredAt: candidate.Arrive,
+		Geom:       geom,
+		Title:      candidate.Label,
+		Place:      candidate.Label,
+		KindData:   json.RawMessage(`{}`),
+		SourceRef:  &sourceRef,
+	}
+
+	if err := s.mementoWriter.ApplyManualPatch(domain.WithEventSource(r.Context(), domain.EventSourcePromote), &domain.ManualMementoPatch{
+		Memento: memento,
+		Fields:  fields,
+		State:   domain.MementoDraft,
+	}); err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	s.cache.InvalidateAll(r.Context())
+	persisted, err := s.repo.GetMemento(r.Context(), memento.ID)
+	if err != nil {
+		respondJSON(w, http.StatusOK, memento)
+		return
+	}
+	respondJSON(w, http.StatusOK, persisted)
+}
+
 // Memento handlers (Admin)
 
 func (s *Server) handleListMementos(w http.ResponseWriter, r *http.Request) {
@@ -681,6 +941,69 @@ func (s *Server) handleGetMemento(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondJSON(w, http.StatusOK, m)
+}
+
+// handleListMementoPhotos returns a memento's photos in sequence order for
+// the admin editor's photo list; the write side stays POST /photos.
+func (s *Server) handleListMementoPhotos(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid memento UUID")
+		return
+	}
+	if _, err := s.repo.GetMemento(r.Context(), id); err != nil {
+		respondError(w, http.StatusNotFound, "memento not found")
+		return
+	}
+	photos, err := s.repo.ListPhotosByMemento(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if photos == nil {
+		photos = []*domain.MementoPhoto{}
+	}
+	respondJSON(w, http.StatusOK, photos)
+}
+
+// handleDeleteMemento removes a memento (photos cascade). Deletion leaves no
+// tombstone: a future import may re-seed source-derived mementos, which the
+// GUI's confirm dialog states.
+func (s *Server) handleDeleteMemento(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid memento UUID")
+		return
+	}
+	// Load first: the delete guard needs the current state, and the lifecycle
+	// log needs the prior state (docs/contracts/memento-lifecycle.md §3, §8).
+	memento, err := s.repo.GetMemento(r.Context(), id)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "memento not found")
+		return
+	}
+	// Deletion is permitted only from non-public states; a published memento
+	// must be unpublished first so it can never be removed while it is live.
+	if !domain.CanDeleteMementoState(memento.State) {
+		guard := &domain.DeleteRequiresUnpublishError{State: memento.State}
+		respondJSON(w, http.StatusUnprocessableEntity, map[string]any{
+			"error":  "validation failed",
+			"issues": guard.Issues(),
+		})
+		return
+	}
+	if err := s.repo.DeleteMemento(r.Context(), id); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			respondError(w, http.StatusNotFound, "memento not found")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	domain.LogMementoStateChange(r.Context(), s.logger, memento, memento.State, "deleted")
+	s.cache.InvalidateAll(r.Context())
+	respondJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 
 type mementoGeom struct {
@@ -716,9 +1039,17 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusBadRequest, "invalid request JSON")
 		return
 	}
+	// Omitting state means "keep the current state" for an existing memento;
+	// only a brand-new memento with no state defaults to draft
+	// (docs/contracts/memento-lifecycle.md §5). This avoids a silent
+	// published→draft downgrade when a client omits state on a save.
 	state := domain.MementoState(req.State)
 	if state == "" {
-		state = domain.MementoDraft
+		if existing, err := s.repo.GetMemento(r.Context(), req.ID); err == nil {
+			state = existing.State
+		} else {
+			state = domain.MementoDraft
+		}
 	}
 
 	// 1. Template registry validation
@@ -851,6 +1182,14 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusConflict, "memento was modified; reload before saving")
 			return
 		}
+		var transition *domain.InvalidTransitionError
+		if errors.As(err, &transition) {
+			respondJSON(w, http.StatusUnprocessableEntity, map[string]any{
+				"error":  "validation failed",
+				"issues": transition.Issues(),
+			})
+			return
+		}
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -897,6 +1236,47 @@ func (s *Server) handleUpsertPhoto(w http.ResponseWriter, r *http.Request) {
 
 	s.cache.InvalidateAll(r.Context())
 	respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// Compile handler (Admin) — publish-and-compile action (ADMIN-01.6)
+
+type compileRequest struct {
+	OutDir string `json:"out_dir"`
+}
+
+// handleCompile runs the shared publication.StaticCompiler against the live
+// repository and returns its BuildReport. It is the same compiler the CLI's
+// `static compile` command runs, rooted at the server's configured media root
+// instead of a --media-root flag, so a GUI publish and a CLI compile of the
+// same database agree.
+func (s *Server) handleCompile(w http.ResponseWriter, r *http.Request) {
+	var req compileRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request JSON")
+		return
+	}
+	if req.OutDir == "" {
+		// The GUI's build action omits out_dir on purpose: the default site
+		// output is what the built-in preview server serves.
+		req.OutDir = s.SiteOutDir()
+	}
+	writer := &publication.FileArtifactWriter{Root: req.OutDir}
+	media := publication.FileMediaSource{Root: s.mediaRoot}
+	report, err := (publication.StaticCompiler{}).Compile(r.Context(), publication.Input{}, s.repo, media, writer)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	// Reconcile a reused output directory: content unpublished since the
+	// previous compile must not stay publicly reachable (same manifest
+	// cleanup the CLI's `static compile` performs).
+	removed, err := writer.Finalize()
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	report.Removed = len(removed)
+	respondJSON(w, http.StatusOK, report)
 }
 
 // Ingest handlers (Admin) — trigger the auto-seed importer from the sources.

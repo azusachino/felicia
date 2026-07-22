@@ -19,7 +19,7 @@ gallery. The map is the index; the mementos are the stories.
 
 > **Memento, not ticket.** Physical tickets are dying and the anchor often isn't a ticket
 > anyway, so the click-target generalizes: `Ticket → Memento` with a `kind`
-> (ticket · goods · receipt · souvenir · stamp · …), and the stub is _rendered from data_,
+> (goods · live · transit · stamp · receipt · souvenir · …), and the stub is _rendered from data_,
 > template-first, not scanned. Full reasoning:
 > [`research/mementos-not-tickets.md`](research/mementos-not-tickets.md)
 > (ADR `felicia:decision:memento-not-ticket`).
@@ -37,15 +37,14 @@ path:
 - The reasoning (and the competitive reality — Polarsteps already owns this space) is in
   [`research/product-vs-personal.md`](research/product-vs-personal.md).
 
-### Leading candidate for what ships first: the web moat MVP
+### What shipped first: the web moat MVP
 
-Exploring the SaaS angle produced a useful simplification, but the lowest-regret MVP is now
-a **web moat spike**: Svelte + TypeScript + Tailwind, with MapLibre GL for the dark route map.
-The app reads one real trip, renders one designed memento stub, and opens it into an essay +
-gallery. No passive Immich/Dawarich pipeline. The user is still the joiner: trip content can
-come from the Notion sandbox, one GPX/GeoJSON route, and local/R2-backed images. Full sketch:
-[`research/notion-to-stack.md`](research/notion-to-stack.md). Leading candidate for the first
-thing built — still research, not locked.
+Exploring the SaaS angle produced a useful simplification, and the **web moat spike**
+became the first thing built: Svelte + TypeScript + Tailwind, with MapLibre GL for the
+dark route map. That spike has since grown into the public reader (four switchable
+designs over one presentation-agnostic contract) backed by the working Go pipeline —
+importer, intake planner, and the published-only static compiler. Original sketch:
+[`research/notion-to-stack.md`](research/notion-to-stack.md).
 
 ### What "clean seams" means (cheap hedges, do these)
 
@@ -72,8 +71,8 @@ them. Detail in [`archive/design.md`](archive/design.md).
   simplify route, OCR ticket metadata) behind I/O seams. This is the durable heart and the
   natural TDD target whichever direction we go.
 - **Model:** Journey → Memento → {essay, extra photos, open-animation}; the memento is the
-  click target. `kind` (ticket · goods · receipt · souvenir · stamp · …) selects the stub
-  form. (Was "Ticket"; generalized 2026-06-14 — see mementos-not-tickets.)
+  click target. `kind` (goods · live · transit · stamp · receipt · souvenir · …) selects the
+  stub form. (Was "Ticket"; generalized 2026-06-14 — see mementos-not-tickets.)
 - **Stack leaning:** MVP UI in Svelte + TypeScript + Tailwind, MapLibre GL for the map, and Go
   (CLI importer + API), Postgres + PostGIS, S3-compatible storage when the data layer
   graduates past the spike.
@@ -95,13 +94,15 @@ them. Detail in [`archive/design.md`](archive/design.md).
 
 ## How we move
 
-Research → (when ready) spec → TDD → build. We are in **research**. No application code,
-no spec freeze, no failing-test plan yet — those were archived as premature. When the open
-questions above settle, we promote a spec out of `archive/` and tighten it.
+Research → spec → TDD → build. We are in **implementation**: the backend pipeline
+(field-scoped importer, intake planner, SQLite/PostgreSQL providers, public + admin
+APIs, published-only static compiler) is built and tested, the public reader runs on
+the real contract, and the admin authoring GUI is being assembled. Delivery status
+lives in [`roadmap.md`](roadmap.md) and the per-stage journey status in
+[`roadmap/user-journey.md`](roadmap/user-journey.md); the research trail in
+`research/` continues alongside.
 
-Current research tactic: **prototype the data model in a Notion template** (Trips / Mementos
-/ Photos, 1:1 with the saas-dataflow ER) to settle "does the `Memento` model hold?" and start
-real content now, then pull one trip into a Svelte/TypeScript/Tailwind web moat spike. The
-map / stub-render / animation stay out of Notion and belong to the real MVP. See
+The earlier research tactic — prototyping the data model in a Notion sandbox before
+committing to a stack — served its purpose and is recorded in
 [`research/notion-prototype.md`](research/notion-prototype.md) (ADR
 `felicia:decision:notion-schema-sandbox`).

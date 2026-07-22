@@ -1,0 +1,7 @@
+kind: souvenir
+anchor: point
+stub: souvenir
+fields:
+  - { name: name, type: text, required: true }
+  - { name: origin, type: text, required: false }
+  - { name: note, type: text, required: false }

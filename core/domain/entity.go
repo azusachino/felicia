@@ -170,6 +170,10 @@ type Repository interface {
 	UpsertMemento(ctx context.Context, memento *Memento) error
 	ApplyManualMementoPatch(ctx context.Context, patch *ManualMementoPatch) error
 	ApplyIngestMementoPatch(ctx context.Context, patch *IngestMementoPatch) error
+	// DeleteMemento removes a memento and (via FK cascade) its photos.
+	// Returns ErrNotFound when no row matches. A future import may re-seed
+	// source-derived mementos; deletion leaves no tombstone.
+	DeleteMemento(ctx context.Context, id uuid.UUID) error
 
 	// TransitLeg operations (authored legs, union-at-read)
 	CreateTransitLeg(ctx context.Context, leg *TransitLegInput) error

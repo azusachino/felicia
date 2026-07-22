@@ -43,6 +43,7 @@ type MementoStore interface {
 	UpsertMemento(ctx context.Context, memento *domain.Memento) error
 	ApplyManualMementoPatch(ctx context.Context, patch *domain.ManualMementoPatch) error
 	ApplyIngestMementoPatch(ctx context.Context, patch *domain.IngestMementoPatch) error
+	DeleteMemento(ctx context.Context, id uuid.UUID) error
 }
 
 // MediaStore persists memento media.

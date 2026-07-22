@@ -149,11 +149,22 @@ def run_workflow(ids: WorkflowIDs) -> None:
         f"draft memento mismatch: status={status} body={saved!r}",
     )
 
+    # Advance one legal step at a time (docs/contracts/memento-lifecycle.md §3):
+    # draft→authored, then authored→published. A direct draft→published jump is
+    # rejected by the lifecycle guard (422 invalid_transition).
+    authored = {
+        **draft,
+        **published_memento_fields(),
+        "state": "authored",
+        "expected_revision": 1,
+    }
+    post("/api/admin/mementos", authored)
+
     published = {
         **draft,
         **published_memento_fields(),
         "state": "published",
-        "expected_revision": 1,
+        "expected_revision": 2,
     }
     post("/api/admin/mementos", published)
 
@@ -426,9 +437,11 @@ def run_static_parity_check(context: ServerContext) -> None:
 
         # Stale-artifact regression: content published in an earlier compile
         # and later unpublished must disappear from a REUSED output
-        # directory. Flip the published memento back to draft, recompile
-        # into the same out_dir, and assert its old JSON and media are gone
-        # (the compiler reconciles via the artifact manifest).
+        # directory. Unpublish the memento (published→authored, the only legal
+        # backward step per docs/contracts/memento-lifecycle.md §3; authored is
+        # non-public, same as draft for compilation), recompile into the same
+        # out_dir, and assert its old JSON and media are gone (the compiler
+        # reconciles via the artifact manifest).
         _, current = request(f"/api/admin/mementos/{ids.memento}")
         unpublish = {
             "id": ids.memento,
@@ -436,7 +449,7 @@ def run_static_parity_check(context: ServerContext) -> None:
             "kind": "live",
             "seq": 1,
             **published_memento_fields(),
-            "state": "draft",
+            "state": "authored",
             "expected_revision": current["revision"],
         }
         post("/api/admin/mementos", unpublish)
@@ -507,7 +520,14 @@ def disposable_postgres_database(admin_dsn: str):
 
 
 @contextmanager
-def disposable_server(port: int, driver: str, database_path: str, database_dsn: str, postgres_admin_dsn: str):
+def disposable_server(
+    port: int,
+    driver: str,
+    database_path: str,
+    database_dsn: str,
+    postgres_admin_dsn: str,
+    extra_env: dict[str, str] | None = None,
+):
     global BASE_URL
     ids = workflow_ids()
     with tempfile.TemporaryDirectory(prefix="felicia-workflow-") as temp_dir:
@@ -538,6 +558,11 @@ def disposable_server(port: int, driver: str, database_path: str, database_dsn: 
                 "DATABASE_DRIVER": driver,
                 "CACHE_ADDR": "",
                 "PORT": str(selected_port),
+                # Lets a caller wire optional ingest sources (DAWARICH_URL/
+                # IMMICH_URL/etc. — see server/config/config.go) or override
+                # MEDIA_ROOT without this function needing to know about
+                # every one of them. Unused by the workflow test itself.
+                **(extra_env or {}),
             }
             if driver == "sqlite":
                 environment["DATABASE_PATH"] = database_path

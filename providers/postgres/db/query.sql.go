@@ -9,13 +9,8 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
-
-const createJournal = `-- name: CreateJournal :exec
-INSERT INTO tb_journal (id, created_at) VALUES ($1, $2)
-`
 
 const createImportRun = `-- name: CreateImportRun :exec
 INSERT INTO tb_import_runs (id, source_system, started_at, status, error_message)
@@ -31,98 +26,19 @@ type CreateImportRunParams struct {
 }
 
 func (q *Queries) CreateImportRun(ctx context.Context, arg CreateImportRunParams) error {
-	_, err := q.db.Exec(ctx, createImportRun, arg.ID, arg.SourceSystem, arg.StartedAt, arg.Status, arg.ErrorMessage)
-	return err
-}
-
-const finishImportRun = `-- name: FinishImportRun :exec
-UPDATE tb_import_runs
-SET status = $2, finished_at = $3, error_message = $4
-WHERE id = $1
-`
-
-type FinishImportRunParams struct {
-	ID           uuid.UUID
-	Status       string
-	FinishedAt   pgtype.Timestamptz
-	ErrorMessage pgtype.Text
-}
-
-func (q *Queries) FinishImportRun(ctx context.Context, arg FinishImportRunParams) error {
-	_, err := q.db.Exec(ctx, finishImportRun, arg.ID, arg.Status, arg.FinishedAt, arg.ErrorMessage)
-	return err
-}
-
-const recordSourceObservation = `-- name: RecordSourceObservation :exec
-INSERT INTO tb_source_observations (
-    id, run_id, source_system, source_external_id, kind, observed_at,
-    confidence, payload, changed, orphaned_at
-) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8,
-    COALESCE((
-        SELECT payload IS DISTINCT FROM $8::jsonb
-        FROM tb_source_observations
-        WHERE source_system = $3 AND source_external_id = $4
-        ORDER BY observed_at DESC, created_at DESC
-        LIMIT 1
-    ), FALSE), NULL
-)
-ON CONFLICT (run_id, source_system, source_external_id) DO UPDATE SET
-    kind = EXCLUDED.kind,
-    observed_at = EXCLUDED.observed_at,
-    confidence = EXCLUDED.confidence,
-    payload = EXCLUDED.payload,
-    changed = EXCLUDED.changed,
-    orphaned_at = NULL
-`
-
-type RecordSourceObservationParams struct {
-	ID               uuid.UUID
-	RunID            uuid.UUID
-	SourceSystem     string
-	SourceExternalID string
-	Kind             string
-	ObservedAt       pgtype.Timestamptz
-	Confidence       float64
-	Payload          []byte
-}
-
-func (q *Queries) RecordSourceObservation(ctx context.Context, arg RecordSourceObservationParams) error {
-	_, err := q.db.Exec(ctx, recordSourceObservation,
-		arg.ID, arg.RunID, arg.SourceSystem, arg.SourceExternalID, arg.Kind,
-		arg.ObservedAt, arg.Confidence, arg.Payload,
+	_, err := q.db.Exec(ctx, createImportRun,
+		arg.ID,
+		arg.SourceSystem,
+		arg.StartedAt,
+		arg.Status,
+		arg.ErrorMessage,
 	)
 	return err
 }
 
-const markMissingSourceObservations = `-- name: MarkMissingSourceObservations :exec
-UPDATE tb_source_observations
-SET orphaned_at = NOW()
-WHERE source_system = $2
-  AND run_id <> $1
-  AND orphaned_at IS NULL
-  AND NOT (source_external_id = ANY($3::text[]))
+const createJournal = `-- name: CreateJournal :exec
+INSERT INTO tb_journal (id, created_at) VALUES ($1, $2)
 `
-
-type MarkMissingSourceObservationsParams struct {
-	RunID           uuid.UUID
-	SourceSystem    string
-	SeenExternalIDs []string
-}
-
-func (q *Queries) MarkMissingSourceObservations(ctx context.Context, arg MarkMissingSourceObservationsParams) error {
-	_, err := q.db.Exec(ctx, markMissingSourceObservations, arg.RunID, arg.SourceSystem, arg.SeenExternalIDs)
-	return err
-}
-
-const resetMockJournal = `-- name: ResetMockJournal :exec
-DELETE FROM tb_journal WHERE id = $1
-`
-
-func (q *Queries) ResetMockJournal(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, resetMockJournal, id)
-	return err
-}
 
 type CreateJournalParams struct {
 	ID        uuid.UUID
@@ -181,12 +97,47 @@ func (q *Queries) CreateTransitLeg(ctx context.Context, arg CreateTransitLegPara
 	return err
 }
 
+const deleteMemento = `-- name: DeleteMemento :execrows
+DELETE FROM tb_mementos WHERE id = $1
+`
+
+func (q *Queries) DeleteMemento(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteMemento, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteTransitLeg = `-- name: DeleteTransitLeg :exec
 DELETE FROM tb_transit_legs WHERE id = $1
 `
 
 func (q *Queries) DeleteTransitLeg(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, deleteTransitLeg, id)
+	return err
+}
+
+const finishImportRun = `-- name: FinishImportRun :exec
+UPDATE tb_import_runs
+SET status = $2, finished_at = $3, error_message = $4
+WHERE id = $1
+`
+
+type FinishImportRunParams struct {
+	ID           uuid.UUID
+	Status       string
+	FinishedAt   pgtype.Timestamptz
+	ErrorMessage pgtype.Text
+}
+
+func (q *Queries) FinishImportRun(ctx context.Context, arg FinishImportRunParams) error {
+	_, err := q.db.Exec(ctx, finishImportRun,
+		arg.ID,
+		arg.Status,
+		arg.FinishedAt,
+		arg.ErrorMessage,
+	)
 	return err
 }
 
@@ -216,9 +167,9 @@ const getJournal = `-- name: GetJournal :one
 SELECT id, created_at FROM tb_journal WHERE id = $1
 `
 
-func (q *Queries) GetJournal(ctx context.Context, id uuid.UUID) (Journal, error) {
+func (q *Queries) GetJournal(ctx context.Context, id uuid.UUID) (TbJournal, error) {
 	row := q.db.QueryRow(ctx, getJournal, id)
-	var i Journal
+	var i TbJournal
 	err := row.Scan(&i.ID, &i.CreatedAt)
 	return i, err
 }
@@ -325,10 +276,10 @@ type GetMementoRow struct {
 	Kind             string
 	Seq              int32
 	OccurredAt       pgtype.Timestamptz
-	OccurredTz       string
+	OccurredTz       pgtype.Text
 	GeomWkb          interface{}
-	Title            string
-	Place            string
+	Title            pgtype.Text
+	Place            pgtype.Text
 	Vendor           pgtype.Text
 	Essay            pgtype.Text
 	PriceAmount      pgtype.Int8
@@ -382,15 +333,64 @@ FROM tb_mementos
 WHERE source_system = $1 AND source_external_id = $2
 `
 
-func (q *Queries) GetMementoBySourceIdentity(ctx context.Context, sourceSystem string, sourceExternalID string) (GetMementoRow, error) {
-	row := q.db.QueryRow(ctx, getMementoBySourceIdentity, sourceSystem, sourceExternalID)
-	var i GetMementoRow
+type GetMementoBySourceIdentityParams struct {
+	SourceSystem     pgtype.Text
+	SourceExternalID pgtype.Text
+}
+
+type GetMementoBySourceIdentityRow struct {
+	ID               uuid.UUID
+	JourneyID        uuid.UUID
+	Kind             string
+	Seq              int32
+	OccurredAt       pgtype.Timestamptz
+	OccurredTz       pgtype.Text
+	GeomWkb          interface{}
+	Title            pgtype.Text
+	Place            pgtype.Text
+	Vendor           pgtype.Text
+	Essay            pgtype.Text
+	PriceAmount      pgtype.Int8
+	PriceCurrency    pgtype.Text
+	KindData         []byte
+	SourceSystem     pgtype.Text
+	SourceExternalID pgtype.Text
+	SourceRef        pgtype.Text
+	AuthoredFields   []string
+	OrphanedAt       pgtype.Timestamptz
+	State            string
+	Revision         int64
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+}
+
+func (q *Queries) GetMementoBySourceIdentity(ctx context.Context, arg GetMementoBySourceIdentityParams) (GetMementoBySourceIdentityRow, error) {
+	row := q.db.QueryRow(ctx, getMementoBySourceIdentity, arg.SourceSystem, arg.SourceExternalID)
+	var i GetMementoBySourceIdentityRow
 	err := row.Scan(
-		&i.ID, &i.JourneyID, &i.Kind, &i.Seq, &i.OccurredAt, &i.OccurredTz,
-		&i.GeomWkb, &i.Title, &i.Place, &i.Vendor, &i.Essay, &i.PriceAmount,
-		&i.PriceCurrency, &i.KindData, &i.SourceSystem, &i.SourceExternalID,
-		&i.SourceRef, &i.AuthoredFields, &i.OrphanedAt, &i.State, &i.Revision,
-		&i.CreatedAt, &i.UpdatedAt,
+		&i.ID,
+		&i.JourneyID,
+		&i.Kind,
+		&i.Seq,
+		&i.OccurredAt,
+		&i.OccurredTz,
+		&i.GeomWkb,
+		&i.Title,
+		&i.Place,
+		&i.Vendor,
+		&i.Essay,
+		&i.PriceAmount,
+		&i.PriceCurrency,
+		&i.KindData,
+		&i.SourceSystem,
+		&i.SourceExternalID,
+		&i.SourceRef,
+		&i.AuthoredFields,
+		&i.OrphanedAt,
+		&i.State,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -401,9 +401,9 @@ FROM tb_memento_photos
 WHERE id = $1
 `
 
-func (q *Queries) GetPhoto(ctx context.Context, id uuid.UUID) (MementoPhoto, error) {
+func (q *Queries) GetPhoto(ctx context.Context, id uuid.UUID) (TbMementoPhoto, error) {
 	row := q.db.QueryRow(ctx, getPhoto, id)
-	var i MementoPhoto
+	var i TbMementoPhoto
 	err := row.Scan(
 		&i.ID,
 		&i.MementoID,
@@ -489,10 +489,10 @@ type ListMementosByJourneyRow struct {
 	Kind             string
 	Seq              int32
 	OccurredAt       pgtype.Timestamptz
-	OccurredTz       string
+	OccurredTz       pgtype.Text
 	GeomWkb          interface{}
-	Title            string
-	Place            string
+	Title            pgtype.Text
+	Place            pgtype.Text
 	Vendor           pgtype.Text
 	Essay            pgtype.Text
 	PriceAmount      pgtype.Int8
@@ -560,15 +560,15 @@ WHERE memento_id = $1
 ORDER BY seq ASC
 `
 
-func (q *Queries) ListPhotosByMemento(ctx context.Context, mementoID uuid.UUID) ([]MementoPhoto, error) {
+func (q *Queries) ListPhotosByMemento(ctx context.Context, mementoID uuid.UUID) ([]TbMementoPhoto, error) {
 	rows, err := q.db.Query(ctx, listPhotosByMemento, mementoID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []MementoPhoto
+	var items []TbMementoPhoto
 	for rows.Next() {
-		var i MementoPhoto
+		var i TbMementoPhoto
 		if err := rows.Scan(
 			&i.ID,
 			&i.MementoID,
@@ -633,6 +633,83 @@ func (q *Queries) ListTransitLegsByJourney(ctx context.Context, journeyID uuid.U
 		return nil, err
 	}
 	return items, nil
+}
+
+const markMissingSourceObservations = `-- name: MarkMissingSourceObservations :exec
+UPDATE tb_source_observations
+SET orphaned_at = NOW()
+WHERE source_system = $2
+  AND run_id <> $1
+  AND orphaned_at IS NULL
+  AND NOT (source_external_id = ANY($3::text[]))
+`
+
+type MarkMissingSourceObservationsParams struct {
+	RunID           uuid.UUID
+	SourceSystem    string
+	SeenExternalIds []string
+}
+
+func (q *Queries) MarkMissingSourceObservations(ctx context.Context, arg MarkMissingSourceObservationsParams) error {
+	_, err := q.db.Exec(ctx, markMissingSourceObservations, arg.RunID, arg.SourceSystem, arg.SeenExternalIds)
+	return err
+}
+
+const recordSourceObservation = `-- name: RecordSourceObservation :exec
+INSERT INTO tb_source_observations (
+    id, run_id, source_system, source_external_id, kind, observed_at,
+    confidence, payload, changed, orphaned_at
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8,
+    COALESCE((
+        SELECT payload IS DISTINCT FROM $8::jsonb
+        FROM tb_source_observations
+        WHERE source_system = $3 AND source_external_id = $4
+        ORDER BY observed_at DESC, created_at DESC
+        LIMIT 1
+    ), FALSE), NULL
+)
+ON CONFLICT (run_id, source_system, source_external_id) DO UPDATE SET
+    kind = EXCLUDED.kind,
+    observed_at = EXCLUDED.observed_at,
+    confidence = EXCLUDED.confidence,
+    payload = EXCLUDED.payload,
+    changed = EXCLUDED.changed,
+    orphaned_at = NULL
+`
+
+type RecordSourceObservationParams struct {
+	ID               uuid.UUID
+	RunID            uuid.UUID
+	SourceSystem     string
+	SourceExternalID string
+	Kind             string
+	ObservedAt       pgtype.Timestamptz
+	Confidence       float64
+	Payload          []byte
+}
+
+func (q *Queries) RecordSourceObservation(ctx context.Context, arg RecordSourceObservationParams) error {
+	_, err := q.db.Exec(ctx, recordSourceObservation,
+		arg.ID,
+		arg.RunID,
+		arg.SourceSystem,
+		arg.SourceExternalID,
+		arg.Kind,
+		arg.ObservedAt,
+		arg.Confidence,
+		arg.Payload,
+	)
+	return err
+}
+
+const resetMockJournal = `-- name: ResetMockJournal :exec
+DELETE FROM tb_journal WHERE id = $1
+`
+
+func (q *Queries) ResetMockJournal(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, resetMockJournal, id)
+	return err
 }
 
 const snapToRoute = `-- name: SnapToRoute :one
@@ -718,11 +795,94 @@ func (q *Queries) UpsertJourney(ctx context.Context, arg UpsertJourneyParams) er
 	return err
 }
 
+const upsertManualMemento = `-- name: UpsertManualMemento :exec
+INSERT INTO tb_mementos (
+    id, journey_id, kind, seq, occurred_at, occurred_tz, geom, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, revision, created_at, updated_at
+) VALUES (
+    $1, $2, $3, $4, $5, $6, ST_GeomFromWKB($7, 4326), $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, COALESCE($21::bigint, 1), NOW(), NOW()
+) ON CONFLICT (id) DO UPDATE SET
+    journey_id = EXCLUDED.journey_id,
+    kind = EXCLUDED.kind,
+    seq = EXCLUDED.seq,
+    occurred_at = EXCLUDED.occurred_at,
+    occurred_tz = EXCLUDED.occurred_tz,
+    geom = EXCLUDED.geom,
+    title = EXCLUDED.title,
+    place = EXCLUDED.place,
+    vendor = EXCLUDED.vendor,
+    essay = EXCLUDED.essay,
+    price_amount = EXCLUDED.price_amount,
+    price_currency = EXCLUDED.price_currency,
+    kind_data = EXCLUDED.kind_data,
+    source_system = EXCLUDED.source_system,
+    source_external_id = EXCLUDED.source_external_id,
+    source_ref = EXCLUDED.source_ref,
+    authored_fields = EXCLUDED.authored_fields,
+    orphaned_at = EXCLUDED.orphaned_at,
+    state = EXCLUDED.state,
+    revision = tb_mementos.revision + 1,
+    updated_at = NOW()
+WHERE $22::bigint IS NULL OR tb_mementos.revision = $22
+`
+
+type UpsertManualMementoParams struct {
+	ID               uuid.UUID
+	JourneyID        uuid.UUID
+	Kind             string
+	Seq              int32
+	OccurredAt       pgtype.Timestamptz
+	OccurredTz       pgtype.Text
+	StGeomfromwkb    interface{}
+	Title            pgtype.Text
+	Place            pgtype.Text
+	Vendor           pgtype.Text
+	Essay            pgtype.Text
+	PriceAmount      pgtype.Int8
+	PriceCurrency    pgtype.Text
+	KindData         []byte
+	SourceSystem     pgtype.Text
+	SourceExternalID pgtype.Text
+	SourceRef        pgtype.Text
+	AuthoredFields   []string
+	OrphanedAt       pgtype.Timestamptz
+	State            string
+	Revision         pgtype.Int8
+	ExpectedRevision pgtype.Int8
+}
+
+func (q *Queries) UpsertManualMemento(ctx context.Context, arg UpsertManualMementoParams) error {
+	_, err := q.db.Exec(ctx, upsertManualMemento,
+		arg.ID,
+		arg.JourneyID,
+		arg.Kind,
+		arg.Seq,
+		arg.OccurredAt,
+		arg.OccurredTz,
+		arg.StGeomfromwkb,
+		arg.Title,
+		arg.Place,
+		arg.Vendor,
+		arg.Essay,
+		arg.PriceAmount,
+		arg.PriceCurrency,
+		arg.KindData,
+		arg.SourceSystem,
+		arg.SourceExternalID,
+		arg.SourceRef,
+		arg.AuthoredFields,
+		arg.OrphanedAt,
+		arg.State,
+		arg.Revision,
+		arg.ExpectedRevision,
+	)
+	return err
+}
+
 const upsertMemento = `-- name: UpsertMemento :exec
 INSERT INTO tb_mementos (
     id, journey_id, kind, seq, occurred_at, occurred_tz, geom, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, revision, created_at, updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, ST_GeomFromWKB($7, 4326), $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, COALESCE($21, 1), NOW(), NOW()
+    $1, $2, $3, $4, $5, $6, ST_GeomFromWKB($7, 4326), $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, COALESCE($21::bigint, 1), NOW(), NOW()
 ) ON CONFLICT (id) DO UPDATE SET
     kind = CASE WHEN NOT (tb_mementos.authored_fields @> ARRAY['kind']) THEN EXCLUDED.kind ELSE tb_mementos.kind END,
     seq = CASE WHEN NOT (tb_mementos.authored_fields @> ARRAY['seq']) THEN EXCLUDED.seq ELSE tb_mementos.seq END,
@@ -753,10 +913,10 @@ type UpsertMementoParams struct {
 	Kind             string
 	Seq              int32
 	OccurredAt       pgtype.Timestamptz
-	OccurredTz       string
+	OccurredTz       pgtype.Text
 	StGeomfromwkb    interface{}
-	Title            string
-	Place            string
+	Title            pgtype.Text
+	Place            pgtype.Text
 	Vendor           pgtype.Text
 	Essay            pgtype.Text
 	PriceAmount      pgtype.Int8
@@ -773,7 +933,7 @@ type UpsertMementoParams struct {
 }
 
 func (q *Queries) UpsertMemento(ctx context.Context, arg UpsertMementoParams) error {
-	tag, err := q.db.Exec(ctx, upsertMemento,
+	_, err := q.db.Exec(ctx, upsertMemento,
 		arg.ID,
 		arg.JourneyID,
 		arg.Kind,
@@ -797,79 +957,7 @@ func (q *Queries) UpsertMemento(ctx context.Context, arg UpsertMementoParams) er
 		arg.Revision,
 		arg.ExpectedRevision,
 	)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return pgx.ErrNoRows
-	}
-	return nil
-}
-
-const upsertManualMemento = `-- name: UpsertManualMemento :exec
-INSERT INTO tb_mementos (
-    id, journey_id, kind, seq, occurred_at, occurred_tz, geom, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, revision, created_at, updated_at
-) VALUES (
-    $1, $2, $3, $4, $5, $6, ST_GeomFromWKB($7, 4326), $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, COALESCE($21, 1), NOW(), NOW()
-) ON CONFLICT (id) DO UPDATE SET
-    journey_id = EXCLUDED.journey_id,
-    kind = EXCLUDED.kind,
-    seq = EXCLUDED.seq,
-    occurred_at = EXCLUDED.occurred_at,
-    occurred_tz = EXCLUDED.occurred_tz,
-    geom = EXCLUDED.geom,
-    title = EXCLUDED.title,
-    place = EXCLUDED.place,
-    vendor = EXCLUDED.vendor,
-    essay = EXCLUDED.essay,
-    price_amount = EXCLUDED.price_amount,
-    price_currency = EXCLUDED.price_currency,
-    kind_data = EXCLUDED.kind_data,
-    source_system = EXCLUDED.source_system,
-    source_external_id = EXCLUDED.source_external_id,
-    source_ref = EXCLUDED.source_ref,
-    authored_fields = EXCLUDED.authored_fields,
-    orphaned_at = EXCLUDED.orphaned_at,
-    state = EXCLUDED.state,
-    revision = tb_mementos.revision + 1,
-    updated_at = NOW()
-WHERE $22::bigint IS NULL OR tb_mementos.revision = $22
-`
-
-type UpsertManualMementoParams = UpsertMementoParams
-
-func (q *Queries) UpsertManualMemento(ctx context.Context, arg UpsertManualMementoParams) error {
-	tag, err := q.db.Exec(ctx, upsertManualMemento,
-		arg.ID,
-		arg.JourneyID,
-		arg.Kind,
-		arg.Seq,
-		arg.OccurredAt,
-		arg.OccurredTz,
-		arg.StGeomfromwkb,
-		arg.Title,
-		arg.Place,
-		arg.Vendor,
-		arg.Essay,
-		arg.PriceAmount,
-		arg.PriceCurrency,
-		arg.KindData,
-		arg.SourceSystem,
-		arg.SourceExternalID,
-		arg.SourceRef,
-		arg.AuthoredFields,
-		arg.OrphanedAt,
-		arg.State,
-		arg.Revision,
-		arg.ExpectedRevision,
-	)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return pgx.ErrNoRows
-	}
-	return nil
+	return err
 }
 
 const upsertPhoto = `-- name: UpsertPhoto :exec
@@ -909,8 +997,5 @@ func (q *Queries) UpsertPhoto(ctx context.Context, arg UpsertPhotoParams) error 
 		arg.TakenAt,
 		arg.SourceRef,
 	)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }

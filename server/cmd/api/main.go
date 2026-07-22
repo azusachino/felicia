@@ -23,6 +23,9 @@ import (
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	// Provider lifecycle logs (LogMementoStateChange with a nil logger) fall
+	// back to the default; route them into the same JSON stream.
+	slog.SetDefault(logger)
 	if err := run(logger); err != nil {
 		logger.Error("server exited", "err", err)
 		os.Exit(1)
@@ -84,9 +87,30 @@ func run(logger *slog.Logger) error {
 	}
 	imp := importer.NewWithLogger(tracks, photos, repo, cfg.RDPEpsilon, logger)
 
-	server := api.NewServer(repo, registry, cacheManager, logger, imp, api.RouteConfig{TransitSegmentLengthM: cfg.TransitSegmentLenM})
+	server := api.NewServer(repo, registry, cacheManager, logger, imp, api.RouteConfig{
+		TransitSegmentLengthM: cfg.TransitSegmentLenM,
+		MediaRoot:             cfg.MediaRoot,
+		RatePerSecond:         cfg.RatePerSecond,
+		RateBurst:             cfg.RateBurst,
+		SiteOutDir:            cfg.SiteOutDir,
+		SitePreviewPort:       cfg.SitePreviewPort,
+		SiteSpaDist:           cfg.SiteSpaDist,
+		SiteBrowseRoot:        cfg.SiteBrowseRoot,
+		ConfigPath:            cfg.ConfigPath,
+	})
 
-	// 4. Start local admin web server
+	// 4. Serve the compiled site on a second local port so the author can
+	// verify a build exactly as a static host would deliver it. Losing the
+	// preview listener degrades the Site page but must not take the admin
+	// API down with it.
+	go func() {
+		logger.Info("starting site preview server", "url", "http://localhost:"+cfg.SitePreviewPort)
+		if err := http.ListenAndServe(":"+cfg.SitePreviewPort, api.PreviewHandler(server.SiteOutDir, cfg.SiteSpaDist)); err != nil {
+			logger.Error("site preview server stopped", "err", err)
+		}
+	}()
+
+	// 5. Start local admin web server
 	logger.Info("starting admin server", "url", "http://localhost:"+cfg.Port)
 	return http.ListenAndServe(":"+cfg.Port, server.Handler())
 }

@@ -49,13 +49,18 @@ func TestRepositoryJourneyWorkflow(t *testing.T) {
 		t.Fatalf("unexpected draft: %#v", fetched)
 	}
 
+	// Advance one legal step at a time (docs/contracts/memento-lifecycle.md §3):
+	// a direct draft→published jump is illegal.
 	occurred := time.Date(2026, 3, 21, 10, 0, 0, 0, time.UTC)
-	complete := &domain.Memento{ID: memento.ID, JourneyID: journey.ID, Kind: "live", Seq: 1, OccurredAt: occurred, OccurredTZ: "Asia/Tokyo", Geom: orb.Point{139.75, 35.69}, Title: "Live show", Place: "Tokyo", KindData: json.RawMessage(`{"artist":"羊文学"}`), State: domain.MementoPublished}
-	if err := repo.ApplyManualMementoPatch(ctx, &domain.ManualMementoPatch{Memento: complete, Fields: []string{"occurred_at", "occurred_tz", "geom", "title", "place", "kind_data"}, State: domain.MementoPublished, ExpectedRevision: int64Ptr(1)}); err != nil {
+	complete := &domain.Memento{ID: memento.ID, JourneyID: journey.ID, Kind: "live", Seq: 1, OccurredAt: occurred, OccurredTZ: "Asia/Tokyo", Geom: orb.Point{139.75, 35.69}, Title: "Live show", Place: "Tokyo", KindData: json.RawMessage(`{"artist":"羊文学"}`), State: domain.MementoAuthored}
+	if err := repo.ApplyManualMementoPatch(ctx, &domain.ManualMementoPatch{Memento: complete, Fields: []string{"occurred_at", "occurred_tz", "geom", "title", "place", "kind_data"}, State: domain.MementoAuthored, ExpectedRevision: int64Ptr(1)}); err != nil {
+		t.Fatalf("author memento: %v", err)
+	}
+	if err := repo.ApplyManualMementoPatch(ctx, &domain.ManualMementoPatch{Memento: &domain.Memento{ID: memento.ID, JourneyID: journey.ID}, State: domain.MementoPublished, ExpectedRevision: int64Ptr(2)}); err != nil {
 		t.Fatalf("publish memento: %v", err)
 	}
 	fetched, err = repo.GetMemento(ctx, memento.ID)
-	if err != nil || fetched.State != domain.MementoPublished || fetched.Revision != 2 {
+	if err != nil || fetched.State != domain.MementoPublished || fetched.Revision != 3 {
 		t.Fatalf("unexpected published memento: %v %#v", err, fetched)
 	}
 
@@ -80,6 +85,22 @@ func TestRepositoryJourneyWorkflow(t *testing.T) {
 	}
 	if err := repo.FinishImportRun(ctx, run.ID, domain.ImportRunSucceeded, time.Now().UTC(), nil); err != nil {
 		t.Fatalf("finish import run: %v", err)
+	}
+
+	if err := repo.DeleteMemento(ctx, memento.ID); err != nil {
+		t.Fatalf("delete memento: %v", err)
+	}
+	// GetMemento's not-found contract is today the driver's raw no-rows
+	// error (internal patch/import paths depend on that); this asserts the
+	// row is gone without pinning which sentinel comes back.
+	if _, err := repo.GetMemento(ctx, memento.ID); err == nil {
+		t.Fatal("get deleted memento should fail")
+	}
+	if photos, err := repo.ListPhotosByMemento(ctx, memento.ID); err != nil || len(photos) != 0 {
+		t.Fatalf("photos should cascade on delete: %v (%d)", err, len(photos))
+	}
+	if err := repo.DeleteMemento(ctx, memento.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("second delete error = %v, want not found", err)
 	}
 }
 
@@ -118,6 +139,52 @@ func TestStopCandidateReviewSurvivesReimport(t *testing.T) {
 	}
 	if err := repo.ApplyStopReview(ctx, &domain.StopReviewPatch{CandidateID: candidate.ID, State: domain.CandidateKept, ExpectedRevision: int64Ptr(1)}); !errors.Is(err, domain.ErrWriteConflict) {
 		t.Fatalf("stale review error = %v, want write conflict", err)
+	}
+}
+
+// The pool is capped at one connection, so listing candidates must not issue
+// the per-candidate evidence query while the candidate rows are still open —
+// that deadlocks until the context deadline. Regression for the intake inbox:
+// listing a journey with evidence-bearing candidates has to return promptly.
+func TestListStopCandidatesWithEvidenceDoesNotDeadlock(t *testing.T) {
+	repo, err := sqlite.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer repo.Close()
+	ctx := context.Background()
+	journal := &domain.Journal{ID: mustUUID(t), CreatedAt: time.Now().UTC()}
+	if err := repo.CreateJournal(ctx, journal); err != nil {
+		t.Fatal(err)
+	}
+	journey := &domain.Journey{ID: mustUUID(t), JournalID: journal.ID, Slug: "candidate-list", Title: "Candidate list", Place: "Nara", DateStart: time.Now().UTC(), DateEnd: time.Now().UTC()}
+	if err := repo.UpsertJourney(ctx, journey); err != nil {
+		t.Fatal(err)
+	}
+	arrive := time.Date(2026, 7, 2, 9, 0, 0, 0, time.UTC)
+	for index := range 2 {
+		candidate := &domain.StopCandidate{
+			ID:        mustUUID(t),
+			JourneyID: journey.ID,
+			Identity:  domain.CandidateIdentity{DerivationVersion: "gpx-stops-v1", Key: "stop-" + string(rune('a'+index))},
+			Label:     "Stop",
+			Coord:     orb.Point{135.8, 34.68},
+			Arrive:    arrive.Add(time.Duration(index) * time.Hour),
+			Depart:    arrive.Add(time.Duration(index)*time.Hour + 30*time.Minute),
+			Evidence:  []domain.EvidenceRef{{Kind: domain.EvidenceVisit, Source: domain.SourceIdentity{System: "visit", ExternalID: "visit-1"}, Locator: "visit-1"}},
+		}
+		if err := repo.UpsertStopCandidate(ctx, candidate); err != nil {
+			t.Fatal(err)
+		}
+	}
+	listCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	candidates, err := repo.ListStopCandidatesByJourney(listCtx, journey.ID)
+	if err != nil {
+		t.Fatalf("list stop candidates: %v", err)
+	}
+	if len(candidates) != 2 || len(candidates[0].Evidence) != 1 || len(candidates[1].Evidence) != 1 {
+		t.Fatalf("unexpected candidates: %#v", candidates)
 	}
 }
 

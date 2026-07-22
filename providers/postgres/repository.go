@@ -132,7 +132,7 @@ func (r *pgRepository) MarkMissingSourceObservations(ctx context.Context, runID 
 		return errors.New("run ID and source system are required")
 	}
 	if err := r.q.MarkMissingSourceObservations(ctx, db.MarkMissingSourceObservationsParams{
-		RunID: runID, SourceSystem: sourceSystem, SeenExternalIDs: seenExternalIDs,
+		RunID: runID, SourceSystem: sourceSystem, SeenExternalIds: seenExternalIDs,
 	}); err != nil {
 		return fmt.Errorf("mark missing source observations for run %s: %w", runID, err)
 	}
@@ -226,7 +226,7 @@ func (r *pgRepository) GetMementoBySourceIdentity(ctx context.Context, source do
 	if err := source.Validate(); err != nil {
 		return nil, fmt.Errorf("get memento by source identity: %w", err)
 	}
-	row, err := r.q.GetMementoBySourceIdentity(ctx, source.System, source.ExternalID)
+	row, err := r.q.GetMementoBySourceIdentity(ctx, db.GetMementoBySourceIdentityParams{SourceSystem: toText(&source.System), SourceExternalID: toText(&source.ExternalID)})
 	if err != nil {
 		return nil, fmt.Errorf("get memento by source identity %s: %w", source.Ref(), err)
 	}
@@ -284,10 +284,10 @@ func (r *pgRepository) upsertMementoWith(ctx context.Context, memento *domain.Me
 		Kind:             memento.Kind,
 		Seq:              int32(memento.Seq),
 		OccurredAt:       toTimestamptz(memento.OccurredAt),
-		OccurredTz:       memento.OccurredTZ,
+		OccurredTz:       pgtype.Text{String: memento.OccurredTZ, Valid: true},
 		StGeomfromwkb:    geomBytes,
-		Title:            memento.Title,
-		Place:            memento.Place,
+		Title:            pgtype.Text{String: memento.Title, Valid: true},
+		Place:            pgtype.Text{String: memento.Place, Valid: true},
 		Vendor:           toText(memento.Vendor),
 		Essay:            toText(memento.Essay),
 		PriceAmount:      toInt8(memento.PriceAmount),
@@ -303,7 +303,9 @@ func (r *pgRepository) upsertMementoWith(ctx context.Context, memento *domain.Me
 		ExpectedRevision: toInt8(expectedRevision),
 	}
 	if manual {
-		err = r.q.UpsertManualMemento(ctx, params)
+		// The two upsert queries share an identical parameter shape; Go's
+		// struct conversion keeps that in one place.
+		err = r.q.UpsertManualMemento(ctx, db.UpsertManualMementoParams(params))
 	} else {
 		err = r.q.UpsertMemento(ctx, params)
 	}
@@ -341,15 +343,48 @@ func (r *pgRepository) ApplyManualMementoPatch(ctx context.Context, patch *domai
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("load memento patch target %s: %w", patch.Memento.ID, err)
 	}
-	if err != nil {
+	exists := err == nil
+	var fromState domain.MementoState
+	if exists {
+		fromState = current.State
+	} else {
 		current = &domain.Memento{ID: patch.Memento.ID, JourneyID: patch.Memento.JourneyID}
 	}
+	// Optimistic-concurrency pre-check, mirroring the sqlite provider: the
+	// UpsertManualMemento query is sqlc `:exec`, so a stale-revision UPDATE
+	// silently affects zero rows without surfacing an error. Detect the
+	// conflict here off the already-loaded row instead. Creation (revision 0)
+	// is exempt.
+	if patch.ExpectedRevision != nil && current.Revision != 0 && current.Revision != *patch.ExpectedRevision {
+		return domain.ErrWriteConflict
+	}
+	// Lifecycle guard: an existing row may only change state along a legal
+	// transition (docs/contracts/memento-lifecycle.md §3). Creation is
+	// unconstrained.
+	if exists && patch.State != "" && !domain.CanTransitionMementoState(fromState, patch.State) {
+		return &domain.InvalidTransitionError{From: fromState, To: patch.State}
+	}
+	prevRevision := current.Revision
 	mergeMementoFields(current, patch.Memento, patch.Fields)
 	current.AuthoredFields = unionFields(current.AuthoredFields, patch.Fields)
 	if patch.State != "" {
 		current.State = patch.State
 	}
-	return r.upsertManualMemento(ctx, current, patch.ExpectedRevision)
+	toState := current.State
+	if err := r.upsertManualMemento(ctx, current, patch.ExpectedRevision); err != nil {
+		return err
+	}
+	if !exists || fromState != toState {
+		logFrom := fromState
+		if !exists {
+			logFrom = ""
+			current.Revision = 1
+		} else {
+			current.Revision = prevRevision + 1
+		}
+		domain.LogMementoStateChange(ctx, nil, current, logFrom, toState)
+	}
+	return nil
 }
 
 // ApplyMementoAggregate persists the authored memento and child content in a
@@ -405,8 +440,14 @@ func (r *pgRepository) ApplyIngestMementoPatch(ctx context.Context, patch *domai
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("load memento ingest target %s: %w", patch.Memento.ID, err)
 	}
+	created := false
 	if err != nil {
-		current = &domain.Memento{ID: patch.Memento.ID, JourneyID: patch.Memento.JourneyID, State: domain.MementoCandidateState}
+		// Honor the package-supplied creation state (matches the sqlite
+		// provider); fall back to candidate only when unset. Without this,
+		// importing a published fixture row would create it as candidate and
+		// then require an illegal candidate→published jump on the next patch.
+		current = &domain.Memento{ID: patch.Memento.ID, JourneyID: patch.Memento.JourneyID, State: patch.Memento.State}
+		created = true
 	}
 	mergeMementoFields(current, patch.Memento, patch.Fields)
 	if hasIdentity {
@@ -419,7 +460,14 @@ func (r *pgRepository) ApplyIngestMementoPatch(ctx context.Context, patch *domai
 	if current.State == "" {
 		current.State = domain.MementoCandidateState
 	}
-	return r.UpsertMemento(ctx, current)
+	if err := r.UpsertMemento(ctx, current); err != nil {
+		return err
+	}
+	if created {
+		current.Revision = 1
+		domain.LogMementoStateChange(ctx, nil, current, "", current.State)
+	}
+	return nil
 }
 
 func sourceIdentity(memento *domain.Memento) (domain.SourceIdentity, bool) {
@@ -552,6 +600,18 @@ func (r *pgRepository) ListTransitLegsByJourney(ctx context.Context, journeyID u
 func (r *pgRepository) DeleteTransitLeg(ctx context.Context, id uuid.UUID) error {
 	if err := r.q.DeleteTransitLeg(ctx, id); err != nil {
 		return fmt.Errorf("delete transit leg %s: %w", id, err)
+	}
+	return nil
+}
+
+// DeleteMemento removes a memento; its photos cascade via the FK.
+func (r *pgRepository) DeleteMemento(ctx context.Context, id uuid.UUID) error {
+	affected, err := r.q.DeleteMemento(ctx, id)
+	if err != nil {
+		return fmt.Errorf("delete memento %s: %w", id, err)
+	}
+	if affected == 0 {
+		return domain.ErrNotFound
 	}
 	return nil
 }
@@ -708,8 +768,8 @@ func toDomainJourney(
 
 func toDomainMemento(
 	id uuid.UUID, journeyID uuid.UUID, kind string, seq int32,
-	occurredAt pgtype.Timestamptz, occurredTz string, geomWkb interface{},
-	title string, place string, vendor pgtype.Text, essay pgtype.Text,
+	occurredAt pgtype.Timestamptz, occurredTz pgtype.Text, geomWkb interface{},
+	title pgtype.Text, place pgtype.Text, vendor pgtype.Text, essay pgtype.Text,
 	priceAmount pgtype.Int8, priceCurrency pgtype.Text, kindData []byte,
 	sourceSystem pgtype.Text, sourceExternalID pgtype.Text, sourceRef pgtype.Text,
 	authoredFields []string, orphanedAt pgtype.Timestamptz, state string, revision int64,
@@ -738,10 +798,10 @@ func toDomainMemento(
 		Kind:           kind,
 		Seq:            int(seq),
 		OccurredAt:     fromTimestamptz(occurredAt),
-		OccurredTZ:     occurredTz,
+		OccurredTZ:     occurredTz.String,
 		Geom:           geom,
-		Title:          title,
-		Place:          place,
+		Title:          title.String,
+		Place:          place.String,
 		Vendor:         fromText(vendor),
 		Essay:          fromText(essay),
 		PriceAmount:    fromInt8(priceAmount),

@@ -62,16 +62,18 @@ nav {
   display: grid;
   gap: 5px;
 }
-nav button {
+nav a {
+  display: block;
   border: 0;
   border-radius: 7px;
   padding: 11px 12px;
   color: #c8bca9;
   background: transparent;
   text-align: left;
+  text-decoration: none;
 }
-nav button:hover,
-nav button.active {
+nav a:hover,
+nav a.active {
   color: #fff8ed;
   background: #453c33;
 }
@@ -99,6 +101,11 @@ nav button.active {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  /* Clear separation from whatever a view renders next (e.g. JourneyList's
+     own header, whose "Refresh" button sits at the same right edge as
+     .profile below) — without this gap the two right-aligned controls sit
+     close enough to invite a mis-click (ADMIN-02 M1 02.1e). */
+  margin-bottom: 36px;
 }
 h1,
 h2 {
@@ -122,86 +129,48 @@ h2 {
   background: #fffaf2;
   font-size: 12px;
 }
-.welcome {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 32px;
-  margin-top: 80px;
-  padding: 38px;
-  border: 1px solid #dfd4c1;
-  border-radius: 16px;
-  background: #fffaf2;
-}
-.welcome h2 {
-  max-width: 580px;
-}
-.lede {
-  max-width: 560px;
-  margin: 18px 0 0;
-  color: #766956;
-  font-size: 16px;
-  line-height: 1.6;
-}
-.primary {
-  border: 0;
-  border-radius: 7px;
-  padding: 12px 18px;
-  color: #fffaf2;
-  background: #9f522d;
-  white-space: nowrap;
-}
-.cards {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-top: 18px;
-}
-
 .api-error {
   margin-top: 1rem;
   color: #a84a34;
   font-size: 0.9rem;
-}
-.cards article {
-  display: grid;
-  gap: 10px;
-  padding: 24px;
-  border: 1px solid #dfd4c1;
-  border-radius: 12px;
-  background: rgb(255 250 242 / 55%);
 }
 .card-label,
 .card-note {
   color: #766956;
   font-size: 13px;
 }
-.cards strong {
-  font-family: Georgia, serif;
-  font-size: 40px;
-  font-weight: 500;
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
-.empty-state {
-  max-width: 640px;
-  margin: 120px auto;
-  text-align: center;
-}
-.empty-icon {
-  display: grid;
-  width: 58px;
-  height: 58px;
-  margin: 0 auto 20px;
-  place-items: center;
-  border-radius: 50%;
-  color: #9f522d;
-  background: #ead7c3;
-  font-family: Georgia, serif;
-  font-size: 28px;
-}
-.empty-state p {
+.badge--candidate {
   color: #766956;
-  line-height: 1.6;
+  background: rgb(166 154 137 / 20%);
 }
+.badge--draft {
+  color: #9f522d;
+  background: rgb(231 162 96 / 24%);
+}
+.badge--authored {
+  color: #3d5b6e;
+  background: rgb(107 138 159 / 22%);
+}
+.badge--published {
+  color: #3f7a52;
+  background: rgb(120 184 135 / 24%);
+}
+.badge--archived {
+  color: #766956;
+  background: rgb(200 188 169 / 32%);
+}
+
 @media (max-width: 720px) {
   .admin-shell {
     display: block;
@@ -219,21 +188,10 @@ h2 {
     overflow: auto;
     margin-top: 18px;
   }
-  nav button {
+  nav a {
     white-space: nowrap;
   }
   .content {
     padding: 30px 20px;
-  }
-  .welcome {
-    display: block;
-    margin-top: 48px;
-    padding: 24px;
-  }
-  .primary {
-    margin-top: 24px;
-  }
-  .cards {
-    grid-template-columns: 1fr;
   }
 }

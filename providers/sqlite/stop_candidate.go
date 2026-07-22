@@ -43,12 +43,21 @@ func (r *Repository) ListStopCandidatesByJourney(ctx context.Context, journeyID 
 		if err != nil {
 			return nil, err
 		}
+		result = append(result, candidate)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	// Evidence loads only after the candidate rows are fully drained and
+	// closed: the pool is capped at one connection (store.go), so a nested
+	// query while `rows` is still open deadlocks until the context expires.
+	_ = rows.Close()
+	for _, candidate := range result {
 		if err := r.loadStopCandidateEvidence(ctx, candidate); err != nil {
 			return nil, err
 		}
-		result = append(result, candidate)
 	}
-	return result, rows.Err()
+	return result, nil
 }
 
 // UpsertStopCandidate refreshes source-owned fields while preserving review state.

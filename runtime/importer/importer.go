@@ -101,6 +101,15 @@ func NewWithLogger(tracks domain.TrackSource, photos domain.PhotoSource, store J
 	return &Importer{tracks: tracks, photos: photos, store: store, epsilon: epsilon, logger: logger}
 }
 
+// Tracks returns the configured track source, or nil when none was wired.
+// Callers that need read-only route/visit access outside the Sync* methods
+// (the admin intake-plan endpoint, for one) use this instead of duplicating
+// source composition.
+func (im *Importer) Tracks() domain.TrackSource { return im.tracks }
+
+// Photos returns the configured photo source, or nil when none was wired.
+func (im *Importer) Photos() domain.PhotoSource { return im.photos }
+
 // SyncRoute fetches the journey's Dawarich tracks, RDP-simplifies them, and
 // writes the union into gps_route. It is a no-op when gps_route is authored, so
 // re-import never clobbers a hand-edited route (design §5).
