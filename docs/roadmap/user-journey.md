@@ -87,6 +87,8 @@ projection:
 
 ## Status log
 
+- **2026-07-22 (issue audit & milestone reconciliation)** — Conducted a full audit of open GitHub issues against implementation status. Verified completion and closed 21 issues across M0 (content & acceptance lock), M1 (canonical storage & public API projections), M2 (declarative templates & projections), M3 (admin authoring GUI MVP), M4 (ingestion connectors & intake planner), and epic FELICIA-PAGES-01 (#40–#50). Added 3 new enhancement issues on GitHub: #57 (automatic journey date bounds derivation), #58 (offline timezone resolution via `tzf`), and #59 (optional local AI agent ticket artwork generator for missing media in admin GUI). Updated roadmap and delivery trackers accordingly.
+
 - **2026-07-19 (memento lifecycle + staged rebuild)** — Formalized the
   memento lifecycle as a binding contract
   ([docs/contracts/memento-lifecycle.md](../contracts/memento-lifecycle.md))

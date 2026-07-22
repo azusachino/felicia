@@ -163,6 +163,10 @@ Covers the "browse local files from the Import & preview section" gap.
 - **02.4d Workspace settings panel.** Media root, upstream sources
   (Dawarich/Immich), and defaults surfaced in the GUI and persisted to
   `felicia.toml` (env overrides keep precedence).
+- **02.4e AI memento artwork generator.** Optional local AI agent connection
+  in the memento editor: when a memento lacks physical photos, the author can
+  trigger a local AI agent to generate ticket artwork based on kind/title/place
+  and attach it after review (aligned with ADR-0024).
 
 ## Open decisions (to settle before their milestone starts)
 
