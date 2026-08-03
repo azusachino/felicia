@@ -206,6 +206,8 @@ func (s *Server) Handler() http.Handler {
 		r.Get("/journeys.json", s.handleGetPublicJourneys)
 		r.Get("/journeys/{id}.json", s.handleGetPublicJourneyDetails)
 		r.Get("/journeys/{id}/mementos.json", s.handleGetPublicMementos)
+		r.Get("/site", s.handleGetPublicSite)
+		r.Get("/site.json", s.handleGetPublicSite)
 	})
 
 	// Authoring Admin API (Valkey Invalidation on Write)
@@ -238,6 +240,8 @@ func (s *Server) Handler() http.Handler {
 		r.Post("/stop-candidates/{id}/promote", s.handlePromoteStopCandidate)
 		r.Get("/site", s.handleSiteInfo)
 		r.Put("/site", s.handlePutSite)
+		r.Get("/site-settings", s.handleGetSiteSettings)
+		r.Put("/site-settings", s.handlePutSiteSettings)
 		r.Get("/browse", s.handleBrowseDirectories)
 		r.Get("/build-status", s.handleBuildStatus)
 		r.Get("/journeys/{id}/build-status", s.handleJourneyBuildStatus)

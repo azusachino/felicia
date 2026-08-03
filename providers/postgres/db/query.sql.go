@@ -418,6 +418,40 @@ func (q *Queries) GetPhoto(ctx context.Context, id uuid.UUID) (TbMementoPhoto, e
 	return i, err
 }
 
+const getSiteSettings = `-- name: GetSiteSettings :one
+SELECT journal_id, title, description, design, default_language, default_theme, accent, created_at, updated_at
+FROM tb_site_settings
+WHERE journal_id = $1
+`
+
+func (q *Queries) GetSiteSettings(ctx context.Context, journalID uuid.UUID) (TbSiteSetting, error) {
+	row := q.db.QueryRow(ctx, getSiteSettings, journalID)
+	var i TbSiteSetting
+	err := row.Scan(
+		&i.JournalID,
+		&i.Title,
+		&i.Description,
+		&i.Design,
+		&i.DefaultLanguage,
+		&i.DefaultTheme,
+		&i.Accent,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getSoleJournal = `-- name: GetSoleJournal :one
+SELECT id, created_at FROM tb_journal LIMIT 1
+`
+
+func (q *Queries) GetSoleJournal(ctx context.Context) (TbJournal, error) {
+	row := q.db.QueryRow(ctx, getSoleJournal)
+	var i TbJournal
+	err := row.Scan(&i.ID, &i.CreatedAt)
+	return i, err
+}
+
 const listJourneys = `-- name: ListJourneys :many
 SELECT id, journal_id, slug, source_ref, title, place, country, region, date_start, date_end, ST_AsBinary(gps_route) AS gps_route_wkb, authored_fields, created_at, updated_at
 FROM tb_journeys
@@ -996,6 +1030,44 @@ func (q *Queries) UpsertPhoto(ctx context.Context, arg UpsertPhotoParams) error 
 		arg.Seq,
 		arg.TakenAt,
 		arg.SourceRef,
+	)
+	return err
+}
+
+const upsertSiteSettings = `-- name: UpsertSiteSettings :exec
+INSERT INTO tb_site_settings (
+    journal_id, title, description, design, default_language, default_theme, accent, created_at, updated_at
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, NOW(), NOW()
+) ON CONFLICT (journal_id) DO UPDATE SET
+    title = EXCLUDED.title,
+    description = EXCLUDED.description,
+    design = EXCLUDED.design,
+    default_language = EXCLUDED.default_language,
+    default_theme = EXCLUDED.default_theme,
+    accent = EXCLUDED.accent,
+    updated_at = NOW()
+`
+
+type UpsertSiteSettingsParams struct {
+	JournalID       uuid.UUID
+	Title           string
+	Description     string
+	Design          string
+	DefaultLanguage string
+	DefaultTheme    string
+	Accent          string
+}
+
+func (q *Queries) UpsertSiteSettings(ctx context.Context, arg UpsertSiteSettingsParams) error {
+	_, err := q.db.Exec(ctx, upsertSiteSettings,
+		arg.JournalID,
+		arg.Title,
+		arg.Description,
+		arg.Design,
+		arg.DefaultLanguage,
+		arg.DefaultTheme,
+		arg.Accent,
 	)
 	return err
 }

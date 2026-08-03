@@ -18,6 +18,17 @@ type JournalStore interface {
 	GetJournal(ctx context.Context, id uuid.UUID) (*domain.Journal, error)
 	CreateJournal(ctx context.Context, journal *domain.Journal) error
 	ResetMockJournal(ctx context.Context, id uuid.UUID) error
+	// GetSoleJournal returns the single journal row expected in this
+	// single-tenant deployment. Returns domain.ErrNotFound when the
+	// database has not been bootstrapped yet.
+	GetSoleJournal(ctx context.Context) (*domain.Journal, error)
+}
+
+// SiteSettingsStore persists the journal-scoped public site identity/style
+// settings (ADMIN-02 M2).
+type SiteSettingsStore interface {
+	GetSiteSettings(ctx context.Context, journalID uuid.UUID) (*domain.SiteSettings, error) // domain.ErrNotFound if absent
+	UpsertSiteSettings(ctx context.Context, settings *domain.SiteSettings) error
 }
 
 // JourneyStore is the narrow journey seam required by runtime workflows.

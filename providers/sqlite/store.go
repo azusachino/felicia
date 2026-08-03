@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -29,6 +30,7 @@ var _ ports.MediaStore = (*Repository)(nil)
 var _ ports.RouteStore = (*Repository)(nil)
 var _ ports.ObservationStore = (*Repository)(nil)
 var _ ports.StopCandidateStore = (*Repository)(nil)
+var _ ports.SiteSettingsStore = (*Repository)(nil)
 
 // Repository persists the canonical model in a local SQLite database.
 type Repository struct {
@@ -262,6 +264,26 @@ func (r *Repository) EnsureJournal(ctx context.Context, journal *domain.Journal)
 func (r *Repository) ResetMockJournal(ctx context.Context, id uuid.UUID) error {
 	_, err := r.db.ExecContext(ctx, "DELETE FROM tb_journals WHERE id = ?", idString(id))
 	return err
+}
+
+// GetSoleJournal retrieves the single journal row expected in this
+// single-tenant deployment. Returns domain.ErrNotFound when the database
+// has not been bootstrapped yet.
+func (r *Repository) GetSoleJournal(ctx context.Context) (*domain.Journal, error) {
+	var id, created string
+	err := r.db.QueryRowContext(ctx, "SELECT id, created_at FROM tb_journals LIMIT 1").Scan(&id, &created)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, domain.ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get sole journal: %w", err)
+	}
+	parsed, err := parseID(id)
+	if err != nil {
+		return nil, err
+	}
+	t, _ := time.Parse(time.RFC3339Nano, created)
+	return &domain.Journal{ID: parsed, CreatedAt: t}, nil
 }
 
 // GetJourney retrieves a journey by ID.

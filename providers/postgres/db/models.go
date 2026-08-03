@@ -78,6 +78,18 @@ type TbMementoPhoto struct {
 	CreatedAt   pgtype.Timestamptz
 }
 
+type TbSiteSetting struct {
+	JournalID       uuid.UUID
+	Title           string
+	Description     string
+	Design          string
+	DefaultLanguage string
+	DefaultTheme    string
+	Accent          string
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+}
+
 type TbSourceObservation struct {
 	ID               uuid.UUID
 	RunID            uuid.UUID

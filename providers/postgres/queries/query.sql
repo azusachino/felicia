@@ -46,6 +46,28 @@ INSERT INTO tb_journal (id, created_at) VALUES ($1, $2);
 -- name: ResetMockJournal :exec
 DELETE FROM tb_journal WHERE id = $1;
 
+-- name: GetSoleJournal :one
+SELECT id, created_at FROM tb_journal LIMIT 1;
+
+-- name: GetSiteSettings :one
+SELECT journal_id, title, description, design, default_language, default_theme, accent, created_at, updated_at
+FROM tb_site_settings
+WHERE journal_id = $1;
+
+-- name: UpsertSiteSettings :exec
+INSERT INTO tb_site_settings (
+    journal_id, title, description, design, default_language, default_theme, accent, created_at, updated_at
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, NOW(), NOW()
+) ON CONFLICT (journal_id) DO UPDATE SET
+    title = EXCLUDED.title,
+    description = EXCLUDED.description,
+    design = EXCLUDED.design,
+    default_language = EXCLUDED.default_language,
+    default_theme = EXCLUDED.default_theme,
+    accent = EXCLUDED.accent,
+    updated_at = NOW();
+
 -- name: GetJourney :one
 SELECT id, journal_id, slug, source_ref, title, place, country, region, date_start, date_end, ST_AsBinary(gps_route) AS gps_route_wkb, authored_fields, created_at, updated_at
 FROM tb_journeys
