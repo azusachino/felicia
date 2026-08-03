@@ -87,6 +87,23 @@ projection:
 
 ## Status log
 
+- **2026-08-04 (epic ADMIN-02 M2)** — Site identity landed: a journal-scoped
+  `tb_site_settings` row (title, description, active design, default
+  language/theme, accent) is projected through the shared `publication`
+  boundary to `GET /api/v1/site(.json)`, with defaults applied when nothing
+  has been configured yet so the endpoint is never a 404. Authored from the
+  GUI via `GET/PUT /api/admin/site-settings` (Site & Deploy page gained a
+  Site identity section: 4 design cards, title/description, language/theme
+  selects, a native color picker for accent, one explicit Save action). The
+  public reader now boots into the configured design instead of the old
+  hash-based switcher (removed), and seeds its language/theme from the same
+  settings; the accent color is wired into all four designs (v1/v2 share
+  `--accent-ink`, v4's `--orange`, and v3's `--terracotta` plus its few
+  Tailwind-utility-class spots) via a shared `--accent` CSS variable.
+  Verified in the containerized toolchain: `make validate`, the extended
+  live/static parity check for `site.json`, and the existing
+  `make test-admin-e2e` closed-loop pass (10/10, no regression).
+
 - **2026-07-22 (issue audit & milestone reconciliation)** — Conducted a full audit of open GitHub issues against implementation status. Verified completion and closed 21 issues across M0 (content & acceptance lock), M1 (canonical storage & public API projections), M2 (declarative templates & projections), M3 (admin authoring GUI MVP), M4 (ingestion connectors & intake planner), and epic FELICIA-PAGES-01 (#40–#50). Added 3 new enhancement issues on GitHub: #57 (automatic journey date bounds derivation), #58 (offline timezone resolution via `tzf`), and #59 (optional local AI agent ticket artwork generator for missing media in admin GUI). Updated roadmap and delivery trackers accordingly.
 
 - **2026-07-19 (memento lifecycle + staged rebuild)** — Formalized the
