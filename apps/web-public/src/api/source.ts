@@ -8,6 +8,25 @@ function endpoint(path: string): string {
   return `${baseURL.replace(/\/$/, "")}${path}.json`
 }
 
+export interface ApiSiteSettings {
+  title: string
+  description: string
+  design: "v1" | "v2" | "v3" | "v4"
+  default_language: "ja" | "en" | "zh"
+  default_theme: "dark" | "light"
+  accent: string
+}
+
+export async function loadSiteSettings(): Promise<ApiSiteSettings> {
+  const url = endpoint("/api/v1/site")
+  const res = await fetch(url)
+  if (!res.ok) {
+    throw new Error(`Failed to load site settings: ${res.statusText}`)
+  }
+
+  return (await res.json()) as ApiSiteSettings
+}
+
 export async function loadJourney(id: string): Promise<Journey> {
   const journeyUrl = endpoint(`/api/v1/journeys/${id}`)
   const mementosUrl = endpoint(`/api/v1/journeys/${id}/mementos`)

@@ -1,81 +1,52 @@
 <script lang="ts">
-  import { designs, designFromHash } from "./designs"
+  import { designs } from "./designs"
   import type { Lang, Theme } from "./data"
-  import { message, resolveLocale } from "./i18n/catalog"
+  import { resolveLocale } from "./i18n/catalog"
+  import { loadSiteSettings, type ApiSiteSettings } from "./api/source"
 
-  // The demo is a deployable, immutable-data showcase that can switch between
-  // multiple front-of-house DESIGNS (the PM may supply several). Every design
-  // is a pure presentation over the same fixtures + {journey, memento} contract
-  // (felicia:decision:presentation-agnostic-contract); the registry in
-  // designs.ts is the single source of truth and this shell just resolves the
-  // active one from the URL hash and renders it, with a persistent switcher so
-  // any design is one click (and deep-linkable) away.
-  let hash = $state(location.hash)
-  const active = $derived(designFromHash(hash))
+  // The public reader is locked to a single design, chosen by the author from
+  // the admin GUI (FELICIA-ADMIN-02 M2) and served as part of `/api/v1/site`.
+  // The registry in designs.ts remains the source of truth for what designs
+  // exist; this shell just resolves the configured one and renders it.
+  let settings = $state<ApiSiteSettings | null>(null)
+
+  $effect(() => {
+    loadSiteSettings()
+      .then((s) => (settings = s))
+      .catch(() => {
+        // Absent/unreachable settings = current demo behavior: fall back to
+        // the default design (v1) and the existing lang/theme defaults below.
+      })
+  })
+
+  const active = $derived(designs.find((d) => d.id === settings?.design) ?? designs[0])
   const Active = $derived(active.component)
 
-  // lang/theme are shared across designs so switching keeps your reading state.
-  let lang: Lang = $state(resolveLocale(localStorage.getItem("felicia.locale") ?? navigator.language))
+  // lang/theme are shared across the mounted design so switching keeps your
+  // reading state. lang keeps its existing localStorage override precedence
+  // (captured before the persist effect below can write a fallback value
+  // into storage); theme has no persistence, so it simply switches its
+  // default source from a literal to the resolved site settings once they
+  // load.
+  const storedLocale = localStorage.getItem("felicia.locale")
+  let lang: Lang = $state(resolveLocale(storedLocale ?? navigator.language))
   let theme: Theme = $state("dark")
 
   $effect(() => localStorage.setItem("felicia.locale", lang))
 
-  function select(target: (typeof designs)[number]) {
-    location.hash = target.hash
-  }
+  $effect(() => {
+    if (!settings) return
+    if (!storedLocale) {
+      lang = settings.default_language
+    }
+    theme = settings.default_theme
+
+    if (/^#[0-9a-fA-F]{6}$/.test(settings.accent)) {
+      document.documentElement.style.setProperty("--accent", settings.accent)
+    }
+  })
 </script>
-
-<svelte:window on:hashchange={() => (hash = location.hash)} />
-
-<nav class="design-switcher" aria-label={message(lang, "system.design")}>
-  {#each designs as design (design.id)}
-    <button type="button" class="design-switcher__btn" class:active={design.id === active.id} aria-pressed={design.id === active.id} onclick={() => select(design)}>
-      {message(lang, design.labelKey)}
-    </button>
-  {/each}
-</nav>
 
 {#key active.id}
   <Active bind:lang bind:theme />
 {/key}
-
-<style>
-  .design-switcher {
-    position: fixed;
-    z-index: 1000;
-    bottom: 1rem;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 0.25rem;
-    padding: 0.25rem;
-    border-radius: 999px;
-    background: rgba(20, 18, 15, 0.72);
-    backdrop-filter: blur(8px);
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
-  }
-
-  .design-switcher__btn {
-    font: inherit;
-    font-size: 0.8rem;
-    line-height: 1;
-    padding: 0.5rem 0.9rem;
-    border: none;
-    border-radius: 999px;
-    background: transparent;
-    color: rgba(255, 255, 255, 0.72);
-    cursor: pointer;
-    transition:
-      background 0.15s ease,
-      color 0.15s ease;
-  }
-
-  .design-switcher__btn:hover {
-    color: #fff;
-  }
-
-  .design-switcher__btn.active {
-    background: #b45f26;
-    color: #fff;
-  }
-</style>

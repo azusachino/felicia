@@ -392,7 +392,7 @@
 
       <header class="pointer-events-none absolute left-6 top-6 z-10 flex items-start gap-3">
         <div class="pointer-events-auto rounded-lg bg-paper-1/95 px-4 py-3 shadow-lg backdrop-blur">
-          <p class="m-0 font-mono text-[0.7rem] tracking-[0.3em] text-terracotta">F E L I C I A</p>
+          <p class="m-0 font-mono text-[0.7rem] tracking-[0.3em] text-accent">F E L I C I A</p>
           <h1 class="m-0 mt-1 font-mincho text-2xl font-bold text-ink">
             {t(selectedJourney.title)}
           </h1>
@@ -435,7 +435,7 @@
           <div class="flex items-center justify-between border-b border-dashed border-black/15 pb-3">
             <button
               type="button"
-              class="flex items-center gap-1 font-mono text-xs text-ink-soft disabled:opacity-30 disabled:cursor-not-allowed hover:text-terracotta transition cursor-pointer bg-transparent border-none p-0 focus:outline-none"
+              class="flex items-center gap-1 font-mono text-xs text-ink-soft disabled:opacity-30 disabled:cursor-not-allowed hover-accent transition cursor-pointer bg-transparent border-none p-0 focus:outline-none"
               disabled={selectedMementoIndex === 0}
               onclick={goToPrevMemento}
             >
@@ -446,7 +446,7 @@
             </span>
             <button
               type="button"
-              class="flex items-center gap-1 font-mono text-xs text-ink-soft disabled:opacity-30 disabled:cursor-not-allowed hover:text-terracotta transition cursor-pointer bg-transparent border-none p-0 focus:outline-none"
+              class="flex items-center gap-1 font-mono text-xs text-ink-soft disabled:opacity-30 disabled:cursor-not-allowed hover-accent transition cursor-pointer bg-transparent border-none p-0 focus:outline-none"
               disabled={selectedMementoIndex === selectedJourney.mementos.length - 1}
               onclick={goToNextMemento}
             >
@@ -455,7 +455,7 @@
           </div>
 
           <article class="rounded-lg border border-black/5 bg-paper-0 p-5 shadow-sm">
-            <p class="m-0 font-mono text-[0.68rem] uppercase tracking-[0.2em] text-terracotta">
+            <p class="m-0 font-mono text-[0.68rem] uppercase tracking-[0.2em] text-accent">
               {t(kindLabel[selectedMemento.kind])}
             </p>
             <h3 class="m-0 mt-1 font-mincho text-lg font-bold text-ink">
@@ -506,7 +506,7 @@
     --paper-1: #fdf9f0;
     --paper-2: #f3ecdb;
     --paper-3: #efe7d5;
-    --terracotta: #b45f26;
+    --terracotta: var(--accent, #b45f26);
     --hairline: rgba(90, 66, 30, 0.3);
     --hairline-strong: rgba(90, 66, 30, 0.4);
 
@@ -558,6 +558,18 @@
     background: #fffdf8;
     outline: 2px solid var(--terracotta);
     outline-offset: 2px;
+  }
+
+  /* Runtime-overridable equivalents of the static Tailwind `text-terracotta`
+     utility (bound to the build-time @theme token, not the `--terracotta`
+     custom property above) — used where accent-colored text needs to track
+     the author's chosen accent at runtime. */
+  .text-accent {
+    color: var(--terracotta);
+  }
+
+  .hover-accent:hover {
+    color: var(--terracotta);
   }
 
   .techo-frame {
