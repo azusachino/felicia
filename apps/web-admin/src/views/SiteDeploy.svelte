@@ -1,6 +1,17 @@
 <script lang="ts">
   import { onMount } from "svelte"
-  import { browseDirectories, compileSite, getSiteInfo, updateSiteOutDir, type AdminBrowseResult, type AdminSiteInfo, type CompileReport } from "../api"
+  import {
+    browseDirectories,
+    compileSite,
+    getSiteInfo,
+    getSiteSettings,
+    updateSiteOutDir,
+    updateSiteSettings,
+    type AdminBrowseResult,
+    type AdminSiteInfo,
+    type AdminSiteSettings,
+    type CompileReport,
+  } from "../api"
 
   let info = $state<AdminSiteInfo | null>(null)
   let loading = $state(true)
@@ -18,11 +29,69 @@
   }
   let build = $state<BuildState>({ status: "idle", message: "" })
 
+  async function loadInfo() {
+    info = await getSiteInfo()
+  }
+
+  // --- Site identity (ADMIN-02 M2 02.2c) -------------------------------------
+  // `settings` is the last-saved-from-server record; `draft` is the editable
+  // copy the form binds to. Kept separate so a page reload (or a re-fetch
+  // after Build) can't silently clobber in-progress edits — only saveSettings
+  // re-derives draft from a fresh server response.
+  const designChoices: { id: AdminSiteSettings["design"]; label: string }[] = [
+    { id: "v1", label: "Map" },
+    { id: "v2", label: "Collection" },
+    { id: "v3", label: "Journal" },
+    { id: "v4", label: "Atlas" },
+  ]
+
+  type SiteIdentityDraft = Omit<AdminSiteSettings, "accent"> & { accent: string }
+
+  // <input type="color"> requires a valid #rrggbb value at all times, but the
+  // server allows an unset ("") accent. Falling back to a neutral default
+  // here (and always sending whatever the swatch currently shows on save) is
+  // simpler than tracking "did the user touch this field" — the tradeoff is
+  // that saving once an accent has never been set will persist this default
+  // rather than leaving accent "".
+  const FALLBACK_ACCENT = "#ea580c"
+
+  function draftFromSettings(source: AdminSiteSettings): SiteIdentityDraft {
+    return { ...source, accent: source.accent || FALLBACK_ACCENT }
+  }
+
+  let settings = $state<AdminSiteSettings | null>(null)
+  let draft = $state<SiteIdentityDraft | null>(null)
+
+  type SaveStatus = "idle" | "pending" | "success" | "error"
+  interface SaveState {
+    status: SaveStatus
+    message: string
+  }
+  let save = $state<SaveState>({ status: "idle", message: "" })
+
+  async function loadSettings() {
+    settings = await getSiteSettings()
+    draft = draftFromSettings(settings)
+  }
+
+  async function saveSettings() {
+    if (!draft) return
+    save = { status: "pending", message: "" }
+    try {
+      const updated = await updateSiteSettings(draft)
+      settings = updated
+      draft = draftFromSettings(updated)
+      save = { status: "success", message: "Saved." }
+    } catch (cause) {
+      save = { status: "error", message: actionErrorMessage(cause) }
+    }
+  }
+
   async function load() {
     loading = true
     error = ""
     try {
-      info = await getSiteInfo()
+      await Promise.all([loadInfo(), loadSettings()])
     } catch (cause) {
       error = actionErrorMessage(cause)
     } finally {
@@ -37,8 +106,9 @@
       build = { status: "success", message: "Build complete.", report }
       // Refresh site info so the preview link appears/updates once the
       // artifact is ready (artifact_ready flips from false to true on the
-      // very first build).
-      await load()
+      // very first build). Deliberately not the full load() — that would
+      // re-fetch settings and discard any unsaved site-identity edits.
+      await loadInfo()
     } catch (cause) {
       build = { status: "error", message: actionErrorMessage(cause) }
     }
@@ -197,6 +267,66 @@
         </div>
       {/if}
     </section>
+
+    {#if settings && draft}
+      {@const d = draft}
+      <section class="site-identity" aria-label="Site identity">
+        <h2>Site identity</h2>
+        <p class="trigger-note">Design, title, and style projected to the public site's <code>site.json</code>.</p>
+
+        <div class="design-cards">
+          {#each designChoices as choice (choice.id)}
+            <button type="button" class="design-card" class:selected={d.design === choice.id} onclick={() => (d.design = choice.id)}>
+              <span class="design-card-id">{choice.id}</span>
+              <span class="design-card-label">{choice.label}</span>
+            </button>
+          {/each}
+        </div>
+
+        <div class="identity-fields">
+          <label class="field field-wide">
+            <span class="field-label">Title</span>
+            <input type="text" bind:value={d.title} placeholder="Site title" />
+          </label>
+
+          <label class="field field-wide">
+            <span class="field-label">Description</span>
+            <textarea bind:value={d.description} placeholder="Site description" rows="3"></textarea>
+          </label>
+
+          <label class="field">
+            <span class="field-label">Default language</span>
+            <select bind:value={d.default_language}>
+              <option value="ja">Japanese</option>
+              <option value="en">English</option>
+              <option value="zh">Chinese</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="field-label">Default theme</span>
+            <select bind:value={d.default_theme}>
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </label>
+
+          <label class="field field-accent">
+            <span class="field-label">Accent color</span>
+            <input type="color" bind:value={d.accent} />
+          </label>
+        </div>
+
+        <div class="save-row">
+          <button type="button" onclick={saveSettings} disabled={save.status === "pending"}>{save.status === "pending" ? "Saving…" : "Save site settings"}</button>
+          {#if save.status === "success"}
+            <span class="trigger-status trigger-status--success" role="status">{save.message}</span>
+          {:else if save.status === "error"}
+            <span class="trigger-status trigger-status--error" role="alert">{save.message}</span>
+          {/if}
+        </div>
+      </section>
+    {/if}
 
     <section class="build" aria-label="Build site">
       <div class="build-head">
@@ -364,6 +494,120 @@
     color: #6b5137;
     background: transparent;
     border: 1px solid #d8cdbb;
+  }
+  .site-identity {
+    margin-top: 32px;
+    padding: 20px 24px;
+    border: 1px solid #dfd4c1;
+    border-radius: 12px;
+    background: rgb(255 250 242 / 55%);
+  }
+  .site-identity h2 {
+    margin: 0;
+    font-family: Georgia, serif;
+    font-size: 22px;
+    font-weight: 500;
+  }
+  .design-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .design-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+    padding: 12px 14px;
+    border: 1px solid #d8cdbb;
+    border-radius: 9px;
+    background: #fffaf2;
+    text-align: left;
+  }
+  .design-card:hover,
+  .design-card:focus-visible {
+    border-color: #b98a5c;
+  }
+  .design-card.selected {
+    border-color: #9f522d;
+    background: rgb(159 82 45 / 8%);
+    box-shadow: inset 0 0 0 1px #9f522d;
+  }
+  .design-card-id {
+    font-family: Georgia, serif;
+    font-size: 15px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #342a1e;
+  }
+  .design-card-label {
+    font-size: 12px;
+    color: #766956;
+  }
+  .identity-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-top: 20px;
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .field-wide {
+    grid-column: 1 / -1;
+  }
+  .field-label {
+    color: #766956;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .field input[type="text"],
+  .field textarea,
+  .field select {
+    padding: 8px 10px;
+    border: 1px solid #d8cdbb;
+    border-radius: 7px;
+    background: #fffaf2;
+    color: #342a1e;
+    font-size: 13px;
+    font-family: inherit;
+  }
+  .field textarea {
+    resize: vertical;
+  }
+  .field-accent input[type="color"] {
+    width: 56px;
+    height: 36px;
+    padding: 2px;
+    border: 1px solid #d8cdbb;
+    border-radius: 7px;
+    background: #fffaf2;
+  }
+  .save-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 22px;
+  }
+  .save-row button {
+    border: 0;
+    border-radius: 7px;
+    padding: 8px 14px;
+    color: #fffaf2;
+    background: #9f522d;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .save-row button:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+  .save-row .trigger-status {
+    margin-top: 0;
   }
   .build {
     margin-top: 40px;
