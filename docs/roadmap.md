@@ -67,7 +67,8 @@ Deliverables:
 - Choose the first two visual open interactions and memento forms to polish; the current lean is warm paper plus a shared-element morph.
 - Freeze the public read contract and the authoring write contract.
 - Select one real journey and define its route, visits, mementos, essays, and photos.
-- Write the v1 acceptance scenarios and privacy invariants.
+- Write the v1 acceptance scenarios and privacy invariants —
+  [`docs/release/v1-acceptance.md`](release/v1-acceptance.md).
 - Define the import-package manifest, review states, and agent confirmation boundary.
 
 Exit check: a reviewer can describe the complete author and reader journey without falling back to an archived design draft.

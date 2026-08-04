@@ -76,32 +76,39 @@ Drop `justify` → ragged-right. Widen the reading measure, raise leading (~1.7 
 consider a serif for essay body to lean _travel book_ over _dashboard_ (ties to the layout
 fork below).
 
-## Open forks — your call
+## Open forks — settled
 
-These are genuine taste decisions, left undecided (asked 2026-07-02, author away):
+> **2026-08-04: both forks settled.** See
+> [ADR-0031](../adr/0031-frontend-style-map-first-and-shared-element-open.md) —
+> **map-first, fixed entry** + **shared-element morph**. Kept here for the rejected
+> alternatives' rationale; do not reopen this debate in implementation.
 
-1. **Layout / navigation model.**
-   - _Index rail + detail_ — left rail lists journeys → mementos (photo-count badge, sort
-     toggle), map center, paper detail panel. Proven (this is liuaaron); fixes the dead entry
-     structurally.
-   - _Map-first, fixed entry_ — keep the single right glass panel over a full-bleed map, but
-     land on a journey-overview card + a viewport-anchored index toggle. Smallest change;
-     keeps the map the hero. **(current lean)**
-   - _Immersive scrollytelling_ — scroll drives the camera along the route; mementos surface
-     as reached. Cinematic; biggest build.
+These were genuine taste decisions, left undecided from 2026-07-02 (author away) until
+ADR-0031:
 
-2. **Signature open interaction.**
-   - _Shared-element morph_ — the map stub grows into the full stub in the detail view; one
-     continuous object. Best reinforces map-as-index. **(current lean)**
-   - _Tear / unfold_ — perforated stub tears along its dashed line to reveal the essay.
-     Tactile; thematically perfect for "warm paper is the system."
-   - _Flip_ — front (stub face) → back (essay + photos). Cheapest to do well.
+1. **Layout / navigation model.** → **Decided: map-first, fixed entry.**
+   - _Index rail + detail_ (rejected) — left rail lists journeys → mementos
+     (photo-count badge, sort toggle), map center, paper detail panel. Proven (this is
+     liuaaron); fixes the dead entry structurally.
+   - _Map-first, fixed entry_ (**decided**) — keep the single right glass panel over a
+     full-bleed map, but land on a journey-overview card + a viewport-anchored index
+     toggle. Smallest change; keeps the map the hero.
+   - _Immersive scrollytelling_ (rejected) — scroll drives the camera along the route;
+     mementos surface as reached. Cinematic; biggest build.
+
+2. **Signature open interaction.** → **Decided: shared-element morph.**
+   - _Shared-element morph_ (**decided**) — the map stub grows into the full stub in
+     the detail view; one continuous object. Best reinforces map-as-index.
+   - _Tear / unfold_ (rejected) — perforated stub tears along its dashed line to
+     reveal the essay. Tactile; thematically perfect for "warm paper is the system."
+   - _Flip_ (rejected) — front (stub face) → back (essay + photos). Cheapest to do
+     well.
 
 ## Implications & next step
 
-- No app code yet — this stays research. When the two forks settle, promote a **frontend
-  style spec** (design tokens, per-kind stub anatomy, motion spec) and _then_ refactor `web/`.
-- The refactor is mostly `index.css` (tokens + per-kind stub CSS) + `App.tsx` entry-state and
-  scaffolding removal; the domain model and map wiring are sound.
-- Candidate ADR once forks settle: `felicia:decision:frontend-style` — "warm paper as the
-  system, scaffolding out of the reader, [layout] + [open-anim]."
+- ADR-0031 freezes the _direction_; a **frontend style spec** (design tokens, per-kind
+  stub anatomy, motion spec) is still the next step before implementation.
+- None of the four current reader prototypes (`apps/web-public/src/{v1,v2,v3,v4}`) is
+  a clean match for the decided layout — `v1` is an index rail, `v3` is a book-spread,
+  `v4` is scroll-driven. Building (or adapting a prototype into) the reader that
+  actually matches ADR-0031 is separate follow-up implementation work.
