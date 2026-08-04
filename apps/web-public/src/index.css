@@ -67,7 +67,7 @@ button {
   --card: rgba(255, 255, 255, 0.04);
   --chip-bg: #18181b;
   --chip-border: #52525b;
-  --accent-ink: #fdba74;
+  --accent-ink: var(--accent, #fdba74);
   --ctrl-bg: rgba(15, 23, 42, 0.82);
   --ctrl-invert: 1;
 }
@@ -83,7 +83,7 @@ button {
   --card: rgba(0, 0, 0, 0.03);
   --chip-bg: #ffffff;
   --chip-border: #d6d3d1;
-  --accent-ink: #ea580c;
+  --accent-ink: var(--accent, #ea580c);
   --ctrl-bg: rgba(255, 255, 255, 0.92);
   --ctrl-invert: 0;
 }

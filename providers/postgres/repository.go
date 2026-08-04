@@ -17,12 +17,14 @@ import (
 	"github.com/paulmach/orb/encoding/wkb"
 
 	"github.com/azusachino/felicia/core/domain"
+	"github.com/azusachino/felicia/core/ports"
 	"github.com/azusachino/felicia/providers/postgres/db"
 )
 
 // Compile-time check that pgRepository satisfies the domain contract.
 var _ domain.Repository = (*pgRepository)(nil)
 var _ domain.ObservationStore = (*pgRepository)(nil)
+var _ ports.SiteSettingsStore = (*pgRepository)(nil)
 
 type pgRepository struct {
 	q  *db.Queries
@@ -62,6 +64,60 @@ func (r *pgRepository) CreateJournal(ctx context.Context, journal *domain.Journa
 func (r *pgRepository) ResetMockJournal(ctx context.Context, id uuid.UUID) error {
 	if err := r.q.ResetMockJournal(ctx, id); err != nil {
 		return fmt.Errorf("reset mock journal %s: %w", id, err)
+	}
+	return nil
+}
+
+// GetSoleJournal returns the single journal row expected in this
+// single-tenant deployment.
+func (r *pgRepository) GetSoleJournal(ctx context.Context) (*domain.Journal, error) {
+	row, err := r.q.GetSoleJournal(ctx)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrNotFound
+		}
+		return nil, fmt.Errorf("get sole journal: %w", err)
+	}
+	return &domain.Journal{
+		ID:        row.ID,
+		CreatedAt: fromTimestamptz(row.CreatedAt),
+	}, nil
+}
+
+// Site settings operations (ADMIN-02 M2)
+
+func (r *pgRepository) GetSiteSettings(ctx context.Context, journalID uuid.UUID) (*domain.SiteSettings, error) {
+	row, err := r.q.GetSiteSettings(ctx, journalID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrNotFound
+		}
+		return nil, fmt.Errorf("get site settings %s: %w", journalID, err)
+	}
+	return &domain.SiteSettings{
+		JournalID:       row.JournalID,
+		Title:           row.Title,
+		Description:     row.Description,
+		Design:          row.Design,
+		DefaultLanguage: row.DefaultLanguage,
+		DefaultTheme:    row.DefaultTheme,
+		Accent:          row.Accent,
+		CreatedAt:       fromTimestamptz(row.CreatedAt),
+		UpdatedAt:       fromTimestamptz(row.UpdatedAt),
+	}, nil
+}
+
+func (r *pgRepository) UpsertSiteSettings(ctx context.Context, settings *domain.SiteSettings) error {
+	if err := r.q.UpsertSiteSettings(ctx, db.UpsertSiteSettingsParams{
+		JournalID:       settings.JournalID,
+		Title:           settings.Title,
+		Description:     settings.Description,
+		Design:          settings.Design,
+		DefaultLanguage: settings.DefaultLanguage,
+		DefaultTheme:    settings.DefaultTheme,
+		Accent:          settings.Accent,
+	}); err != nil {
+		return fmt.Errorf("upsert site settings %s: %w", settings.JournalID, err)
 	}
 	return nil
 }

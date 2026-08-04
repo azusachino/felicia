@@ -3,10 +3,13 @@ package publication
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/paulmach/orb"
+
+	"github.com/azusachino/felicia/core/domain"
 )
 
 // StaticJourney is the public journey detail projection.
@@ -63,6 +66,49 @@ type GeoJSONGeometry struct {
 	Coordinates any    `json:"coordinates"`
 }
 
+// StaticSiteSettings is the public site identity/style projection served
+// identically at /api/v1/site.json (static) and /api/v1/site (live).
+type StaticSiteSettings struct {
+	Title           string `json:"title"`
+	Description     string `json:"description"`
+	Design          string `json:"design"`
+	DefaultLanguage string `json:"default_language"`
+	DefaultTheme    string `json:"default_theme"`
+	Accent          string `json:"accent"`
+}
+
+// NewStaticSiteSettings projects domain site settings into the public shape.
+func NewStaticSiteSettings(settings domain.SiteSettings) StaticSiteSettings {
+	return StaticSiteSettings{
+		Title:           settings.Title,
+		Description:     settings.Description,
+		Design:          settings.Design,
+		DefaultLanguage: settings.DefaultLanguage,
+		DefaultTheme:    settings.DefaultTheme,
+		Accent:          settings.Accent,
+	}
+}
+
+// ResolveSiteSettings resolves the sole journal's site settings, falling
+// back to domain.DefaultSiteSettings when none have been saved yet. Both
+// StaticCompiler.Compile and the live handleGetPublicSite call this one
+// function so the two surfaces can never diverge on how "absent settings"
+// is interpreted.
+func ResolveSiteSettings(ctx context.Context, read ReadModel) (domain.SiteSettings, error) {
+	journal, err := read.GetSoleJournal(ctx)
+	if err != nil {
+		return domain.SiteSettings{}, err
+	}
+	settings, err := read.GetSiteSettings(ctx, journal.ID)
+	if errors.Is(err, domain.ErrNotFound) {
+		return domain.DefaultSiteSettings(journal.ID), nil
+	}
+	if err != nil {
+		return domain.SiteSettings{}, err
+	}
+	return *settings, nil
+}
+
 // StaticCompiler writes the public JSON tree and referenced media files.
 type StaticCompiler struct{}
 
@@ -80,6 +126,19 @@ func (StaticCompiler) Compile(ctx context.Context, input Input, read ReadModel, 
 
 	index := make([]JourneyListItem, 0, len(journeys))
 	report := BuildReport{}
+
+	// Site identity/style is independent of journey/memento content and is
+	// always written, even on a fresh DB where it reflects
+	// domain.DefaultSiteSettings (ADMIN-02 M2 §4, "absent settings = current
+	// demo behavior").
+	settings, err := ResolveSiteSettings(ctx, read)
+	if err != nil {
+		return report, fmt.Errorf("resolve site settings: %w", err)
+	}
+	if err := output.WriteJSON("api/v1/site.json", NewStaticSiteSettings(settings)); err != nil {
+		return report, fmt.Errorf("write site settings: %w", err)
+	}
+
 	for _, journey := range journeys {
 		if len(allowed) > 0 && !allowed[journey.ID] {
 			continue

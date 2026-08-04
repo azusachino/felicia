@@ -65,6 +65,14 @@ MEMENTO_TITLE = "Admin GUI E2E Memento"
 ESSAY_SENTINEL = "Felicia admin GUI E2E authored essay -- sentinel 9f3c2b1a"
 GOODS_NAME = "E2E Souvenir"
 
+# ADMIN-02 M2: site identity constants, kept identical to the constants of
+# the same name in apps/web-admin/e2e/authoring.spec.ts for the same reason
+# as the constants above -- this script's filesystem-side check on the
+# compiled api/v1/site.json looks for these exact values.
+SITE_TITLE = "Admin GUI E2E Site"
+SITE_DESIGN = "v4"
+SITE_ACCENT = "#336699"
+
 # A minimal two-point timestamped track. The intake planner only needs it to
 # satisfy the local-authoring package schema (route.gpx is required
 # alongside journey.json/stops.json/mementos.json) — the actual stop
@@ -275,6 +283,25 @@ def assert_compiled_artifact(out_dir: Path, journey_id: str) -> None:
     print("compiled artifact contains the authored essay -- filesystem check passed")
 
 
+def assert_site_settings(out_dir: Path) -> None:
+    """Re-reads the compiled api/v1/site.json directly off disk (ADMIN-02 M2):
+    the Playwright spec already asserts the live /api/v1/site endpoint after
+    saving and rebuilding, so this is the same live/static-parity
+    double-check assert_compiled_artifact does for the journey/memento data.
+    """
+    site_path = out_dir / "api" / "v1" / "site.json"
+    if not site_path.is_file():
+        raise AssertionError(f"compiled artifact is missing site.json: {site_path}")
+    site = json.loads(site_path.read_text(encoding="utf-8"))
+    if site.get("title") != SITE_TITLE:
+        raise AssertionError(f"compiled site.json title mismatch: {site!r}")
+    if site.get("design") != SITE_DESIGN:
+        raise AssertionError(f"compiled site.json design mismatch: {site!r}")
+    if site.get("accent") != SITE_ACCENT:
+        raise AssertionError(f"compiled site.json accent mismatch: {site!r}")
+    print("compiled artifact reflects the saved site identity -- filesystem check passed")
+
+
 def run_admin_gui_e2e() -> None:
     with tempfile.TemporaryDirectory(prefix="felicia-admin-gui-e2e-") as root_dir:
         root = Path(root_dir)
@@ -338,6 +365,7 @@ def run_admin_gui_e2e() -> None:
                 assert_preview_server(preview_port)
 
         assert_compiled_artifact(out_dir, journey_id)
+        assert_site_settings(out_dir)
 
     print("admin GUI E2E passed")
 

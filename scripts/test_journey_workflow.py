@@ -352,11 +352,17 @@ def run_static_parity_check(context: ServerContext) -> None:
         expect_aliases_match("/api/v1/journeys", "/api/v1/journeys.json")
         expect_aliases_match(journey_path, journey_path + ".json")
         expect_aliases_match(mementos_path, mementos_path + ".json")
+        expect_aliases_match("/api/v1/site", "/api/v1/site.json")
 
         expect_json_parity(
             "journeys index",
             fetch_raw("/api/v1/journeys"),
             read_static_file(out_dir, "api/v1/journeys.json"),
+        )
+        expect_json_parity(
+            "site settings",
+            fetch_raw("/api/v1/site"),
+            read_static_file(out_dir, "api/v1/site.json"),
         )
         expect_json_parity(
             "journey detail",

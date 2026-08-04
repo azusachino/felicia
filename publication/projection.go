@@ -77,6 +77,11 @@ type ReadModel interface {
 	ListJourneys(context.Context) ([]*domain.Journey, error)
 	ListMementosByJourney(context.Context, uuid.UUID) ([]*domain.Memento, error)
 	ListPhotosByMemento(context.Context, uuid.UUID) ([]*domain.MementoPhoto, error)
+	// GetSoleJournal and GetSiteSettings back ResolveSiteSettings (ADMIN-02
+	// M2), the shared resolver both the static compiler and the live
+	// handler call so site.json never diverges between the two surfaces.
+	GetSoleJournal(context.Context) (*domain.Journal, error)
+	GetSiteSettings(context.Context, uuid.UUID) (*domain.SiteSettings, error)
 }
 
 // MediaSource opens a source object by its canonical object key.

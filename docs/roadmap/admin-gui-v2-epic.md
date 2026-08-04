@@ -7,7 +7,7 @@ date: "2026-07-19"
 # Epic FELICIA-ADMIN-02 — GUI site configuration and deployment
 
 **Epic key:** `FELICIA-ADMIN-02`
-**Status:** M0 and M1 landed; M2–M4 planned. Delivery status is tracked in
+**Status:** M0–M2 landed; M3–M4 planned. Delivery status is tracked in
 [`../roadmap.md`](../roadmap.md); this document records scope and
 acceptance only.
 **Goal:** the author configures resources, picks the public design, builds,
@@ -95,7 +95,7 @@ Direct gaps found while operating the M0 build (2026-07-19 review):
 - **02.1e Topbar spacing.** Separate the Refresh button from the profile
   icon (mis-click risk flagged in review).
 
-### M2 — Site identity: design pick, style, `site.json` (planned)
+### M2 — Site identity: design pick, style, `site.json` (landed)
 
 - **02.2a `site.json` contract.** Journal-level site settings (site title
   and description, the single active design, default language, default

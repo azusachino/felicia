@@ -198,7 +198,7 @@
   .waypoints {
     --ink: #f5f5f5;
     --muted: #a8a8a8;
-    --orange: #d46728;
+    --orange: var(--accent, #d46728);
     min-height: 100%;
     height: 100%;
     overflow-y: auto;
@@ -211,7 +211,7 @@
   .waypoints.light {
     --ink: #2d2925;
     --muted: #706a65;
-    --orange: #b45f26;
+    --orange: var(--accent, #b45f26);
     background: #e7e0d5;
   }
 

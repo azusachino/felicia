@@ -22,6 +22,29 @@ type Journal struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// SiteSettings is the journal-scoped public site identity/style
+// configuration the admin GUI authors and the publication boundary
+// projects to /api/v1/site.json (ADMIN-02 M2). It is identity-only this
+// milestone: deploy-target configuration gets its own table later.
+type SiteSettings struct {
+	JournalID       uuid.UUID `json:"journal_id"`
+	Title           string    `json:"title"`
+	Description     string    `json:"description"`
+	Design          string    `json:"design"`           // v1|v2|v3|v4
+	DefaultLanguage string    `json:"default_language"` // ja|en|zh
+	DefaultTheme    string    `json:"default_theme"`    // dark|light
+	Accent          string    `json:"accent"`           // "#rrggbb" or ""
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
+// DefaultSiteSettings is the projection used when a journal has never saved
+// site settings — "absent settings" behaves like a v1 site in the default
+// language and theme, with no title/description/accent authored yet.
+func DefaultSiteSettings(journalID uuid.UUID) SiteSettings {
+	return SiteSettings{JournalID: journalID, Design: "v1", DefaultLanguage: "ja", DefaultTheme: "dark"}
+}
+
 // Journey represents a travel trip.
 type Journey struct {
 	ID             uuid.UUID           `json:"id"`
@@ -156,6 +179,14 @@ type Repository interface {
 	GetJournal(ctx context.Context, id uuid.UUID) (*Journal, error)
 	CreateJournal(ctx context.Context, journal *Journal) error
 	ResetMockJournal(ctx context.Context, id uuid.UUID) error
+	// GetSoleJournal returns the single journal row expected in this
+	// single-tenant deployment. Returns ErrNotFound when the database has
+	// not been bootstrapped yet.
+	GetSoleJournal(ctx context.Context) (*Journal, error)
+
+	// Site settings operations (ADMIN-02 M2)
+	GetSiteSettings(ctx context.Context, journalID uuid.UUID) (*SiteSettings, error)
+	UpsertSiteSettings(ctx context.Context, settings *SiteSettings) error
 
 	// Journey operations
 	GetJourney(ctx context.Context, id uuid.UUID) (*Journey, error)

@@ -6,9 +6,10 @@ Epics: [SQLite-backed GitHub Pages publication](roadmap/pages-v1-epic.md)
 all epic milestones M1–M4 landed, closed-loop browser E2E green; in
 review on the `feat/admin-gui-mvp` branch); and the active
 [GUI site configuration and deployment](roadmap/admin-gui-v2-epic.md)
-(M0 offline local deployment landed — Site & Deploy page with a Build
-action and a built-in preview server; design pick / style, GitHub Pages
-deploy with URL confirmation, and GUI resource uploads planned).
+(M0–M2 landed — Site & Deploy page with a Build action, a built-in preview
+server, authoring controls, and a Site identity section that picks the
+public design and style through a `site.json` projection; GitHub Pages
+deploy with URL confirmation and GUI resource uploads planned).
 The selected end-to-end journey and its per-stage status: [User journey](roadmap/user-journey.md).
 
 > Drafted 2026-07-16. This is a delivery roadmap, not a commitment to build every future seam in the current release.

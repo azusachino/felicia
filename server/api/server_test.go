@@ -66,6 +66,11 @@ var (
 	_ ports.StopCandidateStore = (*mockRepository)(nil)
 )
 
+// mockJournalID is the fixed "sole journal" ID GetSoleJournal returns —
+// this single-tenant mock never tracks journal bootstrap state, mirroring
+// GetJournal's always-succeeds behavior below.
+var mockJournalID = uuid.MustParse("00000000-0000-0000-0000-000000000001")
+
 type mockRepository struct {
 	journeys       map[uuid.UUID]*domain.Journey
 	mementos       map[uuid.UUID]*domain.Memento
@@ -75,6 +80,7 @@ type mockRepository struct {
 	displayRoute   orb.MultiLineString
 	snappedPoint   *orb.Point
 	stopCandidates map[uuid.UUID]*domain.StopCandidate
+	siteSettings   map[uuid.UUID]*domain.SiteSettings
 }
 
 func newMockRepository() *mockRepository {
@@ -83,6 +89,7 @@ func newMockRepository() *mockRepository {
 		mementos:       make(map[uuid.UUID]*domain.Memento),
 		photos:         make(map[uuid.UUID]*domain.MementoPhoto),
 		stopCandidates: make(map[uuid.UUID]*domain.StopCandidate),
+		siteSettings:   make(map[uuid.UUID]*domain.SiteSettings),
 	}
 }
 
@@ -91,6 +98,23 @@ func (m *mockRepository) GetJournal(_ context.Context, id uuid.UUID) (*domain.Jo
 }
 
 func (m *mockRepository) CreateJournal(_ context.Context, _ *domain.Journal) error {
+	return nil
+}
+
+func (m *mockRepository) GetSoleJournal(_ context.Context) (*domain.Journal, error) {
+	return &domain.Journal{ID: mockJournalID, CreatedAt: time.Now()}, nil
+}
+
+func (m *mockRepository) GetSiteSettings(_ context.Context, journalID uuid.UUID) (*domain.SiteSettings, error) {
+	settings, ok := m.siteSettings[journalID]
+	if !ok {
+		return nil, domain.ErrNotFound
+	}
+	return settings, nil
+}
+
+func (m *mockRepository) UpsertSiteSettings(_ context.Context, settings *domain.SiteSettings) error {
+	m.siteSettings[settings.JournalID] = settings
 	return nil
 }
 

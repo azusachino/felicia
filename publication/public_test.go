@@ -76,9 +76,11 @@ func TestNewStaticMementoCarriesAuthoredFields(t *testing.T) {
 }
 
 type fakeReadModel struct {
-	journeys []*domain.Journey
-	mementos map[uuid.UUID][]*domain.Memento
-	photos   map[uuid.UUID][]*domain.MementoPhoto
+	journeys     []*domain.Journey
+	mementos     map[uuid.UUID][]*domain.Memento
+	photos       map[uuid.UUID][]*domain.MementoPhoto
+	journal      *domain.Journal
+	siteSettings map[uuid.UUID]*domain.SiteSettings
 }
 
 func (f *fakeReadModel) ListJourneys(context.Context) ([]*domain.Journey, error) {
@@ -91,6 +93,21 @@ func (f *fakeReadModel) ListMementosByJourney(_ context.Context, id uuid.UUID) (
 
 func (f *fakeReadModel) ListPhotosByMemento(_ context.Context, id uuid.UUID) ([]*domain.MementoPhoto, error) {
 	return f.photos[id], nil
+}
+
+func (f *fakeReadModel) GetSoleJournal(context.Context) (*domain.Journal, error) {
+	if f.journal == nil {
+		return nil, domain.ErrNotFound
+	}
+	return f.journal, nil
+}
+
+func (f *fakeReadModel) GetSiteSettings(_ context.Context, journalID uuid.UUID) (*domain.SiteSettings, error) {
+	settings, ok := f.siteSettings[journalID]
+	if !ok {
+		return nil, domain.ErrNotFound
+	}
+	return settings, nil
 }
 
 type fakeMediaSource struct{}
@@ -149,7 +166,8 @@ func TestCompileEmitsPublishedOnlyAndSkipsUnpublishedJourneys(t *testing.T) {
 			publishedJourney.ID: {publishedMemento, draftMemento},
 			draftJourney.ID:     {draftOnlyMemento},
 		},
-		photos: map[uuid.UUID][]*domain.MementoPhoto{},
+		photos:  map[uuid.UUID][]*domain.MementoPhoto{},
+		journal: &domain.Journal{ID: journalID},
 	}
 	writer := &memoryArtifactWriter{}
 
@@ -186,5 +204,35 @@ func TestCompileEmitsPublishedOnlyAndSkipsUnpublishedJourneys(t *testing.T) {
 	}
 	if !strings.Contains(string(mementosJSON), "published essay") {
 		t.Errorf("authored essay missing from the public artifact: %s", mementosJSON)
+	}
+}
+
+// TestCompileWritesSiteSettingsWithDefaultsOnFreshDB asserts api/v1/site.json
+// is always written, even on a fresh DB with a bootstrapped journal but no
+// saved site settings — reflecting domain.DefaultSiteSettings (ADMIN-02 M2 §4).
+func TestCompileWritesSiteSettingsWithDefaultsOnFreshDB(t *testing.T) {
+	journalID := uuid.New()
+	read := &fakeReadModel{journal: &domain.Journal{ID: journalID}}
+	writer := &memoryArtifactWriter{}
+
+	report, err := StaticCompiler{}.Compile(context.Background(), Input{}, read, fakeMediaSource{}, writer)
+	if err != nil {
+		t.Fatalf("compile: %v", err)
+	}
+	if report.Journeys != 0 {
+		t.Errorf("report.Journeys = %d, want 0 on a fresh DB", report.Journeys)
+	}
+
+	raw, ok := writer.json["api/v1/site.json"]
+	if !ok {
+		t.Fatal("api/v1/site.json was not written on a fresh DB")
+	}
+	var got StaticSiteSettings
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatalf("unmarshal site.json: %v", err)
+	}
+	want := NewStaticSiteSettings(domain.DefaultSiteSettings(journalID))
+	if got != want {
+		t.Errorf("site.json = %+v, want defaults %+v", got, want)
 	}
 }

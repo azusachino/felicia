@@ -124,3 +124,15 @@ CREATE INDEX IF NOT EXISTS stop_candidates_journey_idx
   ON tb_stop_candidates(journey_id, arrive);
 CREATE INDEX IF NOT EXISTS stop_candidate_evidence_candidate_idx
   ON tb_stop_candidate_evidence(candidate_id);
+
+CREATE TABLE IF NOT EXISTS tb_site_settings (
+  journal_id TEXT PRIMARY KEY REFERENCES tb_journals(id) ON DELETE CASCADE,
+  title TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  design TEXT NOT NULL DEFAULT 'v1' CHECK (design IN ('v1', 'v2', 'v3', 'v4')),
+  default_language TEXT NOT NULL DEFAULT 'ja' CHECK (default_language IN ('ja', 'en', 'zh')),
+  default_theme TEXT NOT NULL DEFAULT 'dark' CHECK (default_theme IN ('dark', 'light')),
+  accent TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);

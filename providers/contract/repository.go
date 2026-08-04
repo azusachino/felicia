@@ -147,6 +147,72 @@ func Run(t *testing.T, repo domain.Repository) {
 	if len(photos) != 1 || photos[0].ID != photo.ID {
 		t.Fatalf("unexpected photos: %#v", photos)
 	}
+
+	assertSiteSettings(t, repo, journal.ID)
+}
+
+// assertSiteSettings exercises the site settings round trip (ADMIN-02 M2):
+// not-found before any upsert, upsert-then-read equality, and upsert-again
+// replacing (not duplicating) the single row scoped to journalID.
+func assertSiteSettings(t *testing.T, repo domain.Repository, journalID uuid.UUID) {
+	t.Helper()
+	ctx := context.Background()
+
+	soleJournal, err := repo.GetSoleJournal(ctx)
+	if err != nil {
+		t.Fatalf("get sole journal: %v", err)
+	}
+	if soleJournal.ID != journalID {
+		t.Fatalf("get sole journal: got %s, want %s", soleJournal.ID, journalID)
+	}
+
+	if _, err := repo.GetSiteSettings(ctx, journalID); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("get site settings before upsert: got %v, want domain.ErrNotFound", err)
+	}
+
+	settings := &domain.SiteSettings{
+		JournalID:       journalID,
+		Title:           "Contract Journal",
+		Description:     "A contract test journal",
+		Design:          "v2",
+		DefaultLanguage: "en",
+		DefaultTheme:    "light",
+		Accent:          "#ea580c",
+	}
+	if err := repo.UpsertSiteSettings(ctx, settings); err != nil {
+		t.Fatalf("upsert site settings: %v", err)
+	}
+	fetched, err := repo.GetSiteSettings(ctx, journalID)
+	if err != nil {
+		t.Fatalf("get site settings: %v", err)
+	}
+	if fetched.Title != settings.Title || fetched.Description != settings.Description ||
+		fetched.Design != settings.Design || fetched.DefaultLanguage != settings.DefaultLanguage ||
+		fetched.DefaultTheme != settings.DefaultTheme || fetched.Accent != settings.Accent {
+		t.Fatalf("unexpected site settings after upsert: %#v", fetched)
+	}
+
+	replacement := &domain.SiteSettings{
+		JournalID:       journalID,
+		Title:           "Replaced Title",
+		Description:     "Replaced description",
+		Design:          "v3",
+		DefaultLanguage: "zh",
+		DefaultTheme:    "dark",
+		Accent:          "#123456",
+	}
+	if err := repo.UpsertSiteSettings(ctx, replacement); err != nil {
+		t.Fatalf("upsert site settings again: %v", err)
+	}
+	replaced, err := repo.GetSiteSettings(ctx, journalID)
+	if err != nil {
+		t.Fatalf("get site settings after replace: %v", err)
+	}
+	if replaced.Title != replacement.Title || replaced.Design != replacement.Design ||
+		replaced.DefaultLanguage != replacement.DefaultLanguage || replaced.DefaultTheme != replacement.DefaultTheme ||
+		replaced.Accent != replacement.Accent {
+		t.Fatalf("site settings did not replace, got %#v", replaced)
+	}
 }
 
 func assertJourney(t *testing.T, repo domain.Repository, expected *domain.Journey) {

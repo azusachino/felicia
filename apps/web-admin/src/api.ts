@@ -513,6 +513,31 @@ export async function updateSiteOutDir(outDir: string): Promise<{ out_dir: strin
   return putJSON<{ out_dir: string }>("/api/admin/site", { out_dir: outDir })
 }
 
+// Site identity (ADMIN-02 M2 02.2a/02.2c): title/description/design/locale/
+// theme/accent, projected to the public reader's /api/v1/site.json through
+// the shared publication boundary. This is a DIFFERENT resource from
+// AdminSiteInfo/getSiteInfo above — that pair is process-level build config
+// (out_dir/preview_port) at the unrelated /api/admin/site path; this one is
+// /api/admin/site-settings, the author-facing "what does the site look like"
+// config. GET always returns a full record (server-side defaults on an empty
+// DB); PUT accepts a partial patch and returns the full updated record.
+export interface AdminSiteSettings {
+  title: string
+  description: string
+  design: "v1" | "v2" | "v3" | "v4"
+  default_language: "ja" | "en" | "zh"
+  default_theme: "dark" | "light"
+  accent: string
+}
+
+export async function getSiteSettings(): Promise<AdminSiteSettings> {
+  return getJSON<AdminSiteSettings>("/api/admin/site-settings")
+}
+
+export async function updateSiteSettings(patch: Partial<AdminSiteSettings>): Promise<AdminSiteSettings> {
+  return putJSON<AdminSiteSettings>("/api/admin/site-settings", patch)
+}
+
 // Local directory picker (ADMIN-02 staged-rebuild GUI): lists the
 // subdirectories of `path` (server-side root when path is omitted/empty) so
 // the Site & Deploy page can navigate into one and select it as the new
