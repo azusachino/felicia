@@ -1,9 +1,10 @@
 <script lang="ts">
   import maplibregl, { type StyleSpecification } from "maplibre-gl"
   import { onMount, tick } from "svelte"
-  import { fade, fly } from "svelte/transition"
+  import { cubicOut } from "svelte/easing"
+  import { crossfade, fade } from "svelte/transition"
   import { loadJourneys } from "../api/source"
-  import { kindLabel, uiText, type Coordinates, type Journey, type L, type Lang, type Memento, type Station, type Theme } from "../data"
+  import { kindLabel, uiText, type Coordinates, type Journey, type L, type Lang, type Memento, type MementoKind, type Station, type Theme } from "../data"
   import { message, type MessageKey } from "../i18n/catalog"
 
   // v1 — the liuaaron-aligned map reader: journey index rail -> map hero ->
@@ -22,10 +23,35 @@
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- imperative maplibre marker cache, not reactive UI state
   const markers = new Map<string, maplibregl.Marker>()
 
+  // Shared-element open: a transient "ghost" stands in for the clicked
+  // (imperative, non-Svelte) map marker so a crossfade pair has something to
+  // grow from — see selectMemento() / markerScreenPos() (ADR-0031).
+  let ghostVisible = false
+  let ghostKey = ""
+  let ghostOrigin: { x: number; y: number } | undefined
+  let ghostKind: MementoKind | undefined
+  let detailHeadingEl: HTMLHeadingElement | undefined
+  let prefersReducedMotion = false
+
+  const [sendStub, receiveStub] = crossfade({
+    duration: (d: number) => (prefersReducedMotion ? 0 : Math.min(500, 220 + Math.sqrt(d) * 8)),
+    easing: cubicOut,
+    fallback(node) {
+      const opacity = +getComputedStyle(node).opacity || 1
+      return {
+        duration: prefersReducedMotion ? 0 : 260,
+        easing: cubicOut,
+        css: (t: number) => `opacity: ${t * opacity}`,
+      }
+    },
+  })
+
   $: t = (value: L | MessageKey) => (typeof value === "string" ? message(lang, value) : value[lang])
   $: stationName = (s: Station) => (lang === "en" ? s.name : s.ja)
   $: selectedJourney = journeys.find((j) => j.id === selectedJourneyId) ?? journeys[0]
   $: countLabel = (n: number) => (lang === "en" ? `${n} mementos` : `${n}件`)
+  $: liveMessage = selected ? `${t(kindLabel[selected.kind])}: ${t(selected.title)}` : ""
+  $: ghostSeq = selectedJourney ? selectedJourney.mementos.findIndex((m) => m.id === ghostKey) + 1 : 0
 
   function routesGeoJson() {
     return {
@@ -148,11 +174,57 @@
     selected = journey.mementos[0]
     updateJourneyLayers(journey)
     fitJourney(journey)
+    void focusDetailHeading()
   }
 
-  function selectMemento(memento: Memento) {
-    selected = memento
+  // Screen-space position (viewport-relative, for position:fixed) of a
+  // memento's imperative map marker, if the map + marker for it exist yet.
+  function markerScreenPos(memento: Memento) {
+    if (!map || !mapContainer || !markers.has(memento.id)) return undefined
+    const point = map.project(memento.coords)
+    const rect = mapContainer.getBoundingClientRect()
+    return { x: rect.left + point.x, y: rect.top + point.y }
+  }
+
+  async function selectMemento(memento: Memento, { focusHeading = true } = {}) {
+    const origin = prefersReducedMotion ? undefined : markerScreenPos(memento)
+    if (origin) {
+      // Render the ghost at the marker for one tick, then swap it out for
+      // the real stub-card in the same flush that selects the memento —
+      // crossfade pairs the ghost's out-transition with the stub-card's
+      // in-transition (same key) and morphs between their positions.
+      ghostOrigin = origin
+      ghostKind = memento.kind
+      ghostKey = memento.id
+      ghostVisible = true
+      await tick()
+      selected = memento
+      ghostVisible = false
+    } else {
+      selected = memento
+    }
     focusMap(memento)
+    if (focusHeading) await focusDetailHeading()
+  }
+
+  async function focusDetailHeading() {
+    await tick()
+    detailHeadingEl?.focus()
+  }
+
+  // "Close" in v1's always-visible 3-column layout means returning to a
+  // neutral state — the journey's first memento — and moving focus back to
+  // the index rail rather than hiding the (non-modal) detail panel.
+  async function closeDetail() {
+    if (!selectedJourney) return
+    const first = selectedJourney.mementos[0]
+    if (first && first.id !== selected?.id) {
+      await selectMemento(first, { focusHeading: false })
+    } else {
+      fitJourney(selectedJourney)
+    }
+    await tick()
+    document.querySelector<HTMLButtonElement>(".timeline-item.active")?.focus()
   }
 
   function focusMap(memento: Memento) {
@@ -255,15 +327,24 @@
         isLoading = false
       })
 
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
+    prefersReducedMotion = motionQuery.matches
+    const onMotionChange = (event: MediaQueryListEvent) => {
+      prefersReducedMotion = event.matches
+    }
+    motionQuery.addEventListener("change", onMotionChange)
+
     return () => {
       markers.forEach((marker) => marker.remove())
       markers.clear()
       map?.remove()
+      motionQuery.removeEventListener("change", onMotionChange)
     }
   })
 </script>
 
 <main class="app-shell" class:theme-light={theme === "light"}>
+  <div class="sr-only" role="status" aria-live="polite">{liveMessage}</div>
   {#if isLoading}
     <div class="v1-status">Loading…</div>
   {:else if error}
@@ -328,18 +409,31 @@
     <!-- Map: the hero. -->
     <section class="map-stage" aria-label="Journey map">
       <div bind:this={mapContainer} class="map-canvas"></div>
+      {#if ghostVisible && ghostOrigin}
+        <div
+          class="marker-ghost map-marker map-marker--{ghostKind}"
+          style="left: {ghostOrigin.x}px; top: {ghostOrigin.y}px"
+          aria-hidden="true"
+          in:receiveStub={{ key: ghostKey }}
+          out:sendStub={{ key: ghostKey }}
+        >
+          <span>{ghostSeq}</span>
+        </div>
+      {/if}
     </section>
 
     <!-- Detail: the memento opened — paper stub + essay + gallery. -->
     <aside class="detail-panel" aria-label="Memento detail">
       {#key selected.id}
-        <div class="detail-inner" in:fade={{ duration: 220 }}>
+        <div class="detail-inner" in:fade={{ duration: prefersReducedMotion ? 0 : 220 }}>
+          <button type="button" class="detail-close" aria-label={t(uiText.close)} on:click={closeDetail}>×</button>
+
           <div class="section-head">
             <p class="eyebrow">{t(kindLabel[selected.kind])}</p>
-            <h2>{t(selected.title)}</h2>
+            <h2 tabindex="-1" bind:this={detailHeadingEl}>{t(selected.title)}</h2>
           </div>
 
-          <div class="stub-card {selected.kind}" in:fly={{ y: 12, duration: 320, delay: 60 }}>
+          <div class="stub-card {selected.kind}" in:receiveStub={{ key: selected.id }} out:sendStub={{ key: selected.id }}>
             {#if selected.kind === "transit" && selected.transit}
               <div class="ticket-face">
                 <div class="ticket-line">

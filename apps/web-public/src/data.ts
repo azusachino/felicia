@@ -72,6 +72,7 @@ export const uiText = {
   journeys: "ui.journeys",
   all: "ui.all",
   story: "ui.story",
+  close: "ui.close",
 } satisfies Record<string, MessageKey>
 
 export interface MementoCard {
