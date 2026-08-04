@@ -101,8 +101,11 @@ projection:
   `--accent-ink`, v4's `--orange`, and v3's `--terracotta` plus its few
   Tailwind-utility-class spots) via a shared `--accent` CSS variable.
   Verified in the containerized toolchain: `make validate`, the extended
-  live/static parity check for `site.json`, and the existing
-  `make test-admin-e2e` closed-loop pass (10/10, no regression).
+  live/static parity check for `site.json`, and `make test-admin-e2e`
+  (13/13), which now drives the Site identity flow itself — picks a design,
+  saves title/accent, reloads to confirm persistence, builds, and checks
+  both the live `/api/v1/site` response and the compiled `site.json` on
+  disk.
 
 - **2026-07-22 (issue audit & milestone reconciliation)** — Conducted a full audit of open GitHub issues against implementation status. Verified completion and closed 21 issues across M0 (content & acceptance lock), M1 (canonical storage & public API projections), M2 (declarative templates & projections), M3 (admin authoring GUI MVP), M4 (ingestion connectors & intake planner), and epic FELICIA-PAGES-01 (#40–#50). Added 3 new enhancement issues on GitHub: #57 (automatic journey date bounds derivation), #58 (offline timezone resolution via `tzf`), and #59 (optional local AI agent ticket artwork generator for missing media in admin GUI). Updated roadmap and delivery trackers accordingly.
 

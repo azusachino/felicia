@@ -40,6 +40,15 @@ const MEMENTO_TITLE = "Admin GUI E2E Memento"
 const ESSAY_SENTINEL = "Felicia admin GUI E2E authored essay -- sentinel 9f3c2b1a"
 const GOODS_NAME = "E2E Souvenir"
 
+// ADMIN-02 M2: site identity constants, kept identical to the constants of
+// the same name in scripts/e2e_admin_gui.py for the same reason as above —
+// that script's filesystem-side check on the compiled api/v1/site.json
+// looks for these exact values.
+const SITE_TITLE = "Admin GUI E2E Site"
+const SITE_DESIGN = "v4"
+const SITE_DESIGN_LABEL = "Atlas"
+const SITE_ACCENT = "#336699"
+
 test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
   let page: Page
   // The promoted candidate's label (e.g. "明治神宮"), captured once it's
@@ -143,6 +152,48 @@ test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
     expect(publicResponse.ok()).toBeTruthy()
     const publicMementos = (await publicResponse.json()) as Array<{ essay?: string; title?: string }>
     expect(publicMementos.some((memento) => memento.essay === ESSAY_SENTINEL && memento.title === MEMENTO_TITLE)).toBeTruthy()
+  })
+
+  // ADMIN-02 M2: the Site & Deploy page's new Site identity section (design
+  // picker, title, accent) — still on /#/site from the previous step.
+  test("sets and saves the site identity (design, title, accent)", async () => {
+    await expect(page.getByRole("heading", { name: "Site identity" })).toBeVisible()
+
+    const designCard = page.getByRole("button", { name: new RegExp(SITE_DESIGN_LABEL) })
+    await designCard.click()
+    await expect(designCard).toHaveClass(/selected/)
+
+    await page.getByPlaceholder("Site title").fill(SITE_TITLE)
+    await page.getByLabel("Accent color").fill(SITE_ACCENT)
+
+    await page.getByRole("button", { name: "Save site settings" }).click()
+    await expect(page.getByText("Saved.")).toBeVisible()
+  })
+
+  test("site identity survives a reload", async () => {
+    await page.reload()
+    await expect(page.getByRole("heading", { name: "Site identity" })).toBeVisible()
+
+    const designCard = page.getByRole("button", { name: new RegExp(SITE_DESIGN_LABEL) })
+    await expect(designCard).toHaveClass(/selected/)
+    await expect(page.getByPlaceholder("Site title")).toHaveValue(SITE_TITLE)
+    await expect(page.getByLabel("Accent color")).toHaveValue(SITE_ACCENT)
+  })
+
+  test("building reflects the saved site identity in the live public API", async () => {
+    await page.getByRole("button", { name: "Build site" }).click()
+    await expect(page.getByText("Build complete.")).toBeVisible({ timeout: 15_000 })
+
+    // Same live/static-parity contract the journeys/mementos checks above
+    // rely on: the compiled artifact (checked filesystem-side by
+    // scripts/e2e_admin_gui.py's assert_site_settings after this spec exits)
+    // must match what the live endpoint serves.
+    const siteResponse = await page.request.get(`${API_BASE}/api/v1/site`)
+    expect(siteResponse.ok()).toBeTruthy()
+    const site = (await siteResponse.json()) as { title?: string; design?: string; accent?: string }
+    expect(site.title).toBe(SITE_TITLE)
+    expect(site.design).toBe(SITE_DESIGN)
+    expect(site.accent).toBe(SITE_ACCENT)
   })
 
   // ADMIN-02 M1 02.1a: the lifecycle now steps backward too. This reuses the
