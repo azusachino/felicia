@@ -2,8 +2,11 @@ package main
 
 import (
 	"archive/zip"
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"image"
+	"image/jpeg"
 	"io"
 	"os"
 	"path/filepath"
@@ -14,6 +17,18 @@ import (
 
 	journeypackage "github.com/azusachino/felicia/core/journeypackage"
 )
+
+// fixtureJPEG returns a small but real JPEG. The static compiler resizes and
+// EXIF-strips every published derivative, so it fails the compile rather than
+// emit media it cannot decode — a placeholder string will not do.
+func fixtureJPEG(t *testing.T) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, image.NewGray(image.Rect(0, 0, 8, 8)), nil); err != nil {
+		t.Fatalf("encode fixture jpeg: %v", err)
+	}
+	return buf.Bytes()
+}
 
 func TestCLIImportAndStaticCompileEndToEnd(t *testing.T) {
 	root := t.TempDir()
@@ -72,7 +87,7 @@ func writeFixturePackage(t *testing.T, filename string) string {
 		"journey.yaml":     []byte("id: 00000000-0000-0000-0000-000000000001\njournal_id: 00000000-0000-0000-0000-000000000002\nslug: sample\ntitle: Sample journey\nplace: Kyoto\ndate_start: 2026-04-01\ndate_end: 2026-04-01\n"),
 		"mementos.yaml":    []byte("- id: 00000000-0000-0000-0000-000000000003\n  seq: 1\n  kind: transit\n  occurred_at: 2026-04-01T09:00:00+09:00\n  occurred_tz: Asia/Tokyo\n  state: published\n  title: Train ticket\n  place: Kyoto\n  geom: [135.7681, 35.0116]\n  kind_data:\n    operator: JR West\n  photos:\n    - id: 00000000-0000-0000-0000-000000000004\n      path: media/ticket.jpg\n      content_hash: sha256:ticket\n      seq: 1\n"),
 		"route.gpx":        []byte(`<?xml version="1.0"?><gpx><trk><trkseg><trkpt lat="35.0116" lon="135.7681"/><trkpt lat="35.6812" lon="139.7671"/></trkseg></trk></gpx>`),
-		"media/ticket.jpg": []byte("fixture image"),
+		"media/ticket.jpg": fixtureJPEG(t),
 	}
 	manifest := journeypackage.Manifest{SchemaVersion: journeypackage.CurrentSchemaVersion, PackageID: "sample-1"}
 	for name, data := range files {

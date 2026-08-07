@@ -1,6 +1,7 @@
 package publication
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -177,12 +178,21 @@ func (StaticCompiler) Compile(ctx context.Context, input Input, read ReadModel, 
 				if err != nil {
 					return report, fmt.Errorf("open media %s: %w", photo.ObjectKey, err)
 				}
-				if err := output.WriteMedia(photo.ObjectKey, reader); err != nil {
-					_ = reader.Close()
-					return report, fmt.Errorf("write media %s: %w", photo.ObjectKey, err)
+				// Originals are never published verbatim: the derivative is
+				// resized and stripped of EXIF (including GPS) here, the sole
+				// media egress point in the system. Sanitizing before the
+				// writer is reached means there is no code path that can emit
+				// an unprocessed original.
+				derivative, err := SanitizePublicImage(photo.ObjectKey, reader)
+				closeErr := reader.Close()
+				if err != nil {
+					return report, fmt.Errorf("sanitize media %s: %w", photo.ObjectKey, err)
 				}
-				if err := reader.Close(); err != nil {
-					return report, fmt.Errorf("close media %s: %w", photo.ObjectKey, err)
+				if closeErr != nil {
+					return report, fmt.Errorf("close media %s: %w", photo.ObjectKey, closeErr)
+				}
+				if err := output.WriteMedia(photo.ObjectKey, bytes.NewReader(derivative)); err != nil {
+					return report, fmt.Errorf("write media %s: %w", photo.ObjectKey, err)
 				}
 				report.Media++
 				photoProjection = append(photoProjection, NewStaticPhoto(photo))

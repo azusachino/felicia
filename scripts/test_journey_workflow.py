@@ -4,6 +4,7 @@
 import argparse
 import json
 import os
+import shutil
 import socket
 import subprocess
 import sys
@@ -13,10 +14,14 @@ import urllib.error
 import urllib.request
 from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
+from pathlib import Path
 from uuid import NAMESPACE_URL, uuid4, uuid5
 
 
 BASE_URL = os.getenv("API_BASE", "http://localhost:8080")
+REPO_ROOT = Path(__file__).resolve().parent.parent
+# A real JPEG to stand in for ingested media (see run_static_parity_check).
+DEMO_PHOTO = REPO_ROOT / "apps" / "web-public" / "public" / "kyoto_temple.jpg"
 
 
 @dataclass(frozen=True)
@@ -314,13 +319,14 @@ def run_static_parity_check(context: ServerContext) -> None:
 
         # The workflow above only exercises the admin API's metadata calls —
         # it registers a photo's object_key but never uploads real bytes.
-        # Plant a stand-in file at that object key so the compiler's media
-        # source (which reads real files off disk) can open it, the way a
-        # real ingest would have placed it there.
+        # Plant a real JPEG at that object key so the compiler's media source
+        # (which reads real files off disk) can open it, the way a real ingest
+        # would have placed it there. It has to be a genuinely decodable image:
+        # the compiler resizes and EXIF-strips every published derivative, and
+        # fails the compile rather than emit an original it cannot sanitize.
         photo_path = os.path.join(media_root, "workflow", "live.jpg")
         os.makedirs(os.path.dirname(photo_path), exist_ok=True)
-        with open(photo_path, "wb") as handle:
-            handle.write(b"felicia-workflow-test-photo")
+        shutil.copyfile(DEMO_PHOTO, photo_path)
 
         subprocess.run(["go", "build", "-o", cli_bin, "./cli/cmd/felicia"], check=True)
 
@@ -375,6 +381,24 @@ def run_static_parity_check(context: ServerContext) -> None:
             read_static_file(out_dir, f"api/v1/journeys/{ids.journey}/mementos.json"),
         )
         print("live/static public JSON parity passed")
+
+        # The published media must be the sanitized derivative, never the
+        # original bytes: public images are resized and EXIF-stripped
+        # (docs/direction.md, ADR-0026). The object key is unchanged, so the
+        # JSON projection above still resolves.
+        published_photo = os.path.join(out_dir, "workflow", "live.jpg")
+        expect(os.path.exists(published_photo), f"compiler did not publish {published_photo}")
+        with open(published_photo, "rb") as handle:
+            published_bytes = handle.read()
+        expect(
+            published_bytes != DEMO_PHOTO.read_bytes(),
+            "compiler published the original media bytes verbatim instead of a sanitized derivative",
+        )
+        expect(
+            b"Exif\x00\x00" not in published_bytes,
+            "published media still carries an EXIF segment",
+        )
+        print("published media is a sanitized derivative -- EXIF-strip check passed")
 
         # Negative case: a journey with only a draft memento has no public
         # projection anywhere. The shared PublishedMementos gate hides it
