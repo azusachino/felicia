@@ -78,6 +78,14 @@ type DraftPlan struct {
 	Stops             []domain.StopCandidate    `json:"stops"`
 	Mementos          []domain.MementoCandidate `json:"mementos"`
 	Issues            []Issue                   `json:"issues"`
+
+	// DateStart and DateEnd are the journey's date bounds as derived from the
+	// input's timestamps. They are a *default* for a journey whose dates the
+	// author has not set by hand — the planner itself writes nothing, so
+	// honouring that is the persistence step's job (Service.Apply). Both are
+	// zero when no dated source was supplied.
+	DateStart time.Time `json:"date_start,omitzero"`
+	DateEnd   time.Time `json:"date_end,omitzero"`
 }
 
 // DefaultConfig returns the deterministic planner defaults.
@@ -131,7 +139,48 @@ func BuildPlan(input PlanInput, config PlanConfig) (DraftPlan, error) {
 			plan.Mementos = append(plan.Mementos, mementoFromStop(stop, matched))
 		}
 	}
+	plan.DateStart, plan.DateEnd = dateBoundsFrom(input)
 	return plan, nil
+}
+
+// dateBoundsFrom returns the first and last calendar day covered by the
+// input's dated sources — route spans and samples, visits, and media capture
+// times — so a journey can default its dates to the trip it actually
+// contains instead of making the author type them in.
+//
+// Each bound is truncated in its *own* timestamp's location, so a photo taken
+// at 08:00 in Tokyo counts as that Tokyo day rather than the previous UTC one.
+// That is the best available answer until coordinates can be resolved to a
+// timezone (issue #58); sources that hand us a bare UTC timestamp are still
+// interpreted as UTC.
+func dateBoundsFrom(input PlanInput) (start, end time.Time) {
+	observe := func(at time.Time) {
+		if at.IsZero() {
+			return
+		}
+		day := time.Date(at.Year(), at.Month(), at.Day(), 0, 0, 0, 0, at.Location())
+		if start.IsZero() || day.Before(start) {
+			start = day
+		}
+		if end.IsZero() || day.After(end) {
+			end = day
+		}
+	}
+	for _, route := range input.Routes {
+		observe(route.From)
+		observe(route.To)
+		for _, point := range route.Points {
+			observe(point.At)
+		}
+	}
+	for _, visit := range input.Visits {
+		observe(visit.Arrive)
+		observe(visit.Depart)
+	}
+	for _, asset := range input.Media {
+		observe(asset.At)
+	}
+	return start, end
 }
 
 func withDefaults(config PlanConfig) PlanConfig {

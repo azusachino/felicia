@@ -105,7 +105,7 @@ func journeyPlanCommand(args []string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	plan, err := intake.NewService(nil).Plan(context.Background(), intake.PlanRequest{JourneyID: id, From: start, To: end, SourceFingerprint: fingerprint, Sources: intake.SourceSet{Routes: local.NewGPXSource(*gpxPath), Media: media}})
+	plan, err := intake.NewService(nil, nil).Plan(context.Background(), intake.PlanRequest{JourneyID: id, From: start, To: end, SourceFingerprint: fingerprint, Sources: intake.SourceSet{Routes: local.NewGPXSource(*gpxPath), Media: media}})
 	if err != nil {
 		return err
 	}
@@ -141,7 +141,7 @@ func journeyApplyCommand(args []string, output io.Writer) error {
 		return err
 	}
 	defer func() { _ = repo.Close() }()
-	if err := intake.NewService(repo).Apply(context.Background(), plan); err != nil {
+	if err := intake.NewService(repo, repo).Apply(context.Background(), plan); err != nil {
 		return err
 	}
 	return writeJSON(output, map[string]any{"schema": intake.PlanSchema, "mode": "apply", "journey_id": plan.JourneyID, "stops": len(plan.Stops)})
@@ -177,7 +177,7 @@ func journeyReviewCommand(args []string, output io.Writer) error {
 	if *expected > 0 {
 		patch.ExpectedRevision = expected
 	}
-	if err := intake.NewService(repo).Review(context.Background(), patch); err != nil {
+	if err := intake.NewService(repo, repo).Review(context.Background(), patch); err != nil {
 		return err
 	}
 	candidate, err := repo.GetStopCandidate(context.Background(), id)

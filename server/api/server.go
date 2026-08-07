@@ -143,7 +143,7 @@ func NewServer(repo domain.Repository, registry *domain.Registry, cache *CacheMa
 		cache:                 cache,
 		logger:                logger,
 		importer:              imp,
-		intakeService:         intake.NewService(candidateStore),
+		intakeService:         intake.NewService(candidateStore, repo),
 		transitSegmentLengthM: routeConfig.TransitSegmentLengthM,
 		requestTimeout:        routeConfig.RequestTimeout,
 		maxBodyBytes:          routeConfig.MaxBodyBytes,

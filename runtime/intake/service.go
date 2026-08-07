@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -37,11 +38,14 @@ type PlanRequest struct {
 // and review while keeping provider implementations outside the runtime.
 type Service struct {
 	Candidates ports.StopCandidateStore
+	// Journeys is only needed to persist derived date bounds; a composition
+	// that only plans or reviews may leave it nil.
+	Journeys ports.JourneySyncStore
 }
 
 // NewService creates an intake application service.
-func NewService(candidates ports.StopCandidateStore) *Service {
-	return &Service{Candidates: candidates}
+func NewService(candidates ports.StopCandidateStore, journeys ports.JourneySyncStore) *Service {
+	return &Service{Candidates: candidates, Journeys: journeys}
 }
 
 // Plan collects normalized source data and returns a read-only draft plan.
@@ -84,7 +88,48 @@ func (s *Service) Apply(ctx context.Context, plan DraftPlan) error {
 			return fmt.Errorf("apply stop %s: %w", plan.Stops[index].Identity.Key, err)
 		}
 	}
+	return s.applyDateBounds(ctx, plan)
+}
+
+// applyDateBounds fills in journey dates the author has not set by hand.
+//
+// The non-clobber decision is made here rather than in SQL because only one
+// provider guards these columns: PostgreSQL's upsert keeps an authored
+// date_start/date_end, SQLite's assigns unconditionally. Deciding in Go gives
+// both providers the same behaviour and matches how the importer already
+// protects an authored route (runtime/importer: authored "gps_route" is
+// skipped outright).
+func (s *Service) applyDateBounds(ctx context.Context, plan DraftPlan) error {
+	if s.Journeys == nil || (plan.DateStart.IsZero() && plan.DateEnd.IsZero()) {
+		return nil
+	}
+	journey, err := s.Journeys.GetJourney(ctx, plan.JourneyID)
+	if err != nil {
+		return fmt.Errorf("load journey %s for date bounds: %w", plan.JourneyID, err)
+	}
+
+	// Kept as two statements rather than `adopt(...) || adopt(...)`: the
+	// short-circuit would skip the second field whenever the first changed.
+	startChanged := adopt(&journey.DateStart, plan.DateStart, journey.AuthoredFields, "date_start")
+	endChanged := adopt(&journey.DateEnd, plan.DateEnd, journey.AuthoredFields, "date_end")
+	if !startChanged && !endChanged {
+		return nil
+	}
+	if err := s.Journeys.UpsertJourney(ctx, journey); err != nil {
+		return fmt.Errorf("apply date bounds to journey %s: %w", plan.JourneyID, err)
+	}
 	return nil
+}
+
+// adopt assigns a derived value to an ingested field, reporting whether it
+// actually changed anything. An authored field, an empty derivation, and a
+// value that already matches are all left alone.
+func adopt(current *time.Time, derived time.Time, authored []string, field string) bool {
+	if derived.IsZero() || slices.Contains(authored, field) || current.Equal(derived) {
+		return false
+	}
+	*current = derived
+	return true
 }
 
 // Review applies one explicit author decision to a private candidate.

@@ -70,6 +70,91 @@ func TestBuildPlanReportsMissingTimestampedPoints(t *testing.T) {
 	}
 }
 
+// Acceptance criterion 1 of issue #57: the bounds span every dated source,
+// not just one of them.
+func TestBuildPlanDerivesDateBoundsAcrossSources(t *testing.T) {
+	tokyo := time.FixedZone("JST", 9*60*60)
+	cases := []struct {
+		name             string
+		input            PlanInput
+		wantStart        string
+		wantEnd          string
+		wantZeroBoundary bool
+	}{
+		{
+			name: "route samples, visits and media together",
+			input: PlanInput{
+				Routes: []domain.Route{{Points: []domain.TrackPoint{
+					{At: time.Date(2026, 4, 2, 8, 0, 0, 0, time.UTC)},
+					{At: time.Date(2026, 4, 3, 8, 0, 0, 0, time.UTC)},
+				}}},
+				Visits: []domain.Visit{{
+					Arrive: time.Date(2026, 4, 1, 22, 0, 0, 0, time.UTC),
+					Depart: time.Date(2026, 4, 2, 1, 0, 0, 0, time.UTC),
+				}},
+				Media: []domain.MediaAsset{{At: time.Date(2026, 4, 5, 12, 0, 0, 0, time.UTC)}},
+			},
+			wantStart: "2026-04-01", wantEnd: "2026-04-05",
+		},
+		{
+			// Route.From/To carry the span even when a source hands us no
+			// individual samples.
+			name: "route span without samples",
+			input: PlanInput{Routes: []domain.Route{{
+				From: time.Date(2026, 6, 10, 0, 0, 0, 0, time.UTC),
+				To:   time.Date(2026, 6, 12, 0, 0, 0, 0, time.UTC),
+			}}},
+			wantStart: "2026-06-10", wantEnd: "2026-06-12",
+		},
+		{
+			// 08:00 in Tokyo is the previous day in UTC; the journey should
+			// take the day the author actually lived, not the UTC one.
+			name: "a local morning stays on its own calendar day",
+			input: PlanInput{Media: []domain.MediaAsset{
+				{At: time.Date(2026, 7, 1, 8, 0, 0, 0, tokyo)},
+			}},
+			wantStart: "2026-07-01", wantEnd: "2026-07-01",
+		},
+		{
+			// Zero timestamps carry no information and must not drag the
+			// bounds back to the zero year.
+			name: "undated sources are ignored",
+			input: PlanInput{
+				Routes: []domain.Route{{Points: []domain.TrackPoint{{}, {At: time.Date(2026, 5, 4, 6, 0, 0, 0, time.UTC)}}}},
+				Media:  []domain.MediaAsset{{}},
+			},
+			wantStart: "2026-05-04", wantEnd: "2026-05-04",
+		},
+		{
+			name:             "no dated source at all leaves the bounds unset",
+			input:            PlanInput{Routes: []domain.Route{{Points: []domain.TrackPoint{{}}}}},
+			wantZeroBoundary: true,
+		},
+	}
+
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			testCase.input.JourneyID = uuid.New()
+			plan, err := BuildPlan(testCase.input, DefaultConfig())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if testCase.wantZeroBoundary {
+				if !plan.DateStart.IsZero() || !plan.DateEnd.IsZero() {
+					t.Fatalf("bounds = %s..%s, want both unset", plan.DateStart, plan.DateEnd)
+				}
+				return
+			}
+			if got := plan.DateStart.Format("2006-01-02"); got != testCase.wantStart {
+				t.Errorf("DateStart = %s, want %s", got, testCase.wantStart)
+			}
+			if got := plan.DateEnd.Format("2006-01-02"); got != testCase.wantEnd {
+				t.Errorf("DateEnd = %s, want %s", got, testCase.wantEnd)
+			}
+		})
+	}
+}
+
 func sourcePoint(longitude, latitude float64) *orb.Point {
 	point := orb.Point{longitude, latitude}
 	return &point
