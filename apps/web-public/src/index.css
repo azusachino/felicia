@@ -383,8 +383,11 @@ button {
   @apply flex justify-between border-t border-black/20 pt-3 font-semibold;
 }
 
+/* Kraft swing-tag stock: browner and lower-value than the ticket's pale-gold
+   thermal paper, so goods still read as a different material without leaving
+   the one warm amber → orange scale (docs/research/ux-restyle.md). */
 .goods-face {
-  background: linear-gradient(135deg, #fef3c7, #fb7185 48%, #7c3aed);
+  background: linear-gradient(135deg, #e7d3ae, #cba876 52%, #b08a58);
   color: #241203;
 }
 
