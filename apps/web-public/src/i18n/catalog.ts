@@ -16,6 +16,7 @@ export type MessageKey =
   | "ui.journeys"
   | "ui.all"
   | "ui.story"
+  | "ui.close"
 
 export type Catalog = Record<MessageKey, string>
 
@@ -36,6 +37,7 @@ export const catalogs: Record<Locale, Catalog> = {
     "ui.journeys": "旅の記録",
     "ui.all": "すべて表示",
     "ui.story": "物語",
+    "ui.close": "閉じる",
   },
   en: {
     "design.map": "Map",
@@ -53,6 +55,7 @@ export const catalogs: Record<Locale, Catalog> = {
     "ui.journeys": "Journeys",
     "ui.all": "View all",
     "ui.story": "The Story",
+    "ui.close": "Close",
   },
   zh: {
     "design.map": "地图",
@@ -70,6 +73,7 @@ export const catalogs: Record<Locale, Catalog> = {
     "ui.journeys": "旅程",
     "ui.all": "查看全部",
     "ui.story": "故事",
+    "ui.close": "关闭",
   },
 }
 

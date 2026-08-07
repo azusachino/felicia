@@ -88,6 +88,20 @@ button {
   --ctrl-invert: 0;
 }
 
+/* Visually hidden but screen-reader-audible — used for live-region
+   announcements (e.g. v1's "memento selected" status). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 0;
+  clip: rect(0, 0, 0, 0);
+}
+
 .maplibregl-ctrl-group {
   background: var(--ctrl-bg) !important;
   border: 1px solid var(--border) !important;
@@ -290,6 +304,19 @@ button {
   @apply flex min-h-full flex-col gap-5;
 }
 
+/* Sticky within .detail-panel's own scroll (there's no separate inner
+   scroll wrapper here, unlike v4) so it stays reachable while scrolled. */
+.detail-close {
+  @apply sticky top-0 z-10 flex h-8 w-8 shrink-0 items-center justify-center self-end rounded-full text-base leading-none;
+  color: var(--text);
+  background: var(--ctrl-bg);
+  border: 1px solid var(--border);
+}
+
+.detail-close:hover {
+  background: var(--hover);
+}
+
 .section-head {
   @apply flex flex-col gap-2;
 }
@@ -436,6 +463,17 @@ button {
 
 .map-marker--stamp {
   @apply border-red-300;
+}
+
+/* Shared-element open (ADR-0031): a transient stand-in for the clicked
+   imperative marker, positioned via JS (map.project) in viewport space so
+   it can crossfade into the detail panel's .stub-card regardless of DOM
+   parent. Decorative — aria-hidden, and never receives pointer input. */
+.marker-ghost {
+  position: fixed;
+  z-index: 40;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
 }
 
 /* v3 (techo) place markers — created imperatively, so styled globally. A place
