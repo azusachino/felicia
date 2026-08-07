@@ -1,8 +1,10 @@
 package publication
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"image/jpeg"
 	"io"
 	"strings"
 	"testing"
@@ -110,15 +112,24 @@ func (f *fakeReadModel) GetSiteSettings(_ context.Context, journalID uuid.UUID) 
 	return settings, nil
 }
 
+// fakeMediaSource serves a real (if tiny) JPEG for every key: the compiler
+// sanitizes media it reads, so a stand-in must be a decodable image.
 type fakeMediaSource struct{}
 
 func (fakeMediaSource) Open(context.Context, string) (io.ReadCloser, error) {
-	return io.NopCloser(strings.NewReader("media-bytes")), nil
+	var encoded bytes.Buffer
+	if err := jpeg.Encode(&encoded, gradient(8, 8), nil); err != nil {
+		return nil, err
+	}
+	return io.NopCloser(bytes.NewReader(encoded.Bytes())), nil
 }
 
 type memoryArtifactWriter struct {
 	json  map[string][]byte
 	media []string
+	// mediaBytes retains what was written so a test can prove the artifact
+	// holds the sanitized derivative rather than the original.
+	mediaBytes map[string][]byte
 }
 
 func (w *memoryArtifactWriter) WriteJSON(path string, value any) error {
@@ -134,9 +145,14 @@ func (w *memoryArtifactWriter) WriteJSON(path string, value any) error {
 }
 
 func (w *memoryArtifactWriter) WriteMedia(path string, source io.Reader) error {
-	if _, err := io.ReadAll(source); err != nil {
+	data, err := io.ReadAll(source)
+	if err != nil {
 		return err
 	}
+	if w.mediaBytes == nil {
+		w.mediaBytes = map[string][]byte{}
+	}
+	w.mediaBytes[path] = data
 	w.media = append(w.media, path)
 	return nil
 }
@@ -234,5 +250,77 @@ func TestCompileWritesSiteSettingsWithDefaultsOnFreshDB(t *testing.T) {
 	want := NewStaticSiteSettings(domain.DefaultSiteSettings(journalID))
 	if got != want {
 		t.Errorf("site.json = %+v, want defaults %+v", got, want)
+	}
+}
+
+// staticMediaSource serves the same fixed bytes for every requested key.
+type staticMediaSource struct{ data []byte }
+
+func (s staticMediaSource) Open(context.Context, string) (io.ReadCloser, error) {
+	return io.NopCloser(bytes.NewReader(s.data)), nil
+}
+
+// readModelWithPublishedPhoto builds the smallest read model that drives the
+// compiler's media loop: one published memento carrying one photo.
+func readModelWithPublishedPhoto(objectKey string) *fakeReadModel {
+	journalID := uuid.New()
+	journey := &domain.Journey{ID: uuid.New(), JournalID: journalID, Slug: "kyoto", Title: "Kyoto", Place: "Kyoto",
+		DateStart: time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC), DateEnd: time.Date(2026, 7, 3, 0, 0, 0, 0, time.UTC)}
+	memento := &domain.Memento{ID: uuid.New(), JourneyID: journey.ID, Kind: "goods", Seq: 1,
+		OccurredAt: time.Date(2026, 7, 2, 12, 0, 0, 0, time.UTC), OccurredTZ: "Asia/Tokyo",
+		Geom: orb.Point{135.7, 35.0}, Title: "stub", Place: "Gion", State: domain.MementoPublished}
+	photo := &domain.MementoPhoto{ID: uuid.New(), MementoID: memento.ID, ObjectKey: objectKey, ContentHash: "sha256:fixture", Seq: 1}
+	return &fakeReadModel{
+		journeys: []*domain.Journey{journey},
+		mementos: map[uuid.UUID][]*domain.Memento{journey.ID: {memento}},
+		photos:   map[uuid.UUID][]*domain.MementoPhoto{memento.ID: {photo}},
+		journal:  &domain.Journal{ID: journalID},
+	}
+}
+
+// TestCompileWritesSanitizedDerivativeNotTheOriginal is the compiler-level half
+// of the privacy invariant: the artifact must hold the stripped derivative, and
+// the object key must be unchanged so the JSON projection still resolves.
+func TestCompileWritesSanitizedDerivativeNotTheOriginal(t *testing.T) {
+	const objectKey = "media/kyoto.jpg"
+	original := jpegWithGPSExif(t, gradient(64, 48), 1)
+	read := readModelWithPublishedPhoto(objectKey)
+	writer := &memoryArtifactWriter{}
+
+	report, err := StaticCompiler{}.Compile(context.Background(), Input{}, read, staticMediaSource{data: original}, writer)
+	if err != nil {
+		t.Fatalf("compile: %v", err)
+	}
+	if report.Media != 1 {
+		t.Fatalf("report.Media = %d, want 1", report.Media)
+	}
+
+	published, ok := writer.mediaBytes[objectKey]
+	if !ok {
+		t.Fatalf("compile did not write %s (wrote %v)", objectKey, writer.media)
+	}
+	if bytes.Equal(published, original) {
+		t.Fatal("compile copied the original bytes verbatim")
+	}
+	if _, hasExif := jpegExifTIFF(published); hasExif {
+		t.Error("published media still carries an APP1/Exif segment")
+	}
+	if bytes.Contains(published, gpsLatitudeSentinel) || bytes.Contains(published, gpsLongitudeSentinel) {
+		t.Error("published media still carries the GPS coordinates")
+	}
+}
+
+// TestCompileFailsOnUnsanitizableMedia: packaging must fail rather than publish
+// a format whose metadata we cannot strip.
+func TestCompileFailsOnUnsanitizableMedia(t *testing.T) {
+	read := readModelWithPublishedPhoto("media/scan.tiff")
+	writer := &memoryArtifactWriter{}
+
+	_, err := StaticCompiler{}.Compile(context.Background(), Input{}, read, staticMediaSource{data: []byte("II*\x00")}, writer)
+	if err == nil {
+		t.Fatal("compile succeeded, want a failure instead of publishing unprocessed media")
+	}
+	if len(writer.media) != 0 {
+		t.Errorf("compile wrote media %v, want none", writer.media)
 	}
 }

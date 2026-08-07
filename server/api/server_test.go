@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"image"
+	"image/jpeg"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -23,6 +25,17 @@ import (
 	"github.com/azusachino/felicia/runtime/importer"
 	"github.com/azusachino/felicia/server/api"
 )
+
+// encodeTestJPEG returns a small but real JPEG for tests that need media the
+// publication compiler can actually decode and sanitize.
+func encodeTestJPEG(t *testing.T) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, image.NewGray(image.Rect(0, 0, 8, 8)), nil); err != nil {
+		t.Fatalf("encode test jpeg: %v", err)
+	}
+	return buf.Bytes()
+}
 
 func loadKinds(t *testing.T) *domain.Registry {
 	t.Helper()
@@ -1084,7 +1097,10 @@ func TestServerCompile(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(mediaRoot, "img"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(mediaRoot, "img", "1.jpg"), []byte("fake-photo-bytes"), 0o644); err != nil {
+	// A genuinely decodable JPEG, not a placeholder string: the compiler
+	// resizes and EXIF-strips every published derivative and fails the compile
+	// rather than emit media it cannot sanitize.
+	if err := os.WriteFile(filepath.Join(mediaRoot, "img", "1.jpg"), encodeTestJPEG(t), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	outDir := t.TempDir()
