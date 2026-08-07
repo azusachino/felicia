@@ -48,6 +48,38 @@
 
   $: t = (value: L | MessageKey) => (typeof value === "string" ? message(lang, value) : value[lang])
   $: stationName = (s: Station) => (lang === "en" ? s.name : s.ja)
+
+  // kind_data is the template registry's untyped bag (ADR-0006): read it
+  // defensively so a memento authored with only its required field still
+  // renders a deliberate stub rather than an empty box.
+  $: kindText = (key: string): string => {
+    const value = selected?.kindData?.[key]
+    return typeof value === "string" ? value.trim() : ""
+  }
+  // `station` / `venue` fields carry `{ name, coords }` rather than a bare string.
+  $: kindName = (key: string): string => {
+    const value = selected?.kindData?.[key]
+    if (typeof value === "string") return value.trim()
+    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+      const name = (value as Record<string, unknown>).name
+      if (typeof name === "string") return name.trim()
+    }
+    return ""
+  }
+  // Receipt `items` is authored as free text; accept a list too.
+  $: kindLines = (key: string): string[] => {
+    const value = selected?.kindData?.[key]
+    const raw: unknown[] = Array.isArray(value) ? value : kindText(key).split("\n")
+    return raw.map((line) => (typeof line === "string" ? line.trim() : "")).filter(Boolean)
+  }
+
+  function linkHost(url: string): string {
+    try {
+      return new URL(url).host
+    } catch {
+      return ""
+    }
+  }
   $: selectedJourney = journeys.find((j) => j.id === selectedJourneyId) ?? journeys[0]
   $: countLabel = (n: number) => (lang === "en" ? `${n} mementos` : `${n}件`)
   $: liveMessage = selected ? `${t(kindLabel[selected.kind])}: ${t(selected.title)}` : ""
@@ -451,18 +483,93 @@
                 </div>
               </div>
             {:else if selected.kind === "stamp"}
-              <div class="stamp-face">
-                <span>御朱印</span>
-                <strong>{t(selected.place)}</strong>
-                <small>{t(selected.date)}</small>
+              <!-- 御朱印 — ink on washi; the vermilion seal block is the signature. -->
+              <div class="washi-face">
+                <span class="washi-seal" aria-hidden="true">御朱印</span>
+                <p class="washi-sub">{kindText("shrine_or_temple") || t(selected.place)}</p>
+                <strong class="washi-name">{kindText("name") || t(selected.title)}</strong>
+                {#if kindText("deity")}
+                  <p class="washi-deity">{kindText("deity")}</p>
+                {/if}
+                <small class="washi-date">{t(selected.date)}</small>
+              </div>
+            {:else if selected.kind === "receipt"}
+              <!-- Thermal roll — narrow measure, monospace, genuinely torn hem. -->
+              <div class="thermal-face">
+                <div class="thermal-head">
+                  <strong>{kindText("shop") || t(selected.vendor) || t(selected.title)}</strong>
+                  <span>{t(selected.place)}</span>
+                </div>
+                <div class="thermal-rule"></div>
+                <ul class="thermal-items">
+                  <li class="thermal-date"><span>{t(selected.date)}</span></li>
+                  {#each kindLines("items") as item, index (`${item}:${index}`)}
+                    <li><span>{item}</span></li>
+                  {/each}
+                </ul>
+                <div class="thermal-total">
+                  <b>{selected.price || kindText("total")}</b>
+                </div>
+                <div class="thermal-code" aria-hidden="true"></div>
+                <p class="thermal-foot">{t(selected.title)}</p>
+              </div>
+            {:else if selected.kind === "live"}
+              <!-- Admission stock — the tear-off stub is cut out of the card. -->
+              <div class="admission-face">
+                <div class="admission-main">
+                  <p class="admission-venue">{kindName("venue") || t(selected.place)}</p>
+                  <strong class="admission-artist">{kindText("artist") || t(selected.title)}</strong>
+                  <div class="admission-meta">
+                    <span>{t(selected.date)}</span>
+                    {#if kindText("seat")}
+                      <span>{kindText("seat")}</span>
+                    {/if}
+                  </div>
+                  {#if linkHost(kindText("setlist_url"))}
+                    <a class="admission-link" href={kindText("setlist_url")} target="_blank" rel="noopener noreferrer">
+                      {linkHost(kindText("setlist_url"))} ↗
+                    </a>
+                  {/if}
+                </div>
+                <div class="admission-stub">
+                  <span class="admission-stub-kind">{t(kindLabel.live)}</span>
+                  <span class="admission-stub-name">{kindText("artist") || t(selected.title)}</span>
+                  <span class="admission-stub-seat">{kindText("seat") || t(selected.date)}</span>
+                </div>
+              </div>
+            {:else if selected.kind === "souvenir"}
+              <!-- Postcard back — divider rule, stamp box, postmark. -->
+              <div class="postcard-face">
+                <div class="postcard-note">
+                  <p class="postcard-dateline">{[t(selected.place), t(selected.date)].filter(Boolean).join(" — ")}</p>
+                  {#if kindText("note")}
+                    <p class="postcard-message">{kindText("note")}</p>
+                  {:else}
+                    <span class="postcard-rules" aria-hidden="true"></span>
+                  {/if}
+                </div>
+                <div class="postcard-address">
+                  <span class="postcard-stamp" aria-hidden="true">〒</span>
+                  <span class="postcard-postmark" aria-hidden="true"></span>
+                  <strong>{kindText("name") || t(selected.title)}</strong>
+                  <span>{kindText("origin") || t(selected.place)}</span>
+                </div>
               </div>
             {:else}
-              <div class="goods-face">
-                <span>{t(kindLabel.goods)}</span>
-                <strong>{t(selected.title)}</strong>
-                {#if t(selected.vendor) || selected.price}
-                  <small>{[t(selected.vendor), selected.price].filter(Boolean).join(" · ")}</small>
-                {/if}
+              <!-- Goods — kraft swing tag; the hole and the clipped shoulders are real. -->
+              <div class="tag-face">
+                <span class="tag-eyelet" aria-hidden="true"></span>
+                <p class="tag-kind">{t(kindLabel.goods)}</p>
+                <strong class="tag-name">{kindText("name") || t(selected.title)}</strong>
+                <p class="tag-source">
+                  {[kindText("shop") || t(selected.vendor), kindText("manufacturer")].filter(Boolean).join(" · ") || t(selected.place)}
+                </p>
+                <div class="tag-foot">
+                  <span>{t(selected.date)}</span>
+                  {#if selected.price}
+                    <b>{selected.price}</b>
+                  {/if}
+                </div>
               </div>
             {/if}
           </div>
