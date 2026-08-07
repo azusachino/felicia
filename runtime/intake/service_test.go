@@ -52,10 +52,30 @@ func (s *serviceStore) ApplyStopReview(_ context.Context, _ *domain.StopReviewPa
 	return nil
 }
 
+// serviceJourneyStore is the narrow JourneySyncStore seam Apply uses to
+// persist derived date bounds.
+type serviceJourneyStore struct {
+	journey *domain.Journey
+	upserts int
+}
+
+func (s *serviceJourneyStore) GetJourney(_ context.Context, id uuid.UUID) (*domain.Journey, error) {
+	if s.journey == nil || s.journey.ID != id {
+		return nil, domain.ErrNotFound
+	}
+	return s.journey, nil
+}
+
+func (s *serviceJourneyStore) UpsertJourney(_ context.Context, journey *domain.Journey) error {
+	s.journey = journey
+	s.upserts++
+	return nil
+}
+
 func TestServicePlansAppliesAndReviewsThroughPorts(t *testing.T) {
 	journeyID := uuid.New()
 	store := &serviceStore{candidates: make(map[string]*domain.StopCandidate)}
-	service := NewService(store)
+	service := NewService(store, nil)
 	plan, err := service.Plan(context.Background(), PlanRequest{JourneyID: journeyID, Sources: SourceSet{Routes: serviceRouteSource{}}})
 	if err != nil {
 		t.Fatal(err)
@@ -74,5 +94,65 @@ func TestServicePlansAppliesAndReviewsThroughPorts(t *testing.T) {
 	}
 	if store.reviews != 1 {
 		t.Fatalf("reviews = %d, want 1", store.reviews)
+	}
+}
+
+// Acceptance criterion 2 of issue #57: a date the author set by hand survives
+// ingest, while the one they left alone picks up the derived value. Asserted
+// at the runtime seam so both providers inherit the same behaviour — SQLite's
+// journey upsert has no per-field guard of its own.
+func TestServiceApplyRespectsAuthoredDateBounds(t *testing.T) {
+	authored := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	derivedStart := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
+
+	cases := []struct {
+		name           string
+		authoredFields []string
+		wantStart      time.Time
+		wantUpserts    int
+	}{
+		{"unauthored dates adopt the derivation", nil, derivedStart, 1},
+		{"an authored date_start is preserved", []string{"date_start"}, authored, 1},
+		{"authoring both dates writes nothing at all", []string{"date_start", "date_end"}, authored, 0},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			journeyID := uuid.New()
+			journeys := &serviceJourneyStore{journey: &domain.Journey{
+				ID: journeyID, DateStart: authored, DateEnd: authored, AuthoredFields: testCase.authoredFields,
+			}}
+			service := NewService(&serviceStore{candidates: make(map[string]*domain.StopCandidate)}, journeys)
+
+			plan, err := service.Plan(context.Background(), PlanRequest{JourneyID: journeyID, Sources: SourceSet{Routes: serviceRouteSource{}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !plan.DateStart.Equal(derivedStart) {
+				t.Fatalf("plan.DateStart = %s, want the route's day %s", plan.DateStart, derivedStart)
+			}
+			if err := service.Apply(context.Background(), plan); err != nil {
+				t.Fatal(err)
+			}
+			if got := journeys.journey.DateStart; !got.Equal(testCase.wantStart) {
+				t.Errorf("journey.DateStart = %s, want %s", got, testCase.wantStart)
+			}
+			if journeys.upserts != testCase.wantUpserts {
+				t.Errorf("journey upserts = %d, want %d", journeys.upserts, testCase.wantUpserts)
+			}
+		})
+	}
+}
+
+// A composition that never wired a journey store (the CLI's plan-only path)
+// must still apply cleanly rather than fail or panic.
+func TestServiceApplyWithoutJourneyStoreSkipsDateBounds(t *testing.T) {
+	store := &serviceStore{candidates: make(map[string]*domain.StopCandidate)}
+	service := NewService(store, nil)
+	plan, err := service.Plan(context.Background(), PlanRequest{JourneyID: uuid.New(), Sources: SourceSet{Routes: serviceRouteSource{}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := service.Apply(context.Background(), plan); err != nil {
+		t.Fatalf("apply without a journey store: %v", err)
 	}
 }
