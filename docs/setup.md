@@ -14,10 +14,27 @@
 ```bash
 nix develop         # optional: enter the repository toolchain shell
 make help           # list targets
+make admin          # start the local admin GUI (authoring surface)
 make docs           # live-preview the docs (see below)
 make check          # formatting + vet + lint + tests — before commit
 make validate       # check + build             — before PR
 ```
+
+## Authoring locally
+
+`make admin` is the entry point for the authoring surface. It builds and starts
+the API on SQLite, then runs the `web-admin` dev server against it through
+Vite's `/api` proxy, and prints the URLs:
+
+- **admin GUI** — `http://127.0.0.1:5174/`
+- **site preview** — `http://127.0.0.1:8081/`, serving whatever the Site &
+  Deploy page's Build action last compiled
+
+Both bind loopback only, and the authored database defaults to
+`.felicia/admin.sqlite` — per [ADR-0025](adr/0025-static-and-self-hosted-modes.md)
+the admin never runs on a server and the journal never leaves the machine. Only
+the compiled `dist/` is publishable. Override with `--api-port`, `--gui-port`,
+or `--db` (or `PORT` / `ADMIN_GUI_PORT` / `DATABASE_PATH`).
 
 `make check` covers every Go workspace module, UV feature-contract tests, and repository
 formatting. `make web-check` adds frontend type, lint, and formatting checks.
