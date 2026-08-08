@@ -31,7 +31,7 @@ Vite's `/api` proxy, and prints the URLs:
   Deploy page's Build action last compiled
 
 Both bind loopback only, and the authored database defaults to
-`.felicia/admin.sqlite` — per [ADR-0025](adr/0025-static-and-self-hosted-modes.md)
+`.felicia/local.sqlite` — per [ADR-0025](adr/0025-static-and-self-hosted-modes.md)
 the admin never runs on a server and the journal never leaves the machine. Only
 the compiled `dist/` is publishable. Override with `--api-port`, `--gui-port`,
 or `--db` (or `PORT` / `ADMIN_GUI_PORT` / `DATABASE_PATH`).

@@ -12,7 +12,9 @@ Two deliberate choices:
     authoring session has no such need and must not be reachable from the LAN.
   * The database defaults under `.felicia/` (gitignored) instead of the repo
     root. The authored journal is exactly the thing ADR-0025 says never leaves
-    the machine, so its default location must not be a committable path.
+    the machine, so its default location must not be a committable path. It is
+    the same default `scripts/dev.py` uses, so authoring here and then serving
+    the public reader with `make dev` reads one journal rather than two.
 
 The GUI talks to the API through Vite's `/api` proxy (VITE_API_PROXY), so the
 browser sees one origin and the server needs no CORS wiring — the same shape the
@@ -35,7 +37,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 WEB_ADMIN = ROOT / "apps" / "web-admin"
 API_BINARY = Path(tempfile.gettempdir()) / f"felicia-admin-api-{os.getpid()}"
-DEFAULT_DATABASE = ROOT / ".felicia" / "admin.sqlite"
+DEFAULT_DATABASE = ROOT / ".felicia" / "local.sqlite"
 LOOPBACK = "127.0.0.1"
 
 
