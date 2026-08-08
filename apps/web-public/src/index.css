@@ -70,6 +70,7 @@ button {
   --accent-ink: var(--accent, #fdba74);
   --ctrl-bg: rgba(15, 23, 42, 0.82);
   --ctrl-invert: 1;
+  --stub-shade: rgba(0, 0, 0, 0.5);
 }
 
 .app-shell.theme-light {
@@ -86,6 +87,7 @@ button {
   --accent-ink: var(--accent, #ea580c);
   --ctrl-bg: rgba(255, 255, 255, 0.92);
   --ctrl-invert: 0;
+  --stub-shade: rgba(60, 40, 20, 0.3);
 }
 
 /* Visually hidden but screen-reader-audible — used for live-region
@@ -383,7 +385,10 @@ button {
   @apply flex justify-between border-t border-black/20 pt-3 font-semibold;
 }
 
-/* Kraft swing-tag stock: browner and lower-value than the ticket's pale-gold
+/* v2's generic stamp/goods faces. v1 renders a designed material per kind
+   instead — see "v1 per-kind stub materials" below.
+
+   Kraft swing-tag stock: browner and lower-value than the ticket's pale-gold
    thermal paper, so goods still read as a different material without leaving
    the one warm amber → orange scale (docs/research/ux-restyle.md). */
 .goods-face {
@@ -413,6 +418,372 @@ button {
 
 .stamp-face strong {
   @apply border-y-4 border-red-700 py-5 text-center text-red-800;
+}
+
+/* v1 per-kind stub materials ---------------------------------------------------
+   Warm paper is the system: every kind is a designed paper object and the kind
+   is read from form and material, never from a coloured pill. `transit` keeps
+   `.ticket-face` above unchanged — it is the exemplar the other five are
+   siblings of. Warm in both themes, like the ticket.
+
+   Three of them are genuinely *cut*: the swing tag's hole, the receipt's torn
+   hem and the admission perforation are clip-path/mask cut-outs in the
+   silhouette, not lines drawn on a rectangle. That means the card can no longer
+   draw a rounded box + rectangular shadow behind them; the shadow moves onto
+   the card as a filter so it follows the real edge. */
+
+.stub-card:has(.tag-face),
+.stub-card:has(.thermal-face),
+.stub-card:has(.admission-face) {
+  overflow: visible;
+  border-radius: 0;
+  box-shadow: none;
+  filter: drop-shadow(0 0.75rem 1.4rem var(--stub-shade));
+}
+
+/* stamp — ink on washi ------------------------------------------------------ */
+
+.washi-face {
+  @apply relative min-h-48 py-6 pl-6 pr-28;
+  background-color: #f1ebdd;
+  /* Paper tooth: two crossed fibre rulings plus an uneven sheet tone. */
+  background-image:
+    repeating-linear-gradient(91deg, rgba(122, 92, 48, 0.055) 0 1px, transparent 1px 6px), repeating-linear-gradient(2deg, rgba(122, 92, 48, 0.04) 0 1px, transparent 1px 9px),
+    radial-gradient(120% 90% at 12% 0%, rgba(255, 253, 246, 0.9), transparent 62%), radial-gradient(90% 80% at 100% 100%, rgba(168, 138, 88, 0.22), transparent 72%);
+  color: #241a10;
+}
+
+.washi-seal {
+  @apply absolute grid h-[4.4rem] w-[4.4rem] place-items-center text-lg font-bold leading-none;
+  top: 1.3rem;
+  right: 1.3rem;
+  background: #b0342a;
+  border: 0.2rem solid #b0342a;
+  /* The paper-coloured gutter inside the frame is what makes it read as a seal. */
+  box-shadow: inset 0 0 0 0.09rem rgba(242, 236, 223, 0.92);
+  color: #f6efe0;
+  letter-spacing: 0.1em;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  transform: rotate(-1.5deg);
+}
+
+.washi-sub {
+  @apply m-0 text-xs font-semibold uppercase tracking-[0.2em];
+  color: rgba(36, 26, 16, 0.62);
+}
+
+.washi-name {
+  @apply mt-6 block font-mincho text-4xl font-black leading-tight;
+  color: #1c1208;
+  /* A hair of ink bleed — brushed rather than typeset. */
+  text-shadow: 0 0 1px rgba(28, 18, 8, 0.4);
+}
+
+.washi-deity {
+  @apply m-0 mt-3 font-mincho text-sm;
+  color: rgba(36, 26, 16, 0.72);
+}
+
+.washi-date {
+  @apply mt-5 block text-xs font-semibold tracking-[0.14em];
+  color: rgba(36, 26, 16, 0.55);
+}
+
+/* goods — kraft swing tag --------------------------------------------------- */
+
+.tag-face {
+  @apply relative flex min-h-48 flex-col px-6 pb-6 pt-14;
+  background-color: #c29a68;
+  background-image:
+    repeating-linear-gradient(114deg, rgba(74, 46, 18, 0.07) 0 2px, transparent 2px 9px), repeating-linear-gradient(-38deg, rgba(255, 247, 233, 0.09) 0 1px, transparent 1px 6px),
+    radial-gradient(120% 70% at 50% 0%, rgba(246, 226, 192, 0.55), transparent 58%), radial-gradient(90% 80% at 100% 100%, rgba(66, 40, 14, 0.2), transparent 70%);
+  color: #35200c;
+  /* Clipped shoulders give the swing-tag silhouette… */
+  clip-path: polygon(1.5rem 0, calc(100% - 1.5rem) 0, 100% 1.5rem, 100% 100%, 0 100%, 0 1.5rem);
+  /* …and the string hole is punched clean through the tag and its eyelet. */
+  mask-image: radial-gradient(circle at 50% 1.65rem, transparent 0 0.36rem, #000 0.42rem);
+  mask-repeat: no-repeat;
+}
+
+.tag-eyelet {
+  @apply pointer-events-none absolute h-6 w-6 rounded-full;
+  top: 0.9rem;
+  left: 50%;
+  margin-left: -0.75rem;
+  background: radial-gradient(circle at 35% 30%, #f4ead8, #9b8360 55%, #6b5636);
+  box-shadow: 0 0.05rem 0.12rem rgba(40, 24, 8, 0.5);
+}
+
+.tag-kind {
+  @apply m-0 text-[0.68rem] font-bold uppercase tracking-[0.22em];
+  color: rgba(53, 32, 12, 0.68);
+}
+
+.tag-name {
+  @apply mt-3 block text-3xl font-black leading-tight;
+  color: #2a190a;
+}
+
+.tag-source {
+  @apply m-0 mt-2 text-sm font-semibold;
+  color: rgba(53, 32, 12, 0.75);
+}
+
+.tag-foot {
+  @apply mt-auto flex items-baseline justify-between gap-3 pt-4 text-xs font-semibold uppercase tracking-[0.16em];
+  border-top: 1px solid rgba(66, 40, 14, 0.35);
+  color: rgba(53, 32, 12, 0.72);
+}
+
+.tag-foot b {
+  @apply text-base tracking-normal;
+  color: #2a190a;
+}
+
+/* receipt — thermal roll ----------------------------------------------------- */
+
+.thermal-face {
+  /* A zigzag tile is contiguous when its width ≈ 1.93 × its depth. */
+  --tear: 0.5rem;
+  --zig: 0.96rem;
+
+  @apply relative mx-auto flex w-full max-w-[17.5rem] flex-col gap-3 px-5 pb-8 pt-6 text-sm;
+  background-color: #f4f1e7;
+  background-image: linear-gradient(180deg, rgba(255, 253, 246, 0.78), rgba(228, 219, 200, 0.6)), repeating-linear-gradient(0deg, rgba(58, 47, 28, 0.035) 0 1px, transparent 1px 4px);
+  color: #2b2418;
+  font-family: "Share Tech Mono", ui-monospace, SFMono-Regular, monospace;
+  /* Body, plus a row of downward wedges that really removes the bottom hem. */
+  mask-image: linear-gradient(#000 0 0), conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg);
+  mask-size:
+    100% calc(100% - var(--tear)),
+    var(--zig) var(--tear);
+  mask-position:
+    top left,
+    bottom left;
+  mask-repeat: no-repeat, repeat-x;
+}
+
+.thermal-head {
+  @apply flex flex-col items-center gap-1 text-center;
+}
+
+.thermal-head strong {
+  @apply text-lg font-normal uppercase leading-tight tracking-[0.2em];
+}
+
+.thermal-head span {
+  @apply text-[0.7rem] uppercase tracking-[0.16em];
+  color: rgba(43, 36, 24, 0.62);
+}
+
+.thermal-rule {
+  @apply h-0;
+  border-top: 1px dashed rgba(43, 36, 24, 0.45);
+}
+
+.thermal-items {
+  @apply m-0 flex list-none flex-col p-0 text-[0.8rem];
+}
+
+.thermal-items li {
+  @apply flex justify-between gap-3 py-1;
+  border-bottom: 1px dotted rgba(43, 36, 24, 0.28);
+}
+
+.thermal-date {
+  color: rgba(43, 36, 24, 0.66);
+}
+
+/* No label: a double rule with the sum right-aligned under it is how a till
+   roll says "total" in any language. */
+.thermal-total {
+  @apply flex justify-end pt-3;
+  border-top: 3px double rgba(43, 36, 24, 0.55);
+}
+
+.thermal-total b {
+  @apply text-xl font-normal;
+}
+
+.thermal-code {
+  /* Three periods that never line up — irregular bars, not a hatch. */
+  @apply h-9 w-full;
+  background-image:
+    repeating-linear-gradient(90deg, #241a10 0 2px, transparent 2px 5px), repeating-linear-gradient(90deg, #241a10 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg, #241a10 0 3px, transparent 3px 11px);
+}
+
+.thermal-foot {
+  @apply m-0 text-center text-[0.68rem] uppercase tracking-[0.2em];
+  color: rgba(43, 36, 24, 0.62);
+}
+
+/* live — admission stock ------------------------------------------------------ */
+
+.admission-face {
+  --perf: 6.75rem;
+  --notch: 0.5rem;
+
+  @apply relative grid min-h-52;
+  grid-template-columns: minmax(0, 1fr) var(--perf);
+  background-color: #f0e2c4;
+  background-image:
+    radial-gradient(120% 100% at 0% 0%, rgba(255, 249, 233, 0.95), transparent 60%), repeating-linear-gradient(45deg, rgba(120, 82, 30, 0.05) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(-45deg, rgba(120, 82, 30, 0.05) 0 1px, transparent 1px 5px);
+  box-shadow: inset 0 0 0 1px rgba(80, 52, 18, 0.32);
+  color: #33230f;
+  /* Notches genuinely bitten out of the top and bottom edge at the perforation. */
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--perf) - var(--notch)) 0,
+    calc(100% - var(--perf)) var(--notch),
+    calc(100% - var(--perf) + var(--notch)) 0,
+    100% 0,
+    100% 100%,
+    calc(100% - var(--perf) + var(--notch)) 100%,
+    calc(100% - var(--perf)) calc(100% - var(--notch)),
+    calc(100% - var(--perf) - var(--notch)) 100%,
+    0 100%
+  );
+  /* One full-width band, tiled down the card, holed at the perforation line —
+     the dashes are holes you can see the panel through. */
+  mask-image: radial-gradient(circle at calc(100% - var(--perf)) 50%, transparent 0 0.11rem, #000 0.15rem);
+  mask-size: 100% 0.62rem;
+  mask-repeat: repeat-y;
+}
+
+.admission-face::before {
+  @apply pointer-events-none absolute;
+  content: "";
+  inset: 0.45rem calc(var(--perf) + 0.5rem) 0.45rem 0.45rem;
+  border: 1px solid rgba(80, 52, 18, 0.28);
+}
+
+.admission-main {
+  @apply flex flex-col gap-1 py-7 pl-7 pr-5;
+}
+
+.admission-venue {
+  @apply m-0 text-[0.68rem] font-bold uppercase tracking-[0.22em];
+  color: rgba(51, 35, 15, 0.66);
+}
+
+.admission-artist {
+  @apply mt-2 block text-3xl font-black leading-tight;
+  color: #27190a;
+}
+
+.admission-meta {
+  @apply mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-5 text-xs font-semibold uppercase tracking-[0.16em];
+  color: rgba(51, 35, 15, 0.78);
+}
+
+.admission-link {
+  @apply mt-2 self-start text-[0.68rem] font-bold uppercase tracking-[0.16em] underline underline-offset-4;
+  color: rgba(51, 35, 15, 0.72);
+}
+
+.admission-link:hover {
+  color: #27190a;
+}
+
+.admission-link:focus-visible {
+  outline: 2px solid #27190a;
+  outline-offset: 3px;
+}
+
+.admission-stub {
+  @apply flex flex-col items-center justify-between gap-3 py-5 pr-3 text-center;
+  /* Clear the punched perforation. */
+  padding-left: 0.85rem;
+}
+
+.admission-stub-kind,
+.admission-stub-seat {
+  @apply text-[0.6rem] font-bold uppercase tracking-[0.2em];
+  color: rgba(51, 35, 15, 0.62);
+}
+
+.admission-stub-name {
+  @apply min-h-0 overflow-hidden text-sm font-bold leading-none;
+  color: #27190a;
+  writing-mode: vertical-rl;
+  letter-spacing: 0.1em;
+}
+
+/* souvenir — postcard back ------------------------------------------------------ */
+
+.postcard-face {
+  @apply relative grid min-h-52;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.9fr);
+  background-color: #f3ecdc;
+  background-image: radial-gradient(120% 100% at 100% 0%, rgba(255, 252, 244, 0.92), transparent 55%), repeating-linear-gradient(0deg, rgba(90, 66, 32, 0.03) 0 1px, transparent 1px 3px);
+  color: #2f2415;
+}
+
+.postcard-note {
+  @apply flex flex-col gap-3 p-5 font-spectral;
+}
+
+.postcard-dateline {
+  @apply m-0 text-[0.7rem] font-semibold uppercase tracking-[0.18em];
+  color: rgba(47, 36, 21, 0.6);
+}
+
+.postcard-message {
+  @apply m-0 text-[0.95rem] italic leading-7;
+  color: rgba(47, 36, 21, 0.88);
+}
+
+/* An unwritten postcard is still a postcard: rule the message area rather than
+   leave a blank half when `note` was never authored. */
+.postcard-rules {
+  @apply mt-1 block h-24 w-full;
+  background-image: repeating-linear-gradient(180deg, transparent 0 1.45rem, rgba(70, 50, 24, 0.16) 1.45rem 1.5rem);
+}
+
+.postcard-address {
+  @apply relative flex flex-col gap-2 p-5 pt-24;
+  /* The divider down the middle is the postcard's whole tell. */
+  border-left: 1px solid rgba(70, 50, 24, 0.38);
+}
+
+.postcard-address strong {
+  @apply block pb-1 text-xl font-semibold leading-tight;
+  border-bottom: 1px solid rgba(70, 50, 24, 0.22);
+}
+
+.postcard-address span {
+  @apply block pb-1 text-sm;
+  border-bottom: 1px solid rgba(70, 50, 24, 0.22);
+  color: rgba(47, 36, 21, 0.72);
+}
+
+.postcard-stamp {
+  @apply absolute grid h-[3.8rem] w-[3.1rem] place-items-center text-lg;
+  top: 1.1rem;
+  right: 1.1rem;
+  z-index: 1;
+  background: rgba(255, 253, 247, 0.9);
+  border: 0.16rem dotted rgba(70, 50, 24, 0.42);
+  color: rgba(47, 36, 21, 0.5);
+}
+
+.postcard-postmark {
+  @apply pointer-events-none absolute h-[3.4rem] w-[3.4rem] rounded-full;
+  top: 0.5rem;
+  right: 2.6rem;
+  z-index: 2;
+  border: 1.5px solid rgba(70, 50, 24, 0.55);
+  transform: rotate(-14deg);
+}
+
+.postcard-postmark::after {
+  @apply absolute rounded-full;
+  content: "";
+  inset: 0.3rem;
+  border: 1px solid rgba(70, 50, 24, 0.42);
 }
 
 /* Essay + gallery --------------------------------------------------------- */
