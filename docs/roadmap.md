@@ -17,7 +17,7 @@ The selected end-to-end journey and its per-stage status: [User journey](roadmap
 ## v1 outcome
 
 Ship one beautiful, public, personal travel journal: one real journey is imported or authored, shown on a map, and readable through designed mementos that open into essays and photos. The author can
-curate and publish it from a private admin surface, and the deployed site runs safely on a supported production host with configurable ingress.
+curate and publish it from a private owner admin surface, and the deployed site runs safely on a supported production host with configurable ingress.
 
 The map remains the index. A memento is the story's click target. The first release is personal-first and product-ready at the seams; it is not a multi-user SaaS product.
 
@@ -27,14 +27,17 @@ The map remains the index. A memento is the story's click target. The first rele
 
 - Public reader for journeys, routes, visits, mementos, essays, and galleries.
 - One canonical API/data contract used by the public frontend and admin surface.
-- SQLite-first local storage, with the existing PostgreSQL path kept healthy.
+- SQLite-first local storage; PostgreSQL/PostGIS is deferred to the v1.1/v1.2
+  follow-up and is not a v1 compatibility promise.
 - Authored content that is never overwritten by ingestion.
 - A declarative memento template registry (`core/kinds/*.yaml`): `goods`, `live`, `transit`, `stamp`, `receipt`, and `souvenir`; the admin MVP hand-builds forms for `transit`/`goods` first.
 - Japanese-first system UI with English and Chinese catalogs; authored content is shown exactly as entered.
 - One authoring flow: create or import a journey, curate mementos/photos, preview, and publish.
 - One real journey as the acceptance fixture and one complete end-to-end publish flow.
 - EXIF-stripped, resized public media stored behind an S3-compatible interface.
-- Containerized deployment on a supported host, with ingress/tunnel and object storage selected by deployment configuration.
+- Containerized single-owner deployment on a supported host, with private
+  owner-admin access, public-reader ingress, and object storage selected by
+  deployment configuration.
 - Two intake modes through one draft pipeline: connected Dawarich/Immich sources and versioned user-provided journey packages.
 - Dry-run import, reviewable changes, stable package identities, and agent-friendly validate/import/diff commands.
 - Optional OCR/AI suggestions for structured fields; no AI provider is required to import, author, or publish.

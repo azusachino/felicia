@@ -30,3 +30,4 @@ This directory stores the immutable records of design and architecture choices m
 | [0029](0029-community-go-workspace-layout.md)                    | Community-Shaped Go Workspace Layout                     | 2026-07-17 | Accepted |
 | [0030](0030-intake-planning-contract.md)                         | Intake Planning Contract and Candidate Review Boundary   | 2026-07-18 | Proposed |
 | [0031](0031-frontend-style-map-first-and-shared-element-open.md) | Frontend Style: Map-First Layout and Shared-Element Open | 2026-08-04 | Accepted |
+| [0032](0032-sqlite-first-v1-postgres-follow-up.md)               | SQLite-First v1, PostgreSQL Follow-up                    | 2026-08-10 | Proposed |
