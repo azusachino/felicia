@@ -25,6 +25,14 @@ The first release should not make the author install, configure, migrate, or
 verify a second database engine. PostgreSQL/PostGIS remains a deliberate future
 provider, not an accidental part of the v1 contract.
 
+V1 supports two usage profiles over that same SQLite boundary:
+
+- **CLI/Pages:** a lightweight workflow that uses the CLI locally and publishes
+  a static artifact to GitHub Pages without a long-running server;
+- **single-owner self-hosting:** a SQLite-backed server and Admin GUI for the
+  owner, with the public reader exposed through the configured ingress and the
+  admin surface reachable only from the owner's private network.
+
 ## Context
 
 ADR-0008 initially selected PostgreSQL as the sole database. ADR-0017 then
@@ -64,10 +72,15 @@ commitments adds maintenance without advancing the v1 acceptance outcome.
    PostgreSQL-specific commands and documentation are clearly marked as
    deferred development work, and CI keeps any PostgreSQL check in a separate
    non-v1 lane or removes it until re-entry work begins.
-7. **Deployment boundaries are separate.** The Compose DSN/driver mismatch and
-   unauthenticated admin exposure are fixed or explicitly removed from the v1
-   supported deployment shape; neither is postponed as a PostgreSQL design
-   question.
+7. **Single-owner self-hosting remains in v1.** The CLI/Pages profile does not
+   require a long-running server. The self-host profile uses SQLite plus the
+   server/Admin GUI. Public ingress exposes the reader only; the owner admin
+   surface binds to a configured private network interface or separate private
+   listener. Loopback remains a safe development default, not a product
+   restriction, and unauthenticated admin access is never public.
+8. **Deployment boundaries are separate.** The Compose DSN/driver mismatch and
+   admin exposure rule are fixed or explicitly removed from the v1 supported
+   deployment shape; neither is postponed as a PostgreSQL design question.
 
 This removes the active two-schema commitment from the supported v1 product
 surface without deleting the future provider or changing the runtime
@@ -84,7 +97,9 @@ The scope decision is only truthful once the repository reflects it:
   migrations, while any retained experimental lane is visibly separate;
 - the Compose/share path either becomes explicitly non-v1 or selects its
   provider without ambiguity;
-- the admin API binding/exposure is reviewed independently of database choice;
+- the self-host deployment separates public reader ingress from the owner admin
+  surface using a private listener or an equivalent network ACL; loopback is
+  documented as the development default;
 - one reproducible real-journey fixture exercises admin authoring → SQLite →
   static compile → Pages artifact, rather than relying only on separate
   synthetic workflows.
@@ -97,6 +112,8 @@ The v1 path is complete when all of these work without PostgreSQL:
 - intake, authored-field preservation, lifecycle transitions, and publication;
 - static compilation with published-only JSON and safe media derivatives;
 - live/static contract checks and the Pages workflow;
+- single-owner self-hosting with private-network admin access and public-reader
+  separation;
 - the selected real journey's reader → author → publish acceptance pass.
 
 SQLite-specific behavior may be improved for v1. PostgreSQL support is not a
