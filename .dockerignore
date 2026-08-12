@@ -1,0 +1,18 @@
+# Keep the API build context to the Go workspace. Without this, `COPY . .` in
+# deploy/Containerfile pulls in worktrees, node_modules, and build output —
+# ~900MB of context that never reaches the compiled binary.
+.claude/
+.git/
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+site/
+bin/
+.venv/
+**/__pycache__/
+apps/
+web/
+docs/
+experiments/
+examples/
