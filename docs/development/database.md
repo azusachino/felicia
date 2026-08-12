@@ -43,16 +43,32 @@ missing required configuration.
 ## Local commands
 
 ```bash
-make dev                 # API with SQLite at felicia.db
+make admin               # authoring GUI, same database as make dev
+make dev                 # API with SQLite at .felicia/local.sqlite
 make dev-sqlite          # explicit SQLite API
 make dev-postgres        # PostgreSQL/PostGIS stack, migration, seed, web app
 make migrate             # PostgreSQL migrations only
 ```
 
+`make dev` and `make admin` share `.felicia/local.sqlite` on purpose: authoring
+in the GUI and then serving the public reader should read one journal, not two.
+`.felicia/` is gitignored, which the repo-root default it replaced was not — the
+authored journal is the one artifact
+[ADR-0025](../adr/0025-static-and-self-hosted-modes.md) keeps on the machine, so
+it must not sit on a committable path.
+
+As when the default filename last changed
+([ADR-0021](../adr/0021-runtime-configuration-and-database-modes.md)), user data
+is not renamed or copied automatically. An existing repo-root `felicia.db` is
+still opened by setting `DATABASE_PATH=felicia.db`, or move it once:
+
+```bash
+mkdir -p .felicia && mv felicia.db .felicia/local.sqlite
+```
+
 SQLite applies its embedded schema when the provider opens the database. The
 file provider enables foreign keys, WAL mode, a busy timeout, and a bounded
-single-writer connection configuration. Existing `felicia.sqlite` files can
-still be opened by setting `DATABASE_PATH` explicitly.
+single-writer connection configuration.
 
 ## Tests
 

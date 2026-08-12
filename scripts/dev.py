@@ -16,6 +16,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 API_BINARY = Path(tempfile.gettempdir()) / f"felicia-api-{os.getpid()}"
+# Shared with scripts/admin.py so authoring and serving read one journal. Under
+# .felicia/ because the authored journal is what ADR-0025 keeps on the machine,
+# and the previous default put it at the repo root where it was committable.
+DEFAULT_DATABASE = ROOT / ".felicia" / "local.sqlite"
 
 
 def run(command: list[str], *, env: dict[str, str] | None = None, cwd: Path = ROOT) -> None:
@@ -53,10 +57,12 @@ def parse_args() -> argparse.Namespace:
 
 def run_sqlite() -> None:
     environment = os.environ.copy()
+    database = Path(environment.get("DATABASE_PATH") or DEFAULT_DATABASE)
+    database.parent.mkdir(parents=True, exist_ok=True)
     environment.update(
         {
             "DATABASE_DRIVER": "sqlite",
-            "DATABASE_PATH": environment.get("DATABASE_PATH", "felicia.db"),
+            "DATABASE_PATH": str(database),
             "CACHE_ADDR": environment.get("CACHE_ADDR", ""),
         }
     )

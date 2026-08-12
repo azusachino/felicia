@@ -16,8 +16,16 @@ coverage.*
 /tmp/
 /design/
 .felicia/
+# The authored journal is the one thing ADR-0025 says never leaves the machine,
+# so every SQLite spelling the tooling can produce is ignored — `make dev`
+# still defaults DATABASE_PATH to felicia.db at the repo root.
 *.sqlite
 *.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.db
+*.db-wal
+*.db-shm
 
 # Docs (mkdocs build output + uv env; uv.lock is committed)
 /site/
