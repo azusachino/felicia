@@ -128,6 +128,20 @@ make check            # Go workspace checks + uv feature-contract tests
 
 > The complete toolchain comes from the **Nix** flake (`nix develop`). Everything routes through `make <target>`.
 
+## 🌍 Publish your own site
+
+Your journal is authored locally and only the compiled site is published — there is no hosted
+admin, and drafts, originals, and the SQLite journal never leave your machine.
+
+```bash
+make admin                              # authoring GUI on 127.0.0.1 — import, curate, write, publish
+BASE_PATH=/my-travels/ make site-build  # deployable site → apps/web-public/dist
+```
+
+Then push that directory to the repository serving your GitHub Pages site. Full walkthrough —
+both the local-authoring route and the CI route, base-path table, and troubleshooting:
+**[`docs/publish.md`](docs/publish.md)**.
+
 ## 🧭 Data model in one breath
 
 `journal → journeys → mementos`, with a derived **visit/place** layer and canonical media:

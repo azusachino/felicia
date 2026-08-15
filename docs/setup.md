@@ -39,6 +39,9 @@ or `--db` (or `PORT` / `ADMIN_GUI_PORT` / `DATABASE_PATH`).
 `make check` covers every Go workspace module, UV feature-contract tests, and repository
 formatting. `make web-check` adds frontend type, lint, and formatting checks.
 
+To take an authored journal all the way to a deployed public site, see
+[Publish your own site](publish.md).
+
 ## Preview the docs
 
 ```bash

@@ -9,6 +9,7 @@ Start with the **[Direction](direction.md)** (the north star), or jump in:
 - **[Direction](direction.md)** — what felicia is, and where it's pointed.
 - **[Roadmap](roadmap.md)** — the v1 delivery roadmap; the selected end-to-end
   journey lives in [User journey](roadmap/user-journey.md).
+- **[Publish your own site](publish.md)** — author locally, deploy to GitHub Pages.
 - **[Setup](setup.md)** — toolchain + how to preview these docs.
 
 ## Research

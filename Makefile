@@ -23,7 +23,7 @@ COMPOSE ?= $(shell \
 	elif command -v docker >/dev/null 2>&1; then echo docker compose; \
 	else echo ''; fi)
 
-.PHONY: help fmt fmt-check vet lint test test-api test-features test-sqlite test-postgres check build cli-build experiment-intake journey-local validate tidy db-up db-down migrate seed admin dev dev-sqlite dev-postgres test-workflow test-workflow-postgres test-admin-e2e sqlc mock-up mock-down web-install web-check web-build web-admin-check web-admin-build static-build static-validate static-publish pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
+.PHONY: help fmt fmt-check vet lint test test-api test-features test-sqlite test-postgres check build cli-build experiment-intake journey-local validate tidy db-up db-down migrate seed admin dev dev-sqlite dev-postgres test-workflow test-workflow-postgres test-admin-e2e sqlc mock-up mock-down web-install web-check web-build web-admin-check web-admin-build site-build site-verify static-build static-validate static-publish pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -144,6 +144,20 @@ web-build: ## Build public frontend for production (bun + vite)
 
 web-admin-build: ## Build admin frontend for production (bun + vite)
 	bun run web:admin:build
+
+# The deployable site: the public SPA built for the target base path, with the
+# author's own journal compiled into the same directory. The compiler only
+# removes files its previous manifest listed, so the co-located SPA survives.
+# `static-build` below is the fixture design demo, not this.
+site-build: cli-build ## Build the deployable site (SPA + your journal) into apps/web-public/dist
+	BASE_PATH="$${BASE_PATH:-/}" $(BUN) run web:public:build
+	./bin/felicia-cli static compile \
+		--db "$${DATABASE_PATH:-.felicia/local.sqlite}" \
+		--media-root "$${MEDIA_ROOT:-.felicia/media}" \
+		--out "$${SITE_DIST:-apps/web-public/dist}"
+
+site-verify: ## Verify the deployable site artifact (base path, journeys, media)
+	BASE_PATH="$${BASE_PATH:-/}" $(UV_RUN) run python scripts/verify_static_artifact.py
 
 static-build: ## Build the v0.1 static artifact
 	$(UV_RUN) run python scripts/felicia.py build --base-path "$${BASE_PATH:-/}"

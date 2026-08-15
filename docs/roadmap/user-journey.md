@@ -87,6 +87,19 @@ projection:
 
 ## Status log
 
+- **2026-08-15 (publish path documented)** — The journey's last two stages had
+  no user-facing instructions: `docs/release/github-pages-v0.1.md` covered only
+  the CI/fork route, `setup.md` stopped at local authoring, and the
+  local-authoring deploy (build with the target base path → push the artifact →
+  enable Pages) was written down nowhere. Added
+  [`docs/publish.md`](../publish.md) covering both routes, the base-path table,
+  and the failure modes, linked from the README and the docs index. A person
+  taking the deployable artifact from their own journal previously had to hand-
+  assemble it (`make static-build` compiles the fixture demo, not an authored
+  journal), so `make site-build` and `make site-verify` now name that surface
+  per the third development-flow constraint in `AGENTS.md`. No change to the
+  pipeline itself; stage status unchanged.
+
 - **2026-08-04 (epic ADMIN-02 M2)** — Site identity landed: a journal-scoped
   `tb_site_settings` row (title, description, active design, default
   language/theme, accent) is projected through the shared `publication`
