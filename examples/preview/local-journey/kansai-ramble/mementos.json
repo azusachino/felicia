@@ -12,7 +12,7 @@
       "title": "Osaka Street Souvenir",
       "place": "Osaka",
       "geom": [135.5016, 34.6687],
-      "kind_data": {"memory": "The first night of the five-day route"},
+      "kind_data": {"name": "Kuidaore Taro plush", "shop": "Dotonbori street stall"},
       "media": [{"path": "apps/web-public/public/osaka_plushie.jpg", "caption": "Osaka at night"}]
     },
     {
@@ -26,7 +26,7 @@
       "title": "Harbor Lunch Receipt",
       "place": "Kobe",
       "geom": [135.1878, 34.6794],
-      "kind_data": {"vendor": "Harbor Kitchen", "currency": "JPY"},
+      "kind_data": {"shop": "Harbor Kitchen", "total": {"amount": 2400, "currency": "JPY"}},
       "media": [{"path": "apps/web-public/public/kyoto_temple.jpg", "caption": "A lunch worth remembering"}]
     },
     {
@@ -39,8 +39,13 @@
       "state": "published",
       "title": "Kobe Transit Pass",
       "place": "Kobe",
-      "geom": [135.1878, 34.6794],
-      "kind_data": {"operator": "JR West", "line": "Kansai local"},
+      "geom": [[135.1878, 34.6794], [135.8398, 34.6851]],
+      "kind_data": {
+        "operator": "JR West",
+        "line": "Kansai local",
+        "from": {"name": "Kobe", "coords": [135.1878, 34.6794]},
+        "to": {"name": "Nara", "coords": [135.8398, 34.6851]}
+      },
       "media": [{"path": "apps/web-public/public/tokyo_night.jpg", "caption": "The route continues"}]
     },
     {

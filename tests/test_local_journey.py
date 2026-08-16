@@ -187,7 +187,11 @@ class LocalJourneyWorkflowTest(unittest.TestCase):
                                 "price_amount": 1200,
                                 "price_currency": "JPY",
                                 "authored_fields": ["title", "vendor", "essay", "price_amount", "price_currency"],
-                                "kind_data": {"vendor": "sample"},
+                                # kind_data must satisfy core/kinds/receipt.yaml:
+                                # the import boundary validates it against the
+                                # registry (ADR-0013, issue #77), so an invalid
+                                # blob here would not be importable output.
+                                "kind_data": {"shop": "Dotonbori Kitchen", "total": {"amount": 1200, "currency": "JPY"}},
                                 "media": [{"path": "ticket.jpg", "caption": "ticket"}],
                             },
                             {

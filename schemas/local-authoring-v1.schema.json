@@ -14,6 +14,12 @@
       "minItems": 2,
       "maxItems": 2
     },
+    "coordinate_line": {
+      "description": "An edge-anchored memento's geometry: two or more [lon, lat] pairs. core/kinds/transit.yaml declares anchor: edge, which the write boundary enforces as a >=2-point line, so a transit memento cannot be expressed as a single coordinate.",
+      "type": "array",
+      "minItems": 2,
+      "items": { "$ref": "#/$defs/coordinate" }
+    },
     "media": {
       "type": "object",
       "required": ["path"],
@@ -107,13 +113,15 @@
         "id": { "type": "string", "format": "uuid" },
         "stop_key": { "type": "string", "minLength": 1 },
         "seq": { "type": "integer", "minimum": 1 },
-        "kind": { "enum": ["goods", "live", "transit", "stamp", "receipt"] },
+        "kind": { "enum": ["goods", "live", "transit", "stamp", "receipt", "souvenir"] },
         "occurred_at": { "type": "string", "format": "date-time" },
         "occurred_tz": { "type": "string", "minLength": 1 },
         "state": { "enum": ["candidate", "draft", "authored", "published", "archived"] },
         "title": { "type": "string" },
         "place": { "type": "string" },
-        "geom": { "anyOf": [{ "$ref": "#/$defs/coordinate" }, { "type": "null" }] },
+        "geom": {
+          "anyOf": [{ "$ref": "#/$defs/coordinate" }, { "$ref": "#/$defs/coordinate_line" }, { "type": "null" }]
+        },
         "kind_data": { "type": "object" },
         "essay": { "type": "string" },
         "vendor": { "type": "string" },

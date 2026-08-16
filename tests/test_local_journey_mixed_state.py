@@ -130,10 +130,21 @@ class LocalJourneyMixedStateWorkflowTest(unittest.TestCase):
         by_title = {memento["title"]: memento for memento in mementos}
         self.assertEqual({"Published minimal ticket", "Published souvenir with full story"}, set(by_title))
 
+        # "Minimal" is about *optional* metadata: no vendor, essay, price, or
+        # photos. Its required metadata is complete, because the import boundary
+        # holds a published memento to the same template, timezone, and anchor
+        # rules the admin API does (ADR-0013, issue #77) — a published record the
+        # GUI could not save was exactly the defect.
         minimal = by_title["Published minimal ticket"]
-        self.assertNotIn("geom", minimal, "minimal published memento should omit its unset geometry")
-        self.assertEqual("", minimal.get("occurred_tz", ""))
+        self.assertNotIn("vendor", minimal, "minimal published memento carries no vendor")
+        self.assertNotIn("essay", minimal, "minimal published memento carries no essay")
         self.assertNotIn("photos", minimal, "minimal published memento has no photos")
+        self.assertEqual("Asia/Tokyo", minimal["occurred_tz"])
+        # `transit` is edge-anchored, so it publishes a line: the shape the
+        # package format could not express before, which made every CLI-imported
+        # transit memento unsavable in the GUI.
+        self.assertEqual("LineString", minimal["geom"]["type"])
+        self.assertEqual(2, len(minimal["geom"]["coordinates"]))
 
         full = by_title["Published souvenir with full story"]
         self.assertEqual("Temple Gift Shop", full["vendor"])

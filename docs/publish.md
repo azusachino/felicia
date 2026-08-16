@@ -86,7 +86,31 @@ uv run python scripts/local_journey.py package --workspace .felicia/local-journe
 Repeat with a different GPX/`SLUG` for a second trip — it imports alongside
 the first rather than replacing it.
 
-Two things decide whether this produces anything:
+Three things decide whether this produces anything:
+
+- **A memento must satisfy its kind.** `import` validates every memento against
+  its kind template (`core/kinds/*.yaml`) with the same rules the admin GUI
+  applies to a save, so a package cannot create a memento the GUI would then
+  refuse to save (ADR-0035). `kind_data` may only use that kind's fields; a
+  memento in any state past `draft` needs its required fields, an `occurred_tz`,
+  and a geometry. `transit` is edge-anchored, so its `geom` is a **line** — two
+  or more `[longitude, latitude]` pairs — while every other kind takes a single
+  pair. One rejected memento rejects the whole package; nothing is written.
+
+  ```json
+  {
+    "kind": "transit",
+    "geom": [
+      [135.7681, 35.0116],
+      [135.5023, 34.7025]
+    ],
+    "kind_data": {
+      "operator": "JR West",
+      "from": { "name": "Kyoto", "coords": [135.7681, 35.0116] },
+      "to": { "name": "Osaka", "coords": [135.5023, 34.7025] }
+    }
+  }
+  ```
 
 - **Stops need dwell.** A stop candidate is 20+ minutes within 250 m. A track
   that never stops — a train ride, a drive — yields no stops, and therefore no
