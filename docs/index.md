@@ -25,7 +25,8 @@ The exploration trail, roughly in order:
 - [Source connectors](research/source-connectors.md)
 - [Transit tickets](research/transit-tickets.md)
 - [Authoring & publish flow](research/authoring-publish-flow.md)
-- [Architecture experiments](experiments/README.md)
+- [Architecture experiments](experiments/README.md) ·
+  [Real-trip CLI walkthrough](experiments/2026-08-16-real-trip-cli-walkthrough.md)
 - [GitHub Pages design demo](experiments/2026-07-17-pages-design-demo.md)
 - [Local workflow boundaries](research/local-workflow-boundaries.md) · [Media support matrix](research/media-support-matrix.md)
 - [Contract-first overview](contracts/README.md) · [Canonical contract v1](contracts/canonical-v1.md)
