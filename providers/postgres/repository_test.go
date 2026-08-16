@@ -75,8 +75,9 @@ func TestPgRepositoryIntegration(t *testing.T) {
 		t.Errorf("invalid gps track length scanned")
 	}
 
-	// Test "No-Clobber" Upsert:
-	// A. Title is authored
+	// Test "No-Clobber" re-import:
+	// A. The author claims the title. UpsertJourney is the authoring write, so it
+	//    assigns unconditionally (ADR-0033).
 	journey.Title = "Edited Title (Human)"
 	journey.AuthoredFields = []string{"title"}
 	err = repo.UpsertJourney(ctx, journey)
@@ -84,12 +85,12 @@ func TestPgRepositoryIntegration(t *testing.T) {
 		t.Fatalf("failed to update journey: %v", err)
 	}
 
-	// B. Try to overwrite title via automated importer update (without authoring it)
+	// B. An automated importer update goes through the ingest seam.
 	journey2 := *journey
 	journey2.Title = "Overwritten Title (Machine)"
-	err = repo.UpsertJourney(ctx, &journey2)
+	err = repo.ApplyIngestJourneyPatch(ctx, &domain.IngestJourneyPatch{Journey: &journey2, Fields: []string{"title"}})
 	if err != nil {
-		t.Fatalf("failed to upsert journey: %v", err)
+		t.Fatalf("failed to apply ingest journey patch: %v", err)
 	}
 
 	// C. Fetch again. The Title should remain "Edited Title (Human)" since "title" is in authored_fields

@@ -238,6 +238,30 @@ func (r *pgRepository) ListJourneys(ctx context.Context) ([]*domain.Journey, err
 	return res, nil
 }
 
+// ApplyIngestJourneyPatch applies source-owned journey fields without taking
+// authorship. The authored-field decision is made in Go (shared with the SQLite
+// provider) rather than in the upsert SQL, because a single shared upsert cannot
+// tell an import from an authoring edit (ADR-0033).
+func (r *pgRepository) ApplyIngestJourneyPatch(ctx context.Context, patch *domain.IngestJourneyPatch) error {
+	if patch == nil || patch.Journey == nil {
+		return errors.New("ingest journey patch is required")
+	}
+	current, err := r.GetJourney(ctx, patch.Journey.ID)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows), errors.Is(err, domain.ErrNotFound):
+		current = &domain.Journey{ID: patch.Journey.ID, JournalID: patch.Journey.JournalID}
+	case err != nil:
+		return fmt.Errorf("load journey ingest target %s: %w", patch.Journey.ID, err)
+	}
+	if current.JournalID == uuid.Nil {
+		current.JournalID = patch.Journey.JournalID
+	}
+	domain.MergeIngestJourney(current, patch)
+	return r.UpsertJourney(ctx, current)
+}
+
+// UpsertJourney is the *authoring* write: every column and the authored mask
+// come from the caller. Source imports must use ApplyIngestJourneyPatch.
 func (r *pgRepository) UpsertJourney(ctx context.Context, journey *domain.Journey) error {
 	var gpsRouteBytes []byte
 	var err error
@@ -505,7 +529,10 @@ func (r *pgRepository) ApplyIngestMementoPatch(ctx context.Context, patch *domai
 		current = &domain.Memento{ID: patch.Memento.ID, JourneyID: patch.Memento.JourneyID, State: patch.Memento.State}
 		created = true
 	}
-	mergeMementoFields(current, patch.Memento, patch.Fields)
+	// An ingest write may only touch fields the author has not claimed, and it
+	// leaves current.AuthoredFields untouched so the mask can never shrink
+	// (ADR-0033).
+	mergeMementoFields(current, patch.Memento, domain.IngestableFields(patch.Fields, current.AuthoredFields))
 	if hasIdentity {
 		current.SourceIdentity = &identity
 		if current.SourceRef == nil {

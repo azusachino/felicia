@@ -146,7 +146,9 @@ func (im *Importer) SyncRoute(ctx context.Context, journeyID uuid.UUID) error {
 	}
 	j.GPSRoute = simplify.DouglasPeucker(im.epsilon).MultiLineString(raw)
 
-	if err := im.store.UpsertJourney(ctx, j); err != nil {
+	// Written through the ingest seam so the authored mask survives the write
+	// even though the early return above already skipped an authored route.
+	if err := im.store.ApplyIngestJourneyPatch(ctx, &domain.IngestJourneyPatch{Journey: j, Fields: []string{"gps_route"}}); err != nil {
 		outcome = "error"
 		return fmt.Errorf("sync route %s: %w", journeyID, err)
 	}

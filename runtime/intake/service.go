@@ -93,12 +93,11 @@ func (s *Service) Apply(ctx context.Context, plan DraftPlan) error {
 
 // applyDateBounds fills in journey dates the author has not set by hand.
 //
-// The non-clobber decision is made here rather than in SQL because only one
-// provider guards these columns: PostgreSQL's upsert keeps an authored
-// date_start/date_end, SQLite's assigns unconditionally. Deciding in Go gives
-// both providers the same behaviour and matches how the importer already
-// protects an authored route (runtime/importer: authored "gps_route" is
-// skipped outright).
+// The non-clobber decision is made in Go, not in SQL, because a shared upsert
+// cannot tell an import from an authoring edit. `adopt` decides here whether
+// anything is worth writing at all; the ingest seam
+// (ports.JourneySyncStore.ApplyIngestJourneyPatch) then enforces the same rule
+// at the persistence boundary for both providers (ADR-0033).
 func (s *Service) applyDateBounds(ctx context.Context, plan DraftPlan) error {
 	if s.Journeys == nil || (plan.DateStart.IsZero() && plan.DateEnd.IsZero()) {
 		return nil
@@ -115,7 +114,10 @@ func (s *Service) applyDateBounds(ctx context.Context, plan DraftPlan) error {
 	if !startChanged && !endChanged {
 		return nil
 	}
-	if err := s.Journeys.UpsertJourney(ctx, journey); err != nil {
+	if err := s.Journeys.ApplyIngestJourneyPatch(ctx, &domain.IngestJourneyPatch{
+		Journey: journey,
+		Fields:  []string{"date_start", "date_end"},
+	}); err != nil {
 		return fmt.Errorf("apply date bounds to journey %s: %w", plan.JourneyID, err)
 	}
 	return nil

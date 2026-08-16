@@ -357,7 +357,32 @@ func (r *Repository) ListJourneys(ctx context.Context) ([]*domain.Journey, error
 	return result, rows.Err()
 }
 
-// UpsertJourney inserts or updates a journey.
+// ApplyIngestJourneyPatch applies source-owned journey fields without taking
+// authorship. Every masked field the stored row already claims as authored is
+// skipped, and the stored authored mask is written back unchanged, so a
+// re-import can neither overwrite an authored value nor reset the mask
+// (ADR-0033).
+func (r *Repository) ApplyIngestJourneyPatch(ctx context.Context, patch *domain.IngestJourneyPatch) error {
+	if patch == nil || patch.Journey == nil {
+		return errors.New("ingest journey patch is required")
+	}
+	current, err := r.GetJourney(ctx, patch.Journey.ID)
+	switch {
+	case errors.Is(err, sql.ErrNoRows), errors.Is(err, domain.ErrNotFound):
+		current = &domain.Journey{ID: patch.Journey.ID, JournalID: patch.Journey.JournalID}
+	case err != nil:
+		return fmt.Errorf("load journey ingest target %s: %w", patch.Journey.ID, err)
+	}
+	if current.JournalID == uuid.Nil {
+		current.JournalID = patch.Journey.JournalID
+	}
+	domain.MergeIngestJourney(current, patch)
+	return r.UpsertJourney(ctx, current)
+}
+
+// UpsertJourney inserts or updates a journey. It is the *authoring* write: all
+// columns and the authored mask come from the caller. Source imports must go
+// through ApplyIngestJourneyPatch instead.
 func (r *Repository) UpsertJourney(ctx context.Context, journey *domain.Journey) error {
 	route, err := marshalJSON(journey.GPSRoute)
 	if err != nil {

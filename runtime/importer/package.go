@@ -54,7 +54,16 @@ func ApplyPackage(ctx context.Context, document *PackageDocument, store PackageS
 	if err := store.EnsureJournal(ctx, &domain.Journal{ID: document.Journey.JournalID}); err != nil {
 		return ImportReport{}, fmt.Errorf("ensure journal: %w", err)
 	}
-	if err := store.UpsertJourney(ctx, document.Journey); err != nil {
+	// The journey is written through the ingest seam, not UpsertJourney: a
+	// package import must not overwrite authored journey fields or reset the
+	// journey's authored mask (ADR-0033). gps_route is only claimed when the
+	// package actually carries a route, so a route-less re-import cannot blank
+	// an already-imported track.
+	journeyFields := []string{"slug", "source_ref", "title", "place", "country", "region", "date_start", "date_end"}
+	if len(document.Journey.GPSRoute) > 0 {
+		journeyFields = append(journeyFields, "gps_route")
+	}
+	if err := store.ApplyIngestJourneyPatch(ctx, &domain.IngestJourneyPatch{Journey: document.Journey, Fields: journeyFields}); err != nil {
 		return ImportReport{}, fmt.Errorf("upsert journey: %w", err)
 	}
 	for _, memento := range document.Mementos {
