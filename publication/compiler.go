@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/google/uuid"
 	"github.com/paulmach/orb"
@@ -209,10 +210,39 @@ func (StaticCompiler) Compile(ctx context.Context, input Input, read ReadModel, 
 	return report, nil
 }
 
+// publicCoordDecimals is the decimal precision every coordinate is rounded
+// to before it crosses the publication boundary, in either direction: the
+// static compiler's JSON tree and the live /api/v1 handlers (which project
+// through the same NewStaticJourney/NewStaticMemento — see
+// server/api/server.go). 4 decimal places is ~11m of ground distance at the
+// equator. This is not a value chosen here: it is the precision already
+// documented for this exact purpose in docs/archive/spec-gaps.md ("D2.
+// Public coordinate rounding") and cross-referenced in
+// docs/research/backend-stack.md and docs/research/liuaaron-teardown.md, so
+// it is reused rather than picked independently.
+//
+// ADR-0025 requires the static artifact to never contain "unrounded private
+// geometry". Rounding here — the sole place both the route (a journey's
+// passive GPS trace) and every memento Geom (frequently derived from that
+// same trace at a stop's timestamp, see runtime/importer) are projected to
+// GeoJSON — makes the guarantee hold for every importer that could have
+// populated the stored geometry, not just the one path a defect happened to
+// skip.
+const publicCoordDecimals = 4
+
+// roundCoord rounds a single coordinate ordinate (longitude or latitude) to
+// publicCoordDecimals, so no full-precision value survives the round trip
+// through this package regardless of how many decimals the stored value
+// carried.
+func roundCoord(v float64) float64 {
+	const scale = 1e4 // 10^publicCoordDecimals
+	return math.Round(v*scale) / scale
+}
+
 func geometry(value orb.Geometry) *GeoJSONGeometry {
 	switch value := value.(type) {
 	case orb.Point:
-		return &GeoJSONGeometry{Type: "Point", Coordinates: []float64{value.X(), value.Y()}}
+		return &GeoJSONGeometry{Type: "Point", Coordinates: []float64{roundCoord(value.X()), roundCoord(value.Y())}}
 	case orb.MultiLineString:
 		// An empty route is omitted from the projection entirely rather
 		// than encoded as a degenerate geometry.
@@ -223,7 +253,7 @@ func geometry(value orb.Geometry) *GeoJSONGeometry {
 		for _, line := range value {
 			points := make([][]float64, 0, len(line))
 			for _, point := range line {
-				points = append(points, []float64{point.X(), point.Y()})
+				points = append(points, []float64{roundCoord(point.X()), roundCoord(point.Y())})
 			}
 			coordinates = append(coordinates, points)
 		}
@@ -234,7 +264,7 @@ func geometry(value orb.Geometry) *GeoJSONGeometry {
 		}
 		points := make([][]float64, 0, len(value))
 		for _, point := range value {
-			points = append(points, []float64{point.X(), point.Y()})
+			points = append(points, []float64{roundCoord(point.X()), roundCoord(point.Y())})
 		}
 		return &GeoJSONGeometry{Type: "LineString", Coordinates: points}
 	default:
