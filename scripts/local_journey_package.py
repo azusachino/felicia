@@ -51,16 +51,24 @@ def build_package(args: Namespace) -> Path:
         for photo_index, photo in enumerate(memento.get("media", []), start=1):
             source = safe_media_path(workspace, str(photo.get("path", "")))
             validate_public_image(photo, source)
-            name = f"media/{source.name}"
             data = source.read_bytes()
+            digest = hashlib.sha256(data).hexdigest()
+            # Content-addressed, not basename-addressed (ADR-0026 / issue #75):
+            # two trips' IMG_0001.jpg no longer collide in the shared media
+            # root or in dist/, because the key IS the content. Re-packaging
+            # identical bytes reproduces the same key (dedup, cache-safe);
+            # the extension is kept so MIME/type detection downstream
+            # (validate_public_image above, publication.SanitizePublicImage)
+            # keeps working.
+            name = f"media/{digest}{source.suffix.lower()}"
             if name in copied_media and copied_media[name] != data:
-                raise SystemExit(f"media basename collision with different files: {source.name}")
+                raise SystemExit(f"content-addressed media key collided with different bytes: {name}")
             copied_media[name] = data
             photos.append(
                 {
                     "id": str(uuid.uuid5(NAMESPACE, f"{memento['id']}:photo:{photo_index}")),
                     "path": name,
-                    "content_hash": "sha256:" + hashlib.sha256(data).hexdigest(),
+                    "content_hash": "sha256:" + digest,
                     "caption": photo.get("caption", ""),
                     "seq": photo_index,
                 }

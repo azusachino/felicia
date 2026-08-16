@@ -57,9 +57,15 @@ experiment-intake: cli-build ## Run the offline intake experiment matrix
 	$(UV_RUN) run python scripts/run_intake_experiments.py --out .felicia/experiments/intake/report.json
 
 journey-local: cli-build ## Preprocess raw local sources into an editable journey workspace
-	@test -n "$(GPX)" || (echo 'usage: make journey-local GPX=path/to/route.gpx PHOTOS=path/to/photos [SIDECAR=path]' >&2; exit 1)
-	@test -n "$(PHOTOS)" || (echo 'usage: make journey-local GPX=path/to/route.gpx PHOTOS=path/to/photos [SIDECAR=path]' >&2; exit 1)
-	$(UV_RUN) run python scripts/local_journey.py preprocess --gpx "$(GPX)" --photos "$(PHOTOS)" $(if $(SIDECAR),--sidecar "$(SIDECAR)",)
+	@test -n "$(GPX)" || (echo 'usage: make journey-local GPX=path/to/route.gpx PHOTOS=path/to/photos [SIDECAR=path] [SLUG=name] [TITLE="Trip name"] [JOURNEY=uuid] [JOURNAL=uuid] [WORKSPACE=path]' >&2; exit 1)
+	@test -n "$(PHOTOS)" || (echo 'usage: make journey-local GPX=path/to/route.gpx PHOTOS=path/to/photos [SIDECAR=path] [SLUG=name] [TITLE="Trip name"] [JOURNEY=uuid] [JOURNAL=uuid] [WORKSPACE=path]' >&2; exit 1)
+	$(UV_RUN) run python scripts/local_journey.py preprocess --gpx "$(GPX)" --photos "$(PHOTOS)" \
+		$(if $(SIDECAR),--sidecar "$(SIDECAR)",) \
+		$(if $(SLUG),--slug "$(SLUG)",) \
+		$(if $(TITLE),--title "$(TITLE)",) \
+		$(if $(JOURNEY),--journey "$(JOURNEY)",) \
+		$(if $(JOURNAL),--journal "$(JOURNAL)",) \
+		$(if $(WORKSPACE),--workspace "$(WORKSPACE)",)
 
 # Pre-PR gate. Database migration smoke remains separate because it needs a
 # disposable service; deterministic frontend checks belong in this gate.

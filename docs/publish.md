@@ -53,21 +53,38 @@ Prerequisite: **nix** with flakes enabled. Everything else comes from the flake
 
 The admin GUI has no journey-creation or file-upload control yet (its Import
 buttons talk to Dawarich and Immich, not to your disk), so a trip enters through
-the CLI. This step also creates the journey — `--slug` and `--title` name it:
+the CLI. This step also creates the journey:
 
 ```bash
 make journey-local GPX=~/trip/route.gpx PHOTOS=~/trip/photos
 ```
 
-That writes an editable workspace to `.felicia/local-journey`: `journey.json`,
-`stops.json`, `mementos.json`, plus the planner's `plan.json`. Edit the titles
-and selections, then package and import it:
+Each trip gets its own identity by default: the journey id and slug are
+derived from the GPX track's own bytes, so re-running the same trip lands on
+the same journey (idempotent — no duplicate) while a different trip always
+gets a distinct id, slug, and workspace directory. Name the trip yourself with
+`SLUG=` / `TITLE=`, or pin the id/journal/workspace explicitly with `JOURNEY=`
+/ `JOURNAL=` / `WORKSPACE=`:
 
 ```bash
-uv run python scripts/local_journey.py package --workspace .felicia/local-journey
-./bin/felicia-cli import --db .felicia/local.sqlite --media-root .felicia/media \
-  --apply .felicia/local-journey/journey.zip
+make journey-local GPX=~/trip/route.gpx PHOTOS=~/trip/photos SLUG=kyoto-2026 TITLE="Kyoto 2026"
 ```
+
+That writes an editable workspace to `.felicia/local-journey/<slug>` (printed
+by the command): `journey.json`, `stops.json`, `mementos.json`, plus the
+planner's `plan.json`. Pointing a workspace that already holds a _different_
+journey at a new trip is a loud error, never a silent overwrite. Edit the
+titles and selections, then package and import it — reuse the workspace path
+the command printed:
+
+```bash
+uv run python scripts/local_journey.py package --workspace .felicia/local-journey/kyoto-2026
+./bin/felicia-cli import --db .felicia/local.sqlite --media-root .felicia/media \
+  --apply .felicia/local-journey/kyoto-2026/journey.zip
+```
+
+Repeat with a different GPX/`SLUG` for a second trip — it imports alongside
+the first rather than replacing it.
 
 Two things decide whether this produces anything:
 
