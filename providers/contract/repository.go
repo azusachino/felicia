@@ -152,6 +152,127 @@ func Run(t *testing.T, repo domain.Repository) {
 	assertSiteSettings(t, repo, journal.ID)
 	assertAuthoredMementoFieldsSurviveIngest(t, repo, journey.ID)
 	assertAuthoredJourneyFieldsSurviveIngest(t, repo, journal.ID)
+	assertStopCandidateReviewSurvivesReimport(t, repo, journey.ID)
+}
+
+// stopCandidateStore is ports.StopCandidateStore, restated locally so this
+// package keeps depending on core/domain alone. A provider that persists stop
+// candidates is expected to satisfy it; one that does not skips this section
+// (reported, not t.Skip, which would mark the whole conformance run skipped).
+type stopCandidateStore interface {
+	GetStopCandidate(context.Context, uuid.UUID) (*domain.StopCandidate, error)
+	ListStopCandidatesByJourney(context.Context, uuid.UUID) ([]*domain.StopCandidate, error)
+	UpsertStopCandidate(context.Context, *domain.StopCandidate) error
+	ApplyStopReview(context.Context, *domain.StopReviewPatch) error
+}
+
+// assertStopCandidateReviewSurvivesReimport pins, for both providers, the rule
+// package import relies on when it seeds the intake inbox (issue #79): candidate
+// *identity* — not the row ID an importer happens to supply — is the idempotency
+// key, and a repeated import may refresh source-owned fields but must never
+// resurrect a candidate the author discarded, undo a merge, or overwrite a label
+// the author claimed. That is the same authored-field contract ADR-0022 and
+// ADR-0033 apply to journeys and mementos, so like those it is asserted here
+// rather than trusted to review (AGENTS.md development-flow constraint 2).
+func assertStopCandidateReviewSurvivesReimport(t *testing.T, repo domain.Repository, journeyID uuid.UUID) {
+	t.Helper()
+	store, ok := repo.(stopCandidateStore)
+	if !ok {
+		t.Log("provider does not persist stop candidates; skipping candidate parity")
+		return
+	}
+	ctx := context.Background()
+
+	identity := domain.CandidateIdentity{DerivationVersion: "gpx-stops-v1", Key: "cluster-001"}
+	arrive := time.Date(2026, 4, 1, 9, 0, 0, 0, time.UTC)
+	imported := func(id uuid.UUID, label string, depart time.Time) *domain.StopCandidate {
+		return &domain.StopCandidate{
+			ID: id, JourneyID: journeyID, Identity: identity, Label: label,
+			Coord: orb.Point{135.7681, 35.0116}, Arrive: arrive, Depart: depart, Confidence: 0.5,
+			Evidence:   []domain.EvidenceRef{{Kind: domain.EvidenceRoute, Source: domain.SourceIdentity{System: "local-track", ExternalID: identity.Key}, Locator: identity.Key}},
+			Provenance: []domain.Provenance{{Source: domain.SourceIdentity{System: "package:contract", ExternalID: identity.Key}, ObservedAt: arrive, Confidence: 0.5}},
+		}
+	}
+
+	first := imported(mustUUID(t), "", arrive.Add(time.Hour))
+	if err := store.UpsertStopCandidate(ctx, first); err != nil {
+		t.Fatalf("import stop candidate: %v", err)
+	}
+	listed, err := store.ListStopCandidatesByJourney(ctx, journeyID)
+	if err != nil {
+		t.Fatalf("list stop candidates: %v", err)
+	}
+	if len(listed) != 1 {
+		t.Fatalf("stop candidates after import = %d, want 1", len(listed))
+	}
+	stored := listed[0]
+	if len(stored.Provenance) != 1 || stored.Provenance[0].Source.System != "package:contract" || stored.Provenance[0].ObservedAt.IsZero() {
+		t.Fatalf("imported candidate lost its provenance: %#v", stored.Provenance)
+	}
+	if len(stored.Evidence) != 1 || stored.Evidence[0].Kind != domain.EvidenceRoute {
+		t.Fatalf("imported candidate lost its evidence: %#v", stored.Evidence)
+	}
+
+	// The author curates: discard the candidate and name it by hand.
+	if err := store.ApplyStopReview(ctx, &domain.StopReviewPatch{
+		CandidateID: stored.ID, State: domain.CandidateIgnored,
+		Label: stringPtr("not a real stop"), ExpectedRevision: int64Ptr(stored.Revision),
+	}); err != nil {
+		t.Fatalf("review stop candidate: %v", err)
+	}
+
+	// Re-import: a fresh row ID for the same identity, refreshed source values.
+	if err := store.UpsertStopCandidate(ctx, imported(mustUUID(t), "cluster label", arrive.Add(3*time.Hour))); err != nil {
+		t.Fatalf("re-import stop candidate: %v", err)
+	}
+	after, err := store.ListStopCandidatesByJourney(ctx, journeyID)
+	if err != nil {
+		t.Fatalf("list stop candidates after re-import: %v", err)
+	}
+	if len(after) != 1 {
+		t.Fatalf("re-import duplicated stop candidates: %d, want 1", len(after))
+	}
+	reviewed := after[0]
+	if reviewed.ID != stored.ID {
+		t.Fatalf("re-import replaced the candidate row: %s != %s", reviewed.ID, stored.ID)
+	}
+	if reviewed.State != domain.CandidateIgnored {
+		t.Fatalf("re-import resurrected a discarded candidate: state = %q", reviewed.State)
+	}
+	if reviewed.Label != "not a real stop" {
+		t.Fatalf("re-import overwrote the authored label: %q", reviewed.Label)
+	}
+	if !reviewed.Depart.Equal(arrive.Add(3 * time.Hour)) {
+		t.Fatalf("re-import failed to refresh the source-owned depart: %s", reviewed.Depart)
+	}
+	if reviewed.Revision <= stored.Revision {
+		t.Fatalf("re-import did not advance the revision: %d", reviewed.Revision)
+	}
+
+	// A merge decision is review state too, and survives the same way.
+	target := &domain.StopCandidate{
+		ID: mustUUID(t), JourneyID: journeyID,
+		Identity: domain.CandidateIdentity{DerivationVersion: identity.DerivationVersion, Key: "cluster-002"},
+		Coord:    orb.Point{135.7649, 35.0050}, Arrive: arrive.Add(4 * time.Hour), Depart: arrive.Add(5 * time.Hour),
+	}
+	if err := store.UpsertStopCandidate(ctx, target); err != nil {
+		t.Fatalf("import merge target: %v", err)
+	}
+	if err := store.ApplyStopReview(ctx, &domain.StopReviewPatch{
+		CandidateID: reviewed.ID, State: domain.CandidateMerged, MergedInto: &target.ID,
+	}); err != nil {
+		t.Fatalf("merge stop candidate: %v", err)
+	}
+	if err := store.UpsertStopCandidate(ctx, imported(mustUUID(t), "cluster label", arrive.Add(3*time.Hour))); err != nil {
+		t.Fatalf("re-import after merge: %v", err)
+	}
+	merged, err := store.GetStopCandidate(ctx, reviewed.ID)
+	if err != nil {
+		t.Fatalf("get merged candidate: %v", err)
+	}
+	if merged.State != domain.CandidateMerged || merged.MergedInto == nil || *merged.MergedInto != target.ID {
+		t.Fatalf("re-import undid the author's merge: %q -> %v", merged.State, merged.MergedInto)
+	}
 }
 
 // assertAuthoredMementoFieldsSurviveIngest pins the ADR-0022 guarantee that the
@@ -446,6 +567,8 @@ func mustUUID(t *testing.T) uuid.UUID {
 }
 
 func int64Ptr(value int64) *int64 { return &value }
+
+func stringPtr(value string) *string { return &value }
 
 // kindDataOperator decodes the "operator" key the authored-field assertions use
 // as a kind_data marker, so providers may re-serialize the JSON freely.

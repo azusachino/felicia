@@ -20,6 +20,7 @@ try:
         ROOT,
         as_coord,
         candidate_key,
+        derivation_version,
         derive_journey_identity,
         ensure_cli,
         read_json,
@@ -36,6 +37,7 @@ except ImportError:
         ROOT,
         as_coord,
         candidate_key,
+        derivation_version,
         derive_journey_identity,
         ensure_cli,
         read_json,
@@ -142,6 +144,7 @@ def preprocess(args: argparse.Namespace) -> None:
         stops.append(
             {
                 "candidate_key": candidate_key(source),
+                "derivation_version": derivation_version(source),
                 "selected": True,
                 "label": source.get("label", ""),
                 "coord": as_coord(source.get("coord")),

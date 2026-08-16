@@ -76,9 +76,10 @@
     },
     "stop": {
       "type": "object",
-      "required": ["candidate_key", "selected", "label"],
+      "required": ["candidate_key", "derivation_version", "selected", "label"],
       "properties": {
         "candidate_key": { "type": "string", "minLength": 1 },
+        "derivation_version": { "type": "string", "minLength": 1 },
         "selected": { "type": "boolean" },
         "label": { "type": "string" },
         "coord": { "anyOf": [{ "$ref": "#/$defs/coordinate" }, { "type": "null" }] },

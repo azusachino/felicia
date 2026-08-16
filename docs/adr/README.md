@@ -32,3 +32,4 @@ This directory stores the immutable records of design and architecture choices m
 | [0031](0031-frontend-style-map-first-and-shared-element-open.md)      | Frontend Style: Map-First Layout and Shared-Element Open | 2026-08-04 | Accepted |
 | [0032](0032-sqlite-first-v1-postgres-follow-up.md)                    | SQLite-First v1, PostgreSQL Follow-up                    | 2026-08-10 | Proposed |
 | [0033](0033-authored-field-protection-and-the-journey-ingest-seam.md) | Authored-Field Protection and the Journey Ingest Seam    | 2026-08-16 | Accepted |
+| [0034](0034-packages-transport-stop-candidates.md)                    | Journey Packages Transport Stop Candidates               | 2026-08-16 | Accepted |

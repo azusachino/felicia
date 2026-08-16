@@ -55,6 +55,16 @@ def candidate_key(stop: dict[str, Any]) -> str:
     return str(identity.get("key") or stop.get("id") or "")
 
 
+def derivation_version(stop: dict[str, Any]) -> str:
+    """Read a planned stop's derivation version from its identity.
+
+    A candidate whose derivation is unknown cannot be matched against a later
+    planning run or explained to a reviewer, so this is carried through from
+    the plan rather than defaulted (ADR-0034).
+    """
+    return str(stop.get("identity", {}).get("derivation_version") or "")
+
+
 def derive_journey_identity(gpx: Path) -> tuple[str, str]:
     """Derive a journey id and slug from the GPX track's own bytes.
 

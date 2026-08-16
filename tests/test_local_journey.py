@@ -160,8 +160,8 @@ class LocalJourneyWorkflowTest(unittest.TestCase):
                     {
                         "schema": "felicia.local.stops.v1",
                         "stops": [
-                            {"candidate_key": "osaka", "selected": True, "label": "Osaka"},
-                            {"candidate_key": "noise", "selected": False, "label": "Noise"},
+                            {"candidate_key": "osaka", "derivation_version": "gpx-stops-v1", "selected": True, "label": "Osaka", "coord": [139.7, 35.68], "arrive": "2026-04-01T09:00:00Z", "depart": "2026-04-01T09:40:00Z", "confidence": 0.5},
+                            {"candidate_key": "noise", "derivation_version": "gpx-stops-v1", "selected": False, "label": "Noise", "coord": [139.7, 35.68], "arrive": "2026-04-01T09:00:00Z", "depart": "2026-04-01T09:40:00Z", "confidence": 0.5},
                         ]
                     }
                 )
@@ -228,7 +228,7 @@ class LocalJourneyWorkflowTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
             (workspace / "journey.json").write_text(json.dumps({"schema": "felicia.local.journey.v1", "id": "0190cbde-f300-7000-8000-111111111111", "journal_id": "0190cbde-f300-7000-8000-000000000000", "slug": "test", "title": "Test", "date_start": "2026-04-01", "date_end": "2026-04-01"}))
-            (workspace / "stops.json").write_text(json.dumps({"schema": "felicia.local.stops.v1", "stops": [{"candidate_key": "stop", "selected": True, "label": "Stop"}]}))
+            (workspace / "stops.json").write_text(json.dumps({"schema": "felicia.local.stops.v1", "stops": [{"candidate_key": "stop", "derivation_version": "gpx-stops-v1", "selected": True, "label": "Stop", "coord": [139.7, 35.68], "arrive": "2026-04-01T09:00:00Z", "depart": "2026-04-01T09:40:00Z", "confidence": 0.5}]}))
             (workspace / "mementos.json").write_text(json.dumps({"schema": "felicia.local.mementos.v1", "mementos": [{"id": "0190cbde-f300-7000-8000-a00000000001", "stop_key": "stop", "seq": 1, "kind": "goods", "occurred_at": "2026-04-01T09:00:00Z", "state": "draft", "title": "Video", "kind_data": {}, "media": [{"path": "secret.mp4", "kind": "video"}]}]}))
             (workspace / "route.gpx").write_text("<gpx />")
             (workspace / "secret.mp4").write_bytes(b"video")
@@ -257,7 +257,7 @@ class LocalJourneyWorkflowTest(unittest.TestCase):
                 )
             )
             (workspace / "stops.json").write_text(
-                json.dumps({"schema": "felicia.local.stops.v1", "stops": [{"candidate_key": "a", "selected": True, "label": "A"}, {"candidate_key": "b", "selected": True, "label": "B"}]})
+                json.dumps({"schema": "felicia.local.stops.v1", "stops": [{"candidate_key": "a", "derivation_version": "gpx-stops-v1", "selected": True, "label": "A", "coord": [139.7, 35.68], "arrive": "2026-04-01T09:00:00Z", "depart": "2026-04-01T09:40:00Z", "confidence": 0.5}, {"candidate_key": "b", "derivation_version": "gpx-stops-v1", "selected": True, "label": "B", "coord": [139.7, 35.68], "arrive": "2026-04-01T09:00:00Z", "depart": "2026-04-01T09:40:00Z", "confidence": 0.5}]})
             )
             (workspace / "mementos.json").write_text(
                 json.dumps(
@@ -311,7 +311,7 @@ class LocalJourneyWorkflowTest(unittest.TestCase):
                 )
             )
             (workspace / "stops.json").write_text(
-                json.dumps({"schema": "felicia.local.stops.v1", "stops": [{"candidate_key": "a", "selected": True, "label": "A"}]})
+                json.dumps({"schema": "felicia.local.stops.v1", "stops": [{"candidate_key": "a", "derivation_version": "gpx-stops-v1", "selected": True, "label": "A", "coord": [139.7, 35.68], "arrive": "2026-04-01T09:00:00Z", "depart": "2026-04-01T09:40:00Z", "confidence": 0.5}]})
             )
             (workspace / "mementos.json").write_text(
                 json.dumps(

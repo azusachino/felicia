@@ -5,11 +5,15 @@
       "candidate_key": "harbor",
       "selected": true,
       "label": "Harbor Walk",
-      "coord": [135.18, 34.68],
+      "coord": [
+        135.18,
+        34.68
+      ],
       "arrive": "2026-05-10T09:00:00+09:00",
       "depart": "2026-05-10T10:00:00+09:00",
       "confidence": 0.8,
-      "review_note": "The only stop kept from this short trip."
+      "review_note": "The only stop kept from this short trip.",
+      "derivation_version": "gpx-stops-v1"
     }
   ]
 }

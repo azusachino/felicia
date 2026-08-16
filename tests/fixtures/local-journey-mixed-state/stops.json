@@ -5,31 +5,43 @@
       "candidate_key": "cafe",
       "selected": true,
       "label": "Corner Cafe",
-      "coord": [135.5, 34.7],
+      "coord": [
+        135.5,
+        34.7
+      ],
       "arrive": "2026-05-01T09:00:00+09:00",
       "depart": "2026-05-01T10:00:00+09:00",
       "confidence": 0.9,
-      "review_note": "Kept for the opening morning."
+      "review_note": "Kept for the opening morning.",
+      "derivation_version": "gpx-stops-v1"
     },
     {
       "candidate_key": "market",
       "selected": true,
       "label": "Kuromon Market",
-      "coord": [135.506, 34.665],
+      "coord": [
+        135.506,
+        34.665
+      ],
       "arrive": "2026-05-01T11:00:00+09:00",
       "depart": "2026-05-01T13:00:00+09:00",
       "confidence": 0.88,
-      "review_note": "Kept for lunch memories."
+      "review_note": "Kept for lunch memories.",
+      "derivation_version": "gpx-stops-v1"
     },
     {
       "candidate_key": "temple",
       "selected": true,
       "label": "Quiet Temple",
-      "coord": [135.52, 34.68],
+      "coord": [
+        135.52,
+        34.68
+      ],
       "arrive": "2026-05-02T09:00:00+09:00",
       "depart": "2026-05-02T11:00:00+09:00",
       "confidence": 0.95,
-      "review_note": "Kept as the emotional anchor of the trip."
+      "review_note": "Kept as the emotional anchor of the trip.",
+      "derivation_version": "gpx-stops-v1"
     }
   ]
 }

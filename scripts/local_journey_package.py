@@ -18,6 +18,48 @@ except ImportError:
     from validate_local_authoring import validate_workspace
 
 
+def package_stops(stop_data: dict, selected: set[str]) -> list[dict]:
+    """Project the workspace's kept stops into the package's stops member.
+
+    The importer seeds the admin intake inbox from this, so a CLI-imported trip
+    can be curated in the GUI instead of by hand-editing stops.json (issue #79,
+    ADR-0034). Only the author's kept stops travel, and no review-owned field
+    (state, merge target, authored mask) is emitted: a package may seed the
+    inbox, it may not claim an author's decision.
+
+    A kept stop that cannot be expressed is a loud error, never a silent drop --
+    a stop missing from the inbox is indistinguishable from one the planner
+    never found.
+    """
+    stops = []
+    for stop in stop_data.get("stops", []):
+        key = stop.get("candidate_key", "")
+        if key not in selected:
+            continue
+        derivation = stop.get("derivation_version", "")
+        coord = stop.get("coord")
+        arrive = stop.get("arrive", "")
+        depart = stop.get("depart", "")
+        if not derivation:
+            raise SystemExit(f"stop {key!r} has no derivation_version; re-run preprocess to regenerate stops.json")
+        if not (isinstance(coord, list) and len(coord) == 2):
+            raise SystemExit(f"stop {key!r} has no coordinate, so it cannot be reviewed on the map; deselect it or fix stops.json")
+        if not arrive or not depart:
+            raise SystemExit(f"stop {key!r} is missing arrive/depart; deselect it or fix stops.json")
+        stops.append(
+            {
+                "candidate_key": key,
+                "derivation_version": derivation,
+                "label": stop.get("label", ""),
+                "coord": [float(coord[0]), float(coord[1])],
+                "arrive": arrive,
+                "depart": depart,
+                "confidence": float(stop.get("confidence", 0)),
+            }
+        )
+    return stops
+
+
 def build_package(args: Namespace) -> Path:
     workspace = args.workspace.resolve()
     try:
@@ -85,6 +127,7 @@ def build_package(args: Namespace) -> Path:
             | {"photos": photos}
         )
     files["mementos.yaml"] = (json.dumps(package_mementos, ensure_ascii=False) + "\n").encode()
+    files["stops.yaml"] = (json.dumps(package_stops(stop_data, selected), ensure_ascii=False) + "\n").encode()
     files["route.gpx"] = (workspace / "route.gpx").read_bytes()
     files.update(copied_media)
 
