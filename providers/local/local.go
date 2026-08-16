@@ -76,10 +76,14 @@ func (s *GPXSource) FetchRoutes(ctx context.Context, from, to time.Time) ([]doma
 	return routes, nil
 }
 
-// PhotoSource walks a local media directory. Local files have no dependable
-// capture timestamp without EXIF decoding; At is therefore zero and the
-// planner leaves them visible as unattached evidence instead of treating file
-// modification time as a memory timestamp.
+// PhotoSource walks a local media directory. Images are decoded for EXIF
+// DateTimeOriginal/DateTime and GPS (see exif.go); a photo with no EXIF, or
+// with EXIF this cannot parse, degrades to the old behavior — At stays zero
+// and the planner leaves it visible as unattached evidence instead of
+// treating file modification time as a memory timestamp. A JSONL sidecar, if
+// supplied, always overrides whatever EXIF produced (see applySidecar):
+// authors use it to correct wrong camera clocks or fill in photos EXIF
+// cannot cover, so EXIF must never win over an explicit sidecar record.
 type PhotoSource struct {
 	root    string
 	sidecar string
@@ -329,5 +333,14 @@ func localAsset(root, path string) (domain.PhotoAsset, error) {
 		kind = domain.MediaVideo
 	}
 	source := domain.SourceIdentity{System: "local-media", ExternalID: relative}
-	return domain.PhotoAsset{ID: relative, Kind: kind, Checksum: "sha256:" + hex.EncodeToString(sum[:]), SourceRef: source.Ref(), Provenance: domain.Provenance{Source: source, Confidence: 1}, URI: relative, MIME: mime.TypeByExtension(filepath.Ext(path)), Title: strings.TrimSuffix(filepath.Base(path), filepath.Ext(path)), Provider: "local"}, nil
+	asset := domain.PhotoAsset{ID: relative, Kind: kind, Checksum: "sha256:" + hex.EncodeToString(sum[:]), SourceRef: source.Ref(), Provenance: domain.Provenance{Source: source, Confidence: 1}, URI: relative, MIME: mime.TypeByExtension(filepath.Ext(path)), Title: strings.TrimSuffix(filepath.Base(path), filepath.Ext(path)), Provider: "local"}
+	if kind == domain.MediaImage {
+		// decodeExif works directly off the raw bytes (it scans for the
+		// "Exif\x00\x00" marker rather than parsing container structure), so
+		// it reads EXIF out of HEIC/HEIF the same way it does JPEG. Whether
+		// felicia's pipeline accepts HEIC downstream is tracked by #80 and is
+		// unrelated to whether its embedded EXIF can be read here.
+		asset.At, asset.Coord = decodeExif(data)
+	}
+	return asset, nil
 }
