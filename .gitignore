@@ -33,6 +33,10 @@ coverage.*
 __pycache__/
 *.py[cod]
 
+# Real trip inputs used to exercise the pipeline. Personal data: photos, GPS
+# tracks, and location history never belong in the repository.
+/test_trip/
+
 # OS / editor
 .DS_Store
 *.swp

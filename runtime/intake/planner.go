@@ -221,13 +221,18 @@ func deriveVisits(routes []domain.Route, config PlanConfig) ([]domain.Visit, []I
 			return
 		}
 		coord := centroid(cluster)
+		// The cluster is the observation, so it carries a real source identity
+		// -- the same one visitEvidence derives. Leaving provenance's source
+		// blank would publish an unattributable observation (ADR-0010).
+		reference := fmt.Sprintf("derived-route:cluster-%03d", len(visits)+1)
+		source := domain.SourceIdentity{System: "local-track", ExternalID: reference}
 		visits = append(visits, domain.Visit{
 			Coord:      coord,
 			Arrive:     arrive,
 			Depart:     depart,
 			Confidence: 0.5,
-			SourceRef:  fmt.Sprintf("derived-route:cluster-%03d", len(visits)+1),
-			Provenance: domain.Provenance{ObservedAt: arrive, Confidence: 0.5},
+			SourceRef:  reference,
+			Provenance: domain.Provenance{Source: source, ObservedAt: arrive, Confidence: 0.5},
 		})
 	}
 	for _, point := range points {
@@ -291,6 +296,11 @@ func mediaForStop(visit domain.Visit, media []domain.MediaAsset, window time.Dur
 		if asset.Coord != nil && geo.Distance(visit.Coord, *asset.Coord) > radiusM {
 			continue
 		}
+		if asset.MemoryLinks == nil {
+			// Same reason as the candidate's containers: adapters leave this
+			// nil, and nil marshals to JSON null in the emitted plan.
+			asset.MemoryLinks = []domain.MemoryLink{}
+		}
 		matched = append(matched, asset)
 		if asset.SourceRef != "" {
 			evidence = append(evidence, domain.EvidenceRef{Kind: domain.EvidenceMedia, Source: domain.SourceIdentity{System: "media", ExternalID: asset.SourceRef}, Locator: asset.ID})
@@ -315,15 +325,21 @@ func stopConfidence(sourceConfidence float64, arrive, depart time.Time, mediaCou
 
 func mementoFromStop(stop domain.StopCandidate, media []domain.MediaAsset) domain.MementoCandidate {
 	source := domain.SourceIdentity{System: "derived-stop", ExternalID: stop.Identity.Key}
+	// Kind and its kind_data stay unset until the author promotes the
+	// candidate, but the containers are still emitted empty rather than nil:
+	// a nil map/slice marshals to JSON null, which every consumer of the plan
+	// would otherwise have to special-case.
 	return domain.MementoCandidate{
-		Source:     source,
-		StopKey:    stop.Identity.Key,
-		OccurredAt: stop.Arrive,
-		Geom:       stop.Coord,
-		Title:      stop.Label,
-		Place:      stop.Label,
-		Media:      media,
-		Provenance: domain.Provenance{Source: source, ObservedAt: stop.Arrive, Confidence: stop.Confidence},
+		Source:      source,
+		StopKey:     stop.Identity.Key,
+		OccurredAt:  stop.Arrive,
+		Geom:        stop.Coord,
+		Title:       stop.Label,
+		Place:       stop.Label,
+		KindData:    map[string]any{},
+		Media:       media,
+		MemoryLinks: []domain.MemoryLink{},
+		Provenance:  domain.Provenance{Source: source, ObservedAt: stop.Arrive, Confidence: stop.Confidence},
 	}
 }
 

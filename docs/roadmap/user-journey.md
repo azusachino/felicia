@@ -87,6 +87,40 @@ projection:
 
 ## Status log
 
+- **2026-08-16 (raw-input intake unblocked)** — Walking the documented
+  entry path from a real GPX file and a photo folder found it broken at
+  every step: eight consecutive blockers between `make journey-local` and a
+  packaged journey. Four were contract drift against
+  `schemas/local-authoring-v1.schema.json` (the planner's `date_start`/
+  `date_end`; a candidate's deliberately-unset `kind`; and the whole
+  `stop_candidate` definition, still spelled in Go PascalCase after
+  `domain.StopCandidate` gained snake_case tags), two were nil maps and
+  slices marshalling to JSON `null`, one was derived stops carrying blank
+  provenance despite their evidence naming a source (ADR-0010), and the
+  last silently dropped every photo — `local_journey.py` read `uri`/`title`
+  from a media asset that serialises as `URI`/`Title`, so packaging
+  reported success with `media=0`. None of it was caught because every
+  local-journey fixture is a hand-written workspace and the one test that
+  validated a plan hand-wrote that too, in the same stale casing as the
+  schema. `tests/test_local_journey_raw_intake.py` now runs the real
+  compiled planner over a checked-in two-dwell track and asserts its output
+  against the repository's own schema, that dwell yields stops, and that
+  sidecar-timed photos reach both workspace and package. Stage status
+  unchanged: this is the CLI entry path the GUI does not yet cover.
+
+- **2026-08-15 (publish path documented)** — The journey's last two stages had
+  no user-facing instructions: `docs/release/github-pages-v0.1.md` covered only
+  the CI/fork route, `setup.md` stopped at local authoring, and the
+  local-authoring deploy (build with the target base path → push the artifact →
+  enable Pages) was written down nowhere. Added
+  [`docs/publish.md`](../publish.md) covering both routes, the base-path table,
+  and the failure modes, linked from the README and the docs index. A person
+  taking the deployable artifact from their own journal previously had to hand-
+  assemble it (`make static-build` compiles the fixture demo, not an authored
+  journal), so `make site-build` and `make site-verify` now name that surface
+  per the third development-flow constraint in `AGENTS.md`. No change to the
+  pipeline itself; stage status unchanged.
+
 - **2026-08-04 (epic ADMIN-02 M2)** — Site identity landed: a journal-scoped
   `tb_site_settings` row (title, description, active design, default
   language/theme, accent) is projected through the shared `publication`

@@ -21,6 +21,31 @@ except ImportError:
     from local_journey_package import build_package
 
 
+def plan_date(value: str | None, fallback: str) -> str:
+    """Take the calendar date out of a plan bound, or fall back."""
+    if not value:
+        return fallback
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).date().isoformat()
+    except ValueError:
+        return fallback
+
+
+def workspace_media_path(photo_root: Path, asset: dict) -> str:
+    """Point the workspace at a photo the packager can actually resolve.
+
+    Plan media assets come from an untagged Go struct, so their keys are
+    PascalCase, and `URI` is relative to the photo root rather than to the
+    workspace or the repository. Packaging resolves paths against the
+    workspace and then the repository root, so rebase to one of those.
+    """
+    resolved = (photo_root.resolve() / asset["URI"]).resolve()
+    try:
+        return resolved.relative_to(ROOT).as_posix()
+    except ValueError:
+        return str(resolved)
+
+
 def preprocess(args: argparse.Namespace) -> None:
     workspace = args.workspace.resolve()
     workspace.mkdir(parents=True, exist_ok=True)
@@ -70,23 +95,32 @@ def preprocess(args: argparse.Namespace) -> None:
                 "seq": index,
                 "kind": source.get("kind") or "goods",
                 "occurred_at": source.get("occurred_at", ""),
-                "occurred_tz": source.get("occurred_tz", "UTC"),
+                # The planner leaves the zone empty until offline resolution
+                # lands, and the key is always present -- so default on the
+                # value, not on the key, or packaging rejects the workspace.
+                "occurred_tz": source.get("occurred_tz") or "UTC",
                 "title": source.get("title", ""),
                 "place": source.get("place", ""),
                 "geom": as_coord(source.get("geom")),
                 "state": "draft",
                 "kind_data": source.get("kind_data") or {},
                 "media": [
-                    {"path": asset.get("uri", ""), "caption": asset.get("title", "")}
+                    {"path": workspace_media_path(args.photos, asset), "caption": asset.get("Title", "")}
                     for asset in source.get("media", [])
-                    if asset.get("uri")
+                    if asset.get("URI")
                 ],
                 "author_note": "Edit title, kind, kind_data, and media before preview.",
             }
         )
     write_json(workspace / "mementos.json", {"schema": "felicia.local.mementos.v1", "mementos": mementos})
 
-    now = datetime.now(timezone.utc).date().isoformat()
+    # The planner derives the journey's date bounds from the route, visit, and
+    # media timestamps; today's date is only the fallback for a plan that could
+    # not derive them. Writing `now` unconditionally publishes a trip dated the
+    # day it was imported.
+    today = datetime.now(timezone.utc).date().isoformat()
+    date_start = plan_date(plan.get("date_start"), today)
+    date_end = plan_date(plan.get("date_end"), date_start)
     write_json(
         workspace / "journey.json",
         {
@@ -98,8 +132,8 @@ def preprocess(args: argparse.Namespace) -> None:
             "place": "",
             "country": "",
             "region": "",
-            "date_start": now,
-            "date_end": now,
+            "date_start": date_start,
+            "date_end": date_end,
             "source_ref": args.gpx.name,
         },
     )

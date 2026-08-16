@@ -75,6 +75,10 @@ Current evidence:
 - [2026-07-17 provider baseline](2026-07-17-provider-baseline.md)
 - [2026-07-17 GitHub Pages design demo](2026-07-17-pages-design-demo.md)
 - [2026-07-17 public read contract](2026-07-17-public-read-contract.md)
+- [2026-08-16 real-trip CLI walkthrough](2026-08-16-real-trip-cli-walkthrough.md) —
+  a real Timeline export and iPhone photo folder through the local-authoring
+  route: nine defects, three capability gaps, and the seam where the CLI and
+  GUI paths fail to meet
 
 ## Existing experiment materials
 
