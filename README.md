@@ -160,8 +160,12 @@ Full detail: [`docs/research/data-model.md`](docs/research/data-model.md) · [`d
 live API, CLI, and static compiler are built and tested; GitHub Pages
 publication runs the real SQLite pipeline end to end (PR #55); the admin
 authoring GUI MVP is complete (epic
-[FELICIA-ADMIN-01](docs/roadmap/admin-gui-v1-epic.md)). Remaining gaps:
-deferred AI enrichment/object storage seams and the dynamic form engine.
+[FELICIA-ADMIN-01](docs/roadmap/admin-gui-v1-epic.md)). Auditing that flow
+against a real trip found four P0 data-integrity defects — a second trip
+overwrote the first, re-import destroyed authored fields, the artifact
+shipped an unrounded GPS trace, and media keys collided on basename — all
+now fixed and covered by provider-parity tests. Remaining gaps: deferred AI
+enrichment/object storage seams and the dynamic form engine.
 
 Single source of truth for delivery status:
 [`docs/roadmap.md`](docs/roadmap.md); target end-to-end journey:

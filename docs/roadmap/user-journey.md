@@ -87,6 +87,34 @@ projection:
 
 ## Status log
 
+- **2026-08-16 (four P0 data-integrity defects closed)** — Auditing the
+  publish flow found that four of the invariants this document asserts were
+  documented but never implemented, so every one of them was silently false
+  on the real-trip path. (1) `make journey-local` hard-coded one journey
+  UUID, slug, and workspace, so importing a second trip overwrote the first
+  (#72). (2) The importer recorded its ingest mask and then ignored the
+  destination's authored mask, so a re-import destroyed authored titles,
+  places, and `kind_data` — and reset the journey's authored mask outright,
+  disabling the one guard that did work (#73). (3) The publication boundary
+  emitted every coordinate at full float64 precision, so the artifact
+  shipped the author's raw GPS trace (#74). (4) Public media keys were the
+  source file's basename, so two trips' `IMG_0001.JPG` overwrote each other
+  (#75). All four are now enforced rather than asserted: journeys gained the
+  ingest/authoring split port the memento layer already had, so an import
+  cannot reach the authoring write at compile time
+  ([ADR-0033](../adr/0033-authored-field-protection-and-the-journey-ingest-seam.md));
+  the authored-field rule lives in one shared `core/domain` helper and is
+  asserted for both providers in `providers/contract`, per the second
+  development-flow constraint in `AGENTS.md`; coordinates round to 4 decimals
+  (~11 m, the precision already documented in `docs/archive/spec-gaps.md`
+  D2) inside the single projection shared by the static compiler and the live
+  API; and media keys are content-addressed from the digest that was already
+  being computed. Fixing #73 surfaced a second, opposite defect: PostgreSQL
+  guarded authored columns inside `UpsertJourney`, which is also the
+  authoring path, so a journey field could be claimed once and then never
+  edited again. Stage status unchanged — these restore guarantees the stages
+  already claimed.
+
 - **2026-08-16 (raw-input intake unblocked)** — Walking the documented
   entry path from a real GPX file and a photo folder found it broken at
   every step: eight consecutive blockers between `make journey-local` and a
