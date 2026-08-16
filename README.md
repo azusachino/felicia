@@ -156,25 +156,16 @@ Full detail: [`docs/research/data-model.md`](docs/research/data-model.md) · [`d
 
 ## 🛣️ Status & roadmap
 
-**Implementation stage** (research trail continues). The backend pipeline is
-substantially built and tested: SQLite/PostgreSQL providers with shared
-contract tests, the field-scoped importer (Dawarich ⋈ Immich ⋈ local GPX),
-the deterministic intake planner, the Go API (`/api/v1` + admin, including
-intake-plan/promote and compile endpoints), the CLI (`journey
-plan/apply/review`, `static compile` with stale-artifact reconciliation), and
-the published-only static compiler shared verbatim by the live API and the
-static artifact. GitHub Pages publication runs the real SQLite pipeline —
-live/static contract parity is proven in the workflow harness and the Pages
-workflow has run end to end on `main` (PR #55). The admin authoring GUI MVP
-is complete: journey shell, intake inbox, memento editor, and a closed-loop
-browser E2E (epic [FELICIA-ADMIN-01](docs/roadmap/admin-gui-v1-epic.md)).
-Remaining gaps are the deliberately deferred AI enrichment / object storage
-seams and the registry-driven dynamic form engine.
+**Implementation stage** (research trail continues). The backend pipeline,
+live API, CLI, and static compiler are built and tested; GitHub Pages
+publication runs the real SQLite pipeline end to end (PR #55); the admin
+authoring GUI MVP is complete (epic
+[FELICIA-ADMIN-01](docs/roadmap/admin-gui-v1-epic.md)). Remaining gaps:
+deferred AI enrichment/object storage seams and the dynamic form engine.
 
-The single source of truth for delivery status is
-[`docs/roadmap.md`](docs/roadmap.md) and the target end-to-end journey in
-[`docs/roadmap/user-journey.md`](docs/roadmap/user-journey.md) — this README
-no longer maintains its own checklist.
+Single source of truth for delivery status:
+[`docs/roadmap.md`](docs/roadmap.md); target end-to-end journey:
+[`docs/roadmap/user-journey.md`](docs/roadmap/user-journey.md).
 
 ## 📚 Docs
 
