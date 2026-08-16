@@ -49,7 +49,45 @@ equally well; nothing in this route depends on the checkout's git remote.
 Prerequisite: **nix** with flakes enabled. Everything else comes from the flake
 (`make` enters it automatically).
 
-### 2. Author
+### 2. Bring in a trip
+
+The admin GUI has no journey-creation or file-upload control yet (its Import
+buttons talk to Dawarich and Immich, not to your disk), so a trip enters through
+the CLI. This step also creates the journey — `--slug` and `--title` name it:
+
+```bash
+make journey-local GPX=~/trip/route.gpx PHOTOS=~/trip/photos
+```
+
+That writes an editable workspace to `.felicia/local-journey`: `journey.json`,
+`stops.json`, `mementos.json`, plus the planner's `plan.json`. Edit the titles
+and selections, then package and import it:
+
+```bash
+uv run python scripts/local_journey.py package --workspace .felicia/local-journey
+./bin/felicia-cli import --db .felicia/local.sqlite --media-root .felicia/media \
+  --apply .felicia/local-journey/journey.zip
+```
+
+Two things decide whether this produces anything:
+
+- **Stops need dwell.** A stop candidate is 20+ minutes within 250 m. A track
+  that never stops — a train ride, a drive — yields no stops, and therefore no
+  mementos. `preprocess` reports success either way, so check the counts in
+  `stops.json` rather than trusting the exit code.
+- **Local photos have no timestamps.** EXIF is only read through Immich; a photo
+  folder is timestamp-less to felicia and cannot be attached to the track. Supply
+  a JSONL sidecar and pass it as `SIDECAR=`:
+
+  ```jsonl
+  {
+    "path": "IMG_0001.jpg",
+    "at": "2026-04-18T00:25:00Z",
+    "title": "Morning stop"
+  }
+  ```
+
+### 3. Author
 
 ```bash
 make admin
@@ -58,10 +96,11 @@ make admin
 - admin GUI — `http://127.0.0.1:5174/`
 - site preview — `http://127.0.0.1:8081/`
 
-Import a route and photos, confirm stop candidates in the intake inbox, write
-essays in the memento editor, then advance each memento
-`draft → authored → published`. **Only `published` mementos reach the
-artifact**, and a journey with no published mementos is not published at all.
+Confirm stop candidates in the intake inbox, write essays in the memento editor,
+then advance each memento `draft → authored → published`. Imported mementos
+arrive as `draft`. **Only `published` mementos reach the artifact**, and a
+journey with no published mementos is not published at all — a compile that
+reports `Journeys: 0` usually means nothing has been published yet.
 
 On the **Site & Deploy** page set the site title and description, pick one of
 the four designs, and set the default language, theme, and accent colour. A
@@ -71,7 +110,7 @@ Defaults: journal `.felicia/local.sqlite`, media `.felicia/media`, compile
 output `.felicia/site`. Override with `--db` / `DATABASE_PATH`, `--media-root`,
 or the Site & Deploy output directory.
 
-### 3. Build a deployable directory
+### 4. Build a deployable directory
 
 The artifact is the SPA and the compiled JSON/media **in one directory**. Build
 the SPA with the base path your site will be served under, then compile your
@@ -111,7 +150,7 @@ BASE_PATH=/my-travels/ make site-verify
 It asserts the base path reached `index.html`, that journeys are present, and
 that every referenced photo exists in the artifact.
 
-### 4. Deploy
+### 5. Deploy
 
 Keep a clone of the site repo as a deploy directory, sync the build into it, and
 push:
@@ -126,7 +165,7 @@ cd ~/my-travels-deploy && git add -A && git commit -m "deploy: site" && git push
 `.nojekyll` is required — without it GitHub runs the output through Jekyll,
 which drops files whose names begin with an underscore.
 
-### 5. Enable Pages
+### 6. Enable Pages
 
 **Only after the first push** — the branch must exist before it appears in the
 dropdown:
@@ -138,9 +177,9 @@ Leave **Custom domain** empty; the site is served at
 `https://<you>.github.io/my-travels/`. The URL appears at the top of that page
 once the first deployment finishes.
 
-### 6. Update
+### 7. Update
 
-Repeat steps 2 and 3, then re-run the `rsync` + commit + push from step 4. The
+Repeat steps 2 to 4, then re-run the `rsync` + commit + push from step 5. The
 Pages settings never need to change.
 
 Unpublishing works the same way: step a memento back to `authored`, rebuild, and

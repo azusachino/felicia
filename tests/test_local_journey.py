@@ -62,25 +62,25 @@ class LocalJourneyWorkflowTest(unittest.TestCase):
                         ],
                         "stops": [
                             {
-                                "ID": "0190cbde-f300-7000-8000-222222222222",
-                                "JourneyID": "0190cbde-f300-7000-8000-111111111111",
-                                "Identity": {"derivation_version": "gpx-stops-v1", "key": "visit-1"},
-                                "Label": "Osaka",
-                                "Coord": [135.5, 34.7],
-                                "Arrive": "2026-04-01T09:00:00Z",
-                                "Depart": "2026-04-01T10:00:00Z",
-                                "Confidence": 0.9,
-                                "Evidence": [
+                                "id": "0190cbde-f300-7000-8000-222222222222",
+                                "journey_id": "0190cbde-f300-7000-8000-111111111111",
+                                "identity": {"derivation_version": "gpx-stops-v1", "key": "visit-1"},
+                                "label": "Osaka",
+                                "coord": [135.5, 34.7],
+                                "arrive": "2026-04-01T09:00:00Z",
+                                "depart": "2026-04-01T10:00:00Z",
+                                "confidence": 0.9,
+                                "evidence": [
                                     {
                                         "kind": "visit",
                                         "source": {"system": "dawarich", "external_id": "visit-1"},
                                         "locator": "visit-1",
                                     }
                                 ],
-                                "State": "proposed",
-                                "Revision": 0,
-                                "CreatedAt": "2026-04-01T09:00:00Z",
-                                "UpdatedAt": "2026-04-01T09:00:00Z",
+                                "state": "proposed",
+                                "revision": 0,
+                                "created_at": "2026-04-01T09:00:00Z",
+                                "updated_at": "2026-04-01T09:00:00Z",
                             }
                         ],
                         "mementos": [
