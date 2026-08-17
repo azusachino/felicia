@@ -164,8 +164,11 @@ authoring GUI MVP is complete (epic
 against a real trip found four P0 data-integrity defects — a second trip
 overwrote the first, re-import destroyed authored fields, the artifact
 shipped an unrounded GPS trace, and media keys collided on basename — all
-now fixed and covered by provider-parity tests. Remaining gaps: deferred AI
-enrichment/object storage seams and the dynamic form engine.
+now fixed and covered by provider-parity tests. The raw-input path also joins
+up end to end: local photos carry EXIF timestamps, an imported trip's stops
+reach the admin intake inbox, and the importer enforces the same write
+boundary the admin API does. Remaining gaps: deferred AI enrichment/object
+storage seams and the dynamic form engine.
 
 Single source of truth for delivery status:
 [`docs/roadmap.md`](docs/roadmap.md); target end-to-end journey:

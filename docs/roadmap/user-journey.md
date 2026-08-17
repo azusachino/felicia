@@ -35,13 +35,13 @@ Invariants that must hold at every step:
 
 ## Per-stage status
 
-| #   | Stage               | Status                  | Where it lives                                                                                                                                                                                                                                                                                                                                            |
-| --- | ------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **Data collection** | ✅ Done                 | Dawarich client (`providers/dawarich/`), Immich client (`providers/immich/`), local GPX + photo/sidecar source (`providers/local/`), mock upstream (`scripts/mock_upstream.py`)                                                                                                                                                                           |
-| 2   | **Import / intake** | ✅ Done (deterministic) | Field-scoped importer (`runtime/importer/`), dwell-cluster intake planner (`runtime/intake/planner.go`), SQLite + PostgreSQL providers behind shared contract tests                                                                                                                                                                                       |
-| 3   | **Authoring**       | ✅ Done (GUI MVP)       | Schema v1 + CLI path complete; `apps/web-admin` closes the authoring loop — journey shell with import/preview triggers, intake inbox, memento editor with revision-conflict handling — proven end to end in a real browser (`make test-admin-e2e`, epic [FELICIA-ADMIN-01](admin-gui-v1-epic.md)); the registry-driven dynamic form engine stays deferred |
-| 4   | **Publication**     | ✅ Done                 | Published-only static compiler (`publication/compiler.go`); live/static content parity is enforced by a shared projection layer (`publication/public.go`) and a workflow parity check                                                                                                                                                                     |
-| 5   | **Deployment**      | ✅ Done                 | Pages workflow builds and deploys the real compiled artifact (artifact-based `upload-pages-artifact` → `deploy-pages`, nothing committed); first remote run succeeded on `main` after PR #55 merged — epic [FELICIA-PAGES-01](pages-v1-epic.md)                                                                                                           |
+| #   | Stage               | Status                  | Where it lives                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| --- | ------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Data collection** | ✅ Done                 | Dawarich client (`providers/dawarich/`), Immich client (`providers/immich/`), local GPX + photo/sidecar source (`providers/local/`), mock upstream (`scripts/mock_upstream.py`)                                                                                                                                                                                                                                                                           |
+| 2   | **Import / intake** | ✅ Done (deterministic) | Field-scoped importer (`runtime/importer/`), dwell-cluster intake planner (`runtime/intake/planner.go`), SQLite + PostgreSQL providers behind shared contract tests; local photos carry EXIF timestamps/GPS, packages transport stop candidates into the GUI inbox, and the importer reuses the admin write boundary ([ADR-0034](../adr/0034-packages-transport-stop-candidates.md), [ADR-0035](../adr/0035-package-import-reuses-the-write-boundary.md)) |
+| 3   | **Authoring**       | ✅ Done (GUI MVP)       | Schema v1 + CLI path complete; `apps/web-admin` closes the authoring loop — journey shell with import/preview triggers, intake inbox, memento editor with revision-conflict handling — proven end to end in a real browser (`make test-admin-e2e`, epic [FELICIA-ADMIN-01](admin-gui-v1-epic.md)); the registry-driven dynamic form engine stays deferred                                                                                                 |
+| 4   | **Publication**     | ✅ Done                 | Published-only static compiler (`publication/compiler.go`); live/static content parity is enforced by a shared projection layer (`publication/public.go`) and a workflow parity check                                                                                                                                                                                                                                                                     |
+| 5   | **Deployment**      | ✅ Done                 | Pages workflow builds and deploys the real compiled artifact (artifact-based `upload-pages-artifact` → `deploy-pages`, nothing committed); first remote run succeeded on `main` after PR #55 merged — epic [FELICIA-PAGES-01](pages-v1-epic.md)                                                                                                                                                                                                           |
 
 Deliberately deferred (not gaps): AI enrichment
 ([ADR-0024](../adr/0024-optional-ai-enrichment.md)), R2/S3 object storage
@@ -86,6 +86,34 @@ projection:
 - Publish action: mark published + trigger `static compile` to produce `dist/`.
 
 ## Status log
+
+- **2026-08-17 (the raw-input intake chain joins up)** — The CLI and GUI
+  halves of intake were disconnected in three separate places, so the
+  documented "phone photos plus a GPX" path could not reach the authoring
+  surface. (1) `providers/local` never decoded EXIF, so a photo folder was
+  timestamp-less and no photo could attach to a stop without a hand-written
+  sidecar per file (#78). (2) A journey package carried no stops at all — the
+  packager read `stops.json` only to compute a selection filter — so an
+  imported trip showed "No stop candidates yet" and its stops could only be
+  named by editing JSON (#79). (3) The importer called none of the write
+  boundary's validators, so a misspelled kind imported cleanly and was then
+  permanently unsavable in the GUI; worse, the package format could express
+  only a single point while `core/kinds/transit.yaml` declares `anchor: edge`,
+  so no CLI-imported memento could legally be `transit` (#77). All three are
+  closed: EXIF is decoded locally with the sidecar still winning as an
+  override; packages carry an optional stops member that seeds the intake
+  inbox without claiming any review decision
+  ([ADR-0034](../adr/0034-packages-transport-stop-candidates.md)); and the
+  importer reuses the admin API's own validators at decode time, with `geom`
+  now accepting a line as well as a point
+  ([ADR-0035](../adr/0035-package-import-reuses-the-write-boundary.md)).
+  Validation sits in `DecodePackage` rather than `ApplyPackage` so a rejected
+  package persists nothing, which matters because the stop loop runs first.
+  Four checked-in fixtures turned out to be packages the GUI could never have
+  saved — invented `kind_data` fields, a published `transit` with neither
+  geometry nor timezone — and the authoring schema was missing `souvenir`
+  entirely; both are corrected and now guarded by a registry drift test.
+  Stage 2 gains GUI-reviewable stops for CLI-imported trips.
 
 - **2026-08-16 (four P0 data-integrity defects closed)** — Auditing the
   publish flow found that four of the invariants this document asserts were
