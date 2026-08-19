@@ -1,12 +1,12 @@
-module github.com/azusachino/felicia/server
+module github.com/azusachino/felicia/apps/felicia-server
 
 go 1.26
 
 require (
-	github.com/azusachino/felicia/core v0.1.0
-	github.com/azusachino/felicia/providers v0.1.0
-	github.com/azusachino/felicia/publication v0.1.0
-	github.com/azusachino/felicia/runtime v0.1.0
+	github.com/azusachino/felicia/apps/felicia-core v0.1.0
+	github.com/azusachino/felicia/apps/felicia-providers v0.1.0
+	github.com/azusachino/felicia/apps/felicia-publication v0.1.0
+	github.com/azusachino/felicia/apps/felicia-runtime v0.1.0
 	github.com/go-chi/chi/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
@@ -34,11 +34,12 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	golang.org/x/mod v0.27.0 // indirect
-	golang.org/x/sync v0.17.0 // indirect
-	golang.org/x/sys v0.35.0 // indirect
-	golang.org/x/text v0.29.0 // indirect
-	golang.org/x/tools v0.36.0 // indirect
+	golang.org/x/image v0.44.0 // indirect
+	golang.org/x/mod v0.37.0 // indirect
+	golang.org/x/sync v0.22.0 // indirect
+	golang.org/x/sys v0.46.0 // indirect
+	golang.org/x/text v0.40.0 // indirect
+	golang.org/x/tools v0.47.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/uint128 v1.2.0 // indirect
 	modernc.org/cc/v3 v3.40.0 // indirect
@@ -53,8 +54,8 @@ require (
 )
 
 replace (
-	github.com/azusachino/felicia/core => ../core
-	github.com/azusachino/felicia/providers => ../providers
-	github.com/azusachino/felicia/publication => ../publication
-	github.com/azusachino/felicia/runtime => ../runtime
+	github.com/azusachino/felicia/apps/felicia-core => ../felicia-core
+	github.com/azusachino/felicia/apps/felicia-providers => ../felicia-providers
+	github.com/azusachino/felicia/apps/felicia-publication => ../felicia-publication
+	github.com/azusachino/felicia/apps/felicia-runtime => ../felicia-runtime
 )

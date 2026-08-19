@@ -13,7 +13,7 @@
       "place": "Osaka",
       "geom": [135.5016, 34.6687],
       "kind_data": {"memory": "The first night of the five-day route"},
-      "media": [{"path": "apps/web-public/public/osaka_plushie.jpg", "caption": "Osaka at night"}]
+      "media": [{"path": "apps/felicia-public-site/public/osaka_plushie.jpg", "caption": "Osaka at night"}]
     },
     {
       "id": "0190cbde-f300-7000-8000-b00000000002",
@@ -27,7 +27,7 @@
       "place": "Kobe",
       "geom": [135.1878, 34.6794],
       "kind_data": {"vendor": "Harbor Kitchen", "currency": "JPY"},
-      "media": [{"path": "apps/web-public/public/kyoto_temple.jpg", "caption": "A lunch worth remembering"}]
+      "media": [{"path": "apps/felicia-public-site/public/kyoto_temple.jpg", "caption": "A lunch worth remembering"}]
     },
     {
       "id": "0190cbde-f300-7000-8000-b00000000003",
@@ -41,7 +41,7 @@
       "place": "Kobe",
       "geom": [135.1878, 34.6794],
       "kind_data": {"operator": "JR West", "line": "Kansai local"},
-      "media": [{"path": "apps/web-public/public/tokyo_night.jpg", "caption": "The route continues"}]
+      "media": [{"path": "apps/felicia-public-site/public/tokyo_night.jpg", "caption": "The route continues"}]
     },
     {
       "id": "0190cbde-f300-7000-8000-b00000000004",
@@ -55,7 +55,7 @@
       "place": "Nara",
       "geom": [135.8398, 34.6851],
       "kind_data": {"name": "Nara Park Goshuin"},
-      "media": [{"path": "apps/web-public/public/kyoto_temple.jpg", "caption": "The quietest stop"}]
+      "media": [{"path": "apps/felicia-public-site/public/kyoto_temple.jpg", "caption": "The quietest stop"}]
     }
   ]
 }

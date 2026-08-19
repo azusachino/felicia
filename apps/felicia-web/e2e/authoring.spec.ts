@@ -128,7 +128,7 @@ test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
 
   test("builds the site from the GUI and the artifact reflects the authored essay", async () => {
     // ADMIN-02 M0: the Site & Deploy page now exposes the compile trigger
-    // (apps/web-admin/src/views/SiteDeploy.svelte), so this drives the real
+    // (apps/felicia-web/src/views/SiteDeploy.svelte), so this drives the real
     // GUI flow instead of posting to /api/admin/compile directly. The
     // server compiles into its configured SITE_OUT_DIR (env var), which
     // scripts/e2e_admin_gui.py sets equal to its own `out_dir` — so there is

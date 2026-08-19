@@ -12,8 +12,8 @@ import (
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/encoding/wkb"
 
-	"github.com/azusachino/felicia/core/domain"
-	"github.com/azusachino/felicia/core/ports"
+	"github.com/azusachino/felicia/apps/felicia-core/domain"
+	"github.com/azusachino/felicia/apps/felicia-core/ports"
 )
 
 var _ ports.StopCandidateStore = (*pgRepository)(nil)

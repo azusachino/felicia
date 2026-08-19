@@ -108,7 +108,7 @@ ADR-0031:
 
 - ADR-0031 freezes the _direction_; a **frontend style spec** (design tokens, per-kind
   stub anatomy, motion spec) is still the next step before implementation.
-- None of the four current reader prototypes (`apps/web-public/src/{v1,v2,v3,v4}`) is
+- None of the four current reader prototypes (`apps/felicia-public-site/src/{v1,v2,v3,v4}`) is
   a clean match for the decided layout — `v1` is an index rail, `v3` is a book-spread,
   `v4` is scroll-driven. Building (or adapting a prototype into) the reader that
   actually matches ADR-0031 is separate follow-up implementation work.

@@ -6,8 +6,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/azusachino/felicia/core/domain"
-	"github.com/azusachino/felicia/runtime/journey"
+	"github.com/azusachino/felicia/apps/felicia-core/domain"
+	"github.com/azusachino/felicia/apps/felicia-runtime/journey"
 )
 
 type fakeStore struct{ saved *domain.Journey }

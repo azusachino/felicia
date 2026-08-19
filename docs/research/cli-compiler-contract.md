@@ -35,14 +35,14 @@ from `.felicia/inbox` into a public GitHub Pages artifact automatically.
 
 | Concern                          | Current location               | Assessment                                       |
 | -------------------------------- | ------------------------------ | ------------------------------------------------ |
-| Canonical entities and lifecycle | `core/domain`                  | Reusable starting point                          |
-| Storage ports                    | `core/ports`                   | Reusable; publication needs a narrower read port |
-| SQLite provider                  | `providers/sqlite`             | First CLI persistence target                     |
-| PostgreSQL provider              | `providers/postgres`           | Server/deployment target                         |
-| Import joining/no-clobber logic  | `runtime/importer`             | Reusable runtime seam                            |
+| Canonical entities and lifecycle | `apps/felicia-core/domain`                  | Reusable starting point                          |
+| Storage ports                    | `apps/felicia-core/ports`                   | Reusable; publication needs a narrower read port |
+| SQLite provider                  | `apps/felicia-providers/sqlite`             | First CLI persistence target                     |
+| PostgreSQL provider              | `apps/felicia-providers/postgres`           | Server/deployment target                         |
+| Import joining/no-clobber logic  | `apps/felicia-runtime/importer`             | Reusable runtime seam                            |
 | Public projection                | `publication`                  | Shared boundary now exists                       |
 | Fixture build script             | `scripts/build_static_demo.py` | Demo only; not package compilation               |
-| `felicia-cli`                    | `cli/cmd/felicia`              | SQLite import and static compiler entry point    |
+| `felicia-cli`                    | `apps/felicia-cli/cmd/felicia`              | SQLite import and static compiler entry point    |
 
 ## Canonical model
 
@@ -84,11 +84,11 @@ of private/unsupported files. This replaces the current fixture demo check.
 
 ## Implementation order
 
-1. Extend the shared publication DTOs and compiler ports in `publication`.
+1. Extend the shared publication DTOs and compiler ports in `apps/felicia-publication`.
 2. Define package DTOs and ZIP validation without a database dependency.
 3. Implement GPX and local-media adapters.
 4. Implement import plan/apply against SQLite through existing ports.
-5. Add `cli/cmd/felicia` with package validation, import, and static compile.
+5. Add `apps/felicia-cli/cmd/felicia` with package validation, import, and static compile.
 6. Add the end-to-end fixture and compile it into deterministic `.json` paths.
 7. Recompose the postponed server and PostgreSQL compiler from the same seams.
 

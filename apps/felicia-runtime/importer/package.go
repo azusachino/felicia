@@ -12,8 +12,8 @@ import (
 	"github.com/paulmach/orb"
 	"gopkg.in/yaml.v3"
 
-	"github.com/azusachino/felicia/core/domain"
-	journeypackage "github.com/azusachino/felicia/core/journeypackage"
+	"github.com/azusachino/felicia/apps/felicia-core/domain"
+	journeypackage "github.com/azusachino/felicia/apps/felicia-core/journeypackage"
 )
 
 // PackageDocument is the normalized, database-independent import document.
@@ -24,7 +24,7 @@ type PackageDocument struct {
 }
 
 // PackageStore is the first local import composition seam. The SQLite provider
-// implements EnsureJournal; server/PostgreSQL composition can add the same
+// implements EnsureJournal; apps/felicia-server/PostgreSQL composition can add the same
 // idempotent operation later without changing package normalization.
 type PackageStore interface {
 	domain.Repository

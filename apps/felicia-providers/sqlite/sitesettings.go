@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/azusachino/felicia/core/domain"
+	"github.com/azusachino/felicia/apps/felicia-core/domain"
 )
 
 const siteSettingsColumns = `journal_id, title, description, design, default_language, default_theme, accent, created_at, updated_at`

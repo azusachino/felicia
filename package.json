@@ -8,11 +8,11 @@
     "packages/*"
   ],
   "scripts": {
-    "web:public:dev": "bun run --cwd apps/web-public dev",
-    "web:public:build": "bun run --cwd apps/web-public build",
-    "web:public:check": "bun run --cwd apps/web-public check",
-    "web:admin:dev": "bun run --cwd apps/web-admin dev",
-    "web:admin:build": "bun run --cwd apps/web-admin build",
-    "web:admin:check": "bun run --cwd apps/web-admin check"
+    "web:public:dev": "bun run --cwd apps/felicia-public-site dev",
+    "web:public:build": "bun run --cwd apps/felicia-public-site build",
+    "web:public:check": "bun run --cwd apps/felicia-public-site check",
+    "web:admin:dev": "bun run --cwd apps/felicia-web dev",
+    "web:admin:build": "bun run --cwd apps/felicia-web build",
+    "web:admin:check": "bun run --cwd apps/felicia-web check"
   }
 }

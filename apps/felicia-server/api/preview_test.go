@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/azusachino/felicia/server/api"
+	"github.com/azusachino/felicia/apps/felicia-server/api"
 )
 
 func TestPreviewHandlerServesArtifactOverSPA(t *testing.T) {

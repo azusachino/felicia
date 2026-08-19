@@ -9,7 +9,7 @@ import "slices"
 //   - an *authoring* write may set any field and claims it as authored.
 //
 // The decision lives here — not in provider SQL — so both persistence backends
-// behave identically (the same reasoning runtime/intake already applies to
+// behave identically (the same reasoning apps/felicia-runtime/intake already applies to
 // derived date bounds).
 
 // IngestableFields returns the subset of mask that an ingest write may apply to

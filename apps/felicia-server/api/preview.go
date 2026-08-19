@@ -6,7 +6,7 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/azusachino/felicia/publication"
+	"github.com/azusachino/felicia/apps/felicia-publication"
 )
 
 // handleSiteInfo describes the local build-and-preview setup so the GUI's

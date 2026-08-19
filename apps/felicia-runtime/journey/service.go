@@ -7,8 +7,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/azusachino/felicia/core/domain"
-	"github.com/azusachino/felicia/core/ports"
+	"github.com/azusachino/felicia/apps/felicia-core/domain"
+	"github.com/azusachino/felicia/apps/felicia-core/ports"
 )
 
 // Service owns journey writes and hides the persistence implementation from

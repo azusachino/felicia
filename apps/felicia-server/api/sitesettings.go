@@ -10,7 +10,7 @@ import (
 
 	"github.com/pelletier/go-toml/v2"
 
-	"github.com/azusachino/felicia/publication"
+	"github.com/azusachino/felicia/apps/felicia-publication"
 )
 
 // Site & Deploy settings: the directory picker (browse) and persisting a new

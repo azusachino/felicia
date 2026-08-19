@@ -28,7 +28,7 @@
       "geom": [135.5, 34.7],
       "kind_data": {"vendor_note": "sample"},
       "media": [
-        {"path": "apps/web-public/public/kyoto_temple.jpg", "caption": "receipt photo draft"}
+        {"path": "apps/felicia-public-site/public/kyoto_temple.jpg", "caption": "receipt photo draft"}
       ]
     },
     {
@@ -47,7 +47,7 @@
       "authored_fields": ["title", "vendor", "essay"],
       "kind_data": {"stamp_name": "Kuromon Goshuin"},
       "media": [
-        {"path": "apps/web-public/public/tokyo_night.jpg", "caption": "stamp photo"}
+        {"path": "apps/felicia-public-site/public/tokyo_night.jpg", "caption": "stamp photo"}
       ]
     },
     {
@@ -80,7 +80,7 @@
       "authored_fields": ["title", "vendor", "essay", "price_amount", "price_currency"],
       "kind_data": {"item": "omamori"},
       "media": [
-        {"path": "apps/web-public/public/osaka_plushie.jpg", "caption": "the omamori souvenir"}
+        {"path": "apps/felicia-public-site/public/osaka_plushie.jpg", "caption": "the omamori souvenir"}
       ]
     },
     {

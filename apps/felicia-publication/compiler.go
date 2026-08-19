@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/paulmach/orb"
 
-	"github.com/azusachino/felicia/core/domain"
+	"github.com/azusachino/felicia/apps/felicia-core/domain"
 )
 
 // StaticJourney is the public journey detail projection.
@@ -214,7 +214,7 @@ func (StaticCompiler) Compile(ctx context.Context, input Input, read ReadModel, 
 // to before it crosses the publication boundary, in either direction: the
 // static compiler's JSON tree and the live /api/v1 handlers (which project
 // through the same NewStaticJourney/NewStaticMemento — see
-// server/api/server.go). 4 decimal places is ~11m of ground distance at the
+// apps/felicia-server/api/server.go). 4 decimal places is ~11m of ground distance at the
 // equator. This is not a value chosen here: it is the precision already
 // documented for this exact purpose in docs/archive/spec-gaps.md ("D2.
 // Public coordinate rounding") and cross-referenced in
@@ -224,7 +224,7 @@ func (StaticCompiler) Compile(ctx context.Context, input Input, read ReadModel, 
 // ADR-0025 requires the static artifact to never contain "unrounded private
 // geometry". Rounding here — the sole place both the route (a journey's
 // passive GPS trace) and every memento Geom (frequently derived from that
-// same trace at a stop's timestamp, see runtime/importer) are projected to
+// same trace at a stop's timestamp, see apps/felicia-runtime/importer) are projected to
 // GeoJSON — makes the guarantee hold for every importer that could have
 // populated the stored geometry, not just the one path a defect happened to
 // skip.

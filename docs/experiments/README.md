@@ -88,15 +88,15 @@ The repository already contains the first input set and orchestration examples:
 - `scripts/data.json` and `scripts/data.schema.json` — current seed input and its
   validation shape;
 - `scripts/tracks/*.gpx` — source GPX fixtures;
-- `deploy/compose.yaml` — disposable PostgreSQL, Valkey, API, Caddy, and tunnel
+- `ops/compose.yaml` — disposable PostgreSQL, Valkey, API, Caddy, and tunnel
   integration;
-- `deploy/Caddyfile` — shared-demo public-origin routing, including the deliberate
+- `ops/Caddyfile` — shared-demo public-origin routing, including the deliberate
   rule that the admin API is not publicly proxied.
 
 ## Current known implementation gaps
 
-- `providers/sqlite/schema.sql` stores `tb_journeys.gps_route` as JSON text;
-- `server/cmd/build/main.go` constructs PostgreSQL directly;
+- `apps/felicia-providers/sqlite/schema.sql` stores `tb_journeys.gps_route` as JSON text;
+- `apps/felicia-server/cmd/build/main.go` constructs PostgreSQL directly;
 - the static publisher does not yet copy local public media derivatives;
 - the GitHub Pages workflow and static design demo exist, but deployment and
   browser review are still outstanding;

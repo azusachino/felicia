@@ -7,7 +7,7 @@ admin is a local process over a local database, and nothing here can publish.
 
 Two deliberate choices:
 
-  * The GUI binds 127.0.0.1, never 0.0.0.0. `apps/web-admin/vite.config.ts`
+  * The GUI binds 127.0.0.1, never 0.0.0.0. `apps/felicia-web/vite.config.ts`
     defaults to 0.0.0.0 so the E2E harness can reach it from a container; an
     authoring session has no such need and must not be reachable from the LAN.
   * The database defaults under `.felicia/` (gitignored) instead of the repo
@@ -80,7 +80,7 @@ def parse_args() -> argparse.Namespace:
 def start_api(arguments: argparse.Namespace) -> subprocess.Popen:
     database = Path(arguments.db)
     database.parent.mkdir(parents=True, exist_ok=True)
-    run(["go", "build", "-o", str(API_BINARY), "./server/cmd/api"])
+    run(["go", "build", "-o", str(API_BINARY), "./apps/felicia-server/cmd/api"])
     environment = os.environ.copy()
     environment.update(
         {

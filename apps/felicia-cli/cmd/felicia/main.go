@@ -16,13 +16,13 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/azusachino/felicia/core/domain"
-	journeypackage "github.com/azusachino/felicia/core/journeypackage"
-	"github.com/azusachino/felicia/providers/local"
-	"github.com/azusachino/felicia/providers/sqlite"
-	"github.com/azusachino/felicia/publication"
-	"github.com/azusachino/felicia/runtime/importer"
-	"github.com/azusachino/felicia/runtime/intake"
+	"github.com/azusachino/felicia/apps/felicia-core/domain"
+	journeypackage "github.com/azusachino/felicia/apps/felicia-core/journeypackage"
+	"github.com/azusachino/felicia/apps/felicia-providers/local"
+	"github.com/azusachino/felicia/apps/felicia-providers/sqlite"
+	"github.com/azusachino/felicia/apps/felicia-publication"
+	"github.com/azusachino/felicia/apps/felicia-runtime/importer"
+	"github.com/azusachino/felicia/apps/felicia-runtime/intake"
 )
 
 func main() {

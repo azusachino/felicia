@@ -150,7 +150,7 @@ DATABASE_PATH=~/felicia-data/local.sqlite MEDIA_ROOT=~/felicia-data/media \
 ```
 
 Equivalent from the GUI: set the Site & Deploy output directory to
-`apps/web-public/dist` and press **Build** — but the SPA must already have been
+`apps/felicia-public-site/dist` and press **Build** — but the SPA must already have been
 built with the correct `BASE_PATH`.
 
 !!! warning "`make static-build` is not this"
@@ -174,8 +174,8 @@ push:
 
 ```bash
 git clone git@github.com:<you>/my-travels.git ~/my-travels-deploy
-rsync -a --delete --exclude .git apps/web-public/dist/ ~/my-travels-deploy/
-touch ~/my-travels-deploy/.nojekyll
+rsync -a --delete --exclude .git apps/felicia-public-site/dist/ ~/my-travels-ops/
+touch ~/my-travels-ops/.nojekyll
 cd ~/my-travels-deploy && git add -A && git commit -m "deploy: site" && git push
 ```
 

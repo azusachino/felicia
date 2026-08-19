@@ -135,7 +135,7 @@ admin, and drafts, originals, and the SQLite journal never leave your machine.
 
 ```bash
 make admin                              # authoring GUI on 127.0.0.1 — import, curate, write, publish
-BASE_PATH=/my-travels/ make site-build  # deployable site → apps/web-public/dist
+BASE_PATH=/my-travels/ make site-build  # deployable site → apps/felicia-public-site/dist
 ```
 
 Then push that directory to the repository serving your GitHub Pages site. Full walkthrough —

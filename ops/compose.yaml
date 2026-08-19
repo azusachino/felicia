@@ -37,7 +37,7 @@ services:
   api:
     build:
       context: ..
-      dockerfile: deploy/Containerfile
+      dockerfile: ops/Containerfile
     container_name: felicia-api
     environment:
       DATABASE_DSN: postgres://postgres:password@db:5432/felicia?sslmode=disable
@@ -55,7 +55,7 @@ services:
     image: docker.io/library/caddy:2-alpine
     container_name: felicia-web
     volumes:
-      - ../apps/web-public/dist:/srv:ro
+      - ../apps/felicia-public-site/dist:/srv:ro
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
     ports:
       - "8081:80"
@@ -70,7 +70,7 @@ services:
     profiles: [pages]
     command: python -m http.server 8000 --bind 0.0.0.0 --directory /srv
     volumes:
-      - ../apps/web-public/dist:/srv:ro
+      - ../apps/felicia-public-site/dist:/srv:ro
     ports:
       - "8082:8000"
 

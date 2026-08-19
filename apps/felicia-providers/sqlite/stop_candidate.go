@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/paulmach/orb"
 
-	"github.com/azusachino/felicia/core/domain"
+	"github.com/azusachino/felicia/apps/felicia-core/domain"
 )
 
 const stopCandidateColumns = `id, journey_id, derivation_version, candidate_key, label, authored_fields, geom, arrive, depart, confidence, state, merged_into, provenance, revision, created_at, updated_at`

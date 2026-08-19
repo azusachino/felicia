@@ -33,7 +33,7 @@ resource-upload path.
   path ships the compiled `dist/`; drafts, originals, SQLite, and the
   admin app itself never do.
 - **`site.json` goes through the shared publication boundary.**
-  Site-level settings are one more projection from `publication/`, served
+  Site-level settings are one more projection from `apps/felicia-publication/`, served
   identically by the live API and the static compiler (parity-tested, in
   the manifest).
 - **No credentials inside felicia.** GitHub deployment reuses the

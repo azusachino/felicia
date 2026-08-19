@@ -4,7 +4,7 @@
 // fetch boundary vs. the view components.
 //
 // Server field-name/shape notes this module has to respect (see
-// server/api/server.go + core/domain/{entity,template,validate}.go):
+// apps/felicia-server/api/server.go + apps/felicia-core/domain/{entity,template,validate}.go):
 //   - GET /api/admin/mementos/{id} returns `geom` in orb's raw array form
 //     (Point -> [lng, lat], LineString -> [[lng, lat], ...], or null) — NOT
 //     GeoJSON. POST /api/admin/mementos expects the opposite: a GeoJSON-ish
@@ -12,7 +12,7 @@
 //     bridge that asymmetry.
 //   - kind_data `money` fields are {amount, currency}; `station`/`venue`
 //     fields are {name, coords: [lng, lat]} (see checkType/hasCoords in
-//     core/domain/validate.go). buildKindData/parseKindData mirror that.
+//     apps/felicia-core/domain/validate.go). buildKindData/parseKindData mirror that.
 //   - Validation issues come back as domain.Issue{Field, Code} — capitalized,
 //     no json tags, same as AdminTemplateField in api.ts.
 
@@ -155,7 +155,7 @@ export function parseKindData(fields: AdminTemplateField[], data: Record<string,
 }
 
 // Builds the kind_data object to submit from the form's state, following the
-// registry's field list so the closed-field-set contract (core/domain
+// registry's field list so the closed-field-set contract (apps/felicia-core/domain
 // validateTemplate) is respected — only known fields are ever emitted, and a
 // field is only included once it has some content (an all-blank optional
 // field stays entirely absent, not an empty-string/zero placeholder).

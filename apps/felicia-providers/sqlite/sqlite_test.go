@@ -10,8 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/paulmach/orb"
 
-	"github.com/azusachino/felicia/core/domain"
-	"github.com/azusachino/felicia/providers/sqlite"
+	"github.com/azusachino/felicia/apps/felicia-core/domain"
+	"github.com/azusachino/felicia/apps/felicia-providers/sqlite"
 )
 
 func TestRepositoryJourneyWorkflow(t *testing.T) {

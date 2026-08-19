@@ -11,7 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/azusachino/felicia/core/domain"
+	"github.com/azusachino/felicia/apps/felicia-core/domain"
 )
 
 const mementoColumns = `id, journey_id, kind, seq, occurred_at, occurred_tz, geom, title, place, vendor, essay, price_amount, price_currency, kind_data, source_system, source_external_id, source_ref, authored_fields, orphaned_at, state, revision, created_at, updated_at`

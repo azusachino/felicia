@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/azusachino/felicia/server/api"
+	"github.com/azusachino/felicia/apps/felicia-server/api"
 )
 
 // handleGetPublicSite must reflect an admin PUT immediately: the admin write

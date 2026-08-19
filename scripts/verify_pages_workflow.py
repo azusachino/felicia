@@ -23,7 +23,7 @@ def main() -> None:
         "nix develop --command bun install --frozen-lockfile",
         "nix develop --command uv run python scripts/felicia.py preview",
         "nix develop --command uv run python scripts/verify_static_artifact.py",
-        "path: apps/web-public/dist",
+        "path: apps/felicia-public-site/dist",
         "actions/configure-pages@v5",
         "actions/upload-pages-artifact@v3",
         "actions/deploy-pages@v4",

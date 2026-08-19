@@ -7,7 +7,7 @@ files are deliberately split by responsibility:
 raw GPX/photos/sidecar
         │
         ▼
-felicia-cli journey plan       runtime/intake + providers/local
+felicia-cli journey plan       apps/felicia-runtime/intake + apps/felicia-providers/local
         │ plan.json
         ▼
 local_journey_author.py        human/agent stop and memento decisions
@@ -19,7 +19,7 @@ local_journey_package.py       portable package serialization + media hashing
 felicia-cli import/static      importer, SQLite provider, publication compiler
         │
         ▼
-apps/web-public                API adaptation + presentation designs
+apps/felicia-public-site                API adaptation + presentation designs
 ```
 
 The UV entrypoint, [`scripts/local_journey.py`](../../scripts/local_journey.py),
@@ -34,8 +34,8 @@ reimplement backend rules.
 
 When a new concern appears, place it at the narrowest seam:
 
-- source extraction or candidate derivation → `runtime/intake` or a provider;
+- source extraction or candidate derivation → `apps/felicia-runtime/intake` or a provider;
 - authored workspace interaction → `scripts/local_journey_author.py`;
-- package/media transport → `scripts/local_journey_package.py` and `core/journeypackage`;
-- public shape or duplicate-safe UI keys → `publication` or `apps/web-public/src/api`;
+- package/media transport → `scripts/local_journey_package.py` and `apps/felicia-core/journeypackage`;
+- public shape or duplicate-safe UI keys → `apps/felicia-publication` or `apps/felicia-public-site/src/api`;
 - visual behavior → the relevant design component, not the API loader.

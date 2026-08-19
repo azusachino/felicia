@@ -34,7 +34,7 @@ Environment values override file values:
 ```bash
 FELICIA_DATABASE_DRIVER=postgres \
 FELICIA_DATABASE_DSN='postgres://postgres:password@localhost:5432/felicia?sslmode=disable' \
-go run ./server/cmd/api
+go run ./apps/felicia-server/cmd/api
 ```
 
 The runtime never silently changes providers when the selected provider is

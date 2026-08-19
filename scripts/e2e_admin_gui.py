@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Closed-loop admin-GUI E2E pass (ADMIN-01.8).
 
-Drives the real `apps/web-admin` GUI in a real browser (Playwright/chromium)
+Drives the real `apps/felicia-web` GUI in a real browser (Playwright/chromium)
 against the disposable API server: import -> review candidate -> author ->
 publish -> compile -> assert the compiled artifact contains the authored
 essay.
@@ -55,7 +55,7 @@ MOCK_UPSTREAM_SCRIPT = ROOT / "scripts" / "mock_upstream.py"
 
 MOCK_API_KEY = "mock-key"
 
-# Sentinel strings the Playwright spec (apps/web-admin/e2e/authoring.spec.ts)
+# Sentinel strings the Playwright spec (apps/felicia-web/e2e/authoring.spec.ts)
 # authors into the memento. Kept identical in both places on purpose: this
 # script's filesystem-side assertion against the compiled static artifact
 # looks for the *same* strings, so a drift between the two would fail loudly
@@ -66,7 +66,7 @@ ESSAY_SENTINEL = "Felicia admin GUI E2E authored essay -- sentinel 9f3c2b1a"
 GOODS_NAME = "E2E Souvenir"
 
 # ADMIN-02 M2: site identity constants, kept identical to the constants of
-# the same name in apps/web-admin/e2e/authoring.spec.ts for the same reason
+# the same name in apps/felicia-web/e2e/authoring.spec.ts for the same reason
 # as the constants above -- this script's filesystem-side check on the
 # compiled api/v1/site.json looks for these exact values.
 SITE_TITLE = "Admin GUI E2E Site"
@@ -77,7 +77,7 @@ SITE_ACCENT = "#336699"
 # satisfy the local-authoring package schema (route.gpx is required
 # alongside journey.json/stops.json/mementos.json) — the actual stop
 # candidate this test reviews comes from the mock Dawarich *visits* fixture,
-# not from deriving visits out of this route (see runtime/intake/planner.go:
+# not from deriving visits out of this route (see apps/felicia-runtime/intake/planner.go:
 # supplied visits take precedence over route-derived ones).
 MINIMAL_GPX = """<?xml version="1.0"?>
 <gpx version="1.1" creator="felicia admin-gui e2e" xmlns="http://www.topografix.com/GPX/1/1">
@@ -145,7 +145,7 @@ def mock_upstream(port: int):
 
 @contextmanager
 def vite_dev_server(port: int, api_base: str):
-    """Runs `bun run dev` for apps/web-admin with Vite's /api proxy pointed at
+    """Runs `bun run dev` for apps/felicia-web with Vite's /api proxy pointed at
     the disposable API server (VITE_API_PROXY, see vite.config.ts): the GUI
     fetches same-origin exactly like the compiled artifact does, so no CORS
     wiring is needed on the server. The Python side owns this process's
@@ -238,7 +238,7 @@ def seed_journey(db_path: Path, media_root: Path, workspace_root: Path) -> str:
 
 
 def assert_preview_server(preview_port: int) -> None:
-    """Confirms the server's built-in preview listener (server/api/preview.go)
+    """Confirms the server's built-in preview listener (apps/felicia-server/api/preview.go)
     is actually serving the compiled artifact on site.preview_port, not just
     that the compile step wrote files to disk. The SPA dist is absent in
     this harness (no `make web-build` here), so this only asserts the

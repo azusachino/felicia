@@ -10,7 +10,7 @@ This is a **binding engineering contract**. It is the single source of truth for
 memento lifecycle state machine and its **event view**: every event that changes a
 memento's lifecycle state, the guard that MUST gate it, the resulting state, the side
 effects (including automatic site rebuild), and the structured debug log that MUST
-accompany it. Implementation — a transition table in `core/domain`, provider- and
+accompany it. Implementation — a transition table in `apps/felicia-core/domain`, provider- and
 API-level guards, structured logs, and GUI auto-rebuild — will be written to satisfy
 this document. Where the current code diverges from a rule below, the code MUST change;
 this document wins. `status: proposed` because it is pending human confirmation before
@@ -19,8 +19,8 @@ their RFC 2119 meaning.
 
 ## 1. State inventory
 
-`MementoState` is a Go string enum (`core/domain/entity.go`) mirrored in TypeScript
-(`apps/web-admin/src/api.ts`). The five states, their operational meaning, and who
+`MementoState` is a Go string enum (`apps/felicia-core/domain/entity.go`) mirrored in TypeScript
+(`apps/felicia-web/src/api.ts`). The five states, their operational meaning, and who
 produces them:
 
 | State       | Meaning                                                   | Produced by                                                                           |

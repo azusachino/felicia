@@ -219,7 +219,7 @@ revision must be treated as a conflict; reload before retrying.
 ## Server/API boundary
 
 When the user explicitly requests server authoring, use the documented admin
-routes in `server/api/server.go`. Current important routes include:
+routes in `apps/felicia-server/api/server.go`. Current important routes include:
 
 - `GET /api/admin/journeys` and `POST /api/admin/journeys`;
 - `GET /api/admin/journeys/{id}/mementos`;

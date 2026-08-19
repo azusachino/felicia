@@ -6,8 +6,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/azusachino/felicia/core/domain"
-	"github.com/azusachino/felicia/runtime/memento"
+	"github.com/azusachino/felicia/apps/felicia-core/domain"
+	"github.com/azusachino/felicia/apps/felicia-runtime/memento"
 )
 
 type fakeStore struct{ patch *domain.ManualMementoPatch }

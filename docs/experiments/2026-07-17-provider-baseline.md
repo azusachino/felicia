@@ -13,8 +13,8 @@ experiment: "E1/E2"
 - JSON fixture: [`scripts/data.json`](../../scripts/data.json)
 - JSON schema: [`scripts/data.schema.json`](../../scripts/data.schema.json)
 - GPX fixture: [`scripts/tracks/narita-express.gpx`](../../scripts/tracks/narita-express.gpx)
-- Compose services: [`deploy/compose.yaml`](../../deploy/compose.yaml)
-- Shared public origin: [`deploy/Caddyfile`](../../deploy/Caddyfile)
+- Compose services: [`ops/compose.yaml`](../../ops/compose.yaml)
+- Shared public origin: [`ops/Caddyfile`](../../ops/Caddyfile)
 
 The workflow is runnable through the repository's `uv` wrapper:
 

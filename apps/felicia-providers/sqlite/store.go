@@ -14,8 +14,8 @@ import (
 	"github.com/paulmach/orb"
 	_ "modernc.org/sqlite" // register the SQLite database driver
 
-	"github.com/azusachino/felicia/core/domain"
-	"github.com/azusachino/felicia/core/ports"
+	"github.com/azusachino/felicia/apps/felicia-core/domain"
+	"github.com/azusachino/felicia/apps/felicia-core/ports"
 )
 
 //go:embed schema.sql

@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/azusachino/felicia/core/domain"
+	"github.com/azusachino/felicia/apps/felicia-core/domain"
 )
 
 // loadTestRegistry loads the transit + live template fixtures.

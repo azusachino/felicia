@@ -3,8 +3,8 @@ package sqlite_test
 import (
 	"testing"
 
-	"github.com/azusachino/felicia/providers/contract"
-	"github.com/azusachino/felicia/providers/sqlite"
+	"github.com/azusachino/felicia/apps/felicia-providers/contract"
+	"github.com/azusachino/felicia/apps/felicia-providers/sqlite"
 )
 
 func TestRepositoryContract(t *testing.T) {

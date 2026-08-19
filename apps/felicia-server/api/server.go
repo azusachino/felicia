@@ -19,13 +19,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/paulmach/orb"
 
-	"github.com/azusachino/felicia/core/domain"
-	"github.com/azusachino/felicia/core/ports"
-	"github.com/azusachino/felicia/publication"
-	"github.com/azusachino/felicia/runtime/importer"
-	"github.com/azusachino/felicia/runtime/intake"
-	journeyruntime "github.com/azusachino/felicia/runtime/journey"
-	mementoruntime "github.com/azusachino/felicia/runtime/memento"
+	"github.com/azusachino/felicia/apps/felicia-core/domain"
+	"github.com/azusachino/felicia/apps/felicia-core/ports"
+	"github.com/azusachino/felicia/apps/felicia-publication"
+	"github.com/azusachino/felicia/apps/felicia-runtime/importer"
+	"github.com/azusachino/felicia/apps/felicia-runtime/intake"
+	journeyruntime "github.com/azusachino/felicia/apps/felicia-runtime/journey"
+	mementoruntime "github.com/azusachino/felicia/apps/felicia-runtime/memento"
 )
 
 // Server represents the API server.
@@ -685,7 +685,7 @@ func (s *Server) handleListStopCandidates(w http.ResponseWriter, r *http.Request
 
 // handlePlanIntake runs the intake planner over the journey's configured
 // sources and persists the proposed stop candidates (ADMIN-01.3a). It shares
-// the same runtime/intake.Service Plan+Apply path the CLI's `journey
+// the same apps/felicia-runtime/intake.Service Plan+Apply path the CLI's `journey
 // plan`/`journey apply` commands use, so there is exactly one planning
 // implementation.
 func (s *Server) handlePlanIntake(w http.ResponseWriter, r *http.Request) {

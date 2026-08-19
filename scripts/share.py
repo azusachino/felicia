@@ -33,7 +33,7 @@ def run(command: list[str], *, env: dict[str, str] | None = None, cwd: Path = RO
 
 
 def compose(compose_base: list[str], *args: str) -> list[str]:
-    return [*compose_base, "-f", "deploy/compose.yaml", *args]
+    return [*compose_base, "-f", "ops/compose.yaml", *args]
 
 
 def wait_for_db(command: list[str]) -> None:

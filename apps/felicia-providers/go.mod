@@ -1,11 +1,11 @@
-module github.com/azusachino/felicia/providers
+module github.com/azusachino/felicia/apps/felicia-providers
 
 go 1.26
 
-require github.com/azusachino/felicia/core v0.1.0
+require github.com/azusachino/felicia/apps/felicia-core v0.1.0
 
 require (
-	github.com/azusachino/felicia/runtime v0.1.0
+	github.com/azusachino/felicia/apps/felicia-runtime v0.1.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/paulmach/orb v0.13.0
@@ -23,11 +23,11 @@ require (
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rogpeppe/go-internal v1.15.0 // indirect
-	golang.org/x/mod v0.27.0 // indirect
-	golang.org/x/sync v0.17.0 // indirect
-	golang.org/x/sys v0.35.0 // indirect
-	golang.org/x/text v0.29.0 // indirect
-	golang.org/x/tools v0.36.0 // indirect
+	golang.org/x/mod v0.37.0 // indirect
+	golang.org/x/sync v0.22.0 // indirect
+	golang.org/x/sys v0.46.0 // indirect
+	golang.org/x/text v0.40.0 // indirect
+	golang.org/x/tools v0.47.0 // indirect
 	lukechampine.com/uint128 v1.2.0 // indirect
 	modernc.org/cc/v3 v3.40.0 // indirect
 	modernc.org/ccgo/v3 v3.16.13 // indirect
@@ -39,6 +39,6 @@ require (
 	modernc.org/token v1.0.1 // indirect
 )
 
-replace github.com/azusachino/felicia/core => ../core
+replace github.com/azusachino/felicia/apps/felicia-core => ../felicia-core
 
-replace github.com/azusachino/felicia/runtime => ../runtime
+replace github.com/azusachino/felicia/apps/felicia-runtime => ../felicia-runtime

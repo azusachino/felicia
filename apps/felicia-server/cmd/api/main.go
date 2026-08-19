@@ -10,15 +10,15 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/azusachino/felicia/core"
-	"github.com/azusachino/felicia/core/domain"
-	"github.com/azusachino/felicia/providers/dawarich"
-	"github.com/azusachino/felicia/providers/immich"
-	"github.com/azusachino/felicia/providers/postgres"
-	"github.com/azusachino/felicia/providers/sqlite"
-	"github.com/azusachino/felicia/runtime/importer"
-	"github.com/azusachino/felicia/server/api"
-	"github.com/azusachino/felicia/server/config"
+	"github.com/azusachino/felicia/apps/felicia-core"
+	"github.com/azusachino/felicia/apps/felicia-core/domain"
+	"github.com/azusachino/felicia/apps/felicia-providers/dawarich"
+	"github.com/azusachino/felicia/apps/felicia-providers/immich"
+	"github.com/azusachino/felicia/apps/felicia-providers/postgres"
+	"github.com/azusachino/felicia/apps/felicia-providers/sqlite"
+	"github.com/azusachino/felicia/apps/felicia-runtime/importer"
+	"github.com/azusachino/felicia/apps/felicia-server/api"
+	"github.com/azusachino/felicia/apps/felicia-server/config"
 )
 
 func main() {

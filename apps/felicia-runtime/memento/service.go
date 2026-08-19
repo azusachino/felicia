@@ -5,8 +5,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/azusachino/felicia/core/domain"
-	"github.com/azusachino/felicia/core/ports"
+	"github.com/azusachino/felicia/apps/felicia-core/domain"
+	"github.com/azusachino/felicia/apps/felicia-core/ports"
 )
 
 // Service owns memento write boundaries and hides the persistence

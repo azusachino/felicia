@@ -6,6 +6,6 @@
   "trailingComma": "all",
   "printWidth": 200,
   "proseWrap": "preserve",
-  "plugins": ["./apps/web-public/node_modules/prettier-plugin-svelte/plugin.js"],
+  "plugins": ["./apps/felicia-public-site/node_modules/prettier-plugin-svelte/plugin.js"],
   "overrides": [{ "files": "*.svelte", "options": { "parser": "svelte" } }]
 }

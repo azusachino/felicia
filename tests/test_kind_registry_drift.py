@@ -56,7 +56,7 @@ def stubs_ts_kinds() -> set[str]:
 
 
 class KindRegistryDriftTest(unittest.TestCase):
-    """core/kinds/*.yaml is the source of truth (D8 soft enum); every kind it
+    """apps/felicia-core/kinds/*.yaml is the source of truth (D8 soft enum); every kind it
     declares must also be a memento kind on the public frontend, and vice
     versa — a one-sided kind is exactly the drift this test exists to catch.
     """
@@ -67,7 +67,7 @@ class KindRegistryDriftTest(unittest.TestCase):
         self.assertEqual(
             backend,
             frontend,
-            f"core/kinds/*.yaml vs data.ts MementoKind drift: "
+            f"apps/felicia-core/kinds/*.yaml vs data.ts MementoKind drift: "
             f"only in registry={backend - frontend}, only in data.ts={frontend - backend}",
         )
 
@@ -77,7 +77,7 @@ class KindRegistryDriftTest(unittest.TestCase):
         self.assertEqual(
             backend,
             frontend,
-            f"core/kinds/*.yaml vs v4/stubs.ts stubTemplates drift: "
+            f"apps/felicia-core/kinds/*.yaml vs v4/stubs.ts stubTemplates drift: "
             f"only in registry={backend - frontend}, only in stubs.ts={frontend - backend}",
         )
 

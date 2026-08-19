@@ -39,7 +39,7 @@ make pages-preview
 
 The preview is the one-click local path: it imports ZIPs found in
 `.felicia/inbox`, builds the SPA, compiles the SQLite publication, and serves
-the combined artifact from `apps/web-public/dist`. The underlying CLI commands
+the combined artifact from `apps/felicia-public-site/dist`. The underlying CLI commands
 remain independently usable for automation.
 
 For a project-site path, use the repository name as the base path:

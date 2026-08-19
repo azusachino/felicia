@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/paulmach/orb"
 
-	"github.com/azusachino/felicia/core/domain"
+	"github.com/azusachino/felicia/apps/felicia-core/domain"
 )
 
 // lifecycleStore is a minimal PackageStore that enforces the memento
@@ -107,7 +107,7 @@ func TestReimportSameStateSucceedsAndDowngradeFails(t *testing.T) {
 // test proves ApplyPackage routes journey writes through the ingest seam with a
 // correct field mask, without depending on a concrete provider (which would
 // invert the runtime→providers layering); the cross-provider assertions live in
-// providers/contract.
+// apps/felicia-providers/contract.
 type authorshipStore struct {
 	domain.Repository
 	journey  *domain.Journey

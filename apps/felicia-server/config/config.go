@@ -24,7 +24,7 @@ const (
 	defaultMediaRoot          = ".felicia/media"
 	defaultSiteOutDir         = ".felicia/site"
 	defaultSitePreviewPort    = "8081"
-	defaultSiteSpaDist        = "apps/web-public/dist"
+	defaultSiteSpaDist        = "apps/felicia-public-site/dist"
 )
 
 // SourceConfig describes one authenticated upstream source.
@@ -51,7 +51,7 @@ type Config struct {
 	RDPEpsilon         float64      `koanf:"ingest.rdp_epsilon"`
 	TransitSegmentLenM float64      `koanf:"ingest.transit_segment_length_m"`
 	// MediaRoot is the private local media root read when compiling the public
-	// static artifact (server/api's /api/admin/compile), the same root the CLI
+	// static artifact (apps/felicia-server/api's /api/admin/compile), the same root the CLI
 	// resolves via its --media-root flag.
 	MediaRoot string `koanf:"media.root"`
 	// SiteOutDir is the default compile output directory used when the GUI's

@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/paulmach/orb"
 
-	"github.com/azusachino/felicia/core/domain"
+	"github.com/azusachino/felicia/apps/felicia-core/domain"
 )
 
 func TestBuildPlanDerivesStopAndMementoFromTimestampedRouteAndMedia(t *testing.T) {

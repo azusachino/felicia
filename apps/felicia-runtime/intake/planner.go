@@ -12,7 +12,7 @@ import (
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/geo"
 
-	"github.com/azusachino/felicia/core/domain"
+	"github.com/azusachino/felicia/apps/felicia-core/domain"
 )
 
 const (

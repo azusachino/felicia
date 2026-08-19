@@ -4,7 +4,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/azusachino/felicia/core/domain"
+	"github.com/azusachino/felicia/apps/felicia-core/domain"
 )
 
 // SortJourneys orders journeys into the stable public index order

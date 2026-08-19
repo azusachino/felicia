@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/azusachino/felicia/server/api"
+	"github.com/azusachino/felicia/apps/felicia-server/api"
 )
 
 type siteSettingsPayload struct {

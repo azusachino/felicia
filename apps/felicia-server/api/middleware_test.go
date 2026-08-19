@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/azusachino/felicia/server/api"
+	"github.com/azusachino/felicia/apps/felicia-server/api"
 )
 
 func TestServerHealthAndReadiness(t *testing.T) {

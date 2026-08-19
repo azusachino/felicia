@@ -15,7 +15,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	journeypackage "github.com/azusachino/felicia/core/journeypackage"
+	journeypackage "github.com/azusachino/felicia/apps/felicia-core/journeypackage"
 )
 
 // fixtureJPEG returns a small but real JPEG. The static compiler resizes and

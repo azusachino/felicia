@@ -20,7 +20,7 @@
       },
       "media": [
         {
-          "path": "apps/web-public/public/kyoto_temple.jpg",
+          "path": "apps/felicia-public-site/public/kyoto_temple.jpg",
           "caption": "Ticket memory"
         }
       ]
@@ -42,7 +42,7 @@
       },
       "media": [
         {
-          "path": "apps/web-public/public/kyoto_temple.jpg",
+          "path": "apps/felicia-public-site/public/kyoto_temple.jpg",
           "caption": "A small souvenir from the first stop"
         }
       ]
@@ -65,7 +65,7 @@
       },
       "media": [
         {
-          "path": "apps/web-public/public/tokyo_night.jpg",
+          "path": "apps/felicia-public-site/public/tokyo_night.jpg",
           "caption": "Leaving Narita"
         }
       ]
@@ -87,7 +87,7 @@
       },
       "media": [
         {
-          "path": "apps/web-public/public/osaka_plushie.jpg",
+          "path": "apps/felicia-public-site/public/osaka_plushie.jpg",
           "caption": "A tangible end to the route"
         }
       ]

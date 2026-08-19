@@ -64,7 +64,7 @@ export interface AdminMementoDetail {
 
 // Request shape for POST /api/admin/mementos's `geom` — the manual-patch
 // upsert path decodes this GeoJSON-ish {type, coordinates} form (see
-// mementoGeom/handleUpsertMemento in server/api/server.go), which is why it
+// mementoGeom/handleUpsertMemento in apps/felicia-server/api/server.go), which is why it
 // doesn't match AdminMementoDetail.geom above.
 export type UpsertMementoGeom = { type: "Point"; coordinates: [number, number] } | { type: "LineString"; coordinates: [number, number][] }
 
@@ -170,7 +170,7 @@ export interface PlanIntakeResult {
 }
 
 // GET /api/admin/templates response shape (ADMIN-01.3b kind picker). This
-// mirrors core/domain.Template/Field verbatim, including the capitalized
+// mirrors apps/felicia-core/domain.Template/Field verbatim, including the capitalized
 // field names — those types have no `json` tags, so Go's default
 // marshaling (exported field name as-is) is what actually goes over the
 // wire.
@@ -192,7 +192,7 @@ export type AdminTemplateRegistry = Record<string, AdminTemplate>
 
 // Request shape for the ignore/merge half of stop-candidate review (promote
 // has its own dedicated endpoint/function). Mirrors stopReviewRequest in
-// server/api/server.go.
+// apps/felicia-server/api/server.go.
 export interface ReviewStopCandidatePatch {
   state: "ignored" | "merged"
   mergedInto?: string
