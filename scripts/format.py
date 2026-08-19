@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 from pathlib import Path
 
@@ -53,11 +54,14 @@ def format_go(check: bool) -> bool:
 
 
 def format_web(check: bool) -> bool:
-    web_apps = sorted(
-        path
-        for path in (ROOT / "apps").glob("web-*")
-        if (path / "package.json").is_file()
-    )
+    web_apps = []
+    for path in sorted((ROOT / "apps").iterdir()):
+        package_json = path / "package.json"
+        if not package_json.is_file():
+            continue
+        package = json.loads(package_json.read_text(encoding="utf-8"))
+        if "format:check" in package.get("scripts", {}):
+            web_apps.append(path)
     if not web_apps:
         return True
     if not all((web / "node_modules").exists() for web in web_apps):

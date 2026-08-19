@@ -11,8 +11,8 @@ or local file format is an adapter of that contract.
 | Canonical  | [`contracts/canonical/v1/schema.json`](../../contracts/canonical/v1/schema.json) | Felicia-owned records and media semantics         |
 | Workspace  | `schemas/local-authoring-v1.schema.json`                                         | Human/agent-editable local files                  |
 | CLI        | `felicia-cli` commands and JSON/JSONL output                                     | Offline planning, import, review, and publication |
-| Admin API  | `apps/felicia-server/api` transport projection                               | Server-side authoring and source synchronization  |
-| Public API | `apps/felicia-publication` projection                                         | Published reader data and static JSON             |
+| Admin API  | `apps/felicia-server/api` transport projection                                   | Server-side authoring and source synchronization  |
+| Public API | `apps/felicia-publication` projection                                            | Published reader data and static JSON             |
 
 The workspace schema is not the canonical model. It is intentionally convenient
 for editing and may contain review controls that never enter the public API.

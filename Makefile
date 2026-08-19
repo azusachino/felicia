@@ -6,14 +6,6 @@ UV_RUN  := $(if $(IN_NIX_SHELL),uv,nix develop --command uv)
 GO      ?= $(if $(IN_NIX_SHELL),go,nix develop --command go)
 BUN     ?= $(if $(IN_NIX_SHELL),bun,nix develop --command bun)
 
-# Whether any Go sources exist yet. Keep the check so the early repository
-# skeleton can still run the non-Go targets cleanly.
-GO_FILES := $(shell find . -name '*.go' -not -path './vendor/*' -not -path './.git/*' -not -path '*/node_modules/*' -print -quit 2>/dev/null)
-
-# Every Go module must be checked; the root module alone does not traverse the
-# independent workspace modules.
-GO_MODULES = apps/felicia-core apps/felicia-runtime apps/felicia-providers apps/felicia-publication apps/felicia-server apps/felicia-cli
-
 DATABASE_DSN ?= postgres://postgres:password@localhost:5432/felicia?sslmode=disable
 PORT ?= 8080
 CACHE_ADDR ?= localhost:6379
@@ -36,18 +28,18 @@ fmt-check: ## Check Go and frontend formatting without modifying files
 	$(UV_RUN) run python scripts/format.py --check
 
 vet: ## Run go vet
-	@if [ -z "$(GO_FILES)" ]; then echo "vet: no Go packages yet, skipping"; else set -e; for module in $(GO_MODULES); do (cd $$module && $(GO) vet $$( $(GO) list ./... | grep -v '/node_modules/' )); done; fi
+	$(UV_RUN) run python scripts/go_tasks.py vet
 
 lint: ## Lint Go (golangci-lint, from nix)
-	@if [ -z "$(GO_FILES)" ]; then echo "lint: no Go packages yet, skipping"; else set -e; for module in $(GO_MODULES); do (cd $$module && $(NIX_RUN)golangci-lint run); done; fi
+	$(UV_RUN) run python scripts/go_tasks.py lint
 
 test: ## Run Go tests with race detector + coverage
-	@if [ -z "$(GO_FILES)" ]; then echo "test: no Go packages yet, skipping"; else set -e; for module in $(GO_MODULES); do (cd $$module && $(GO) test -race -cover $$( $(GO) list ./... | grep -v '/node_modules/' )); done; fi
+	$(UV_RUN) run python scripts/go_tasks.py test
 
 check: fmt-check vet lint test test-features ## Pre-commit gate
 
 build: ## Build all binaries
-	@if [ -z "$(GO_FILES)" ]; then echo "build: no Go packages yet, skipping"; else set -e; for module in $(GO_MODULES); do (cd $$module && $(GO) build $$( $(GO) list ./... | grep -v '/node_modules/' )); done; fi
+	$(UV_RUN) run python scripts/go_tasks.py build
 
 cli-build: ## Build the felicia-cli executable into bin/
 	@mkdir -p bin
