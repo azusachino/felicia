@@ -1,5 +1,9 @@
-import type { ApiJourney, ApiJourneyListItem, ApiMemento, ApiSiteSettings, Journey } from "@felicia/shared"
-import { adaptJourney } from "./adapt"
+import { adaptJourney, type ApiJourney, type ApiJourneyListItem, type ApiMemento, type ApiSiteSettings, type Journey } from "@felicia/shared"
+
+function mediaURL(value: string): string {
+  if (/^(?:https?:)?\//.test(value)) return value
+  return `${import.meta.env.BASE_URL || "/"}${value}`
+}
 
 function endpoint(path: string): string {
   const apiBase = import.meta.env.VITE_API_BASE || ""
@@ -35,7 +39,7 @@ export async function loadJourney(id: string): Promise<Journey> {
   // journeys with no mementos don't crash the adapter's iteration.
   const apiMementos = ((await mementosRes.json()) as ApiMemento[] | null) ?? []
 
-  return adaptJourney(apiJourney, apiMementos)
+  return adaptJourney(apiJourney, apiMementos, mediaURL)
 }
 
 export async function loadJourneys(): Promise<Journey[]> {

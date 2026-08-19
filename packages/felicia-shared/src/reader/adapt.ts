@@ -1,4 +1,5 @@
-import type { ApiGeoJSONGeometry, ApiJourney, ApiMemento, Coordinates, Journey, L, Memento, MementoKind, Station, Visit } from "@felicia/shared"
+import type { ApiGeoJSONGeometry, ApiJourney, ApiMemento } from "../contracts/public"
+import type { Coordinates, Journey, L, Memento, MementoKind, Station, Visit } from "../data"
 
 function authored(canonical: string | undefined): L {
   const value = canonical ?? ""
@@ -69,11 +70,6 @@ function stringValue(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined
 }
 
-function mediaURL(value: string): string {
-  if (/^(?:https?:)?\//.test(value)) return value
-  return `${import.meta.env.BASE_URL || "/"}${value}`
-}
-
 function station(value: unknown, fallback: Coordinates): Station {
   const data = objectValue(value)
   const coords = coordinate(data?.coords) ?? fallback
@@ -94,7 +90,9 @@ function transitData(apiMemento: ApiMemento, title: L, fallback: Coordinates): M
   }
 }
 
-function adaptMemento(apiMemento: ApiMemento, visitId: string, visitCoords: Coordinates): Memento {
+export type MediaURL = (objectKey: string) => string
+
+function adaptMemento(apiMemento: ApiMemento, visitId: string, visitCoords: Coordinates, mediaURL: MediaURL): Memento {
   const title = authored(apiMemento.title)
   const place = authored(apiMemento.place)
   const data = objectValue(apiMemento.kind_data)
@@ -121,7 +119,7 @@ function adaptMemento(apiMemento: ApiMemento, visitId: string, visitCoords: Coor
   }
 }
 
-export function adaptJourney(apiJourney: ApiJourney, apiMementos: ApiMemento[]): Journey {
+export function adaptJourney(apiJourney: ApiJourney, apiMementos: ApiMemento[], mediaURL: MediaURL = (value) => value): Journey {
   const visits: Visit[] = []
   const mementos: Memento[] = []
   const visitByKey = new Map<string, Visit>()
@@ -138,7 +136,7 @@ export function adaptJourney(apiJourney: ApiJourney, apiMementos: ApiMemento[]):
       visitByKey.set(visitKey, visit)
       visits.push(visit)
     }
-    mementos.push(adaptMemento(apiMemento, visit.id, visit.coords))
+    mementos.push(adaptMemento(apiMemento, visit.id, visit.coords, mediaURL))
   }
 
   return {
