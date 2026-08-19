@@ -110,6 +110,14 @@ edge.
 5. Make the repository's checks discover the Go workspace and assert the
    package/application boundaries so a future rename fails loudly.
 
+### Tooling ownership
+
+Repository tools remain small, single-purpose files under `scripts/`. The
+Makefile is only the stable public command surface; UV-run scripts own
+workspace discovery and orchestration. A shared helper or new tool directory
+is introduced only when an actual reuse boundary appears. This cut-over does
+not create a catch-all `libs/` or `tools/` abstraction.
+
 ### Verification gates
 
 The cut-over is complete only when all of these pass from the repository root:
@@ -117,6 +125,7 @@ The cut-over is complete only when all of these pass from the repository root:
 - `make check`
 - `make build`
 - `make test-features`
+- `make layout-check`
 - `make web-check`
 - `make docs-build`
 - `make validate`

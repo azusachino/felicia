@@ -37,6 +37,11 @@ the public renderer, so it is the same reader path users receive.
 contract. TypeScript package types are reader-facing projections, not a second
 schema authority.
 
+Repository tools remain under `scripts/`, one focused command per file. The
+Makefile delegates workspace discovery and orchestration to UV-run scripts; it
+does not carry a module list or grow into a second scripting language. New
+shared tooling directories are deferred until a real reuse boundary exists.
+
 ## Working rule
 
 When a new file does not clearly belong to one of these boundaries, update

@@ -44,7 +44,10 @@ def run_task(task: str, modules: list[str]) -> int:
     for module in modules:
         result = subprocess.run(TASKS[task], cwd=ROOT / module, check=False)
         if result.returncode:
-            print(f"go_tasks: {task} failed in {module} (exit {result.returncode})", file=sys.stderr)
+            print(
+                f"go_tasks: {task} failed in {module} (exit {result.returncode})",
+                file=sys.stderr,
+            )
             return result.returncode
     return 0
 

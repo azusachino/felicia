@@ -15,7 +15,7 @@ COMPOSE ?= $(shell \
 	elif command -v docker >/dev/null 2>&1; then echo docker compose; \
 	else echo ''; fi)
 
-.PHONY: help fmt fmt-check vet lint test test-api test-features test-sqlite test-postgres check build cli-build experiment-intake journey-local validate tidy db-up db-down migrate seed admin dev dev-sqlite dev-postgres test-workflow test-workflow-postgres test-admin-e2e sqlc mock-up mock-down web-install web-check web-build web-admin-check web-admin-build site-build site-verify static-build static-validate static-publish pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
+.PHONY: help fmt fmt-check vet lint test test-api test-features layout-check test-sqlite test-postgres check build cli-build experiment-intake journey-local validate tidy db-up db-down migrate seed admin dev dev-sqlite dev-postgres test-workflow test-workflow-postgres test-admin-e2e sqlc mock-up mock-down web-install web-check web-build web-admin-check web-admin-build site-build site-verify static-build static-validate static-publish pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -130,6 +130,9 @@ test-postgres: ## Run PostgreSQL tests against the disposable test database
 test-features: ## Run offline Python feature-contract tests
 	$(UV_RUN) run --group dev ruff check scripts tests
 	$(UV_RUN) run python -m unittest discover -s tests
+
+layout-check: ## Verify application/package layout and dependency boundaries
+	$(UV_RUN) run python -m unittest tests.test_layout tests.test_kind_registry_drift
 
 web-install: ## Install all frontend workspace deps (bun from nix)
 	$(BUN) install

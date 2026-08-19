@@ -11,9 +11,9 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-KINDS_DIR = ROOT / "core" / "kinds"
-DATA_TS = ROOT / "apps" / "web-public" / "src" / "data.ts"
-STUBS_TS = ROOT / "apps" / "web-public" / "src" / "v4" / "stubs.ts"
+KINDS_DIR = ROOT / "apps" / "felicia-core" / "kinds"
+DATA_TS = ROOT / "packages" / "felicia-shared" / "src" / "data.ts"
+STUBS_TS = ROOT / "packages" / "felicia-shared" / "src" / "v4" / "stubs.ts"
 
 KIND_LINE = re.compile(r"^kind:\s*(\S+)\s*$", re.MULTILINE)
 MEMENTO_KIND_UNION = re.compile(r'export type MementoKind\s*=\s*(.+)')
@@ -67,7 +67,8 @@ class KindRegistryDriftTest(unittest.TestCase):
         self.assertEqual(
             backend,
             frontend,
-            f"apps/felicia-core/kinds/*.yaml vs data.ts MementoKind drift: "
+            "apps/felicia-core/kinds/*.yaml vs "
+            "packages/felicia-shared/src/data.ts MementoKind drift: "
             f"only in registry={backend - frontend}, only in data.ts={frontend - backend}",
         )
 
@@ -77,7 +78,8 @@ class KindRegistryDriftTest(unittest.TestCase):
         self.assertEqual(
             backend,
             frontend,
-            f"apps/felicia-core/kinds/*.yaml vs v4/stubs.ts stubTemplates drift: "
+            "apps/felicia-core/kinds/*.yaml vs "
+            "packages/felicia-shared/src/v4/stubs.ts stubTemplates drift: "
             f"only in registry={backend - frontend}, only in stubs.ts={frontend - backend}",
         )
 
