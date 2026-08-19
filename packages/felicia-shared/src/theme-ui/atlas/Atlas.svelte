@@ -2,7 +2,7 @@
   import V4Detail from "./V4Detail.svelte"
   import V4Map from "./V4Map.svelte"
   import V4Stub from "./V4Stub.svelte"
-  import type { Journey, Lang, Memento, Theme } from "../data"
+  import type { Journey, Lang, Memento, Theme } from "../../data"
 
   let {
     lang = $bindable("ja"),

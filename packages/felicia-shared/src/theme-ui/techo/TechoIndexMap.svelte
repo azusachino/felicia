@@ -1,7 +1,7 @@
 <script lang="ts">
   import maplibregl from "maplibre-gl"
   import { onMount } from "svelte"
-  import type { Journey, Lang, Theme } from "../data"
+  import type { Journey, Lang, Theme } from "../../data"
 
   let {
     journeys,

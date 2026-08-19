@@ -5,7 +5,7 @@ import type { MessageKey } from "./i18n/catalog"
 export type Coordinates = [number, number]
 export type MementoKind = "goods" | "transit" | "stamp" | "receipt" | "souvenir" | "live"
 export type Lang = "ja" | "en" | "zh"
-export type Theme = "dark" | "light"
+export type { Theme } from "./theme-ui/themes"
 
 export interface L {
   ja: string

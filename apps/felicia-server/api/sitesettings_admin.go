@@ -107,7 +107,7 @@ func (s *Server) handlePutSiteSettings(w http.ResponseWriter, r *http.Request) {
 
 func validSiteDesign(value string) bool {
 	switch value {
-	case "v1", "v2", "v3", "v4":
+	case "cartography", "cabinet", "techo", "atlas":
 		return true
 	default:
 		return false

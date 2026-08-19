@@ -3,11 +3,12 @@
   import { onMount, tick } from "svelte"
   import { cubicOut } from "svelte/easing"
   import { crossfade, fade } from "svelte/transition"
-  import { kindLabel, uiText, type Coordinates, type Journey, type L, type Lang, type Memento, type MementoKind, type Station, type Theme } from "../data"
-  import { message, type MessageKey } from "../i18n/catalog"
+  import { kindLabel, uiText, type Coordinates, type Journey, type L, type Lang, type Memento, type MementoKind, type Station, type Theme } from "../../data"
+  import { message, type MessageKey } from "../../i18n/catalog"
 
-  // v1 — the liuaaron-aligned map reader: journey index rail -> map hero ->
-  // paper detail. The map is the index. Reached from v2 as the "more" view.
+  // Cartography — the liuaaron-aligned map reader: journey index rail -> map
+  // hero -> paper detail. The map is the index. Reached from Cabinet as the
+  // "more" view.
   export let lang: Lang = "ja"
   export let theme: Theme = "dark"
   export let loadJourneys: () => Promise<Journey[]>
@@ -244,7 +245,7 @@
     detailHeadingEl?.focus()
   }
 
-  // "Close" in v1's always-visible 3-column layout means returning to a
+  // "Close" in Cartography's always-visible 3-column layout means returning to a
   // neutral state — the journey's first memento — and moving focus back to
   // the index rail rather than hiding the (non-modal) detail panel.
   async function closeDetail() {
@@ -378,9 +379,9 @@
 <main class="app-shell" class:theme-light={theme === "light"}>
   <div class="sr-only" role="status" aria-live="polite">{liveMessage}</div>
   {#if isLoading}
-    <div class="v1-status">Loading…</div>
+    <div class="cartography-status">Loading…</div>
   {:else if error}
-    <div class="v1-status">{error}</div>
+    <div class="cartography-status">{error}</div>
   {:else if selectedJourney && selected}
     <!-- Index rail: journeys (world index) -> selected journey's chronological timeline. -->
     <aside class="index-rail" aria-label="Journey index">
@@ -593,12 +594,12 @@
       {/key}
     </aside>
   {:else}
-    <div class="v1-status">No journeys</div>
+    <div class="cartography-status">No journeys</div>
   {/if}
 </main>
 
 <style>
-  .v1-status {
+  .cartography-status {
     display: grid;
     grid-column: 1 / -1;
     min-height: 100%;

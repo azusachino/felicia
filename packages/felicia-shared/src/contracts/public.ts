@@ -1,4 +1,6 @@
 import type { Coordinates, MementoKind } from "../data"
+import type { DesignId } from "../theme-ui/registry"
+import type { ThemeMode } from "../theme-ui/themes"
 
 export interface ApiGeoJSONGeometry {
   type: "Point" | "LineString" | "MultiLineString"
@@ -66,9 +68,9 @@ export interface ApiJourneyPayload {
 export interface ApiSiteSettings {
   title: string
   description: string
-  design: "v1" | "v2" | "v3" | "v4"
+  design: DesignId
   default_language: "ja" | "en" | "zh"
-  default_theme: "dark" | "light"
+  default_theme: ThemeMode
   accent: string
 }
 

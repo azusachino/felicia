@@ -1,9 +1,9 @@
 <script lang="ts">
   import maplibregl from "maplibre-gl"
   import { onMount } from "svelte"
-  import type { Coordinates, Theme } from "../data"
+  import type { Coordinates, Theme } from "../../data"
 
-  // v3 detail map — MapLibre vector basemap from OpenFreeMap (OSM-derived,
+  // Techo detail map — MapLibre vector basemap from OpenFreeMap (OSM-derived,
   // with attribution), route + transit lines, DOM markers, scoped to a journey
   // and clustered by
   // PLACE: one marker per place, a count badge when a place holds several
@@ -85,9 +85,9 @@
   function markerElement(place: Place) {
     const button = document.createElement("button")
     button.type = "button"
-    button.className = "v3-mark"
+    button.className = "techo-mark"
     button.setAttribute("aria-label", `Place ${place.seq}`)
-    button.innerHTML = `<span>${place.seq}</span>${place.count > 1 ? `<i class="v3-mark-count">${place.count}</i>` : ""}`
+    button.innerHTML = `<span>${place.seq}</span>${place.count > 1 ? `<i class="techo-mark-count">${place.count}</i>` : ""}`
     button.addEventListener("click", (e) => {
       e.stopPropagation()
       onSelect(place.key)

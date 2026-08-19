@@ -41,7 +41,7 @@ func TestGetSiteSettingsDefaultsOnEmptyDB(t *testing.T) {
 	}
 
 	got := decodeSiteSettings(t, w)
-	want := siteSettingsPayload{Design: "v1", DefaultLanguage: "ja", DefaultTheme: "dark"}
+	want := siteSettingsPayload{Design: "cartography", DefaultLanguage: "ja", DefaultTheme: "dark"}
 	if got != want {
 		t.Errorf("defaults = %+v, want %+v", got, want)
 	}
@@ -53,7 +53,7 @@ func TestPutSiteSettingsValidRoundTrip(t *testing.T) {
 	body, _ := json.Marshal(map[string]any{
 		"title":            "Aaron's Waypoints",
 		"description":      "A travel journal",
-		"design":           "v3",
+		"design":           "techo",
 		"default_language": "en",
 		"default_theme":    "light",
 		"accent":           "#ea580c",
@@ -66,7 +66,7 @@ func TestPutSiteSettingsValidRoundTrip(t *testing.T) {
 		t.Fatalf("put site settings = %d, want 200 (%s)", w.Code, w.Body)
 	}
 	want := siteSettingsPayload{
-		Title: "Aaron's Waypoints", Description: "A travel journal", Design: "v3",
+		Title: "Aaron's Waypoints", Description: "A travel journal", Design: "techo",
 		DefaultLanguage: "en", DefaultTheme: "light", Accent: "#ea580c",
 	}
 	if got := decodeSiteSettings(t, w); got != want {

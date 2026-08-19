@@ -524,7 +524,7 @@ export async function updateSiteOutDir(outDir: string): Promise<{ out_dir: strin
 export interface AdminSiteSettings {
   title: string
   description: string
-  design: "v1" | "v2" | "v3" | "v4"
+  design: "cartography" | "cabinet" | "techo" | "atlas"
   default_language: "ja" | "en" | "zh"
   default_theme: "dark" | "light"
   accent: string

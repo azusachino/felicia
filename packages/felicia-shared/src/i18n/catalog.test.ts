@@ -14,6 +14,6 @@ describe("system locale catalogs", () => {
     expect(resolveLocale("zh-CN")).toBe("zh")
     expect(resolveLocale("en-US")).toBe("en")
     expect(resolveLocale("fr-FR")).toBe("ja")
-    expect(message("en", "design.map")).toBe("Map")
+    expect(message("en", "design.cartography")).toBe("Cartography")
   })
 })

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Lang, Memento } from "../data"
+  import type { Lang, Memento } from "../../data"
   import { templateFor } from "./stubs"
 
   let {

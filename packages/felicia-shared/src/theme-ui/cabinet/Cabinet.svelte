@@ -1,11 +1,12 @@
 <script lang="ts">
   import { fade, fly } from "svelte/transition"
   import { onMount } from "svelte"
-  import { kindLabel, uiText, type Journey, type MementoCard, type L, type Lang, type Memento, type Station, type Theme } from "../data"
-  import { message, type MessageKey } from "../i18n/catalog"
+  import { kindLabel, uiText, type Journey, type MementoCard, type L, type Lang, type Memento, type Station, type Theme } from "../../data"
+  import { message, type MessageKey } from "../../i18n/catalog"
 
-  // v2 — memento-first front door. The detailed memento "page" is the centre;
-  // a preview carousel is the index. The map (v1) is reached as the "more" view.
+  // Cabinet — memento-first front door. The detailed memento "page" is the
+  // centre; a preview carousel is the index. Cartography is reached as the
+  // "more" view.
   export let lang: Lang = "ja"
   export let theme: Theme = "dark"
   export let loadJourneys: () => Promise<Journey[]>
@@ -52,18 +53,18 @@
   }
 </script>
 
-<main class="app-shell v2-shell" class:theme-light={theme === "light"}>
+<main class="app-shell cabinet-shell" class:theme-light={theme === "light"}>
   {#if isLoading}
-    <div class="v2-status">Loading…</div>
+    <div class="cabinet-status">Loading…</div>
   {:else if error}
-    <div class="v2-status">{error}</div>
+    <div class="cabinet-status">{error}</div>
   {:else if selected && memento}
-    <header class="v2-top">
-      <div class="v2-brand">
+    <header class="cabinet-top">
+      <div class="cabinet-brand">
         <p class="eyebrow">felicia</p>
         <h1>{t(title)}</h1>
       </div>
-      <div class="v2-controls">
+      <div class="cabinet-controls">
         <div class="lang-switch" role="group" aria-label="Language">
           <button class:active={lang === "ja"} on:click={() => (lang = "ja")}>日本語</button>
           <button class:active={lang === "en"} on:click={() => (lang = "en")}>EN</button>
@@ -78,11 +79,11 @@
       </div>
     </header>
 
-    <!-- The memento detail "page": the centre of v2. -->
-    <section class="v2-stage" aria-label="Memento detail">
+    <!-- The memento detail "page": the centre of Cabinet. -->
+    <section class="cabinet-stage" aria-label="Memento detail">
       {#key memento.id}
-        <div class="v2-detail" in:fade={{ duration: 200 }}>
-          <div class="v2-stub-col" in:fly={{ y: 14, duration: 320, delay: 40 }}>
+        <div class="cabinet-detail" in:fade={{ duration: 200 }}>
+          <div class="cabinet-stub-col" in:fly={{ y: 14, duration: 320, delay: 40 }}>
             <div class="stub-card {memento.kind}">
               {#if memento.kind === "transit" && memento.transit}
                 <div class="ticket-face">
@@ -117,7 +118,7 @@
               {/if}
             </div>
 
-            <dl class="v2-facts">
+            <dl class="cabinet-facts">
               <div>
                 <dt>{lang === "en" ? "Journey" : lang === "zh" ? "旅程" : "旅"}</dt>
                 <dd>{t(selected.journey.title)}</dd>
@@ -133,7 +134,7 @@
             </dl>
           </div>
 
-          <div class="v2-story-col">
+          <div class="cabinet-story-col">
             <div class="section-head">
               <p class="eyebrow">{t(kindLabel[memento.kind])}</p>
               <h2>{t(memento.title)}</h2>
@@ -156,7 +157,7 @@
             {/if}
 
             {#if toMap}
-              <button class="v2-onmap" on:click={toMap}>{t(label.onMap)}</button>
+              <button class="cabinet-onmap" on:click={toMap}>{t(label.onMap)}</button>
             {/if}
           </div>
         </div>
@@ -164,50 +165,50 @@
     </section>
 
     <!-- The preview carousel: the index. Auto-scrolls; pauses on hover. -->
-    <footer class="v2-carousel" aria-label="Memento shelf">
-      <p class="eyebrow v2-carousel-head">{t(label.memories)}</p>
-      <div class="v2-shelf">
-        <div class="v2-track">
+    <footer class="cabinet-carousel" aria-label="Memento shelf">
+      <p class="eyebrow cabinet-carousel-head">{t(label.memories)}</p>
+      <div class="cabinet-shelf">
+        <div class="cabinet-track">
           {#each shelf as card, i (i)}
             <button
-              class="v2-preview v2-preview--{card.memento.kind}"
+              class="cabinet-preview cabinet-preview--{card.memento.kind}"
               class:active={card.memento.id === memento.id}
               aria-hidden={i >= allMementos.length}
               tabindex={i >= allMementos.length ? -1 : 0}
               on:click={() => select(card)}
             >
-              <span class="v2-preview-kind">{t(kindLabel[card.memento.kind])}</span>
+              <span class="cabinet-preview-kind">{t(kindLabel[card.memento.kind])}</span>
               <strong>{t(card.memento.title)}</strong>
-              <span class="v2-preview-meta">{t(card.memento.date)} · {t(card.journey.title)}</span>
-              <span class="v2-preview-place">{t(card.memento.place)}</span>
+              <span class="cabinet-preview-meta">{t(card.memento.date)} · {t(card.journey.title)}</span>
+              <span class="cabinet-preview-place">{t(card.memento.place)}</span>
             </button>
           {/each}
         </div>
       </div>
     </footer>
   {:else}
-    <div class="v2-status">No mementos</div>
+    <div class="cabinet-status">No mementos</div>
   {/if}
 </main>
 
 <style>
-  /* v2 overrides the shared .app-shell grid with a stacked layout. Theme tokens
+  /* Cabinet overrides the shared .app-shell grid with a stacked layout. Theme tokens
      and the paper-stub / essay / gallery classes are inherited from index.css. */
-  .v2-shell {
+  .cabinet-shell {
     display: flex;
     flex-direction: column;
     height: 100%;
     overflow: hidden;
   }
 
-  .v2-status {
+  .cabinet-status {
     display: grid;
     min-height: 100%;
     place-items: center;
     color: var(--muted);
   }
 
-  .v2-top {
+  .cabinet-top {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
@@ -216,7 +217,7 @@
     border-bottom: 1px solid var(--border);
   }
 
-  .v2-brand h1 {
+  .cabinet-brand h1 {
     margin: 0.2rem 0 0;
     font-size: 1.5rem;
     font-weight: 700;
@@ -224,20 +225,20 @@
     color: var(--text);
   }
 
-  .v2-controls {
+  .cabinet-controls {
     display: flex;
     align-items: center;
     gap: 0.5rem;
   }
 
-  .v2-stage {
+  .cabinet-stage {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
     padding: 2rem 1.75rem;
   }
 
-  .v2-detail {
+  .cabinet-detail {
     display: grid;
     grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
     gap: 2.5rem;
@@ -246,7 +247,7 @@
     align-items: start;
   }
 
-  .v2-stub-col {
+  .cabinet-stub-col {
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
@@ -254,14 +255,14 @@
     top: 0;
   }
 
-  .v2-facts {
+  .cabinet-facts {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
     margin: 0;
   }
 
-  .v2-facts div {
+  .cabinet-facts div {
     display: flex;
     justify-content: space-between;
     gap: 1rem;
@@ -269,7 +270,7 @@
     border-bottom: 1px solid var(--border);
   }
 
-  .v2-facts dt {
+  .cabinet-facts dt {
     font-size: 0.7rem;
     font-weight: 700;
     text-transform: uppercase;
@@ -277,20 +278,20 @@
     color: var(--faint);
   }
 
-  .v2-facts dd {
+  .cabinet-facts dd {
     margin: 0;
     text-align: right;
     font-size: 0.9rem;
     color: var(--text-soft);
   }
 
-  .v2-story-col {
+  .cabinet-story-col {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
   }
 
-  .v2-onmap {
+  .cabinet-onmap {
     align-self: flex-start;
     padding: 0.55rem 1rem;
     border-radius: 0.5rem;
@@ -301,40 +302,40 @@
     border: 1px solid var(--border);
   }
 
-  .v2-onmap:hover {
+  .cabinet-onmap:hover {
     background: var(--hover);
   }
 
   /* Carousel — an auto-scrolling shelf of memories that pauses on hover. --- */
-  .v2-carousel {
+  .cabinet-carousel {
     border-top: 1px solid var(--border);
     padding: 1.5rem 1.75rem 1.75rem;
     background: var(--bg);
   }
 
-  .v2-carousel-head {
+  .cabinet-carousel-head {
     margin: 0 0 1rem;
   }
 
-  .v2-shelf {
+  .cabinet-shelf {
     overflow: hidden;
     -webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
     mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
   }
 
-  .v2-track {
+  .cabinet-track {
     display: flex;
     width: max-content;
     padding: 0.5rem 0;
-    animation: v2-marquee 48s linear infinite;
+    animation: cabinet-marquee 48s linear infinite;
   }
 
-  .v2-shelf:hover .v2-track,
-  .v2-shelf:focus-within .v2-track {
+  .cabinet-shelf:hover .cabinet-track,
+  .cabinet-shelf:focus-within .cabinet-track {
     animation-play-state: paused;
   }
 
-  @keyframes v2-marquee {
+  @keyframes cabinet-marquee {
     from {
       transform: translateX(0);
     }
@@ -343,7 +344,7 @@
     }
   }
 
-  .v2-preview {
+  .cabinet-preview {
     /* margin (not flex gap) keeps the doubled track seamless at -50%. */
     margin-right: 1.1rem;
     flex: 0 0 auto;
@@ -364,30 +365,30 @@
       background 0.15s ease;
   }
 
-  .v2-preview:hover {
+  .cabinet-preview:hover {
     transform: translateY(-3px);
     background: var(--hover);
   }
 
-  .v2-preview.active {
+  .cabinet-preview.active {
     border-color: rgba(253, 186, 116, 0.6);
     border-left-color: var(--accent-ink);
     background: rgba(251, 146, 60, 0.1);
   }
 
-  .v2-preview--transit {
+  .cabinet-preview--transit {
     border-left-color: #fb923c;
   }
 
-  .v2-preview--stamp {
+  .cabinet-preview--stamp {
     border-left-color: #ef4444;
   }
 
-  .v2-preview--goods {
+  .cabinet-preview--goods {
     border-left-color: #a855f7;
   }
 
-  .v2-preview-kind {
+  .cabinet-preview-kind {
     font-size: 0.66rem;
     font-weight: 700;
     text-transform: uppercase;
@@ -395,30 +396,30 @@
     color: var(--accent-ink);
   }
 
-  .v2-preview strong {
+  .cabinet-preview strong {
     font-size: 1.02rem;
     font-weight: 600;
     color: var(--text);
     line-height: 1.3;
   }
 
-  .v2-preview-meta {
+  .cabinet-preview-meta {
     font-size: 0.78rem;
     color: var(--muted);
   }
 
-  .v2-preview-place {
+  .cabinet-preview-place {
     font-size: 0.74rem;
     color: var(--faint);
     margin-top: auto;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .v2-track {
+    .cabinet-track {
       animation: none;
     }
 
-    .v2-shelf {
+    .cabinet-shelf {
       overflow-x: auto;
       -webkit-mask-image: none;
       mask-image: none;
@@ -426,12 +427,12 @@
   }
 
   @media (max-width: 900px) {
-    .v2-detail {
+    .cabinet-detail {
       grid-template-columns: minmax(0, 1fr);
       gap: 1.75rem;
     }
 
-    .v2-stub-col {
+    .cabinet-stub-col {
       position: static;
     }
   }

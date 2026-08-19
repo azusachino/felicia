@@ -2,7 +2,7 @@
   import maplibregl, { type StyleSpecification } from "maplibre-gl"
   import "maplibre-gl/dist/maplibre-gl.css"
   import { onMount } from "svelte"
-  import type { Coordinates, Journey, Memento, Theme } from "../data"
+  import type { Coordinates, Journey, Memento, Theme } from "../../data"
 
   let {
     journeys,
@@ -92,7 +92,7 @@
   function markerElement(memento: Memento, index: number) {
     const button = document.createElement("button")
     button.type = "button"
-    button.className = "v4-marker"
+    button.className = "atlas-marker"
     button.setAttribute("aria-label", `${index + 1}. ${memento.title[lang]}`)
     button.innerHTML = `<span>${index + 1}</span>${memento.photos.length ? `<i>${memento.photos.length}</i>` : ""}`
     button.addEventListener("click", (event) => {
@@ -218,7 +218,7 @@
 <div bind:this={container} style="position: absolute; inset: 0;"></div>
 
 <style>
-  :global(.v4-marker) {
+  :global(.atlas-marker) {
     display: grid;
     position: relative;
     width: 2rem;
@@ -238,17 +238,17 @@
     cursor: default;
   }
 
-  :global(.v4-marker.is-dimmed) {
+  :global(.atlas-marker.is-dimmed) {
     opacity: 0.28;
   }
 
-  :global(.v4-marker.is-active) {
+  :global(.atlas-marker.is-active) {
     z-index: 2;
     background: #ff7b3a;
     transform: scale(1.16);
   }
 
-  :global(.v4-marker i) {
+  :global(.atlas-marker i) {
     position: absolute;
     top: -0.45rem;
     right: -0.45rem;

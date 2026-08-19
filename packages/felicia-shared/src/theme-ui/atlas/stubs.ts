@@ -1,4 +1,4 @@
-import type { MementoKind } from "../data"
+import type { MementoKind } from "../../data"
 
 export interface StubTemplate {
   id: MementoKind

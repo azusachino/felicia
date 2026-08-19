@@ -1,17 +1,17 @@
 <script lang="ts">
-  import { kindLabel, type Coordinates, type L, type Lang, type Memento, type Theme } from "../data"
+  import { kindLabel, type Coordinates, type L, type Lang, type Memento, type Theme } from "../../data"
   import TripMap from "./TripMap.svelte"
   import TechoIndexMap from "./TechoIndexMap.svelte"
-  import { message, type MessageKey } from "../i18n/catalog"
-  import type { Journey } from "../data"
+  import { message, type MessageKey } from "../../i18n/catalog"
+  import type { Journey } from "../../data"
   import { onMount } from "svelte"
 
-  // v3 — the "techo" (手帳, paper notebook) front door. View 1 (landing) is the
+  // Techo (手帳, paper notebook) front door. View 1 (landing) is the
   // journal index — a two-page spread with a paper sketch map. View 2 (detail)
-  // is the journey on a REAL map (reused v1 MapLibre): mementos cluster by place
+  // is the journey on a REAL map (reused Cartography MapLibre): mementos cluster by place
   // (map is the index — felicia:decision:map-first-landing), and opening a place
   // reveals its memories (a place holds several) as paper cards with essay +
-  // gallery. Styled with Tailwind (felicia:decision:techo-paper-v3).
+  // gallery. Styled with Tailwind (felicia:decision:techo-paper).
   let {
     lang = $bindable("ja"),
     theme = $bindable("dark"),

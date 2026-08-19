@@ -45,7 +45,7 @@ const GOODS_NAME = "E2E Souvenir"
 // that script's filesystem-side check on the compiled api/v1/site.json
 // looks for these exact values.
 const SITE_TITLE = "Admin GUI E2E Site"
-const SITE_DESIGN = "v4"
+const SITE_DESIGN = "atlas"
 const SITE_DESIGN_LABEL = "Atlas"
 const SITE_ACCENT = "#336699"
 

@@ -30,7 +30,7 @@ type SiteSettings struct {
 	JournalID       uuid.UUID `json:"journal_id"`
 	Title           string    `json:"title"`
 	Description     string    `json:"description"`
-	Design          string    `json:"design"`           // v1|v2|v3|v4
+	Design          string    `json:"design"`           // cartography|cabinet|techo|atlas
 	DefaultLanguage string    `json:"default_language"` // ja|en|zh
 	DefaultTheme    string    `json:"default_theme"`    // dark|light
 	Accent          string    `json:"accent"`           // "#rrggbb" or ""
@@ -39,10 +39,10 @@ type SiteSettings struct {
 }
 
 // DefaultSiteSettings is the projection used when a journal has never saved
-// site settings — "absent settings" behaves like a v1 site in the default
+// site settings — "absent settings" behaves like the cartography site in the default
 // language and theme, with no title/description/accent authored yet.
 func DefaultSiteSettings(journalID uuid.UUID) SiteSettings {
-	return SiteSettings{JournalID: journalID, Design: "v1", DefaultLanguage: "ja", DefaultTheme: "dark"}
+	return SiteSettings{JournalID: journalID, Design: "cartography", DefaultLanguage: "ja", DefaultTheme: "dark"}
 }
 
 // Journey represents a travel trip.

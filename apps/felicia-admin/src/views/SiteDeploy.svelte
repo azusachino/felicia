@@ -39,10 +39,10 @@
   // after Build) can't silently clobber in-progress edits — only saveSettings
   // re-derives draft from a fresh server response.
   const designChoices: { id: AdminSiteSettings["design"]; label: string }[] = [
-    { id: "v1", label: "Map" },
-    { id: "v2", label: "Collection" },
-    { id: "v3", label: "Journal" },
-    { id: "v4", label: "Atlas" },
+    { id: "cartography", label: "Cartography" },
+    { id: "cabinet", label: "Cabinet" },
+    { id: "techo", label: "Techo" },
+    { id: "atlas", label: "Atlas" },
   ]
 
   type SiteIdentityDraft = Omit<AdminSiteSettings, "accent"> & { accent: string }

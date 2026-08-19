@@ -27,7 +27,7 @@ func TestHandleGetPublicSiteReflectsAdminPut(t *testing.T) {
 	// via json.Decoder, which consumes the recorder's buffer).
 	firstBody := w.Body.String()
 	defaults := decodeSiteSettings(t, w)
-	if defaults.Design != "v1" || defaults.DefaultLanguage != "ja" || defaults.DefaultTheme != "dark" {
+	if defaults.Design != "cartography" || defaults.DefaultLanguage != "ja" || defaults.DefaultTheme != "dark" {
 		t.Fatalf("unexpected defaults: %+v", defaults)
 	}
 
@@ -45,7 +45,7 @@ func TestHandleGetPublicSiteReflectsAdminPut(t *testing.T) {
 
 	body, _ := json.Marshal(map[string]any{
 		"title":  "Aaron's Waypoints",
-		"design": "v4",
+		"design": "atlas",
 		"accent": "#123abc",
 	})
 	req := httptest.NewRequest(http.MethodPut, "/api/admin/site-settings", bytes.NewReader(body))
@@ -62,7 +62,7 @@ func TestHandleGetPublicSiteReflectsAdminPut(t *testing.T) {
 		t.Fatalf("get public site (after put) = %d, want 200 (%s)", w.Code, w.Body)
 	}
 	got := decodeSiteSettings(t, w)
-	if got.Title != "Aaron's Waypoints" || got.Design != "v4" || got.Accent != "#123abc" {
+	if got.Title != "Aaron's Waypoints" || got.Design != "atlas" || got.Accent != "#123abc" {
 		t.Errorf("public site after put = %+v, want the saved values reflected", got)
 	}
 }

@@ -1,10 +1,12 @@
 export type Locale = "ja" | "en" | "zh"
 
 export type MessageKey =
-  | "design.map"
-  | "design.collection"
-  | "design.journal"
+  | "design.cartography"
+  | "design.cabinet"
+  | "design.techo"
   | "design.atlas"
+  | "theme.dark"
+  | "theme.light"
   | "system.language"
   | "system.design"
   | "kind.transit"
@@ -22,10 +24,12 @@ export type Catalog = Record<MessageKey, string>
 
 export const catalogs: Record<Locale, Catalog> = {
   ja: {
-    "design.map": "地図",
-    "design.collection": "コレクション",
-    "design.journal": "手帳",
+    "design.cartography": "地図帳",
+    "design.cabinet": "標本箱",
+    "design.techo": "手帳",
     "design.atlas": "世界地図",
+    "theme.dark": "ダーク",
+    "theme.light": "ライト",
     "system.language": "言語",
     "system.design": "デザイン",
     "kind.transit": "交通",
@@ -40,10 +44,12 @@ export const catalogs: Record<Locale, Catalog> = {
     "ui.close": "閉じる",
   },
   en: {
-    "design.map": "Map",
-    "design.collection": "Collection",
-    "design.journal": "Journal",
+    "design.cartography": "Cartography",
+    "design.cabinet": "Cabinet",
+    "design.techo": "Techo",
     "design.atlas": "Atlas",
+    "theme.dark": "Dark",
+    "theme.light": "Light",
     "system.language": "Language",
     "system.design": "Design",
     "kind.transit": "Transit",
@@ -58,10 +64,12 @@ export const catalogs: Record<Locale, Catalog> = {
     "ui.close": "Close",
   },
   zh: {
-    "design.map": "地图",
-    "design.collection": "藏品",
-    "design.journal": "手帐",
+    "design.cartography": "地图志",
+    "design.cabinet": "藏品柜",
+    "design.techo": "手帐",
     "design.atlas": "世界图册",
+    "theme.dark": "深色",
+    "theme.light": "浅色",
     "system.language": "语言",
     "system.design": "设计",
     "kind.transit": "交通",
