@@ -13,6 +13,9 @@
     "web:public:check": "bun run --cwd apps/felicia-public-site check",
     "web:admin:dev": "bun run --cwd apps/felicia-admin dev",
     "web:admin:build": "bun run --cwd apps/felicia-admin build",
-    "web:admin:check": "bun run --cwd apps/felicia-admin check"
+    "web:admin:check": "bun run --cwd apps/felicia-admin check",
+    "web:private:dev": "bun run --cwd apps/felicia-web dev",
+    "web:private:build": "bun run --cwd apps/felicia-web build",
+    "web:private:check": "bun run --cwd apps/felicia-web check"
   }
 }

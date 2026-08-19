@@ -36,12 +36,12 @@ Modeled on [liuaaron.com](https://liuaaron.com/) · _"Aaron's Waypoints."_
 
 The web demo renders the **same** `{ journey, visit, memento }` fixtures four ways — proof the data contract is presentation-agnostic. Flip between them with the on-screen switcher (deep-linkable).
 
-|     | Front door                | Route         | What it is                                                                                                                                               |
-| --- | ------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 🗺️  | **v1 — Map reader**       | `/`           | liuaaron-aligned: journey rail → dark MapLibre map → paper detail. _The default._                                                                        |
-| 🗄️  | **v2 — Collection**       | `#collection` | Memento-first shelf; a "greatest-hits" browse across every trip.                                                                                         |
-| 📓  | **v3 — Techo (手帳)**     | `#techo`      | Warm paper notebook: a journal-index spread, then the trip on a real map with mementos clustered by **place/visit** — open a place to read its memories. |
-| 🌐  | **v4 — Atlas (世界地図)** | `#atlas`      | Full-map atlas index across every journey; mementos render as `kind`-designed collectible stubs (one stub design per registry kind).                     |
+|     | Front door           | Route      | What it is                                                                                                                                               |
+| --- | -------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 🗺️  | **Cartography**      | `/`        | liuaaron-aligned: journey rail → dark MapLibre map → paper detail. _The default._                                                                        |
+| 🗄️  | **Cabinet**          | `#cabinet` | Memento-first shelf; a "greatest-hits" browse across every trip.                                                                                         |
+| 📓  | **Techo (手帳)**     | `#techo`   | Warm paper notebook: a journal-index spread, then the trip on a real map with mementos clustered by **place/visit** — open a place to read its memories. |
+| 🌐  | **Atlas (世界地図)** | `#atlas`   | Full-map atlas index across every journey; mementos render as `kind`-designed collectible stubs (one stub design per registry kind).                     |
 
 > The checked-in fixtures keep UI design work fast; the same shape is served by the working backend.
 
@@ -58,7 +58,7 @@ flowchart LR
   imp --> r2[["R2 / S3\nEXIF-stripped photos"]]
   db --> api["HTTP API (Go, chi)\n/api/v1 · GeoJSON"]
   r2 --> api
-  api --> web["Web SPAs\nv1 · v2 · v3 · v4 (MapLibre)"]
+  api --> web["Reader hosts\nCartography · Cabinet · Techo · Atlas (MapLibre)"]
 ```
 
 - **Ingest** — `waypoints` pulls the **track + visits** from Dawarich and **photos** from Immich, joins on timestamp, EXIF-strips + resizes to R2, and seeds stub mementos. Raw GPS never lands in a public file.

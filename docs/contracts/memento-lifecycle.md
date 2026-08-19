@@ -20,7 +20,7 @@ their RFC 2119 meaning.
 ## 1. State inventory
 
 `MementoState` is a Go string enum (`apps/felicia-core/domain/entity.go`) mirrored in TypeScript
-(`apps/felicia-web/src/api.ts`). The five states, their operational meaning, and who
+(`apps/felicia-admin/src/api.ts`). The five states, their operational meaning, and who
 produces them:
 
 | State       | Meaning                                                   | Produced by                                                                           |

@@ -24,7 +24,7 @@ journey and its per-stage status live in
 - **Backend:** Go 1.26 — API, runtime, provider, and core modules in one `go.work` workspace.
 - **DB:** SQLite is the local-first provider; PostgreSQL remains supported for deployments that need it.
 - **Object storage:** S3-compatible interface; **R2** backend (MinIO/B2 swappable by config).
-- **Frontend:** Vite + MapLibre GL SPAs — public site + admin authoring app (bun workspace).
+- **Frontend:** Vite + MapLibre GL SPAs — public site, private reader, and admin authoring app (bun workspace).
 - **Locales:** static system UI catalogs support Japanese, English, and Chinese. Authored content
   has no translation sidecar and is rendered exactly as entered.
 - **Host:** self-hosted container deployment; Cloudflare Tunnel is an optional ingress.
@@ -40,7 +40,7 @@ where you author _essays / photo curation / animation_. The importer is **field-
 
 ```
 apps/{felicia-core,felicia-runtime,felicia-providers,felicia-publication,
-felicia-server,felicia-cli,felicia-web,felicia-public-site}/
+felicia-server,felicia-cli,felicia-admin,felicia-web,felicia-public-site}/
 packages/felicia-shared/  contracts/  ops/  scripts/  docs/
 ```
 
@@ -50,8 +50,9 @@ The ownership map and dependency direction are defined in
 `felicia-core` is the pure domain and port layer (no I/O). `felicia-runtime`
 owns use cases, `felicia-providers` owns persistence implementations,
 `felicia-publication` owns the public contract, and apps/felicia-server/CLI adapters compose
-runtime and publication ports. `felicia-shared` owns the public reader contract
-and renderer; the two frontend apps remain hosts.
+runtime and publication ports. `felicia-shared` owns the public reader contract,
+named theme registry, and renderer; the admin, private reader, and public site
+remain separate hosts.
 The root Go module has been retired; all Go code is built through `go.work`.
 
 ## Build, Run & Test
@@ -60,17 +61,17 @@ All daily operations go through `make <target>`. **Tools:** Go, Bun, uv, Prettie
 golangci-lint, goose, sqlc, and PostgreSQL 18 + PostGIS come from the **nix flake**
 (`nix develop`, or `make` wraps them automatically).
 
-| Target          | Does                                                            |
-| --------------- | --------------------------------------------------------------- |
-| `make fmt`      | format Go                                                       |
-| `make vet`      | `go vet ./...`                                                  |
-| `make lint`     | `golangci-lint run` (nix)                                       |
-| `make test`     | `go test -race -cover ./...`                                    |
-| `make check`    | fmt + vet + lint + test + feature contracts — **before commit** |
-| `make build`    | build all binaries                                              |
-| `make validate` | check + build + public/admin frontend checks — **before PR**    |
-| `make migrate`  | `goose up` (needs `DATABASE_DSN`)                               |
-| `make admin`    | local admin GUI: authoring API + web-admin on `127.0.0.1`       |
+| Target          | Does                                                                 |
+| --------------- | -------------------------------------------------------------------- |
+| `make fmt`      | format Go                                                            |
+| `make vet`      | `go vet ./...`                                                       |
+| `make lint`     | `golangci-lint run` (nix)                                            |
+| `make test`     | `go test -race -cover ./...`                                         |
+| `make check`    | fmt + vet + lint + test + feature contracts — **before commit**      |
+| `make build`    | build all binaries                                                   |
+| `make validate` | check + build + public/admin/private frontend checks — **before PR** |
+| `make migrate`  | `goose up` (needs `DATABASE_DSN`)                                    |
+| `make admin`    | local admin GUI: authoring API + felicia-admin on `127.0.0.1`        |
 
 ## Coding Conventions
 

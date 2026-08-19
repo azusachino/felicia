@@ -21,7 +21,7 @@ from uuid import NAMESPACE_URL, uuid4, uuid5
 BASE_URL = os.getenv("API_BASE", "http://localhost:8080")
 REPO_ROOT = Path(__file__).resolve().parent.parent
 # A real JPEG to stand in for ingested media (see run_static_parity_check).
-DEMO_PHOTO = REPO_ROOT / "apps" / "web-public" / "public" / "kyoto_temple.jpg"
+DEMO_PHOTO = REPO_ROOT / "apps" / "felicia-public-site" / "public" / "kyoto_temple.jpg"
 
 
 @dataclass(frozen=True)

@@ -15,7 +15,7 @@ COMPOSE ?= $(shell \
 	elif command -v docker >/dev/null 2>&1; then echo docker compose; \
 	else echo ''; fi)
 
-.PHONY: help fmt fmt-check vet lint test test-api test-features layout-check test-sqlite test-postgres check build cli-build experiment-intake journey-local validate tidy db-up db-down migrate seed admin dev dev-sqlite dev-postgres test-workflow test-workflow-postgres test-admin-e2e sqlc mock-up mock-down web-install web-check web-build web-admin-check web-admin-build site-build site-verify static-build static-validate static-publish pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
+.PHONY: help fmt fmt-check vet lint test test-api test-features layout-check test-sqlite test-postgres check build cli-build experiment-intake journey-local validate deps-check tidy db-up db-down migrate seed admin dev dev-sqlite dev-postgres test-workflow test-workflow-postgres test-admin-e2e sqlc mock-up mock-down web-install web-check web-build admin-check admin-build web-private-check web-private-build site-build site-verify static-build static-validate static-publish pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -61,7 +61,11 @@ journey-local: cli-build ## Preprocess raw local sources into an editable journe
 
 # Pre-PR gate. Database migration smoke remains separate because it needs a
 # disposable service; deterministic frontend checks belong in this gate.
-validate: check build web-check web-admin-check ## Pre-PR gate
+validate: check build web-check admin-check web-private-check ## Pre-PR gate
+
+deps-check: ## Check lockfile consistency and report available frontend upgrades
+	$(UV_RUN) lock --check
+	$(BUN) outdated
 
 tidy: ## Tidy go modules
 	$(GO) mod tidy
@@ -143,7 +147,7 @@ web-dev: ## Run frontend dev server (bun + vite)
 web-build: ## Build public frontend for production (bun + vite)
 	$(BUN) run web:public:build
 
-web-admin-build: ## Build admin frontend for production (bun + vite)
+admin-build: ## Build admin frontend for production (bun + vite)
 	bun run web:admin:build
 
 # The deployable site: the public SPA built for the target base path, with the
@@ -188,8 +192,14 @@ pages-down: ## Stop the local static Pages preview
 web-check: ## Frontend typecheck + lint + format check
 	$(BUN) run web:public:check
 
-web-admin-check: ## Admin frontend typecheck + lint + format check
+admin-check: ## Admin frontend typecheck + lint + format check
 	$(BUN) run web:admin:check
+
+web-private-build: ## Build private reader frontend for production
+	$(BUN) run web:private:build
+
+web-private-check: ## Private reader typecheck + lint + format check
+	$(BUN) run web:private:check
 
 # Docs preview (uv-managed env, isolated from Go/bun). Binds 0.0.0.0 so it is
 # reachable over SSH — forward with `ssh -L 8000:localhost:8000 <host>`.

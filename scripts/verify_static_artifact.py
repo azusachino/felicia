@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-DIST = ROOT / "apps" / "web-public" / "dist"
+DIST = ROOT / "apps" / "felicia-public-site" / "dist"
 
 
 def main() -> None:

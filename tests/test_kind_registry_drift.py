@@ -13,7 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 KINDS_DIR = ROOT / "apps" / "felicia-core" / "kinds"
 DATA_TS = ROOT / "packages" / "felicia-shared" / "src" / "data.ts"
-STUBS_TS = ROOT / "packages" / "felicia-shared" / "src" / "v4" / "stubs.ts"
+STUBS_TS = ROOT / "packages" / "felicia-shared" / "src" / "theme-ui" / "atlas" / "stubs.ts"
 
 KIND_LINE = re.compile(r"^kind:\s*(\S+)\s*$", re.MULTILINE)
 MEMENTO_KIND_UNION = re.compile(r'export type MementoKind\s*=\s*(.+)')
@@ -79,7 +79,7 @@ class KindRegistryDriftTest(unittest.TestCase):
             backend,
             frontend,
             "apps/felicia-core/kinds/*.yaml vs "
-            "packages/felicia-shared/src/v4/stubs.ts stubTemplates drift: "
+            "packages/felicia-shared/src/theme-ui/atlas/stubs.ts stubTemplates drift: "
             f"only in registry={backend - frontend}, only in stubs.ts={frontend - backend}",
         )
 

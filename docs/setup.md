@@ -23,7 +23,7 @@ make validate       # check + build             — before PR
 ## Authoring locally
 
 `make admin` is the entry point for the authoring surface. It builds and starts
-the API on SQLite, then runs the `web-admin` dev server against it through
+the API on SQLite, then runs the `felicia-admin` dev server against it through
 Vite's `/api` proxy, and prints the URLs:
 
 - **admin GUI** — `http://127.0.0.1:5174/`

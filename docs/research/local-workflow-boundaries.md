@@ -19,7 +19,8 @@ local_journey_package.py       portable package serialization + media hashing
 felicia-cli import/static      importer, SQLite provider, publication compiler
         │
         ▼
-apps/felicia-public-site                API adaptation + presentation designs
+packages/felicia-shared                  reader contracts + theme registry + presentations
+apps/felicia-public-site                API/static adaptation + browser host
 ```
 
 The UV entrypoint, [`scripts/local_journey.py`](../../scripts/local_journey.py),
@@ -27,8 +28,9 @@ only coordinates these seams. It should not grow provider logic, package
 normalization, or frontend rendering logic.
 
 The backend remains responsible for canonical domain validation and persistence;
-the frontend remains responsible for adapting the public contract and rendering
-map/collection/journal designs. The UV scripts are disposable local orchestration
+the shared frontend package remains responsible for adapting reader view models
+and rendering the named theme languages. The host remains responsible for API
+and static adaptation. The UV scripts are disposable local orchestration
 and fixture tooling, so they may prepare files and call the real CLI but must not
 reimplement backend rules.
 

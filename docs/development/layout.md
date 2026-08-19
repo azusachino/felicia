@@ -11,10 +11,11 @@ apps/
   felicia-publication/   # public projections and static compiler
   felicia-server/        # HTTP composition and migrations
   felicia-cli/           # CLI and compiler composition
-  felicia-web/           # private authoring host
+  felicia-admin/         # private authoring/admin host
+  felicia-web/           # private reader host
   felicia-public-site/   # public reader host
 packages/
-  felicia-shared/        # public reader contracts, designs, components, styles
+  felicia-shared/        # reader contracts, named themes, components, styles
 contracts/               # canonical cross-language contract source
 ops/                     # deployment-owned files
 scripts/                 # repository automation
@@ -27,11 +28,13 @@ The Go modules point inward toward `felicia-core`; server and CLI composition
 depend on publication, never the other way around. No application module is a
 library dependency of another application module.
 
-The shared frontend package owns the public reader's view models, design
-registry, compositions, styles, and reader localization. The public-site host
-owns browser bootstrapping and transport/static-artifact adaptation. The web
-host owns authoring. Admin preview is the compiled public artifact served by
-the public renderer, so it is the same reader path users receive.
+The shared frontend package owns the public reader's view models, named theme
+registry (`cartography`, `cabinet`, `techo`, and `atlas`), compositions, styles,
+and reader localization. The admin host owns authoring and may preview the
+shared reader, but remains an admin application. The private reader host owns
+the live/private API shell. The public-site host owns browser bootstrapping and
+transport/static-artifact adaptation. Admin preview and the public site use the
+same shared reader renderer; the private host is a separate live-reader shell.
 
 `contracts/canonical/v1/schema.json` remains the canonical cross-language
 contract. TypeScript package types are reader-facing projections, not a second

@@ -12,7 +12,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-WEB = ROOT / "apps" / "web-public"
+WEB = ROOT / "apps" / "felicia-public-site"
 CLI = ROOT / "bin" / "felicia-cli"
 DEFAULT_DB = ROOT / ".felicia" / "pages-preview.sqlite"
 DEFAULT_INBOX = ROOT / ".felicia" / "inbox"

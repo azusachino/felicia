@@ -1,4 +1,4 @@
-// Hash-based routing, the same idiom as web-public's designs.ts: no router
+// Hash-based routing, the same idiom as the shared theme-ui registry: no router
 // dependency, a pure function resolves state from `location.hash`, and the
 // shell re-derives on the `hashchange` event so deep links and back/forward
 // both work for free.

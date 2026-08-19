@@ -14,7 +14,7 @@ The selected shape:
 ```
 Dawarich / Immich or local GPX + photos          (data stays on the author's machine)
   → felicia local server (SQLite): import + intake planning
-  → web-admin GUI: review stop candidates → edit mementos → write essays → publish
+  → felicia-admin GUI: review stop candidates → edit mementos → write essays → publish
   → felicia static compile → dist/ (published-only JSON + safe media + SPA)
   → push / GitHub Actions → GitHub Pages
 ```
@@ -35,13 +35,13 @@ Invariants that must hold at every step:
 
 ## Per-stage status
 
-| #   | Stage               | Status                  | Where it lives                                                                                                                                                                                                                                                                                                                                              |
-| --- | ------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **Data collection** | ✅ Done                 | Dawarich client (`apps/felicia-providers/dawarich/`), Immich client (`apps/felicia-providers/immich/`), local GPX + photo/sidecar source (`apps/felicia-providers/local/`), mock upstream (`scripts/mock_upstream.py`)                                                                                                                                      |
-| 2   | **Import / intake** | ✅ Done (deterministic) | Field-scoped importer (`apps/felicia-runtime/importer/`), dwell-cluster intake planner (`apps/felicia-runtime/intake/planner.go`), SQLite + PostgreSQL providers behind shared contract tests                                                                                                                                                               |
-| 3   | **Authoring**       | ✅ Done (GUI MVP)       | Schema v1 + CLI path complete; `apps/felicia-web` closes the authoring loop — journey shell with import/preview triggers, intake inbox, memento editor with revision-conflict handling — proven end to end in a real browser (`make test-admin-e2e`, epic [FELICIA-ADMIN-01](admin-gui-v1-epic.md)); the registry-driven dynamic form engine stays deferred |
-| 4   | **Publication**     | ✅ Done                 | Published-only static compiler (`apps/felicia-publication/compiler.go`); live/static content parity is enforced by a shared projection layer (`apps/felicia-publication/public.go`) and a workflow parity check                                                                                                                                             |
-| 5   | **Deployment**      | ✅ Done                 | Pages workflow builds and deploys the real compiled artifact (artifact-based `upload-pages-artifact` → `deploy-pages`, nothing committed); first remote run succeeded on `main` after PR #55 merged — epic [FELICIA-PAGES-01](pages-v1-epic.md)                                                                                                             |
+| #   | Stage               | Status                  | Where it lives                                                                                                                                                                                                                                                                                                                                                |
+| --- | ------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Data collection** | ✅ Done                 | Dawarich client (`apps/felicia-providers/dawarich/`), Immich client (`apps/felicia-providers/immich/`), local GPX + photo/sidecar source (`apps/felicia-providers/local/`), mock upstream (`scripts/mock_upstream.py`)                                                                                                                                        |
+| 2   | **Import / intake** | ✅ Done (deterministic) | Field-scoped importer (`apps/felicia-runtime/importer/`), dwell-cluster intake planner (`apps/felicia-runtime/intake/planner.go`), SQLite + PostgreSQL providers behind shared contract tests                                                                                                                                                                 |
+| 3   | **Authoring**       | ✅ Done (GUI MVP)       | Schema v1 + CLI path complete; `apps/felicia-admin` closes the authoring loop — journey shell with import/preview triggers, intake inbox, memento editor with revision-conflict handling — proven end to end in a real browser (`make test-admin-e2e`, epic [FELICIA-ADMIN-01](admin-gui-v1-epic.md)); the registry-driven dynamic form engine stays deferred |
+| 4   | **Publication**     | ✅ Done                 | Published-only static compiler (`apps/felicia-publication/compiler.go`); live/static content parity is enforced by a shared projection layer (`apps/felicia-publication/public.go`) and a workflow parity check                                                                                                                                               |
+| 5   | **Deployment**      | ✅ Done                 | Pages workflow builds and deploys the real compiled artifact (artifact-based `upload-pages-artifact` → `deploy-pages`, nothing committed); first remote run succeeded on `main` after PR #55 merged — epic [FELICIA-PAGES-01](pages-v1-epic.md)                                                                                                               |
 
 Deliberately deferred (not gaps): AI enrichment
 ([ADR-0024](../adr/0024-optional-ai-enrichment.md)), R2/S3 object storage
@@ -71,8 +71,8 @@ Replace the fixture-only Pages demo with the real pipeline: SQLite →
 
 ### Phase 2 — minimal admin GUI (upgrade authoring from CLI to local GUI)
 
-Build the smallest closed authoring loop in `apps/felicia-web`, on top of the
-existing API boundary (`apps/felicia-web/src/api.ts`) and the admin-api/v1
+Build the smallest closed authoring loop in `apps/felicia-admin`, on top of the
+existing API boundary (`apps/felicia-admin/src/api.ts`) and the admin-api/v1
 projection:
 
 - Journey list/detail with import triggers (`sync-route` / `visits` / `tray`).

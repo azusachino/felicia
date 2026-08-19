@@ -70,7 +70,7 @@ GOODS_NAME = "E2E Souvenir"
 # as the constants above -- this script's filesystem-side check on the
 # compiled api/v1/site.json looks for these exact values.
 SITE_TITLE = "Admin GUI E2E Site"
-SITE_DESIGN = "v4"
+SITE_DESIGN = "atlas"
 SITE_ACCENT = "#336699"
 
 # A minimal two-point timestamped track. The intake planner only needs it to

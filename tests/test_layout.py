@@ -17,9 +17,12 @@ class LayoutBoundaryTests(unittest.TestCase):
             ROOT / "apps" / "felicia-publication",
             ROOT / "apps" / "felicia-server",
             ROOT / "apps" / "felicia-cli",
+            ROOT / "apps" / "felicia-admin",
             ROOT / "apps" / "felicia-web",
             ROOT / "apps" / "felicia-public-site",
             SHARED,
+            SHARED / "src" / "theme-ui" / "registry.ts",
+            SHARED / "src" / "theme-ui" / "themes.ts",
             ROOT / "ops",
             ROOT / "contracts" / "canonical" / "v1" / "schema.json",
         ):
@@ -36,6 +39,10 @@ class LayoutBoundaryTests(unittest.TestCase):
             "deploy",
             "apps/web-admin",
             "apps/web-public",
+            "packages/felicia-shared/src/v1",
+            "packages/felicia-shared/src/v2",
+            "packages/felicia-shared/src/v3",
+            "packages/felicia-shared/src/v4",
         )
         for path in legacy_paths:
             self.assertFalse((ROOT / path).exists(), path)
@@ -52,6 +59,10 @@ class LayoutBoundaryTests(unittest.TestCase):
         )
         for forbidden in forbidden_imports:
             self.assertNotIn(forbidden, source, forbidden)
+
+        registry = (SHARED / "src" / "theme-ui" / "registry.ts").read_text(encoding="utf-8")
+        for old_id in ("v1", "v2", "v3", "v4"):
+            self.assertNotIn(f'id: "{old_id}"', registry, old_id)
 
         package = json.loads((SHARED / "package.json").read_text(encoding="utf-8"))
         self.assertIn(".", package["exports"])

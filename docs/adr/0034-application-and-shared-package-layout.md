@@ -43,10 +43,11 @@ apps/
   felicia-publication/   # public projections and static compiler Go module
   felicia-server/        # HTTP composition and migrations Go module
   felicia-cli/           # user-facing CLI and compiler composition Go module
-  felicia-web/           # private authoring host
+  felicia-admin/         # private authoring/admin host
+  felicia-web/           # private reader host
   felicia-public-site/   # public reader host
 packages/
-  felicia-shared/        # public view contracts, designs, compositions, styles
+  felicia-shared/        # public view contracts, named themes, compositions, styles
 contracts/               # canonical cross-language contract source
 ops/                     # deployment-owned files
 scripts/                 # repository automation
@@ -55,16 +56,21 @@ docs/                    # project documentation and ADRs
 
 `apps/` names executable or independently buildable application boundaries.
 `packages/felicia-shared` is the only frontend package allowed to own the
-public reader's view contract, design registry, reader compositions, shared
-styles, and reader-facing localization. Hosts remain thin adapters:
+public reader's view contract, named theme registry, reader compositions,
+shared styles, and reader-facing localization. The registry exposes the four
+named design languages `cartography`, `cabinet`, `techo`, and `atlas`; the old
+`v1`-`v4` design identifiers are intentionally not compatibility aliases.
+Hosts remain thin adapters:
 
 - `felicia-public-site` owns browser bootstrapping, environment handling,
   HTTP/static-artifact loading, URL/media adaptation, and deployment wiring.
-- `felicia-web` owns authoring screens and admin APIs. It does not become a
-  second public renderer.
-- Admin preview continues to consume the compiled public artifact served by
-  the public host. Therefore preview and the public site exercise the same
-  reader renderer and publication contract.
+- `felicia-admin` owns authoring screens and admin APIs. It may mount the
+  shared reader for preview, but it remains an admin host.
+- `felicia-web` is the private reader host. It loads live API data and is the
+  deployment seam for private access; authentication is intentionally outside
+  this skeleton.
+- Admin preview and the public site exercise the same shared reader renderer
+  and publication contract. The private reader is a separate live-reader host.
 
 ### Dependency direction
 

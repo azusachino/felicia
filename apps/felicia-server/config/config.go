@@ -60,7 +60,7 @@ type Config struct {
 	// SitePreviewPort is the second local port serving the compiled site
 	// (artifact union SPA) so the author can verify a build in the browser.
 	SitePreviewPort string `koanf:"site.preview_port"`
-	// SiteSpaDist points at a pre-built web-public dist that the preview
+	// SiteSpaDist points at a pre-built felicia-public-site dist that the preview
 	// server overlays under the compiled artifact.
 	SiteSpaDist string `koanf:"site.spa_dist"`
 	// SiteBrowseRoot bounds the Site & Deploy directory picker (defaults to

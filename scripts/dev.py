@@ -95,7 +95,7 @@ def run_postgres(start_web: bool) -> None:
 
         seed_environment = environment | {"SEED_API_BASE": base_url}
         run([sys.executable, "scripts/seed.py"], env=seed_environment)
-        web_dir = ROOT / "apps" / "web-public"
+        web_dir = ROOT / "apps" / "felicia-public-site"
         if not (web_dir / "node_modules").exists():
             run(["bun", "install"], cwd=web_dir)
         run(["bun", "run", "dev"], cwd=web_dir)

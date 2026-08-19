@@ -17,14 +17,14 @@ machine and is never deployed; GitHub only ever holds the static site.
 
 ## Two routes
 
-|                            | **A — CI build**                  | **B — Local authoring** (recommended) |
-| -------------------------- | --------------------------------- | ------------------------------------- |
-| Content lives in           | JSON files committed to the repo  | local SQLite, never committed         |
-| Authoring interface        | a text editor                     | the admin GUI                         |
-| Built by                   | GitHub Actions                    | your machine                          |
-| Site title / design choice | not available (defaults to v1)    | set in the GUI                        |
-| Privacy                    | journal content is in git history | only `dist/` leaves the machine       |
-| Needs a fork               | yes (for `.github/workflows/`)    | no — any checkout plus an empty repo  |
+|                            | **A — CI build**                        | **B — Local authoring** (recommended) |
+| -------------------------- | --------------------------------------- | ------------------------------------- |
+| Content lives in           | JSON files committed to the repo        | local SQLite, never committed         |
+| Authoring interface        | a text editor                           | the admin GUI                         |
+| Built by                   | GitHub Actions                          | your machine                          |
+| Site title / design choice | not available (defaults to cartography) | set in the GUI                        |
+| Privacy                    | journal content is in git history       | only `dist/` leaves the machine       |
+| Needs a fork               | yes (for `.github/workflows/`)          | no — any checkout plus an empty repo  |
 
 Route A is how the project's own demo site is published. Route B is the
 intended path for a personal journal.

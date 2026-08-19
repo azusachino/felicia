@@ -2,7 +2,7 @@
 
 > Phase 2 of the selected end-to-end journey
 > ([user-journey.md](user-journey.md)): upgrade stage 3 (authoring) from the
-> file/CLI path to the smallest closed GUI loop in `apps/felicia-web`. Server
+> file/CLI path to the smallest closed GUI loop in `apps/felicia-admin`. Server
 > API and data contract already exist; this epic is almost entirely frontend
 > plus one small server endpoint.
 
@@ -10,14 +10,14 @@
 
 - **One editor, presentation-agnostic.** The editor edits the canonical
   contract (`kind` + `kind_data`, validated server-side against
-  `apps/felicia-core/kinds/*.yaml`). The public designs v1–v4 are downstream projections;
+  `apps/felicia-core/kinds/*.yaml`). The public design languages are downstream projections;
   nothing in the editor may depend on any of them.
 - **Kind source of truth is the registry.** The editor's kind list and field
   hints come from `GET /api/admin/templates` (the embedded `apps/felicia-core/kinds`
   registry). MVP hardcodes two forms (`transit`, `goods`) but their field
   sets must match the registry; the dynamic form engine stays deferred.
-- **No new dependencies.** Svelte 5 + hash-based routing, same as
-  `web-public`'s design switcher; the existing `src/api.ts` boundary grows,
+- **No new dependencies.** Svelte 5 + hash-based routing, same as the
+  shared reader's design switcher; the existing `src/api.ts` boundary grows,
   it is not replaced.
 - **Importer discipline holds.** The GUI only writes through
   `POST /api/admin/mementos` (manual patch path) so authored-field tracking
