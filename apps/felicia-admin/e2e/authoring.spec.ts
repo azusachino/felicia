@@ -5,7 +5,7 @@
 // Dawarich/Immich upstream, the seeded journey) is entirely owned by
 // scripts/e2e_admin_gui.py, which invokes this spec via `bunx playwright
 // test` and passes the context it already set up through env vars:
-//   - E2E_BASE_URL  the web-admin dev server (playwright.config.ts baseURL)
+//   - E2E_BASE_URL  the felicia-admin dev server (playwright.config.ts baseURL)
 //   - E2E_API_BASE  the disposable admin API server (for the live
 //                   public-API assertion below)
 //   - E2E_JOURNEY_ID the UUID of the journey seeded via the CLI import path
@@ -128,7 +128,7 @@ test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
 
   test("builds the site from the GUI and the artifact reflects the authored essay", async () => {
     // ADMIN-02 M0: the Site & Deploy page now exposes the compile trigger
-    // (apps/felicia-web/src/views/SiteDeploy.svelte), so this drives the real
+    // (apps/felicia-admin/src/views/SiteDeploy.svelte), so this drives the real
     // GUI flow instead of posting to /api/admin/compile directly. The
     // server compiles into its configured SITE_OUT_DIR (env var), which
     // scripts/e2e_admin_gui.py sets equal to its own `out_dir` — so there is

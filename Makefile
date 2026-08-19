@@ -80,7 +80,7 @@ migrate: ## Apply DB migrations (goose, from nix) — needs DATABASE_DSN
 seed: ## Seed the database with sample data (uv run, psycopg) — needs DATABASE_DSN
 	$(UV_RUN) run --group dev python scripts/seed.py
 
-admin: ## Start the local admin GUI (authoring API + web-admin on 127.0.0.1)
+admin: ## Start the local admin GUI (authoring API + felicia-admin on 127.0.0.1)
 	$(UV_RUN) run python scripts/admin.py
 
 dev: ## Start the local API with SQLite

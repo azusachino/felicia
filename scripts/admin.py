@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Start the local admin GUI: the authoring API plus the web-admin dev server.
+"""Start the local admin GUI: the authoring API plus the felicia-admin dev server.
 
 This is the one documented entry point for the authoring surface. It exists to
 keep ADR-0025's constraint honest in the tooling rather than only in prose: the
@@ -7,7 +7,7 @@ admin is a local process over a local database, and nothing here can publish.
 
 Two deliberate choices:
 
-  * The GUI binds 127.0.0.1, never 0.0.0.0. `apps/felicia-web/vite.config.ts`
+  * The GUI binds 127.0.0.1, never 0.0.0.0. `apps/felicia-admin/vite.config.ts`
     defaults to 0.0.0.0 so the E2E harness can reach it from a container; an
     authoring session has no such need and must not be reachable from the LAN.
   * The database defaults under `.felicia/` (gitignored) instead of the repo
@@ -35,7 +35,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-WEB_ADMIN = ROOT / "apps" / "web-admin"
+WEB_ADMIN = ROOT / "apps" / "felicia-admin"
 API_BINARY = Path(tempfile.gettempdir()) / f"felicia-admin-api-{os.getpid()}"
 DEFAULT_DATABASE = ROOT / ".felicia" / "local.sqlite"
 LOOPBACK = "127.0.0.1"

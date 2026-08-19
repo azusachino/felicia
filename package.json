@@ -1,5 +1,5 @@
 {
-  "name": "felicia-web-workspace",
+  "name": "felicia-frontend-workspace",
   "private": true,
   "version": "0.1.0",
   "packageManager": "bun@1.3.13",
@@ -11,8 +11,8 @@
     "web:public:dev": "bun run --cwd apps/felicia-public-site dev",
     "web:public:build": "bun run --cwd apps/felicia-public-site build",
     "web:public:check": "bun run --cwd apps/felicia-public-site check",
-    "web:admin:dev": "bun run --cwd apps/felicia-web dev",
-    "web:admin:build": "bun run --cwd apps/felicia-web build",
-    "web:admin:check": "bun run --cwd apps/felicia-web check"
+    "web:admin:dev": "bun run --cwd apps/felicia-admin dev",
+    "web:admin:build": "bun run --cwd apps/felicia-admin build",
+    "web:admin:check": "bun run --cwd apps/felicia-admin check"
   }
 }

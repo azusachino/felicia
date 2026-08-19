@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Closed-loop admin-GUI E2E pass (ADMIN-01.8).
 
-Drives the real `apps/felicia-web` GUI in a real browser (Playwright/chromium)
+Drives the real `apps/felicia-admin` GUI in a real browser (Playwright/chromium)
 against the disposable API server: import -> review candidate -> author ->
 publish -> compile -> assert the compiled artifact contains the authored
 essay.
@@ -50,12 +50,12 @@ from local_journey_package import build_package
 from test_journey_workflow import disposable_server, find_free_port, workflow_ids
 
 ROOT = Path(__file__).resolve().parent.parent
-WEB_ADMIN_DIR = ROOT / "apps" / "web-admin"
+WEB_ADMIN_DIR = ROOT / "apps" / "felicia-admin"
 MOCK_UPSTREAM_SCRIPT = ROOT / "scripts" / "mock_upstream.py"
 
 MOCK_API_KEY = "mock-key"
 
-# Sentinel strings the Playwright spec (apps/felicia-web/e2e/authoring.spec.ts)
+# Sentinel strings the Playwright spec (apps/felicia-admin/e2e/authoring.spec.ts)
 # authors into the memento. Kept identical in both places on purpose: this
 # script's filesystem-side assertion against the compiled static artifact
 # looks for the *same* strings, so a drift between the two would fail loudly
@@ -66,7 +66,7 @@ ESSAY_SENTINEL = "Felicia admin GUI E2E authored essay -- sentinel 9f3c2b1a"
 GOODS_NAME = "E2E Souvenir"
 
 # ADMIN-02 M2: site identity constants, kept identical to the constants of
-# the same name in apps/felicia-web/e2e/authoring.spec.ts for the same reason
+# the same name in apps/felicia-admin/e2e/authoring.spec.ts for the same reason
 # as the constants above -- this script's filesystem-side check on the
 # compiled api/v1/site.json looks for these exact values.
 SITE_TITLE = "Admin GUI E2E Site"
@@ -145,7 +145,7 @@ def mock_upstream(port: int):
 
 @contextmanager
 def vite_dev_server(port: int, api_base: str):
-    """Runs `bun run dev` for apps/felicia-web with Vite's /api proxy pointed at
+    """Runs `bun run dev` for apps/felicia-admin with Vite's /api proxy pointed at
     the disposable API server (VITE_API_PROXY, see vite.config.ts): the GUI
     fetches same-origin exactly like the compiled artifact does, so no CORS
     wiring is needed on the server. The Python side owns this process's
@@ -172,7 +172,7 @@ def vite_dev_server(port: int, api_base: str):
     )
     try:
         base_url = f"http://127.0.0.1:{port}"
-        _wait_ready(process, base_url + "/", 60, "web-admin dev server")
+        _wait_ready(process, base_url + "/", 60, "felicia-admin dev server")
         yield base_url
     finally:
         process.terminate()
