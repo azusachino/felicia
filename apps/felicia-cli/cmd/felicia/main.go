@@ -20,7 +20,7 @@ import (
 	journeypackage "github.com/azusachino/felicia/apps/felicia-core/journeypackage"
 	"github.com/azusachino/felicia/apps/felicia-providers/local"
 	"github.com/azusachino/felicia/apps/felicia-providers/sqlite"
-	"github.com/azusachino/felicia/apps/felicia-publication"
+	publication "github.com/azusachino/felicia/apps/felicia-publication"
 	"github.com/azusachino/felicia/apps/felicia-runtime/importer"
 	"github.com/azusachino/felicia/apps/felicia-runtime/intake"
 )

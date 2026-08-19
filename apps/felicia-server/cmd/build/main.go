@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/azusachino/felicia/apps/felicia-providers/postgres"
-	"github.com/azusachino/felicia/apps/felicia-publication"
+	publication "github.com/azusachino/felicia/apps/felicia-publication"
 )
 
 func main() {

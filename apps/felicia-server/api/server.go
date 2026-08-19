@@ -21,7 +21,7 @@ import (
 
 	"github.com/azusachino/felicia/apps/felicia-core/domain"
 	"github.com/azusachino/felicia/apps/felicia-core/ports"
-	"github.com/azusachino/felicia/apps/felicia-publication"
+	publication "github.com/azusachino/felicia/apps/felicia-publication"
 	"github.com/azusachino/felicia/apps/felicia-runtime/importer"
 	"github.com/azusachino/felicia/apps/felicia-runtime/intake"
 	journeyruntime "github.com/azusachino/felicia/apps/felicia-runtime/journey"

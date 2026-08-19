@@ -6,7 +6,7 @@ import (
 	"regexp"
 
 	"github.com/azusachino/felicia/apps/felicia-core/domain"
-	"github.com/azusachino/felicia/apps/felicia-publication"
+	publication "github.com/azusachino/felicia/apps/felicia-publication"
 )
 
 // Site identity & style settings (ADMIN-02 M2): GET/PUT /api/admin/site-settings.

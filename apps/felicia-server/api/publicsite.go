@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/azusachino/felicia/apps/felicia-publication"
+	publication "github.com/azusachino/felicia/apps/felicia-publication"
 )
 
 // handleGetPublicSite serves the public site identity/style projection

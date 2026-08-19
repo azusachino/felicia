@@ -10,7 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/azusachino/felicia/apps/felicia-core"
+	core "github.com/azusachino/felicia/apps/felicia-core"
 	"github.com/azusachino/felicia/apps/felicia-core/domain"
 	"github.com/azusachino/felicia/apps/felicia-providers/dawarich"
 	"github.com/azusachino/felicia/apps/felicia-providers/immich"

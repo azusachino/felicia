@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/azusachino/felicia/apps/felicia-core"
+	core "github.com/azusachino/felicia/apps/felicia-core"
 	"github.com/azusachino/felicia/apps/felicia-core/domain"
 )
 

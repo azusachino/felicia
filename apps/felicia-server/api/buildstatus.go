@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/azusachino/felicia/apps/felicia-core/domain"
-	"github.com/azusachino/felicia/apps/felicia-publication"
+	publication "github.com/azusachino/felicia/apps/felicia-publication"
 )
 
 // Pending-build tracking (docs/contracts/memento-lifecycle.md §6). A memento is

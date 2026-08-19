@@ -19,7 +19,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/paulmach/orb"
 
-	"github.com/azusachino/felicia/apps/felicia-core"
+	core "github.com/azusachino/felicia/apps/felicia-core"
 	"github.com/azusachino/felicia/apps/felicia-core/domain"
 	"github.com/azusachino/felicia/apps/felicia-core/ports"
 	"github.com/azusachino/felicia/apps/felicia-runtime/importer"
