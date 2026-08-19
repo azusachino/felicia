@@ -86,8 +86,9 @@ def format_markdown(check: bool) -> bool:
     result = run(
         [
             "bun",
-            "x",
-            "--no-install",
+            "run",
+            "--cwd",
+            "apps/felicia-public-site",
             "prettier",
             "--no-config",
             "--parser",
