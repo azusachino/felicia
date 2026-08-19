@@ -85,9 +85,17 @@ func (s *fakeStore) GetJourney(_ context.Context, id uuid.UUID) (*domain.Journey
 	return j, nil
 }
 
-func (s *fakeStore) UpsertJourney(_ context.Context, j *domain.Journey) error {
-	s.journeys[j.ID] = j
-	s.upserted = j
+// ApplyIngestJourneyPatch mirrors the providers: masked fields are applied only
+// where the stored row has not claimed authorship, and the stored authored mask
+// is left alone (ADR-0033).
+func (s *fakeStore) ApplyIngestJourneyPatch(_ context.Context, patch *domain.IngestJourneyPatch) error {
+	current, ok := s.journeys[patch.Journey.ID]
+	if !ok {
+		current = &domain.Journey{ID: patch.Journey.ID, JournalID: patch.Journey.JournalID}
+	}
+	domain.MergeIngestJourney(current, patch)
+	s.journeys[current.ID] = current
+	s.upserted = current
 	return nil
 }
 

@@ -13,11 +13,35 @@ from pathlib import Path
 
 try:
     from .local_journey_author import interactive_author
-    from .local_journey_common import CLI, NAMESPACE, ROOT, as_coord, candidate_key, ensure_cli, run, write_json
+    from .local_journey_common import (
+        CLI,
+        DEFAULT_WORKSPACE_ROOT,
+        NAMESPACE,
+        ROOT,
+        as_coord,
+        candidate_key,
+        derive_journey_identity,
+        ensure_cli,
+        read_json,
+        run,
+        write_json,
+    )
     from .local_journey_package import build_package
 except ImportError:
     from local_journey_author import interactive_author
-    from local_journey_common import CLI, NAMESPACE, ROOT, as_coord, candidate_key, ensure_cli, run, write_json
+    from local_journey_common import (
+        CLI,
+        DEFAULT_WORKSPACE_ROOT,
+        NAMESPACE,
+        ROOT,
+        as_coord,
+        candidate_key,
+        derive_journey_identity,
+        ensure_cli,
+        read_json,
+        run,
+        write_json,
+    )
     from local_journey_package import build_package
 
 
@@ -46,9 +70,53 @@ def workspace_media_path(photo_root: Path, asset: dict) -> str:
         return str(resolved)
 
 
+def resolve_identity(args: argparse.Namespace) -> None:
+    """Fill in journey/slug/title/workspace from the GPX when the author
+    didn't name the trip explicitly (issue #72). Mutates `args` in place so
+    every later use of these fields -- including `interactive_author` and
+    `preview` in the `run` command -- sees the same resolved values.
+    """
+    derived_journey, derived_slug = derive_journey_identity(args.gpx.resolve())
+    if not args.journey:
+        args.journey = derived_journey
+    if not args.slug:
+        args.slug = derived_slug
+    if not args.title:
+        args.title = f"Local trip ({args.gpx.stem})"
+    if args.workspace is None:
+        args.workspace = DEFAULT_WORKSPACE_ROOT / args.slug
+
+
+def guard_workspace_identity(workspace: Path, journey_id: str, slug: str) -> None:
+    """Refuse to reuse a workspace that already describes a different trip.
+
+    Re-running the *same* trip (same derived or explicit journey id) must
+    stay idempotent; importing a *different* trip into a workspace that
+    already holds one must fail loudly instead of silently overwriting it
+    on disk and, later, in the database (issue #72).
+    """
+    existing_path = workspace / "journey.json"
+    if not existing_path.is_file():
+        return
+    try:
+        existing = read_json(existing_path)
+    except SystemExit:
+        return  # unreadable/malformed workspace file; let the normal write replace it
+    existing_id = existing.get("id")
+    if existing_id and existing_id != journey_id:
+        raise SystemExit(
+            f"workspace {workspace} already holds journey {existing_id} "
+            f"(slug {existing.get('slug')!r}); refusing to overwrite it with a "
+            f"different journey {journey_id} (slug {slug!r}). Pass a distinct "
+            "--workspace (and/or --slug) for the new trip."
+        )
+
+
 def preprocess(args: argparse.Namespace) -> None:
+    resolve_identity(args)
     workspace = args.workspace.resolve()
     workspace.mkdir(parents=True, exist_ok=True)
+    guard_workspace_identity(workspace, args.journey, args.slug)
     ensure_cli()
     command = [
         str(CLI),
@@ -139,6 +207,8 @@ def preprocess(args: argparse.Namespace) -> None:
     )
     shutil.copy2(args.gpx, workspace / "route.gpx")
     print(f"preprocess ready: {workspace}")
+    print(f"journey={args.journey} slug={args.slug!r} title={args.title!r}")
+    print(f"pass --workspace {workspace} to `package`/`preview` for this trip")
     print("edit journey.json, stops.json, and mementos.json, then run `package` or `preview`")
 
 
@@ -158,11 +228,23 @@ def preview(args: argparse.Namespace) -> None:
 def parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=("run", "preprocess", "package", "preview"))
-    parser.add_argument("--workspace", type=Path, default=Path(".felicia/local-journey"))
-    parser.add_argument("--journey", default="0190cbde-f300-7000-8000-111111111111")
+    parser.add_argument(
+        "--workspace",
+        type=Path,
+        default=None,
+        help="defaults to .felicia/local-journey/<slug> for preprocess/run "
+        "(derived from --slug or the GPX content); required for package/preview "
+        "when not reusing that default",
+    )
+    parser.add_argument(
+        "--journey",
+        default=None,
+        help="defaults to a uuid5 derived from the GPX track's own bytes -- "
+        "stable across re-runs of the same trip, distinct across trips (issue #72)",
+    )
     parser.add_argument("--journal", default="0190cbde-f300-7000-8000-000000000000")
-    parser.add_argument("--slug", default="local-journey")
-    parser.add_argument("--title", default="Local journey draft")
+    parser.add_argument("--slug", default=None, help="defaults to a slug derived from the GPX content")
+    parser.add_argument("--title", default=None, help="defaults to a title derived from the GPX filename")
     parser.add_argument("--gpx", type=Path)
     parser.add_argument("--photos", type=Path)
     parser.add_argument("--sidecar", type=Path)
@@ -178,6 +260,11 @@ def main() -> None:
         if args.command == "run":
             interactive_author(args)
             preview(args)
+    elif args.workspace is None:
+        raise SystemExit(
+            f"{args.command} requires --workspace (preprocess printed the workspace "
+            "path to reuse -- see its 'preprocess ready:' line)"
+        )
     elif args.command == "package":
         build_package(args)
     else:

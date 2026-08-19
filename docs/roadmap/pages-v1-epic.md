@@ -25,124 +25,20 @@ without an API, database, Valkey, or cloud credential.
 
 ## Child tasks
 
-### FELICIA-PAGES-01.1 — Define the static publication contract
+All ten child tasks shipped as part of PR #55.
 
-Document the exact input/output contract before replacing the fixture builder.
-
-- Define the required SQLite read ports for journals, journeys, mementos, route
-  geometry, and media metadata.
-- Define the output paths and JSON schemas:
-  `/api/v1/journeys.json`, `/api/v1/journeys/<id>.json`, and
-  `/api/v1/journeys/<id>/mementos.json`.
-- Decide whether the public geometry is GeoJSON only or includes a Felicia
-  extension for timestamp/elevation provenance.
-- Add golden fixtures and a contract test shared by static and server readers.
-
-Acceptance: a contract test can validate both generated files and Go server
-responses without design-specific fields.
-
-### FELICIA-PAGES-01.2 — Compile static output from SQLite
-
-Replace `scripts/build_static_demo.py` as the production-shaped path; retain it
-only as a small fixture/demo helper if useful.
-
-- Open a clean SQLite database through the provider interface.
-- Read published journeys and mementos through provider-neutral runtime ports.
-- Generate the same `.json` files as the current demo.
-- Make the compiler fail closed on unpublished/private records.
-- Remove direct PostgreSQL construction from the static path.
-
-Acceptance: a clean SQLite fixture produces a complete artifact with no JSON
-seed input and no PostgreSQL/Valkey/API dependency.
-
-### FELICIA-PAGES-01.3 — Preserve GPX route provenance
-
-- Import one checked-in GPX fixture into the canonical SQLite route representation.
-- Preserve source filename/checksum and import-run identity.
-- Preserve timestamp and elevation when available.
-- Generate deterministic public geometry from the canonical route data.
-- Add round-trip and malformed-GPX cases.
-
-Acceptance: rebuilding twice from the same SQLite database produces equivalent
-route JSON and retains source provenance without exposing private source files.
-
-### FELICIA-PAGES-01.4 — Add local filesystem media publication
-
-- Read originals from a configured local media root.
-- Generate size-bounded public derivatives and strip EXIF/GPS metadata.
-- Copy only referenced public derivatives into `dist/media/`.
-- Keep originals outside the artifact and reject path traversal.
-- Use stable content-hash paths and preserve captions/order in JSON.
-
-Acceptance: a fixture with one photo, one unsupported file, and one private
-original produces only the safe derivative and a deterministic media URL.
-
-### FELICIA-PAGES-01.5 — Prove server/static contract parity
-
-- Exercise `.json` paths against the Go server backed by SQLite.
-- Compare server responses with the static files from the same fixture.
-- Keep extensionless server aliases only for backward compatibility and test
-  both forms explicitly.
-- Verify Caddy/API routing does not turn missing JSON into SPA HTML.
-
-Acceptance: the browser can switch between static preview and SQLite server
-mode without changing read models or encountering `Unexpected token '<'`.
-
-### FELICIA-PAGES-01.6 — Measure the 100-journey artifact
-
-- Generate 100 journeys with representative mementos and media metadata.
-- Measure SQLite size, compiler duration, artifact size, and index size.
-- Keep journey details lazy-loadable rather than embedding all essays in the
-  index.
-- Add a browser smoke check for the index and one detail page.
-
-Acceptance: measurements are recorded and the index remains bounded enough for
-GitHub Pages; any limit becomes an explicit product constraint.
-
-### FELICIA-PAGES-01.7 — Run and harden GitHub Pages deployment
-
-- Run `.github/workflows/pages.yml` on the protected branch or via dispatch.
-- Verify repository-site base path, `.json` requests, media URLs, and design
-  hash switching on the deployed URL.
-- Pin or review action versions and document required Pages repository settings.
-- Record the deployed URL and workflow run in the experiment report.
-
-Acceptance: a clean runner publishes a browsable artifact without secrets or
-local services.
-
-### FELICIA-PAGES-01.8 — Privacy, accessibility, and rebuild gate
-
-- Assert no raw GPS/source files/private originals enter `dist/`.
-- Check missing media and malformed JSON fail with useful diagnostics.
-- Add keyboard/reduced-motion and basic mobile browser checks.
-- Run two builds from identical inputs and compare manifest/output hashes.
-- Add the complete gate to `make validate` only after it is deterministic.
-
-Acceptance: the publication is safe to share and reproducible from a clean
-checkout.
-
-### FELICIA-PAGES-01.9 — Provide an agent-friendly repository CLI
-
-- Define a repository-local layout for source packages, SQLite state, generated
-  projections, and public media.
-- Add deterministic commands for `validate`, `import`, `diff`, `build`, and
-  `publish`.
-- Make dry-run output reviewable and machine-readable.
-- Keep generated files limited to configured public paths and never require
-  hand-editing generated JSON.
-
-Acceptance: an agent or user can validate a package, review a diff, build the
-public artifact, and arrange it for a Git commit using documented commands.
-
-### FELICIA-PAGES-01.10 — Make forks portable
-
-- Derive repository name and project-site base path from GitHub context.
-- Remove hardcoded owner, repository, asset, and local absolute paths.
-- Document Pages settings for forks and keep workflow permissions minimal.
-- Add a clone-at-another-path smoke fixture.
-
-Acceptance: a fork can run the CLI and workflow without editing source paths or
-leaking private data.
+| Task                                          | Issue | Status | Outcome                                                                                                                          |
+| --------------------------------------------- | ----- | ------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| 01.1 Define the static publication contract   | #48   | done   | Contract test validates both generated `.json` files and Go server responses without design-specific fields.                     |
+| 01.2 Compile static output from SQLite        | #43   | done   | Clean SQLite fixture produces a complete artifact with no JSON seed input, no PostgreSQL/Valkey/API dependency.                  |
+| 01.3 Preserve GPX route provenance            | #42   | done   | Rebuilding twice from the same DB yields equivalent route JSON and keeps provenance without exposing private source files.       |
+| 01.4 Add local filesystem media publication   | #41   | done   | One photo, one unsupported file, one private original → safe derivative plus deterministic media URL.                            |
+| 01.5 Prove server/static contract parity      | #44   | done   | Browser can switch between static preview and SQLite server mode without changing read models or hitting `Unexpected token '<'`. |
+| 01.6 Measure the 100-journey artifact         | #46   | done   | Measurements recorded; the index stays bounded enough for GitHub Pages.                                                          |
+| 01.7 Run and harden GitHub Pages deployment   | #45   | done   | Clean runner publishes a browsable artifact without secrets or local services.                                                   |
+| 01.8 Privacy, accessibility, and rebuild gate | #47   | done   | Publication is safe to share and reproducible from a clean checkout.                                                             |
+| 01.9 Provide an agent-friendly repository CLI | #49   | done   | Validate, diff, build, and arrange the artifact for a Git commit via documented commands.                                        |
+| 01.10 Make forks portable                     | #50   | done   | Fork runs the CLI and workflow without editing source paths or leaking private data.                                             |
 
 ## Current gap audit
 

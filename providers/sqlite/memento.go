@@ -274,7 +274,10 @@ func (r *Repository) ApplyIngestMementoPatch(ctx context.Context, patch *domain.
 	if err != nil {
 		return err
 	}
-	mergeMemento(current, patch.Memento, patch.Fields)
+	// An ingest write may only touch fields the author has not claimed, and it
+	// leaves current.AuthoredFields untouched so the mask can never shrink
+	// (ADR-0033).
+	mergeMemento(current, patch.Memento, domain.IngestableFields(patch.Fields, current.AuthoredFields))
 	if patch.Memento.SourceIdentity != nil && patch.Memento.SourceIdentity.Valid() {
 		current.SourceIdentity = patch.Memento.SourceIdentity
 		if current.SourceRef == nil {

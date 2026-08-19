@@ -66,8 +66,13 @@ func (s *serviceJourneyStore) GetJourney(_ context.Context, id uuid.UUID) (*doma
 	return s.journey, nil
 }
 
-func (s *serviceJourneyStore) UpsertJourney(_ context.Context, journey *domain.Journey) error {
-	s.journey = journey
+func (s *serviceJourneyStore) ApplyIngestJourneyPatch(_ context.Context, patch *domain.IngestJourneyPatch) error {
+	current := s.journey
+	if current == nil || current.ID != patch.Journey.ID {
+		current = &domain.Journey{ID: patch.Journey.ID, JournalID: patch.Journey.JournalID}
+	}
+	domain.MergeIngestJourney(current, patch)
+	s.journey = current
 	s.upserts++
 	return nil
 }

@@ -1,25 +1,20 @@
 # felicia v1 roadmap
 
 Epics: [SQLite-backed GitHub Pages publication](roadmap/pages-v1-epic.md)
-(shipped — PR #55 merged and the Pages workflow runs on `main`); the
-[admin GUI MVP](roadmap/admin-gui-v1-epic.md) (implementation complete —
-all epic milestones M1–M4 landed, closed-loop browser E2E green; in
-review on the `feat/admin-gui-mvp` branch); and the active
-[GUI site configuration and deployment](roadmap/admin-gui-v2-epic.md)
-(M0–M2 landed — Site & Deploy page with a Build action, a built-in preview
-server, authoring controls, and a Site identity section that picks the
-public design and style through a `site.json` projection; GitHub Pages
-deploy with URL confirmation and GUI resource uploads planned).
-The selected end-to-end journey and its per-stage status: [User journey](roadmap/user-journey.md).
+(shipped, PR #55); [admin GUI MVP](roadmap/admin-gui-v1-epic.md) (M1–M4
+landed, in review); [GUI site configuration and deployment](roadmap/admin-gui-v2-epic.md)
+(M0–M2 landed, M3–M4 planned). Selected end-to-end journey and its
+per-stage status: [User journey](roadmap/user-journey.md).
 
-> Drafted 2026-07-16. This is a delivery roadmap, not a commitment to build every future seam in the current release.
+> Drafted 2026-07-16 — a delivery roadmap, not a commitment to build every
+> future seam in the current release.
 
 ## v1 outcome
 
-Ship one beautiful, public, personal travel journal: one real journey is imported or authored, shown on a map, and readable through designed mementos that open into essays and photos. The author can
-curate and publish it from a private owner admin surface, and the deployed site runs safely on a supported production host with configurable ingress.
-
-The map remains the index. A memento is the story's click target. The first release is personal-first and product-ready at the seams; it is not a multi-user SaaS product.
+Ship one beautiful, public, personal travel journal: one real journey,
+imported or authored, mapped, and readable through mementos that open into
+essays and photos — curated and published from a private admin surface,
+deployed safely with configurable ingress.
 
 ## Release boundary
 
@@ -27,17 +22,16 @@ The map remains the index. A memento is the story's click target. The first rele
 
 - Public reader for journeys, routes, visits, mementos, essays, and galleries.
 - One canonical API/data contract used by the public frontend and admin surface.
-- SQLite-first local storage; PostgreSQL/PostGIS is deferred to the v1.1/v1.2
-  follow-up and is not a v1 compatibility promise.
+- SQLite-first local storage; PostgreSQL/PostGIS is deferred to v1.1/v1.2,
+  not a v1 compatibility promise.
 - Authored content that is never overwritten by ingestion.
-- A declarative memento template registry (`core/kinds/*.yaml`): `goods`, `live`, `transit`, `stamp`, `receipt`, and `souvenir`; the admin MVP hand-builds forms for `transit`/`goods` first.
+- A declarative memento template registry (`core/kinds/*.yaml`): `goods`, `live`, `transit`, `stamp`, `receipt`, and `souvenir`; admin MVP hand-builds forms for `transit`/`goods` first.
 - Japanese-first system UI with English and Chinese catalogs; authored content is shown exactly as entered.
 - One authoring flow: create or import a journey, curate mementos/photos, preview, and publish.
 - One real journey as the acceptance fixture and one complete end-to-end publish flow.
 - EXIF-stripped, resized public media stored behind an S3-compatible interface.
 - Containerized single-owner deployment on a supported host, with private
-  owner-admin access, public-reader ingress, and object storage selected by
-  deployment configuration.
+  admin access, public-reader ingress, and object storage selected by config.
 - Two intake modes through one draft pipeline: connected Dawarich/Immich sources and versioned user-provided journey packages.
 - Dry-run import, reviewable changes, stable package identities, and agent-friendly validate/import/diff commands.
 - Optional OCR/AI suggestions for structured fields; no AI provider is required to import, author, or publish.
@@ -53,16 +47,13 @@ The map remains the index. A memento is the story's click target. The first rele
 
 ## Milestones
 
-> Numbering convention: roadmap-level milestones are **R0–R5**. Each epic
-> under `roadmap/` keeps its own local **M1–M4**, always read scoped to that
-> epic (e.g. "ADMIN-01 M2" is the admin GUI epic's second milestone, not a
+> Numbering convention: roadmap-level milestones are **R0–R5**; each
+> epic's own local milestones are **M1–M4** (e.g. "ADMIN-01 M2" is not a
 > roadmap milestone). The delivery phases in
-> [user-journey.md](roadmap/user-journey.md) (Phase 1 = static publication,
-> Phase 2 = admin GUI) cut across R2–R5.
+> [user-journey.md](roadmap/user-journey.md) (Phase 1 = static
+> publication, Phase 2 = admin GUI) cut across R2–R5.
 
 ### R0 — Product and content lock
-
-Turn the research decisions into a small executable spec before expanding the UI.
 
 Deliverables:
 
@@ -78,8 +69,6 @@ Exit check: a reviewer can describe the complete author and reader journey witho
 
 ### R1 — Canonical storage and public API
 
-Make the existing domain and provider work the source of truth for the reader.
-
 Deliverables:
 
 - Complete the goose schema/migration path for the stable memento-era model.
@@ -94,8 +83,6 @@ Exit check: the public app can run entirely from the API against a clean SQLite 
 
 ### R2 — Public reader v1
 
-Replace the design showcase with the first coherent Felicia reading experience.
-
 Deliverables:
 
 - Make the landing index reachable on first load and useful without knowing the map UI.
@@ -108,8 +95,6 @@ Deliverables:
 Exit check: a first-time visitor can discover a journey, open a memento, read its story, view its photos, and return to the index on desktop and mobile.
 
 ### R3 — Authoring and publish flow
-
-Give the single author a reliable private surface for producing the public artifact.
 
 Deliverables:
 
@@ -124,8 +109,6 @@ Deliverables:
 Exit check: the selected real journey can be created or repaired through the admin UI, previewed, published, and then read through the same public API as any other journey.
 
 ### R4 — Ingestion and route enrichment
-
-Automate the parts that are repetitive while preserving author control.
 
 Deliverables:
 
@@ -143,8 +126,6 @@ Deliverables:
 Exit check: re-running an import produces no duplicates, does not overwrite authored fields, and leaves an auditable result when source data is incomplete.
 
 ### R5 — Production deployment and v1 acceptance
-
-Make the result dependable as a personal service.
 
 Deliverables:
 
@@ -176,6 +157,3 @@ Every milestone keeps the smallest relevant gate green:
 4. R3 authoring and publish.
 5. R4 ingestion automation.
 6. R5 deployment and acceptance.
-
-The important cut is to reach a complete public reader with one real journey before investing in the full Immich/Dawarich automation. The importer is valuable, but it is not the proof of Felicia's
-core experience.

@@ -161,6 +161,16 @@ func (m *mockRepository) UpsertJourney(_ context.Context, journey *domain.Journe
 	return nil
 }
 
+func (m *mockRepository) ApplyIngestJourneyPatch(_ context.Context, patch *domain.IngestJourneyPatch) error {
+	current, ok := m.journeys[patch.Journey.ID]
+	if !ok {
+		current = &domain.Journey{ID: patch.Journey.ID, JournalID: patch.Journey.JournalID}
+	}
+	domain.MergeIngestJourney(current, patch)
+	m.journeys[current.ID] = current
+	return nil
+}
+
 func (m *mockRepository) GetMemento(_ context.Context, id uuid.UUID) (*domain.Memento, error) {
 	mem, ok := m.mementos[id]
 	if !ok {

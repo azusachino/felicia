@@ -41,9 +41,11 @@ type JourneyStore interface {
 
 // JourneySyncStore is the smaller seam used by source synchronization. It
 // keeps import workflows independent from admin listing and lookup behavior.
+// It writes exclusively through the ingest seam so an import can never take or
+// clear authored ownership (ADR-0033).
 type JourneySyncStore interface {
 	GetJourney(ctx context.Context, id uuid.UUID) (*domain.Journey, error)
-	UpsertJourney(ctx context.Context, journey *domain.Journey) error
+	ApplyIngestJourneyPatch(ctx context.Context, patch *domain.IngestJourneyPatch) error
 }
 
 // MementoStore owns memento lifecycle and optimistic-concurrency persistence.

@@ -192,7 +192,14 @@ type Repository interface {
 	GetJourney(ctx context.Context, id uuid.UUID) (*Journey, error)
 	GetJourneyBySlug(ctx context.Context, slug string) (*Journey, error)
 	ListJourneys(ctx context.Context) ([]*Journey, error)
+	// UpsertJourney is the authoring write: it sets every column from the
+	// supplied journey and takes the supplied authored mask at face value.
+	// Source imports must not use it — see ApplyIngestJourneyPatch.
 	UpsertJourney(ctx context.Context, journey *Journey) error
+	// ApplyIngestJourneyPatch is the source write: masked fields are applied
+	// only where the stored row has not claimed authorship, and the stored
+	// authored mask is preserved verbatim.
+	ApplyIngestJourneyPatch(ctx context.Context, patch *IngestJourneyPatch) error
 
 	// Memento operations
 	GetMemento(ctx context.Context, id uuid.UUID) (*Memento, error)

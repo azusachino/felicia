@@ -158,3 +158,33 @@ required to carry doc updates. GitHub is the single ledger for issue state — d
 recreate local issue mirrors (the old drafts are archived under
 `docs/archive/github-issues/`); scripted issue lookups use a `GITHUB_TOKEN`
 environment variable, not interactive `gh auth login`.
+
+## Issue Convention
+
+One classification standard for the open ledger. Three competing title schemes
+(`M0 —`, `[FELICIA-PAGES-01.x]`, `P0:`) and an unlabelled backlog previously made
+"what is next" unanswerable without reading every issue.
+
+- **Title:** `R<n>: <lowercase summary>`, where `R0`–`R5` is the roadmap milestone
+  from [`docs/roadmap.md`](docs/roadmap.md). No other prefix. Priority and type live
+  in labels, never in the title.
+- **Milestone:** every issue carries its `R<n>` milestone — this is the coarse
+  ordering, and it is what makes milestone completion percentages true.
+- **Type label** (exactly one): `type:epic` (milestone umbrella), `type:feature`,
+  `type:defect` (shipped behavior contradicts a binding contract), `type:decision`
+  (needs an ADR or a joint call first).
+- **Priority label** (exactly one): `prio:P0` breaks a stated invariant or destroys
+  data · `prio:P1` blocks the documented end-to-end journey · `prio:P2` real gap with
+  a workaround · `prio:P3` correctness/polish, nobody blocked.
+- **Work order:** milestone ascending, then priority ascending. Query it, don't guess:
+
+  ```
+  gh issue list --state open --milestone "R4 — Ingestion and route enrichment" --label prio:P0
+  ```
+
+- Closed issues keep their historical titles: `[FELICIA-PAGES-01.x]` is the
+  doc↔issue trace in [`pages-v1-epic.md`](docs/roadmap/pages-v1-epic.md). They carry
+  milestones but are not retitled. Epic-local `M1`–`M4` numbering stays scoped to its
+  epic doc and never appears in an issue title.
+- A `type:defect` body cites the contract it violates (ADR, `docs/contracts/*`, or
+  AGENTS.md) plus `file:line` evidence. Without that citation it is a `type:feature`.

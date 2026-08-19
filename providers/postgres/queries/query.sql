@@ -83,20 +83,28 @@ SELECT id, journal_id, slug, source_ref, title, place, country, region, date_sta
 FROM tb_journeys
 ORDER BY date_start DESC;
 
+-- UpsertJourney is the authoring write. It assigns unconditionally: the caller
+-- owns both the column values and the authored mask, and an author must be able
+-- to re-edit a field they already claimed. The previous per-column
+-- `authored_fields @> ARRAY[...]` guards made that impossible (a field could be
+-- authored once and never edited again) while still leaving imports free to
+-- clobber, because they also reset authored_fields from EXCLUDED. Source imports
+-- go through ApplyIngestJourneyPatch, which filters the field mask against the
+-- stored authored mask in Go so both providers behave identically (ADR-0033).
 -- name: UpsertJourney :exec
 INSERT INTO tb_journeys (
     id, journal_id, slug, source_ref, title, place, country, region, date_start, date_end, gps_route, authored_fields, created_at, updated_at
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, ST_GeomFromWKB($11, 4326), $12, NOW(), NOW()
 ) ON CONFLICT (id) DO UPDATE SET
-    slug = CASE WHEN NOT (tb_journeys.authored_fields @> ARRAY['slug']) THEN EXCLUDED.slug ELSE tb_journeys.slug END,
-    title = CASE WHEN NOT (tb_journeys.authored_fields @> ARRAY['title']) THEN EXCLUDED.title ELSE tb_journeys.title END,
-    place = CASE WHEN NOT (tb_journeys.authored_fields @> ARRAY['place']) THEN EXCLUDED.place ELSE tb_journeys.place END,
-    country = CASE WHEN NOT (tb_journeys.authored_fields @> ARRAY['country']) THEN EXCLUDED.country ELSE tb_journeys.country END,
-    region = CASE WHEN NOT (tb_journeys.authored_fields @> ARRAY['region']) THEN EXCLUDED.region ELSE tb_journeys.region END,
-    date_start = CASE WHEN NOT (tb_journeys.authored_fields @> ARRAY['date_start']) THEN EXCLUDED.date_start ELSE tb_journeys.date_start END,
-    date_end = CASE WHEN NOT (tb_journeys.authored_fields @> ARRAY['date_end']) THEN EXCLUDED.date_end ELSE tb_journeys.date_end END,
-    gps_route = CASE WHEN NOT (tb_journeys.authored_fields @> ARRAY['gps_route']) THEN EXCLUDED.gps_route ELSE tb_journeys.gps_route END,
+    slug = EXCLUDED.slug,
+    title = EXCLUDED.title,
+    place = EXCLUDED.place,
+    country = EXCLUDED.country,
+    region = EXCLUDED.region,
+    date_start = EXCLUDED.date_start,
+    date_end = EXCLUDED.date_end,
+    gps_route = EXCLUDED.gps_route,
     source_ref = EXCLUDED.source_ref,
     authored_fields = EXCLUDED.authored_fields,
     updated_at = NOW();
