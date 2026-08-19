@@ -42,8 +42,8 @@ __pycache__/
 *.swp
 
 # Admin GUI E2E (ADMIN-01.8, Playwright)
-/apps/felicia-web/playwright-report/
-/apps/felicia-web/test-results/
+/apps/felicia-admin/playwright-report/
+/apps/felicia-admin/test-results/
 
 # Agent session scratch (asobi is canonical; these are fallback only)
 .agents/CONTEXT.md
