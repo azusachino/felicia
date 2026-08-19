@@ -33,16 +33,16 @@ from `.felicia/inbox` into a public GitHub Pages artifact automatically.
 
 ## What already exists
 
-| Concern                          | Current location                   | Assessment                                       |
-| -------------------------------- | ---------------------------------- | ------------------------------------------------ |
-| Canonical entities and lifecycle | `apps/felicia-core/domain`         | Reusable starting point                          |
-| Storage ports                    | `apps/felicia-core/ports`          | Reusable; publication needs a narrower read port |
-| SQLite provider                  | `apps/felicia-providers/sqlite`    | First CLI persistence target                     |
-| PostgreSQL provider              | `apps/felicia-providers/postgres`  | Server/deployment target                         |
-| Import joining/no-clobber logic  | `apps/felicia-runtime/importer`    | Reusable runtime seam                            |
-| Public projection                | `publication`                      | Shared boundary now exists                       |
-| Publication package builder      | `scripts/build_preview_package.py` | Checked-in journey package compilation           |
-| `felicia-cli`                    | `apps/felicia-cli/cmd/felicia`     | SQLite import and static compiler entry point    |
+| Concern                          | Current location                       | Assessment                                       |
+| -------------------------------- | -------------------------------------- | ------------------------------------------------ |
+| Canonical entities and lifecycle | `apps/felicia-core/domain`             | Reusable starting point                          |
+| Storage ports                    | `apps/felicia-core/ports`              | Reusable; publication needs a narrower read port |
+| SQLite provider                  | `apps/felicia-providers/sqlite`        | First CLI persistence target                     |
+| PostgreSQL provider              | `apps/felicia-providers/postgres`      | Server/deployment target                         |
+| Import joining/no-clobber logic  | `apps/felicia-runtime/importer`        | Reusable runtime seam                            |
+| Public projection                | `publication`                          | Shared boundary now exists                       |
+| Publication package builder      | `scripts/build_publication_package.py` | Production journey catalog compilation           |
+| `felicia-cli`                    | `apps/felicia-cli/cmd/felicia`         | SQLite import and static compiler entry point    |
 
 ## Canonical model
 

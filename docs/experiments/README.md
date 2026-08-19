@@ -84,7 +84,7 @@ Current evidence:
 The repository already contains the first input set and orchestration examples:
 
 - `scripts/test_journey_workflow.py` — `uv`-runnable HTTP workflow case;
-- `examples/preview/local-journey/` — the checked-in Izu publication workspace;
+- `publication/journeys/` — the production publication catalog;
 - `scripts/tracks/*.gpx` — source GPX fixtures;
 - `ops/compose.yaml` — disposable PostgreSQL, Valkey, API, Caddy, and tunnel
   integration;
@@ -98,4 +98,4 @@ The repository already contains the first input set and orchestration examples:
 - the static publisher does not yet copy local public media derivatives;
 - the GitHub Pages workflow and static design demo exist, but deployment and
   browser review are still outstanding;
-- the checked-in Izu workspace is publication input, not the canonical storage model.
+- the production catalog is publication input, not the canonical storage model.

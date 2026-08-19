@@ -172,8 +172,8 @@ pages-workflow-validate: ## Verify the Pages workflow is fork-safe
 fork-smoke: ## Build a clean checkout from another filesystem path
 	$(UV_RUN) run python scripts/verify_fork_smoke.py
 
-pages-preview: ## Import inbox packages, compile, and serve on localhost:8082
-	BASE_PATH=/ $(UV_RUN) run python scripts/felicia.py preview
+pages-preview: ## Build the production publication, compile, and serve on localhost:8082
+	BASE_PATH=/ $(UV_RUN) run python scripts/felicia.py publish
 	@test -n "$(COMPOSE)" || (echo "No container compose command found (install podman-compose or Docker Compose)" >&2; exit 1)
 	$(COMPOSE) -f ops/compose.yaml --profile pages up -d pages-preview
 	@echo "Felicia Pages preview: http://localhost:8082"

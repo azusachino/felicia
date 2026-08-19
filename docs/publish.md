@@ -28,7 +28,7 @@ unauthenticated, keep the host firewall and Tailscale ACLs as the access boundar
 | Privacy                    | journal content is in git history | only `dist/` leaves the machine       |
 | Needs a fork               | yes (for `.github/workflows/`)    | no — any checkout plus an empty repo  |
 
-Route A is how this repository publishes the checked-in Izu journey. Route B is the
+Route A is how this repository publishes the production journey catalog. Route B is the
 intended path for a personal journal.
 
 ---
@@ -193,7 +193,7 @@ built with the correct `BASE_PATH`.
 
 !!! note "The Pages build is the publication path"
 
-    `scripts/felicia.py preview` compiles the checked-in Izu journey through the
+    `scripts/felicia.py publish` compiles the production journey catalog through the
     same SQLite import and static compiler used by the local authoring workflow.
 
 Check the result before deploying:
@@ -242,17 +242,20 @@ manifest reconciliation removes it from the artifact.
 
 ---
 
-## Route A — publish the Izu journey with GitHub Actions
+## Route A — publish the production catalog with GitHub Actions
 
 1. **Fork** the repository.
 2. Actions tab → enable workflows on the fork.
 3. Settings → Pages → Source → **GitHub Actions**.
-4. Actions → **Publish Izu journey to GitHub Pages** → Run workflow. (Forking creates no
+4. Actions → **Publish production catalog to GitHub Pages** → Run workflow. (Forking creates no
    push, so the first run must be manual.)
-5. The workflow publishes the curated Izu workspace in
-   [`examples/preview/local-journey/`](https://github.com/azusachino/felicia/tree/main/examples/preview/local-journey):
-   one `journey.json`, selected stops, authored mementos, a rounded public route,
-   and public image derivatives.
+5. The workflow publishes every catalog entry under
+   [`publication/journeys/`](https://github.com/azusachino/felicia/tree/main/publication/journeys).
+   Each journey directory contains one `journey.json`, selected stops, authored
+   mementos, a rounded public route, and public image derivatives.
+   Add future journeys by adding the same file set and one entry to
+   `publication/journeys/workspace.json`; the publisher discovers them without
+   source-code edits.
 6. Verify locally with `make pages-preview` (`http://localhost:8082`).
 7. Push to `main`; the workflow rebuilds and deploys.
 

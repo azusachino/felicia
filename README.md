@@ -35,7 +35,8 @@ Modeled on [liuaaron.com](https://liuaaron.com/) · _"Aaron's Waypoints."_
 ## 🚪 Four front doors, one contract
 
 The public reader renders the same `{ journey, visit, memento }` contract four ways. The
-checked-in Izu journey is the publication source, and the on-screen switcher is deep-linkable.
+production catalog under `publication/journeys/` is the publication source, and the
+on-screen switcher is deep-linkable.
 
 |     | Front door                 | Route          | What it is                                                                                                                                               |
 | --- | -------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -44,7 +45,7 @@ checked-in Izu journey is the publication source, and the on-screen switcher is 
 | 📓  | **Techo (手帳)**           | `#techo`       | Warm paper notebook: a journal-index spread, then the trip on a real map with mementos clustered by **place/visit** — open a place to read its memories. |
 | 🌐  | **Cartography (世界地図)** | `#cartography` | Full-map atlas index across every journey; mementos render as `kind`-designed collectible stubs (one stub design per registry kind).                     |
 
-> The checked-in Izu journey is a real publication fixture; the same shape is served by the working backend.
+> The production catalog contains sanitized, published journey inputs; the same shape is served by the working backend.
 
 ## 🏗️ Architecture
 
@@ -113,7 +114,7 @@ Cloudflare [R2](https://developers.cloudflare.com/r2/) (S3-compatible; MinIO/B2 
 
 ## 🚀 Quick start
 
-The public reader runs on the checked-in Izu journey — no database or keys are needed for a local reader preview.
+The public reader runs on the production catalog — no database or keys are needed for a local reader preview.
 
 ```bash
 make web-dev          # Vite dev server → http://localhost:5173

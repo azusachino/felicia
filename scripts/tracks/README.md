@@ -13,4 +13,4 @@ OpenStreetMap attribution and licensing information:
 - [OpenStreetMap public GPS traces](https://www.openstreetmap.org/traces)
 
 These tracks are test inputs only. The published Izu route is a rounded,
-checked-in derivative under `examples/preview/local-journey/`.
+published derivative under `publication/journeys/`.

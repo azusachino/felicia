@@ -11,7 +11,7 @@ from pathlib import Path
 class CanonicalSeedContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        workspace = Path(__file__).parents[1] / "examples" / "preview" / "local-journey"
+        workspace = Path(__file__).parents[1] / "publication" / "journeys" / "izu-trip-2026-08-01"
         journey = json.loads((workspace / "journey.json").read_text(encoding="utf-8"))
         mementos = json.loads((workspace / "mementos.json").read_text(encoding="utf-8"))
         cls.data = {"journeys": [{**journey, "mementos": mementos["mementos"]}]}

@@ -13,12 +13,9 @@ check. It does not introduce new decisions; it restates what's already committed
 elsewhere as one testable checklist, so a reviewer can verify v1 without re-deriving
 the invariants from prose.
 
-**Open item:** every scenario below is written against "the selected real journey" —
-per M0 issue #7, no specific real trip has been designated as the v1 acceptance
-fixture yet (only synthetic/example data exists: `examples/preview/local-journey`,
-`tests/fixtures/local-journey-mixed-state`, and the E2E harnesses' seeded journeys).
-Selecting one and inventorying its route/visits/mementos/essays/photos is separate,
-pending work — this document is written so that step is a drop-in, not a rewrite.
+The selected real journey is the production Izu catalog entry under
+`publication/journeys/izu-trip-2026-08-01`. Synthetic fixtures remain under
+`tests/` and are not publication data.
 
 ## Acceptance scenarios
 

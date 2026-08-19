@@ -10,8 +10,8 @@ experiment: "E1/E2"
 ## Inputs and harness
 
 - Workflow script: [`scripts/test_journey_workflow.py`](../../scripts/test_journey_workflow.py)
-- Publication workspace: [`examples/preview/local-journey/`](../../examples/preview/local-journey/)
-- GPX fixture: [`examples/preview/local-journey/route.gpx`](../../examples/preview/local-journey/route.gpx)
+- Publication catalog: [`publication/journeys/`](../../publication/journeys/)
+- Public GPX derivative: [`publication/journeys/izu-trip-2026-08-01/route.gpx`](../../publication/journeys/izu-trip-2026-08-01/route.gpx)
 - Compose services: [`ops/compose.yaml`](../../ops/compose.yaml)
 - Shared public origin: [`ops/Caddyfile`](../../ops/Caddyfile)
 

@@ -22,7 +22,7 @@ def main() -> None:
         "actions/checkout@v7",
         "jdx/mise-action@v4",
         "mise exec -- bun install --frozen-lockfile",
-        "mise exec -- uv run python scripts/felicia.py preview",
+        "mise exec -- uv run python scripts/felicia.py publish",
         "mise exec -- uv run python scripts/verify_static_artifact.py",
         "path: apps/felicia-public-site/dist",
         "actions/configure-pages@v6",

@@ -84,5 +84,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("workspace", type=Path)
     args = parser.parse_args()
-    validate_workspace(args.workspace.resolve())
-    print(f"local authoring valid: {args.workspace}")
+    workspace = args.workspace.resolve()
+    if (workspace / "workspace.json").is_file():
+        validate_workspace_root(workspace)
+        print(f"publication catalog valid: {args.workspace}")
+    else:
+        validate_workspace(workspace)
+        print(f"local journey valid: {args.workspace}")

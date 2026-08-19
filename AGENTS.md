@@ -142,10 +142,12 @@ stops being possible.
    `SnapToRoute`/`GetDisplayRoute` reimplemented in Go). A superseding ADR states
    how each named cost will be contained, or records that it is accepted.
 
-6. **The authored journal never sits on a committable path.**
-   It is the one artifact ADR-0025 says must not leave the machine. Default
-   database paths live under `.felicia/`; `.gitignore` covers every SQLite
-   spelling the tooling can emit.
+6. **Private authoring data never sits on a committable path.**
+   The original journal is the artifact ADR-0025 says must not leave the
+   machine. Private workspaces, databases, and originals live under `.felicia/`.
+   Sanitized, explicitly published journey inputs may be committed only under
+   `publication/journeys/`; `.gitignore` covers every SQLite spelling the
+   tooling can emit.
 
 ## Docs-Sync Discipline (per PR)
 

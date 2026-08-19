@@ -187,10 +187,10 @@ contact a server or publish anywhere. Inspect `site/` and verify that:
 - private/unselected material is absent;
 - repeated runs do not duplicate records.
 
-The repository publication builds the checked-in Izu journey package with:
+The repository publication builds the production journey catalog with:
 
 ```sh
-BASE_PATH=/ mise exec -- uv run python scripts/build_preview_package.py
+BASE_PATH=/ mise exec -- uv run python scripts/build_publication_package.py
 ```
 
 ## Applying a plan and reviewing stops

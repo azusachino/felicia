@@ -1,4 +1,4 @@
-name: Publish Izu journey to GitHub Pages
+name: Publish production catalog to GitHub Pages
 
 on:
   push:
@@ -27,7 +27,7 @@ jobs:
         run: mise exec -- bun install --frozen-lockfile
 
       - name: Build CLI-backed static artifact
-        run: BASE_PATH="/${{ github.event.repository.name }}/" mise exec -- uv run python scripts/felicia.py preview
+        run: BASE_PATH="/${{ github.event.repository.name }}/" mise exec -- uv run python scripts/felicia.py publish
 
       - name: Verify static artifact
         run: BASE_PATH="/${{ github.event.repository.name }}/" mise exec -- uv run python scripts/verify_static_artifact.py

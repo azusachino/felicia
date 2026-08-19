@@ -44,7 +44,7 @@ All ten child tasks shipped as part of PR #55.
 
 | Gap                                                                      | Evidence                                                                  | Covered by |
 | ------------------------------------------------------------------------ | ------------------------------------------------------------------------- | ---------- |
-| Static builder reads the checked-in Izu workspace through SQLite         | `scripts/build_preview_package.py`                                        | landed     |
+| Static builder reads the production journey catalog through SQLite       | `scripts/build_publication_package.py`                                    | landed     |
 | Existing static compiler is PostgreSQL-specific                          | `apps/felicia-server/cmd/build/main.go`                                   | 01.1, 01.2 |
 | GPX exists but is not in the Pages build path                            | `scripts/tracks/*.gpx` and provider baseline                              | 01.3       |
 | Public media is sanitized and copied through the compiler                | `apps/felicia-publication/compiler.go`                                    | landed     |

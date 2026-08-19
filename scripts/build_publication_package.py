@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the checked-in Izu package through the local journey workflow."""
+"""Build the production journey packages from the publication catalog."""
 
 from __future__ import annotations
 
@@ -13,11 +13,11 @@ from validate_local_authoring import validate_workspace_root
 
 
 ROOT = Path(__file__).resolve().parent.parent
-OUTPUT = ROOT / ".felicia" / "preview.zip"
-PACKAGE_DIR = ROOT / ".felicia" / "preview-packages"
+OUTPUT = ROOT / ".felicia" / "publication.zip"
+PACKAGE_DIR = ROOT / ".felicia" / "publication-packages"
 
 
-def build_from_local_workspace(source: Path, workspace: Path) -> Path:
+def build_from_publication_workspace(source: Path, workspace: Path) -> Path:
     workspace.mkdir(parents=True, exist_ok=True)
     for name in ("journey.json", "stops.json", "mementos.json"):
         shutil.copy2(source / name, workspace / name)
@@ -40,7 +40,7 @@ def build_from_local_workspace(source: Path, workspace: Path) -> Path:
             destination = workspace / relative_path
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source_media, destination)
-    print(f"local journey source: {source}")
+    print(f"publication journey source: {source}")
     print(f"journey: {journey['title']} ({journey['date_start']} → {journey['date_end']})")
     print(f"curated stops: {len([stop for stop in stops if stop.get('selected')])}")
     print(f"authored mementos: {len(mementos)}")
@@ -49,7 +49,7 @@ def build_from_local_workspace(source: Path, workspace: Path) -> Path:
 
 def main() -> None:
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    source_root = ROOT / "examples" / "preview" / "local-journey"
+    source_root = ROOT / "publication" / "journeys"
     manifest = source_root / "workspace.json"
     if manifest.is_file():
         validate_workspace_root(source_root)
@@ -61,11 +61,11 @@ def main() -> None:
     PACKAGE_DIR.mkdir(parents=True, exist_ok=True)
     generated = []
     for index, source in enumerate(sources, start=1):
-        workspace = ROOT / ".felicia" / "preview-workspace" / source.name
-        generated.append(build_from_local_workspace(source, workspace))
+        workspace = ROOT / ".felicia" / "publication-workspace" / source.name
+        generated.append(build_from_publication_workspace(source, workspace))
         shutil.copy2(generated[-1], PACKAGE_DIR / f"{index:02d}-{source.name}.zip")
     shutil.copy2(generated[0], OUTPUT)
-    print(f"preview packages ready: {len(generated)}")
+    print(f"publication packages ready: {len(generated)}")
 
 
 if __name__ == "__main__":

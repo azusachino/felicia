@@ -90,11 +90,11 @@ The existing CLI can be exercised with a prepared ZIP fixture:
 
 ```bash
 make cli-build
-python3 scripts/build_preview_package.py
-bin/felicia-cli package validate .felicia/preview.zip
+python3 scripts/build_publication_package.py
+bin/felicia-cli package validate .felicia/publication.zip
 bin/felicia-cli import --db .felicia/experiments/US-06-safe-publish/felicia.sqlite \
   --media-root .felicia/experiments/US-06-safe-publish/media \
-  --apply .felicia/preview.zip
+  --apply .felicia/publication.zip
 bin/felicia-cli static compile \
   --db .felicia/experiments/US-06-safe-publish/felicia.sqlite \
   --media-root .felicia/experiments/US-06-safe-publish/media \

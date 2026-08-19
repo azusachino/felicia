@@ -17,6 +17,7 @@ apps/
 packages/
   felicia-shared/        # reader contracts, named themes, components, styles
 contracts/               # canonical cross-language contract source
+publication/journeys/    # sanitized production journey catalog
 ops/                     # deployment-owned files
 scripts/                 # repository automation
 docs/                    # documentation and ADRs
