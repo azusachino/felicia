@@ -1,10 +1,12 @@
 # felicia task runner.
-# The repository toolchain comes from the nix flake. These wrappers make the
-# targets work both inside `nix develop` and from a normal shell.
-NIX_RUN := $(if $(IN_NIX_SHELL),,nix develop --command )
-UV_RUN  := $(if $(IN_NIX_SHELL),uv,nix develop --command uv)
-GO      ?= $(if $(IN_NIX_SHELL),go,nix develop --command go)
-BUN     ?= $(if $(IN_NIX_SHELL),bun,nix develop --command bun)
+# mise owns the repository toolchain and loads the optional .env file. These
+# wrappers keep every target usable without shell activation.
+MISE_RUN := mise exec --
+UV_RUN  := $(MISE_RUN) uv
+GO      ?= $(MISE_RUN) go
+BUN     ?= $(MISE_RUN) bun
+GOOSE   := $(MISE_RUN) goose
+SQLC    := $(MISE_RUN) sqlc
 
 DATABASE_DSN ?= postgres://postgres:password@localhost:5432/felicia?sslmode=disable
 PORT ?= 8080
@@ -15,7 +17,7 @@ COMPOSE ?= $(shell \
 	elif command -v docker >/dev/null 2>&1; then echo docker compose; \
 	else echo ''; fi)
 
-.PHONY: help fmt fmt-check vet lint test test-api test-features layout-check test-sqlite test-postgres check build cli-build experiment-intake journey-local validate deps-check tidy db-up db-down migrate seed admin dev dev-sqlite dev-postgres test-workflow test-workflow-postgres test-admin-e2e sqlc mock-up mock-down web-install web-check web-build admin-check admin-build web-private-check web-private-build site-build site-verify static-build static-validate static-publish pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
+.PHONY: help fmt fmt-check vet lint test test-api test-features layout-check test-sqlite test-postgres check build cli-build experiment-intake journey-local validate deps-check tidy db-up db-down migrate seed admin dev dev-sqlite dev-postgres test-workflow test-workflow-postgres test-admin-e2e sqlc mock-up mock-down web-install web-check web-build admin-check admin-build web-private-check web-private-build site-build site-verify pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -30,7 +32,7 @@ fmt-check: ## Check Go and frontend formatting without modifying files
 vet: ## Run go vet
 	$(UV_RUN) run python scripts/go_tasks.py vet
 
-lint: ## Lint Go (golangci-lint, from nix)
+lint: ## Lint Go (golangci-lint, from mise)
 	$(UV_RUN) run python scripts/go_tasks.py lint
 
 test: ## Run Go tests with race detector + coverage
@@ -78,8 +80,8 @@ db-down: ## Stop the local dev containers (keeps the pgdata volume)
 	@test -n "$(COMPOSE)" || (echo "No container compose command found (install podman-compose or Docker Compose)" >&2; exit 1)
 	$(COMPOSE) -f ops/compose.yaml down
 
-migrate: ## Apply DB migrations (goose, from nix) — needs DATABASE_DSN
-	$(NIX_RUN)goose -dir apps/felicia-server/migrations postgres "$(DATABASE_DSN)" up
+migrate: ## Apply DB migrations (goose, from mise) — needs DATABASE_DSN
+	$(GOOSE) -dir apps/felicia-server/migrations postgres "$(DATABASE_DSN)" up
 
 seed: ## Seed the database with sample data (uv run, psycopg) — needs DATABASE_DSN
 	$(UV_RUN) run --group dev python scripts/seed.py
@@ -121,7 +123,7 @@ test-admin-e2e: ## Run the admin GUI closed-loop E2E pass (disposable server + b
 	$(UV_RUN) run python scripts/e2e_admin_gui.py
 
 sqlc: ## Regenerate the postgres query bindings (apps/felicia-providers/postgres/db) from sqlc.yaml
-	sqlc generate
+	$(SQLC) generate
 
 test-sqlite: ## Run all tests with SQLite as the only enabled provider
 	DATABASE_DSN= FELICIA_TEST_DATABASE_DSN= $(MAKE) test
@@ -138,7 +140,7 @@ test-features: ## Run offline Python feature-contract tests
 layout-check: ## Verify application/package layout and dependency boundaries
 	$(UV_RUN) run python -m unittest tests.test_layout tests.test_kind_registry_drift
 
-web-install: ## Install all frontend workspace deps (bun from nix)
+web-install: ## Install all frontend workspace deps (bun from mise)
 	$(BUN) install
 
 web-dev: ## Run frontend dev server (bun + vite)
@@ -148,12 +150,12 @@ web-build: ## Build public frontend for production (bun + vite)
 	$(BUN) run web:public:build
 
 admin-build: ## Build admin frontend for production (bun + vite)
-	bun run web:admin:build
+	$(BUN) run web:admin:build
 
 # The deployable site: the public SPA built for the target base path, with the
 # author's own journal compiled into the same directory. The compiler only
 # removes files its previous manifest listed, so the co-located SPA survives.
-# `static-build` below is the fixture design demo, not this.
+# `site-build` below is the compiler-backed publication path, not this.
 site-build: cli-build ## Build the deployable site (SPA + your journal) into apps/felicia-public-site/dist
 	BASE_PATH="$${BASE_PATH:-/}" $(BUN) run web:public:build
 	./bin/felicia-cli static compile \
@@ -163,15 +165,6 @@ site-build: cli-build ## Build the deployable site (SPA + your journal) into app
 
 site-verify: ## Verify the deployable site artifact (base path, journeys, media)
 	BASE_PATH="$${BASE_PATH:-/}" $(UV_RUN) run python scripts/verify_static_artifact.py
-
-static-build: ## Build the v0.1 static artifact
-	$(UV_RUN) run python scripts/felicia.py build --base-path "$${BASE_PATH:-/}"
-
-static-validate: ## Validate the generated v0.1 static artifact
-	$(UV_RUN) run python scripts/felicia.py validate --base-path "$${BASE_PATH:-/}"
-
-static-publish: ## Build, validate, and print the v0.1 publication manifest
-	$(UV_RUN) run python scripts/felicia.py publish --base-path "$${BASE_PATH:-/}"
 
 pages-workflow-validate: ## Verify the Pages workflow is fork-safe
 	$(UV_RUN) run python scripts/verify_pages_workflow.py
@@ -209,7 +202,7 @@ docs: ## Live-preview docs in the browser (uv + mkdocs-material)
 docs-build: ## Build the static docs site into ./site
 	$(UV_RUN) run --group docs mkdocs build
 
-# Share the running demo to a friend over an ephemeral Cloudflare tunnel.
+# Share the running stack to a friend over an ephemeral Cloudflare tunnel.
 # Builds the SPA, brings the whole stack up under compose (db+cache+api+web),
 # migrates+seeds via the host, then fronts it all with a trycloudflare.com URL.
 # No CF account/domain needed; only /api/v1 is exposed (admin stays host-only).

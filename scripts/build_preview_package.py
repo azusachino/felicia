@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the Pages demo package through the local journey workflow."""
+"""Build the checked-in Izu package through the local journey workflow."""
 
 from __future__ import annotations
 
@@ -24,20 +24,22 @@ def build_from_local_workspace(source: Path, workspace: Path) -> Path:
     route = source / "route.gpx"
     if route.is_file():
         shutil.copy2(route, workspace / "route.gpx")
-    elif source.name == "kansai-ramble":
-        (workspace / "route.gpx").write_text(
-            '<?xml version="1.0"?><gpx version="1.1" creator="felicia demo" '
-            'xmlns="http://www.topografix.com/GPX/1/1"><trk><trkseg>'
-            '<trkpt lat="34.6687" lon="135.5016"><time>2026-04-01T01:00:00Z</time></trkpt>'
-            '<trkpt lat="34.6794" lon="135.1878"><time>2026-04-02T04:00:00Z</time></trkpt>'
-            '<trkpt lat="34.6851" lon="135.8398"><time>2026-04-03T05:00:00Z</time></trkpt>'
-            '</trkseg></trk></gpx>\n'
-        )
     else:
-        shutil.copy2(ROOT / "scripts" / "tracks" / "narita-express.gpx", workspace / "route.gpx")
+        raise SystemExit(f"route.gpx is required in checked-in journey source: {source}")
     journey = json.loads((source / "journey.json").read_text())
     stops = json.loads((source / "stops.json").read_text())["stops"]
     mementos = json.loads((source / "mementos.json").read_text())["mementos"]
+    for memento in mementos:
+        for photo in memento.get("media", []):
+            relative_path = Path(str(photo.get("path", "")))
+            source_media = (source / relative_path).resolve()
+            if not source_media.is_file():
+                source_media = (ROOT / relative_path).resolve()
+            if not source_media.is_file():
+                raise SystemExit(f"media file does not exist: {photo.get('path', '')}")
+            destination = workspace / relative_path
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source_media, destination)
     print(f"local journey source: {source}")
     print(f"journey: {journey['title']} ({journey['date_start']} → {journey['date_end']})")
     print(f"curated stops: {len([stop for stop in stops if stop.get('selected')])}")

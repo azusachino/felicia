@@ -187,10 +187,10 @@ contact a server or publish anywhere. Inspect `site/` and verify that:
 - private/unselected material is absent;
 - repeated runs do not duplicate records.
 
-The repository demo builds multiple journey packages with:
+The repository publication builds the checked-in Izu journey package with:
 
 ```sh
-BASE_PATH=/ nix develop --command uv run python scripts/build_preview_package.py
+BASE_PATH=/ mise exec -- uv run python scripts/build_preview_package.py
 ```
 
 ## Applying a plan and reviewing stops

@@ -19,7 +19,7 @@ Durable task state lives in asobi (`asobi` tasks). This is a lightweight mirror.
   ingestion (Immich + Dawarich), source-of-truth (DB canonical, field-scoped importer),
   content model (Journey → Ticket → essay/photos/animation), storage (S3-compatible, R2).
 - Wrote `docs/design.md`, `docs/importer-spec.md`, `docs/research/ingestion-workflows.md`.
-- Purged old Go/AWS content; initialized layout + mise/nix/Makefile + agent infra (no code).
+- Purged old Go/AWS content; initialized layout + mise/Makefile + agent infra (no code).
 
 ## Next (when TDD phase begins)
 

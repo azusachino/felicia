@@ -58,14 +58,14 @@ The root Go module has been retired; all Go code is built through `go.work`.
 ## Build, Run & Test
 
 All daily operations go through `make <target>`. **Tools:** Go, Bun, uv, Prettier,
-golangci-lint, goose, sqlc, and PostgreSQL 18 + PostGIS come from the **nix flake**
-(`nix develop`, or `make` wraps them automatically).
+golangci-lint, goose, and sqlc come from the checked-in **mise** configuration. PostgreSQL
+18 + PostGIS remain disposable container infrastructure.
 
 | Target          | Does                                                                             |
 | --------------- | -------------------------------------------------------------------------------- |
 | `make fmt`      | format Go                                                                        |
 | `make vet`      | `go vet ./...`                                                                   |
-| `make lint`     | `golangci-lint run` (nix)                                                        |
+| `make lint`     | `golangci-lint run` (mise)                                                       |
 | `make test`     | `go test -race -cover ./...`                                                     |
 | `make check`    | fmt + vet + lint + test + feature contracts — **before commit**                  |
 | `make build`    | build all binaries                                                               |

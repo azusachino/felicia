@@ -27,7 +27,7 @@ The exploration trail, roughly in order:
 - [Authoring & publish flow](research/authoring-publish-flow.md)
 - [Architecture experiments](experiments/README.md) ·
   [Real-trip CLI walkthrough](experiments/2026-08-16-real-trip-cli-walkthrough.md)
-- [GitHub Pages design demo](experiments/2026-07-17-pages-design-demo.md)
+- [Izu journey publication](release/github-pages-v0.1.md)
 - [Local workflow boundaries](research/local-workflow-boundaries.md) · [Media support matrix](research/media-support-matrix.md)
 - [Contract-first overview](contracts/README.md) · [Canonical contract v1](contracts/canonical-v1.md)
 - [Local authoring schema v1](research/local-authoring-schema-v1.md)

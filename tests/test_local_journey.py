@@ -12,15 +12,13 @@ from scripts.validate_local_authoring import validate_document, validate_workspa
 
 
 class LocalJourneyWorkflowTest(unittest.TestCase):
-    def test_preview_workspaces_validate_as_independent_journeys(self):
+    def test_izu_publication_workspace_validates(self):
         root = Path(__file__).resolve().parents[1] / "examples" / "preview" / "local-journey"
         validate_workspace_root(root)
-        workspaces = [root, root / "kansai-ramble"]
-        for workspace in workspaces:
-            validate_workspace(workspace)
-            self.assertTrue((workspace / "journey.json").is_file())
-            self.assertTrue((workspace / "stops.json").is_file())
-            self.assertTrue((workspace / "mementos.json").is_file())
+        validate_workspace(root)
+        self.assertEqual("izu-trip-2026-08-01", json.loads((root / "journey.json").read_text())["slug"])
+        self.assertTrue((root / "stops.json").is_file())
+        self.assertTrue((root / "mementos.json").is_file())
 
     def test_plan_schema_types_all_evidence_arrays(self):
         with tempfile.TemporaryDirectory() as directory:

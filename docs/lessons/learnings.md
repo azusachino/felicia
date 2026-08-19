@@ -29,7 +29,7 @@ to a journey whose dates and places describe a different trip.
 
 Type: wrong-approach
 
-Lesson: A clean `scripts/data.json` does not prove the webpage is clean. The
+Lesson: A clean publication workspace does not prove the webpage is clean. The
 database is a persistent projection and can retain stale mock mementos after a
 slug-to-existing-UUID seed rerun. Always compare the browser/API payload with
 the canonical fixture, then clean the mock source namespace before reseeding.

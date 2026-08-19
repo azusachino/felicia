@@ -5,15 +5,9 @@
   "journeys": [
     {
       "path": ".",
-      "id": "0190cbde-f300-7000-8000-111111111111",
-      "slug": "golden-route",
-      "title": "Narita Express Day Trip"
-    },
-    {
-      "path": "kansai-ramble",
-      "id": "0190cbde-f300-7000-8000-222222222222",
-      "slug": "kansai-ramble",
-      "title": "Kansai Ramble"
+      "id": "44724c10-9202-5ba2-8550-cf6f94ad7998",
+      "slug": "izu-trip-2026-08-01",
+      "title": "Izu Trip — August 2026"
     }
   ]
 }

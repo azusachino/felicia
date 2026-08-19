@@ -1,4 +1,4 @@
-name: GitHub Pages design demo
+name: Publish Izu journey to GitHub Pages
 
 on:
   push:
@@ -20,20 +20,17 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install Nix toolchain
-        uses: cachix/install-nix-action@v31
-        with:
-          extra_nix_config: |
-            experimental-features = nix-command flakes
+      - name: Install mise toolchain
+        uses: jdx/mise-action@v4
 
       - name: Install frontend dependencies
-        run: nix develop --command bun install --frozen-lockfile
+        run: mise exec -- bun install --frozen-lockfile
 
       - name: Build CLI-backed static artifact
-        run: BASE_PATH="/${{ github.event.repository.name }}/" nix develop --command uv run python scripts/felicia.py preview
+        run: BASE_PATH="/${{ github.event.repository.name }}/" mise exec -- uv run python scripts/felicia.py preview
 
       - name: Verify static artifact
-        run: BASE_PATH="/${{ github.event.repository.name }}/" nix develop --command uv run python scripts/verify_static_artifact.py
+        run: BASE_PATH="/${{ github.event.repository.name }}/" mise exec -- uv run python scripts/verify_static_artifact.py
 
       - name: Configure Pages
         uses: actions/configure-pages@v6

@@ -35,20 +35,17 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install Nix toolchain
-        uses: cachix/install-nix-action@v31
-        with:
-          extra_nix_config: |
-            experimental-features = nix-command flakes
+      - name: Install mise toolchain
+        uses: jdx/mise-action@v4
 
       - name: Apply migrations
-        run: DATABASE_DSN="$CI_DATABASE_DSN" nix develop --command make migrate
+        run: DATABASE_DSN="$CI_DATABASE_DSN" make migrate
 
       - name: Check (fmt, vet, lint, race tests)
-        run: FELICIA_TEST_DATABASE_DSN="$CI_DATABASE_DSN" nix develop --command make check
+        run: FELICIA_TEST_DATABASE_DSN="$CI_DATABASE_DSN" make check
 
       - name: SQLite journey workflow
-        run: nix develop --command make test-workflow
+        run: make test-workflow
 
   frontend:
     name: Frontend (make web-check)
@@ -56,20 +53,17 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install deps
-        uses: cachix/install-nix-action@v31
-        with:
-          extra_nix_config: |
-            experimental-features = nix-command flakes
+      - name: Install mise toolchain
+        uses: jdx/mise-action@v4
 
       - name: Install frontend deps
-        run: nix develop --command make web-install
+        run: make web-install
 
       - name: Check (svelte-check, eslint, prettier)
-        run: nix develop --command make web-check
+        run: make web-check
 
       - name: Check admin frontend
-        run: nix develop --command make admin-check
+        run: make admin-check
 
       - name: Check private reader frontend
-        run: nix develop --command make web-private-check
+        run: make web-private-check

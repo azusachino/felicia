@@ -21,7 +21,7 @@ if (!importMeta.env) {
 }
 
 const originalFetch = globalThis.fetch
-const journeyID = "0190cbde-f300-7000-8000-111111111111"
+const journeyID = "44724c10-9202-5ba2-8550-cf6f94ad7998"
 
 describe("source API", () => {
   let japanSpringJourney: ApiJourney
@@ -51,18 +51,18 @@ describe("source API", () => {
 
     const journey = await loadJourney(journeyID)
 
-    expect(journey.id).toBe("0190cbde-f300-7000-8000-111111111111")
-    expect(journey.title.en).toBe("Narita Express Day Trip")
-    expect(journey.mementos).toHaveLength(5)
+    expect(journey.id).toBe("44724c10-9202-5ba2-8550-cf6f94ad7998")
+    expect(journey.title.en).toBe("Izu Trip — August 2026")
+    expect(journey.mementos).toHaveLength(3)
   })
 
   test("loadJourneys fetches list, then detail/mementos for each, and adapts (dev mode)", async () => {
     const listFixture = [
       {
         id: journeyID,
-        slug: "golden-route",
-        title: "日本ゴールデンルート",
-        memento_count: 11,
+        slug: "izu-trip-2026-08-01",
+        title: "Izu Trip — August 2026",
+        memento_count: 3,
         representative_dots: [],
       },
     ]
@@ -84,7 +84,7 @@ describe("source API", () => {
     const journeys = await loadJourneys()
 
     expect(journeys).toHaveLength(1)
-    expect(journeys[0].id).toBe("0190cbde-f300-7000-8000-111111111111")
+    expect(journeys[0].id).toBe("44724c10-9202-5ba2-8550-cf6f94ad7998")
     expect(journeys[0].representativeDots).toEqual([])
   })
 

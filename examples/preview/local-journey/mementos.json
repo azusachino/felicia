@@ -2,95 +2,110 @@
   "schema": "felicia.local.mementos.v1",
   "mementos": [
     {
-      "id": "0190cbde-f300-7000-8000-a00000000001",
-      "stop_key": "naritasan",
+      "id": "29D27C83-3743-4B45-898A-A997C9F69FC0",
+      "stop_key": "manual:kujuppama-beach",
       "seq": 1,
-      "kind": "transit",
-      "occurred_at": "2025-10-06T10:03:00+09:00",
+      "kind": "souvenir",
+      "occurred_at": "2026-08-01T16:12:35+09:00",
       "occurred_tz": "Asia/Tokyo",
+      "title": "Kujuppama Beach",
+      "place": "Kujuppama Beach",
+      "geom": [
+        138.980745,
+        34.66671166666666
+      ],
       "state": "published",
-      "title": "Narita Express Ticket",
-      "place": "Narita",
-      "geom": [140.3933101, 35.7758714],
       "kind_data": {
-        "operator": "JR East",
-        "line": "Narita Express",
-        "from": "Narita Airport",
-        "to": "Tokyo"
+        "name": "Kujuppama Beach",
+        "origin": "Izu Peninsula",
+        "note": "A seaside memory from the Izu trip."
       },
+      "essay": "The first beach stop gave our team a bright pause by the water. We shared the shoreline, let the trip slow down, and carried that easy feeling into the BBQ that followed.",
+      "authored_fields": [
+        "essay"
+      ],
       "media": [
         {
-          "path": "apps/felicia-public-site/public/kyoto_temple.jpg",
-          "caption": "Ticket memory"
+          "path": "media/kujuppama.jpg",
+          "caption": "Kujuppama Beach"
         }
-      ]
+      ],
+      "author_note": "Derived from IMG_2681.heic; the JPEG is a private publishing derivative."
     },
     {
-      "id": "0190cbde-f300-7000-8000-a00000000002",
-      "stop_key": "naritasan",
+      "id": "34C8A742-3BBE-411F-B6D0-F590E0BF8659",
+      "stop_key": "derived-route:cluster-005",
       "seq": 2,
-      "kind": "stamp",
-      "occurred_at": "2025-10-06T11:00:00+09:00",
+      "kind": "ticket",
+      "occurred_at": "2026-08-02T11:43:22+09:00",
       "occurred_tz": "Asia/Tokyo",
+      "title": "Omuroyama Lift — adult round trip",
+      "place": "Omuroyama, Ito, Shizuoka",
+      "geom": [
+        139.09748834845627,
+        34.90707404290038
+      ],
       "state": "published",
-      "title": "Naritasan Temple Stamp",
-      "place": "Narita",
-      "geom": [140.3172238, 35.7863311],
       "kind_data": {
-        "shrine_or_temple": "Naritasan Shinshoji",
-        "name": "Goshuin"
+        "name": "Omuroyama Climbing Lift",
+        "ticket_variant": "mountain",
+        "venue": {
+          "name": "Omuroyama Lift",
+          "coords": [
+            139.09748834845627,
+            34.90707404290038
+          ]
+        },
+        "date": "2026-08-02",
+        "ticket_type": "おとな往復（中学生以上）",
+        "price": {
+          "amount": 1000,
+          "currency": "JPY"
+        },
+        "source_url": "https://omuroyama.com/hours_fare/"
       },
+      "essay": "At Omuroyama, the lift turned the mountain ride into a shared viewpoint. This ticket is a small record of the climb, the open air, and the wide Izu view we took in together.",
+      "authored_fields": [
+        "essay"
+      ],
       "media": [
         {
-          "path": "apps/felicia-public-site/public/kyoto_temple.jpg",
-          "caption": "A small souvenir from the first stop"
+          "path": "media/omuroyama.jpeg",
+          "caption": "View from Omuroyama"
         }
-      ]
+      ],
+      "author_note": "Fare copied from the official Omuroyama page; confirm the purchased ticket type before publishing."
     },
     {
-      "id": "0190cbde-f300-7000-8000-a00000000003",
-      "stop_key": "narita-station",
+      "id": "9c93692d-0487-59a3-89cb-21f01014e94a",
+      "stop_key": "derived-route:cluster-007",
       "seq": 3,
-      "kind": "transit",
-      "occurred_at": "2025-10-06T12:30:00+09:00",
+      "kind": "souvenir",
+      "occurred_at": "2026-08-02T15:08:20+09:00",
       "occurred_tz": "Asia/Tokyo",
+      "title": "Jogasaki Coast",
+      "place": "Jogasaki Coast",
+      "geom": [
+        139.1394129782168,
+        34.89179224182174
+      ],
       "state": "published",
-      "title": "Narita Station Departure",
-      "place": "Narita",
-      "geom": [140.3188889, 35.7766667],
       "kind_data": {
-        "operator": "JR East",
-        "line": "Narita Line",
-        "direction": "Tokyo"
+        "name": "Jogasaki Coast",
+        "origin": "Izu Peninsula",
+        "note": "A coastal cliff view from the second day."
       },
+      "essay": "On the coast, our team followed the edge between dark rock and open water. It was a quieter second-day memory—the kind of walk that leaves the sea in everyone's conversation.",
+      "authored_fields": [
+        "essay"
+      ],
       "media": [
         {
-          "path": "apps/felicia-public-site/public/tokyo_night.jpg",
-          "caption": "Leaving Narita"
+          "path": "media/jogasaki.jpeg",
+          "caption": "Jogasaki Coast"
         }
-      ]
-    },
-    {
-      "id": "0190cbde-f300-7000-8000-a00000000004",
-      "stop_key": "tokyo-station",
-      "seq": 4,
-      "kind": "goods",
-      "occurred_at": "2025-10-06T15:00:00+09:00",
-      "occurred_tz": "Asia/Tokyo",
-      "state": "published",
-      "title": "Tokyo Station Souvenir",
-      "place": "Tokyo",
-      "geom": [139.767125, 35.681236],
-      "kind_data": {
-        "item": "station souvenir",
-        "memory": "The journey became a day in Tokyo"
-      },
-      "media": [
-        {
-          "path": "apps/felicia-public-site/public/osaka_plushie.jpg",
-          "caption": "A tangible end to the route"
-        }
-      ]
+      ],
+      "author_note": "Matched from IMG_2708.jpeg EXIF GPS and the GPX coastal stop."
     }
   ]
 }

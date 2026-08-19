@@ -35,12 +35,12 @@ describe("adaptJourney", () => {
     const { journey: apiJourney, mementos: apiMementos } = await loadGoldenRouteFixture()
 
     const result = adaptJourney(apiJourney, apiMementos)
-    expect(result.id).toBe("0190cbde-f300-7000-8000-111111111111")
+    expect(result.id).toBe("44724c10-9202-5ba2-8550-cf6f94ad7998")
     expect(result.route).toHaveLength(4)
     expect(result.visits).toHaveLength(3)
-    expect(result.mementos).toHaveLength(5)
-    expect(result.mementos[0].photos).toHaveLength(2)
-    expect(result.mementos[1].kind).toBe("stamp")
+    expect(result.mementos).toHaveLength(3)
+    expect(result.mementos[0].photos).toHaveLength(1)
+    expect(result.mementos[1].kind).toBe("ticket")
   })
 
   test("keeps authored content unchanged across system locales and groups mementos by visit", () => {

@@ -34,7 +34,8 @@ Modeled on [liuaaron.com](https://liuaaron.com/) · _"Aaron's Waypoints."_
 
 ## 🚪 Four front doors, one contract
 
-The web demo renders the **same** `{ journey, visit, memento }` fixtures four ways — proof the data contract is presentation-agnostic. Flip between them with the on-screen switcher (deep-linkable).
+The public reader renders the same `{ journey, visit, memento }` contract four ways. The
+checked-in Izu journey is the publication source, and the on-screen switcher is deep-linkable.
 
 |     | Front door                 | Route          | What it is                                                                                                                                               |
 | --- | -------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -43,7 +44,7 @@ The web demo renders the **same** `{ journey, visit, memento }` fixtures four wa
 | 📓  | **Techo (手帳)**           | `#techo`       | Warm paper notebook: a journal-index spread, then the trip on a real map with mementos clustered by **place/visit** — open a place to read its memories. |
 | 🌐  | **Cartography (世界地図)** | `#cartography` | Full-map atlas index across every journey; mementos render as `kind`-designed collectible stubs (one stub design per registry kind).                     |
 
-> The checked-in fixtures keep UI design work fast; the same shape is served by the working backend.
+> The checked-in Izu journey is a real publication fixture; the same shape is served by the working backend.
 
 ## 🏗️ Architecture
 
@@ -103,7 +104,7 @@ Cloudflare [R2](https://developers.cloudflare.com/r2/) (S3-compatible; MinIO/B2 
 [Immich](https://github.com/immich-app/immich) (photos)
 
 **🧰 Tooling**
-[Nix](https://nixos.org/) ·
+[mise](https://mise.jdx.dev/) ·
 [golangci-lint](https://github.com/golangci/golangci-lint) ·
 [Docker Compose](https://docs.docker.com/compose/) ·
 [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) ·
@@ -112,7 +113,7 @@ Cloudflare [R2](https://developers.cloudflare.com/r2/) (S3-compatible; MinIO/B2 
 
 ## 🚀 Quick start
 
-The web demo runs on fixtures — no database, no keys.
+The public reader runs on the checked-in Izu journey — no database or keys are needed for a local reader preview.
 
 ```bash
 make web-dev          # Vite dev server → http://localhost:5173
@@ -126,7 +127,7 @@ make web-check        # svelte-check + eslint
 make check            # Go workspace checks + uv feature-contract tests
 ```
 
-> The complete toolchain comes from the **Nix** flake (`nix develop`). Everything routes through `make <target>`.
+> The complete toolchain comes from **mise** (`mise install`). Everything routes through `make <target>`.
 
 ## 🌍 Publish your own site
 

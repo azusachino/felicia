@@ -10,9 +10,8 @@ experiment: "E1/E2"
 ## Inputs and harness
 
 - Workflow script: [`scripts/test_journey_workflow.py`](../../scripts/test_journey_workflow.py)
-- JSON fixture: [`scripts/data.json`](../../scripts/data.json)
-- JSON schema: [`scripts/data.schema.json`](../../scripts/data.schema.json)
-- GPX fixture: [`scripts/tracks/narita-express.gpx`](../../scripts/tracks/narita-express.gpx)
+- Publication workspace: [`examples/preview/local-journey/`](../../examples/preview/local-journey/)
+- GPX fixture: [`examples/preview/local-journey/route.gpx`](../../examples/preview/local-journey/route.gpx)
 - Compose services: [`ops/compose.yaml`](../../ops/compose.yaml)
 - Shared public origin: [`ops/Caddyfile`](../../ops/Caddyfile)
 
@@ -62,7 +61,7 @@ known disposable DSN. Do not change the schema or provider based on this failure
 
 - **SQLite:** retain as the first runnable baseline.
 - **PostgreSQL:** experiment blocked by environment isolation; rerun required.
-- **JSON fixture:** retain as test input and seed material only, not canonical-model evidence.
+- **Publication workspace:** retain as publication input only, not canonical-model evidence.
 - **GPX fixture:** exists and should become the input for E3 route normalization.
 - **Compose/Caddy:** useful self-hosted integration harness, but not yet a static
   GitHub Pages publisher.

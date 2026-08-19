@@ -28,7 +28,7 @@ unauthenticated, keep the host firewall and Tailscale ACLs as the access boundar
 | Privacy                    | journal content is in git history | only `dist/` leaves the machine       |
 | Needs a fork               | yes (for `.github/workflows/`)    | no — any checkout plus an empty repo  |
 
-Route A is how the project's own demo site is published. Route B is the
+Route A is how this repository publishes the checked-in Izu journey. Route B is the
 intended path for a personal journal.
 
 ---
@@ -84,8 +84,8 @@ equally well; nothing in this route depends on the checkout's git remote.
 > GitHub Pages on a **private** repository requires a paid plan. The site repo
 > holds only what visitors already see, so public is normally the right choice.
 
-Prerequisite: **nix** with flakes enabled. Everything else comes from the flake
-(`make` enters it automatically).
+Prerequisite: **mise**. Run `mise install` once; `make` runs repository tools through
+`mise exec` without requiring shell activation.
 
 ### 2. Bring in a trip
 
@@ -191,10 +191,10 @@ Equivalent from the GUI: set the Site & Deploy output directory to
 `apps/felicia-public-site/dist` and press **Build** — but the SPA must already have been
 built with the correct `BASE_PATH`.
 
-!!! warning "`make static-build` is not this"
+!!! note "The Pages build is the publication path"
 
-    `make static-build` / `make static-publish` compile the **fixture demo**
-    (`scripts/data.json`), not your journal. They exist as a design-demo helper.
+    `scripts/felicia.py preview` compiles the checked-in Izu journey through the
+    same SQLite import and static compiler used by the local authoring workflow.
 
 Check the result before deploying:
 
@@ -242,19 +242,17 @@ manifest reconciliation removes it from the artifact.
 
 ---
 
-## Route A — CI build
+## Route A — publish the Izu journey with GitHub Actions
 
 1. **Fork** the repository.
 2. Actions tab → enable workflows on the fork.
 3. Settings → Pages → Source → **GitHub Actions**.
-4. Actions → **GitHub Pages design demo** → Run workflow. (Forking creates no
+4. Actions → **Publish Izu journey to GitHub Pages** → Run workflow. (Forking creates no
    push, so the first run must be manual.)
-5. Replace the content in [`examples/preview/local-journey/`](https://github.com/azusachino/felicia/tree/main/examples/preview/local-journey):
-   `workspace.json` lists the journey directories; each holds `journey.json`
-   (requires `id` and `journal_id`), `stops.json`, `mementos.json`, and
-   optionally `route.gpx`. Photos are committed to the repo and referenced by
-   `media[].path`, resolved relative to the journey directory and then to the
-   repository root.
+5. The workflow publishes the curated Izu workspace in
+   [`examples/preview/local-journey/`](https://github.com/azusachino/felicia/tree/main/examples/preview/local-journey):
+   one `journey.json`, selected stops, authored mementos, a rounded public route,
+   and public image derivatives.
 6. Verify locally with `make pages-preview` (`http://localhost:8082`).
 7. Push to `main`; the workflow rebuilds and deploys.
 
@@ -262,7 +260,7 @@ The base path is derived from the repository name, so nothing needs editing for
 a fork. The workflow needs no secrets, database, or credentials.
 
 Site identity (title, design, accent) comes from the database and is authored in
-the GUI, so a route A site uses the defaults.
+the GUI; the Pages build uses the Atlas default when no site settings are stored.
 
 ---
 
