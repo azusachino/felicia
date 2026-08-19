@@ -4,9 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -53,11 +53,14 @@ def format_go(check: bool) -> bool:
 
 
 def format_web(check: bool) -> bool:
-    web_apps = sorted(
-        path
-        for path in (ROOT / "apps").glob("web-*")
-        if (path / "package.json").is_file()
-    )
+    web_apps = []
+    for path in sorted((ROOT / "apps").iterdir()):
+        package_json = path / "package.json"
+        if not package_json.is_file():
+            continue
+        package = json.loads(package_json.read_text(encoding="utf-8"))
+        if "format:check" in package.get("scripts", {}):
+            web_apps.append(path)
     if not web_apps:
         return True
     if not all((web / "node_modules").exists() for web in web_apps):
@@ -103,7 +106,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    return 0 if format_go(args.check) and format_web(args.check) and format_markdown(args.check) else 1
+    success = format_go(args.check) and format_web(args.check) and format_markdown(args.check)
+    return 0 if success else 1
 
 
 if __name__ == "__main__":

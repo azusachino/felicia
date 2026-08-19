@@ -66,7 +66,7 @@ def run_sqlite() -> None:
             "CACHE_ADDR": environment.get("CACHE_ADDR", ""),
         }
     )
-    os.execvpe("go", ["go", "run", "./server/cmd/api"], environment)
+    os.execvpe("go", ["go", "run", "./apps/felicia-server/cmd/api"], environment)
 
 
 def run_postgres(start_web: bool) -> None:
@@ -77,7 +77,7 @@ def run_postgres(start_web: bool) -> None:
 
     run(["make", "db-up"])
     run(["make", "migrate"], env=environment)
-    run(["go", "build", "-o", str(API_BINARY), "./server/cmd/api"])
+    run(["go", "build", "-o", str(API_BINARY), "./apps/felicia-server/cmd/api"])
 
     api_environment = environment | {
         "DATABASE_DRIVER": "postgres",
@@ -95,7 +95,7 @@ def run_postgres(start_web: bool) -> None:
 
         seed_environment = environment | {"SEED_API_BASE": base_url}
         run([sys.executable, "scripts/seed.py"], env=seed_environment)
-        web_dir = ROOT / "apps" / "web-public"
+        web_dir = ROOT / "apps" / "felicia-public-site"
         if not (web_dir / "node_modules").exists():
             run(["bun", "install"], cwd=web_dir)
         run(["bun", "run", "dev"], cwd=web_dir)

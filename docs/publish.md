@@ -17,14 +17,14 @@ machine and is never deployed; GitHub only ever holds the static site.
 
 ## Two routes
 
-|                            | **A — CI build**                  | **B — Local authoring** (recommended) |
-| -------------------------- | --------------------------------- | ------------------------------------- |
-| Content lives in           | JSON files committed to the repo  | local SQLite, never committed         |
-| Authoring interface        | a text editor                     | the admin GUI                         |
-| Built by                   | GitHub Actions                    | your machine                          |
-| Site title / design choice | not available (defaults to v1)    | set in the GUI                        |
-| Privacy                    | journal content is in git history | only `dist/` leaves the machine       |
-| Needs a fork               | yes (for `.github/workflows/`)    | no — any checkout plus an empty repo  |
+|                            | **A — CI build**                        | **B — Local authoring** (recommended) |
+| -------------------------- | --------------------------------------- | ------------------------------------- |
+| Content lives in           | JSON files committed to the repo        | local SQLite, never committed         |
+| Authoring interface        | a text editor                           | the admin GUI                         |
+| Built by                   | GitHub Actions                          | your machine                          |
+| Site title / design choice | not available (defaults to cartography) | set in the GUI                        |
+| Privacy                    | journal content is in git history       | only `dist/` leaves the machine       |
+| Needs a fork               | yes (for `.github/workflows/`)          | no — any checkout plus an empty repo  |
 
 Route A is how the project's own demo site is published. Route B is the
 intended path for a personal journal.
@@ -150,7 +150,7 @@ DATABASE_PATH=~/felicia-data/local.sqlite MEDIA_ROOT=~/felicia-data/media \
 ```
 
 Equivalent from the GUI: set the Site & Deploy output directory to
-`apps/web-public/dist` and press **Build** — but the SPA must already have been
+`apps/felicia-public-site/dist` and press **Build** — but the SPA must already have been
 built with the correct `BASE_PATH`.
 
 !!! warning "`make static-build` is not this"
@@ -174,8 +174,8 @@ push:
 
 ```bash
 git clone git@github.com:<you>/my-travels.git ~/my-travels-deploy
-rsync -a --delete --exclude .git apps/web-public/dist/ ~/my-travels-deploy/
-touch ~/my-travels-deploy/.nojekyll
+rsync -a --delete --exclude .git apps/felicia-public-site/dist/ ~/my-travels-ops/
+touch ~/my-travels-ops/.nojekyll
 cd ~/my-travels-deploy && git add -A && git commit -m "deploy: site" && git push
 ```
 

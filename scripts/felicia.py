@@ -12,7 +12,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-WEB = ROOT / "apps" / "web-public"
+WEB = ROOT / "apps" / "felicia-public-site"
 CLI = ROOT / "bin" / "felicia-cli"
 DEFAULT_DB = ROOT / ".felicia" / "pages-preview.sqlite"
 DEFAULT_INBOX = ROOT / ".felicia" / "inbox"
@@ -73,7 +73,7 @@ def preview(base_path: str) -> None:
     # `go build -o` does not create missing parent directories (bin/ is
     # gitignored, so a fresh clone/CI runner never has it yet).
     CLI.parent.mkdir(parents=True, exist_ok=True)
-    run(["go", "build", "-o", str(CLI), "./cli/cmd/felicia"])
+    run(["go", "build", "-o", str(CLI), "./apps/felicia-cli/cmd/felicia"])
     packages = sorted(inbox.glob("*.zip"))
     if not packages:
         run([sys.executable, "scripts/build_preview_package.py"])

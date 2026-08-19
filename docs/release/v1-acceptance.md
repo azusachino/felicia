@@ -84,7 +84,7 @@ checked in code/tests, per [ADR-0025](../adr/0025-static-and-self-hosted-modes.m
 1. **Drafts and originals never leave the machine.** The compiled static artifact
    contains only `published` content, EXIF-stripped public media derivatives, and
    rounded geometry. The admin app itself is never part of a deployed artifact.
-2. **No raw GPS in public responses.** Public projections (`publication/public.go`,
+2. **No raw GPS in public responses.** Public projections (`apps/felicia-publication/public.go`,
    the live `/api/v1` handlers) never expose unrounded coordinates or a private
    track's full-precision points — checked by the roadmap's stated verification gate
    ("no raw GPS in public responses") but **not yet backed by an automated geometry-
@@ -100,7 +100,7 @@ checked in code/tests, per [ADR-0025](../adr/0025-static-and-self-hosted-modes.m
    exclusion check.
 5. **Re-import never overwrites authored fields.** The field-scoped importer upserts
    only source-derived fields; anything the author has edited by hand is preserved
-   across re-import — enforced by `runtime/importer/` and its contract tests.
+   across re-import — enforced by `apps/felicia-runtime/importer/` and its contract tests.
 6. **No credentials inside felicia.** No provider or deployment path stores third-
    party credentials in the database or the compiled artifact; GitHub deployment (M3
    of epic ADMIN-02) reuses the operator's own `git` credentials rather than storing

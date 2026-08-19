@@ -41,7 +41,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: apps/web-public/dist
+          path: apps/felicia-public-site/dist
 
   deploy:
     needs: build

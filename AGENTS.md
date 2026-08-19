@@ -24,7 +24,7 @@ journey and its per-stage status live in
 - **Backend:** Go 1.26 — API, runtime, provider, and core modules in one `go.work` workspace.
 - **DB:** SQLite is the local-first provider; PostgreSQL remains supported for deployments that need it.
 - **Object storage:** S3-compatible interface; **R2** backend (MinIO/B2 swappable by config).
-- **Frontend:** Vite + MapLibre GL SPAs — public site + admin authoring app (bun workspace).
+- **Frontend:** Vite + MapLibre GL SPAs — public site, private reader, and admin authoring app (bun workspace).
 - **Locales:** static system UI catalogs support Japanese, English, and Chinese. Authored content
   has no translation sidecar and is rendered exactly as entered.
 - **Host:** self-hosted container deployment; Cloudflare Tunnel is an optional ingress.
@@ -39,13 +39,20 @@ where you author _essays / photo curation / animation_. The importer is **field-
 ### Current layout
 
 ```
-core/ runtime/ providers/ publication/ server/ cli/ apps/{web-admin,web-public}
-migrations/  scripts/  deploy/  docs/
+apps/{felicia-core,felicia-runtime,felicia-providers,felicia-publication,
+felicia-server,felicia-cli,felicia-admin,felicia-web,felicia-public-site}/
+packages/felicia-shared/  contracts/  ops/  scripts/  docs/
 ```
 
-`core` is the pure domain and port layer (no I/O). `runtime` owns use cases,
-`providers` owns persistence implementations, `publication` owns the public contract,
-and server adapters depend on runtime and publication ports.
+The ownership map and dependency direction are defined in
+[`docs/development/layout.md`](docs/development/layout.md) and
+[ADR-0034](docs/adr/0034-application-and-shared-package-layout.md).
+`felicia-core` is the pure domain and port layer (no I/O). `felicia-runtime`
+owns use cases, `felicia-providers` owns persistence implementations,
+`felicia-publication` owns the public contract, and apps/felicia-server/CLI adapters compose
+runtime and publication ports. `felicia-shared` owns the public reader contract,
+named theme registry, and renderer; the admin, private reader, and public site
+remain separate hosts.
 The root Go module has been retired; all Go code is built through `go.work`.
 
 ## Build, Run & Test
@@ -54,17 +61,17 @@ All daily operations go through `make <target>`. **Tools:** Go, Bun, uv, Prettie
 golangci-lint, goose, sqlc, and PostgreSQL 18 + PostGIS come from the **nix flake**
 (`nix develop`, or `make` wraps them automatically).
 
-| Target          | Does                                                            |
-| --------------- | --------------------------------------------------------------- |
-| `make fmt`      | format Go                                                       |
-| `make vet`      | `go vet ./...`                                                  |
-| `make lint`     | `golangci-lint run` (nix)                                       |
-| `make test`     | `go test -race -cover ./...`                                    |
-| `make check`    | fmt + vet + lint + test + feature contracts — **before commit** |
-| `make build`    | build all binaries                                              |
-| `make validate` | check + build + public/admin frontend checks — **before PR**    |
-| `make migrate`  | `goose up` (needs `DATABASE_DSN`)                               |
-| `make admin`    | local admin GUI: authoring API + web-admin on `127.0.0.1`       |
+| Target          | Does                                                                 |
+| --------------- | -------------------------------------------------------------------- |
+| `make fmt`      | format Go                                                            |
+| `make vet`      | `go vet ./...`                                                       |
+| `make lint`     | `golangci-lint run` (nix)                                            |
+| `make test`     | `go test -race -cover ./...`                                         |
+| `make check`    | fmt + vet + lint + test + feature contracts — **before commit**      |
+| `make build`    | build all binaries                                                   |
+| `make validate` | check + build + public/admin/private frontend checks — **before PR** |
+| `make migrate`  | `goose up` (needs `DATABASE_DSN`)                                    |
+| `make admin`    | local admin GUI: authoring API + felicia-admin on `127.0.0.1`        |
 
 ## Coding Conventions
 
@@ -100,7 +107,7 @@ stops being possible.
    [ADR-0021](docs/adr/0021-runtime-configuration-and-database-modes.md) already
    forbids implicit provider changes, but the config contract has a hole: a
    PostgreSQL DSN with no `DATABASE_DRIVER` silently starts SQLite.
-   `deploy/compose.yaml` does exactly this, so its API ran on a throwaway
+   `ops/compose.yaml` does exactly this, so its API ran on a throwaway
    in-container SQLite file while Postgres, PostGIS, and every migration sat
    unused — with nothing in the logs to say so. Configuring a DSN for a provider
    you did not select must be a startup error, never a silent default.
@@ -108,9 +115,9 @@ stops being possible.
 2. **A dual-provider schema change ships a parity check.**
    [ADR-0017](docs/adr/0017-sqlite-first-storage.md) required conformance tests
    "to prevent SQLite and PostgreSQL behavior from drifting", and
-   `providers/contract` delivers that — for _behavior_. Schema shape is
+   `apps/felicia-providers/contract` delivers that — for _behavior_. Schema shape is
    unguarded, and the two DDLs have already diverged (`tb_journal` in
-   `migrations/`, `tb_journals` in `providers/sqlite/schema.sql`). Any change
+   `apps/felicia-server/migrations/`, `tb_journals` in `apps/felicia-providers/sqlite/schema.sql`). Any change
    touching both providers asserts shape parity in a test, not in review.
 
 3. **Every user-facing surface has exactly one documented `make` target.**
@@ -121,7 +128,7 @@ stops being possible.
 4. **Local-only surfaces bind loopback, and packaging must not publish them.**
    The admin API is unauthenticated by design because ADR-0025 keeps it on the
    author's machine. That holds only while nothing binds it outward: today
-   `server/cmd/api` listens on `0.0.0.0` and `deploy/compose.yaml` publishes it,
+   `apps/felicia-server/cmd/api` listens on `0.0.0.0` and `ops/compose.yaml` publishes it,
    leaving a reverse-proxy path matcher as the sole thing separating public from
    admin. Local surfaces bind `127.0.0.1`; deployment packaging never publishes
    the admin port.

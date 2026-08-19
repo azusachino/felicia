@@ -1,0 +1,35 @@
+# Stage 1: Build the Go binary
+FROM golang:1.26-alpine AS builder
+
+WORKDIR /app
+
+# Copy workspace and dependency manifests
+COPY go.work go.work.sum ./
+COPY apps/felicia-core/go.mod apps/felicia-core/go.sum apps/felicia-core/
+COPY apps/felicia-runtime/go.mod apps/felicia-runtime/go.sum apps/felicia-runtime/
+COPY apps/felicia-providers/go.mod apps/felicia-providers/go.sum apps/felicia-providers/
+COPY apps/felicia-server/go.mod apps/felicia-server/go.sum apps/felicia-server/
+COPY apps/felicia-publication/go.mod apps/felicia-publication/go.sum apps/felicia-publication/
+COPY apps/felicia-cli/go.mod apps/felicia-cli/go.sum apps/felicia-cli/
+RUN for module in $(go work edit -json | sed -n 's/.*"DiskPath": "\(.*\)".*/\1/p'); do cd "$module" && go mod download && cd /app; done
+
+# Copy source code
+COPY . .
+
+# Build statically compiled binary
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /app/felicia-api ./apps/felicia-server/cmd/api
+
+# Stage 2: Runtime container
+FROM alpine:latest
+
+# Install CA certificates for HTTPS requests to Immich/Dawarich APIs
+RUN apk --no-cache add ca-certificates tzdata
+
+WORKDIR /app
+
+# Copy the compiled binary from builder stage
+COPY --from=builder /app/felicia-api /app/felicia-api
+
+EXPOSE 8080
+
+ENTRYPOINT ["/app/felicia-api"]

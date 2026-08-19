@@ -6,7 +6,7 @@ candidate/draft/authored/published/archived mementos, a memento missing
 optional metadata, a fully authored published memento, an archived memento
 with a broken media reference, and a second journey with zero published
 mementos. It complements (and must not duplicate) the in-memory unit tests in
-publication/public_test.go, which exercise the same publish gate against fake
+apps/felicia-publication/public_test.go, which exercise the same publish gate against fake
 in-memory fixtures rather than the compiled CLI and a real SQLite database.
 """
 

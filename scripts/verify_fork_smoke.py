@@ -47,7 +47,7 @@ def main() -> None:
         )
         run(["uv", "run", "python", "scripts/verify_static_artifact.py"], cwd=checkout, env=environment)
 
-        dist = checkout / "apps" / "web-public" / "dist"
+        dist = checkout / "apps" / "felicia-public-site" / "dist"
         assert (dist / "index.html").is_file()
         assert (dist / "api" / "v1" / "journeys.json").is_file()
         print(f"fork smoke verified: checkout={checkout} base={BASE_PATH}")

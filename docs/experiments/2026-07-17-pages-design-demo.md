@@ -28,10 +28,10 @@ prepare a package and compile it with the real CLI:
 ```bash
 felicia-cli package validate .felicia/inbox/journey.zip
 felicia-cli import --db .felicia/felicia.sqlite --media-root .felicia/media --apply .felicia/inbox/journey.zip
-felicia-cli static compile --db .felicia/felicia.sqlite --media-root .felicia/media --out apps/web-public/dist
+felicia-cli static compile --db .felicia/felicia.sqlite --media-root .felicia/media --out apps/felicia-public-site/dist
 ```
 
-`static-publish` only arranges and verifies `apps/web-public/dist`; it does not
+`static-publish` only arranges and verifies `apps/felicia-public-site/dist`; it does not
 commit or push. A fork's normal Git review workflow remains the publication
 approval boundary.
 
@@ -45,7 +45,7 @@ make pages-down
 
 The preview imports ZIPs from `.felicia/inbox`, builds the SPA, compiles the
 SQLite publication, and then uses Python's standard `http.server` in a
-disposable Compose profile. It mounts `apps/web-public/dist` read-only and has
+disposable Compose profile. It mounts `apps/felicia-public-site/dist` read-only and has
 no API, database, cache, or cloud dependency at serving time. Caddy remains the
 server for the self-hosted/shared runtime, where reverse-proxy behavior also
 needs to be tested.
@@ -122,11 +122,11 @@ the contract before changing the domain model.
 ## Workflow boundary
 
 `.github/workflows/pages.yml` builds on pushes to `main` and on manual dispatch,
-then uploads and deploys the static `apps/web-public/dist` artifact. The local
+then uploads and deploys the static `apps/felicia-public-site/dist` artifact. The local
 `pages-preview` Compose profile provides the same artifact check without a
 remote deployment. The workflow requires
 no database, Valkey, object-storage credentials, or running API. Self-hosted
-server mode remains a separate runtime path; `deploy/Caddyfile` and Compose are
+server mode remains a separate runtime path; `ops/Caddyfile` and Compose are
 not dependencies of this Pages experiment.
 
 ## Open gaps before calling this v1

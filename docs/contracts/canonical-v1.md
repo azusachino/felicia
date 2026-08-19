@@ -41,7 +41,7 @@ rules before emitting an attachment.
 ```text
 canonical/v1
   ├── workspace/v1       editable files and review controls
-  ├── cli/v1             plan JSON/JSONL and command reports
+  ├── apps/felicia-cli/v1             plan JSON/JSONL and command reports
   ├── admin-api/v1       write/read transport DTOs
   ├── storage             normalized relational persistence
   └── public-api/v1      published, redacted static/server projection

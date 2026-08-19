@@ -69,4 +69,7 @@ jobs:
         run: nix develop --command make web-check
 
       - name: Check admin frontend
-        run: nix develop --command make web-admin-check
+        run: nix develop --command make admin-check
+
+      - name: Check private reader frontend
+        run: nix develop --command make web-private-check

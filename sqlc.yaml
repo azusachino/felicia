@@ -1,12 +1,12 @@
 version: "2"
 sql:
   - engine: "postgresql"
-    schema: "migrations/"
-    queries: "providers/postgres/queries/"
+    schema: "apps/felicia-server/migrations/"
+    queries: "apps/felicia-providers/postgres/queries/"
     gen:
       go:
         package: "db"
-        out: "providers/postgres/db"
+        out: "apps/felicia-providers/postgres/db"
         sql_package: "pgx/v5"
         overrides:
           - db_type: uuid

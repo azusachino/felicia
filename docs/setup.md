@@ -23,7 +23,7 @@ make validate       # check + build             — before PR
 ## Authoring locally
 
 `make admin` is the entry point for the authoring surface. It builds and starts
-the API on SQLite, then runs the `web-admin` dev server against it through
+the API on SQLite, then runs the `felicia-admin` dev server against it through
 Vite's `/api` proxy, and prints the URLs:
 
 - **admin GUI** — `http://127.0.0.1:5174/`
@@ -67,12 +67,12 @@ for configuration precedence and the PostgreSQL test-database safety rules.
   The database (PostgreSQL 18 + PostGIS) runs inside a container using **Podman** and `podman-compose`. The Go application itself runs **locally** on the host.
   ```bash
   # Spin up the database container
-  podman-compose -f deploy/compose.yaml up -d
+  podman-compose -f ops/compose.yaml up -d
   ```
 - **macOS Dev Runtime:**
   Leverage the native, lightweight **Bianpai** app ([github.com/bianpai/bianpai](https://github.com/bianpai/bianpai)) to run PostgreSQL 18 + PostGIS natively on the host.
 - **Migrations:**
-  `make migrate` applies `migrations/` with goose (needs `DATABASE_DSN`).
+  `make migrate` applies `apps/felicia-server/migrations/` with goose (needs `DATABASE_DSN`).
 
 ## Configuration
 

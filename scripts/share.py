@@ -33,7 +33,7 @@ def run(command: list[str], *, env: dict[str, str] | None = None, cwd: Path = RO
 
 
 def compose(compose_base: list[str], *args: str) -> list[str]:
-    return [*compose_base, "-f", "deploy/compose.yaml", *args]
+    return [*compose_base, "-f", "ops/compose.yaml", *args]
 
 
 def wait_for_db(command: list[str]) -> None:
@@ -91,7 +91,7 @@ def main() -> int:
         environment = os.environ.copy()
         dsn = environment.get("DATABASE_DSN", "postgres://postgres:password@localhost:5432/felicia?sslmode=disable")
 
-        run(["bun", "run", "build"], cwd=ROOT / "apps" / "web-public")
+        run(["bun", "run", "build"], cwd=ROOT / "apps" / "felicia-public-site")
         run(compose(compose_base, "up", "-d", "db", "cache"))
         wait_for_db(compose_base)
         run(["make", "migrate"], env=environment | {"DATABASE_DSN": dsn})

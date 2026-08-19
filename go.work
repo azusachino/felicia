@@ -1,10 +1,10 @@
 go 1.26
 
 use (
-	./server
-	./core
-	./cli
-	./providers
-	./publication
-	./runtime
+	./apps/felicia-cli
+	./apps/felicia-core
+	./apps/felicia-providers
+	./apps/felicia-publication
+	./apps/felicia-runtime
+	./apps/felicia-server
 )

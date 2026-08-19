@@ -1,0 +1,87 @@
+services:
+  db:
+    image: postgis/postgis:18-3.6-alpine
+    # The pinned PostGIS image currently publishes amd64 only; Podman on
+    # Apple Silicon runs this service through its supported emulation path.
+    platform: linux/amd64
+    container_name: felicia-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: felicia
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d felicia"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  cache:
+    image: valkey/valkey:9-alpine
+    container_name: felicia-cache
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # --- Shared-demo services (make share) ---
+  # These sit on top of the always-on db+cache dev backing store. The api is
+  # published to the host so host-run `make migrate`/`make seed` reach it; the
+  # web (caddy) origin fronts the SPA + /api/v1 and is what the tunnel exposes.
+  api:
+    build:
+      context: ..
+      dockerfile: ops/Containerfile
+    container_name: felicia-api
+    environment:
+      DATABASE_DSN: postgres://postgres:password@db:5432/felicia?sslmode=disable
+      CACHE_ADDR: cache:6379
+      PORT: "8080"
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+
+  web:
+    image: docker.io/library/caddy:2-alpine
+    container_name: felicia-public-site
+    volumes:
+      - ../apps/felicia-public-site/dist:/srv:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    ports:
+      - "8081:80"
+    depends_on:
+      - api
+
+  # Local GitHub Pages artifact preview. This intentionally has no API, DB, or
+  # cache dependency: it proves that the generated public artifact is portable.
+  pages-preview:
+    image: docker.io/library/python:3.14-alpine
+    container_name: felicia-pages-preview
+    profiles: [pages]
+    command: python -m http.server 8000 --bind 0.0.0.0 --directory /srv
+    volumes:
+      - ../apps/felicia-public-site/dist:/srv:ro
+    ports:
+      - "8082:8000"
+
+  # Quick ephemeral Cloudflare tunnel — no account/domain. On start it prints a
+  # random https://<name>.trycloudflare.com URL (see `make share` output).
+  cloudflared:
+    image: docker.io/cloudflare/cloudflared:latest
+    container_name: felicia-cloudflared
+    command: tunnel --no-autoupdate --url http://web:80
+    depends_on:
+      - web
+
+volumes:
+  pgdata:

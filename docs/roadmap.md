@@ -25,7 +25,7 @@ deployed safely with configurable ingress.
 - SQLite-first local storage; PostgreSQL/PostGIS is deferred to v1.1/v1.2,
   not a v1 compatibility promise.
 - Authored content that is never overwritten by ingestion.
-- A declarative memento template registry (`core/kinds/*.yaml`): `goods`, `live`, `transit`, `stamp`, `receipt`, and `souvenir`; admin MVP hand-builds forms for `transit`/`goods` first.
+- A declarative memento template registry (`apps/felicia-core/kinds/*.yaml`): `goods`, `live`, `transit`, `stamp`, `receipt`, and `souvenir`; admin MVP hand-builds forms for `transit`/`goods` first.
 - Japanese-first system UI with English and Chinese catalogs; authored content is shown exactly as entered.
 - One authoring flow: create or import a journey, curate mementos/photos, preview, and publish.
 - One real journey as the acceptance fixture and one complete end-to-end publish flow.

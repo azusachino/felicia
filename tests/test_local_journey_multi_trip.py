@@ -153,8 +153,8 @@ class MultiTripImportTest(unittest.TestCase):
 
         # issue #75: same basename ("shot.jpg"), different bytes -- must land
         # at two different object keys, and the Go importer (which stores the
-        # package's photo path verbatim, see runtime/importer/package.go and
-        # cli/cmd/felicia/main.go) must actually have written both files.
+        # package's photo path verbatim, see apps/felicia-runtime/importer/package.go and
+        # apps/felicia-cli/cmd/felicia/main.go) must actually have written both files.
         object_keys = self._photo_object_keys()
         self.assertEqual(2, len(object_keys), f"expected one photo per trip, got {object_keys!r}")
         self.assertEqual(len(set(object_keys)), len(object_keys), "same-named photos from different trips collided on one key")

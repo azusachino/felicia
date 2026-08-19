@@ -21,7 +21,7 @@ from uuid import NAMESPACE_URL, uuid4, uuid5
 BASE_URL = os.getenv("API_BASE", "http://localhost:8080")
 REPO_ROOT = Path(__file__).resolve().parent.parent
 # A real JPEG to stand in for ingested media (see run_static_parity_check).
-DEMO_PHOTO = REPO_ROOT / "apps" / "web-public" / "public" / "kyoto_temple.jpg"
+DEMO_PHOTO = REPO_ROOT / "apps" / "felicia-public-site" / "public" / "kyoto_temple.jpg"
 
 
 @dataclass(frozen=True)
@@ -39,7 +39,7 @@ class ServerContext:
 
     ``database_path`` is only populated for the sqlite driver — the static
     compiler CLI (``felicia-cli static compile``) only knows how to open a
-    SQLite file (see cli/cmd/felicia/main.go's compileCommand, which calls
+    SQLite file (see apps/felicia-cli/cmd/felicia/main.go's compileCommand, which calls
     sqlite.Open unconditionally), so the static/live parity check below only
     runs when this is set.
     """
@@ -270,10 +270,10 @@ def canonical_json(raw: bytes) -> str:
     """Canonicalize JSON bytes for cross-surface comparison.
 
     The live server encodes responses with encoding/json's Encoder — compact,
-    no indentation, one trailing newline (server/api/server.go respondJSON).
+    no indentation, one trailing newline (apps/felicia-server/api/server.go respondJSON).
     The static compiler writes files with json.MarshalIndent at a 2-space
     indent plus a manually appended trailing newline
-    (cli/cmd/felicia/main.go fileArtifactWriter.WriteJSON). Both sides
+    (apps/felicia-cli/cmd/felicia/main.go fileArtifactWriter.WriteJSON). Both sides
     project through the same publication package types (PublishedMementos,
     NewStaticJourney, NewStaticMemento, NewStaticPhoto), so the *values* are
     expected to be identical, but the raw bytes never will be — only the
@@ -295,7 +295,7 @@ def expect_json_parity(label: str, live_raw: bytes, static_raw: bytes) -> None:
 
 def expect_aliases_match(path_a: str, path_b: str) -> None:
     """The extensionless route and its ".json" alias share one handler
-    (server/api/server.go) — they must return byte-identical bodies."""
+    (apps/felicia-server/api/server.go) — they must return byte-identical bodies."""
     expect(
         fetch_raw(path_a) == fetch_raw(path_b),
         f"{path_a} and {path_b} should be byte-identical (they share a handler)",
@@ -307,8 +307,8 @@ def run_static_parity_check(context: ServerContext) -> None:
     server is reading, then prove the two publication surfaces agree.
 
     Both surfaces already share the same projection code — this only guards
-    that the two entry points (server/api/server.go's public handlers and
-    cli/cmd/felicia/main.go's `static compile`) keep calling that shared
+    that the two entry points (apps/felicia-server/api/server.go's public handlers and
+    apps/felicia-cli/cmd/felicia/main.go's `static compile`) keep calling that shared
     code the same way, for the same data.
     """
     ids = context.ids
@@ -328,7 +328,7 @@ def run_static_parity_check(context: ServerContext) -> None:
         os.makedirs(os.path.dirname(photo_path), exist_ok=True)
         shutil.copyfile(DEMO_PHOTO, photo_path)
 
-        subprocess.run(["go", "build", "-o", cli_bin, "./cli/cmd/felicia"], check=True)
+        subprocess.run(["go", "build", "-o", cli_bin, "./apps/felicia-cli/cmd/felicia"], check=True)
 
         def compile_static() -> dict:
             result = subprocess.run(
@@ -575,7 +575,7 @@ def disposable_server(
             else nullcontext(database_dsn)
         )
         with database_context as selected_database_dsn:
-            subprocess.run(["go", "build", "-o", api_bin, "./server/cmd/api"], check=True)
+            subprocess.run(["go", "build", "-o", api_bin, "./apps/felicia-server/cmd/api"], check=True)
             if driver == "postgres" and postgres_admin_dsn:
                 subprocess.run(
                     ["make", "migrate"],
@@ -589,7 +589,7 @@ def disposable_server(
                 "CACHE_ADDR": "",
                 "PORT": str(selected_port),
                 # Lets a caller wire optional ingest sources (DAWARICH_URL/
-                # IMMICH_URL/etc. — see server/config/config.go) or override
+                # IMMICH_URL/etc. — see apps/felicia-server/config/config.go) or override
                 # MEDIA_ROOT without this function needing to know about
                 # every one of them. Unused by the workflow test itself.
                 **(extra_env or {}),

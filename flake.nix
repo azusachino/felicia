@@ -38,7 +38,7 @@
             python314
           ];
           # Browsers for the admin-GUI E2E pass come from nix so they run in
-          # non-FHS containers too; @playwright/test in apps/web-admin must
+          # non-FHS containers too; @playwright/test in apps/felicia-admin must
           # stay on the same version as this playwright-driver (1.60.0).
           PLAYWRIGHT_BROWSERS_PATH = pkgs.playwright-driver.browsers.override {
             withFirefox = false;

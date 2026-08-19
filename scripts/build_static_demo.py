@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "scripts" / "data.json"
-PUBLIC = ROOT / "apps" / "web-public" / "public"
+PUBLIC = ROOT / "apps" / "felicia-public-site" / "public"
 API = PUBLIC / "api" / "v1"
 MEDIA = ("kyoto_temple.jpg", "tokyo_night.jpg", "osaka_plushie.jpg")
 
