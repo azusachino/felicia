@@ -40,13 +40,13 @@ frontend code and static publication use the `.json` paths.
 
 - `apps/felicia-public-site/src/api/source.ts` requests the three `.json` paths.
 - `apps/felicia-server/api/server.go` exposes matching `.json` aliases.
-- `scripts/verify_static_demo.py` validates the index, every journey detail,
-  every memento file, project-site base path, and demo media.
+- `scripts/verify_static_artifact.py` validates the index, every journey detail,
+  every memento file, project-site base path, and published media.
 - Go API tests and frontend tests pass for the current fixture/provider baseline.
 
 ## Still open
 
-- Generate this exact contract from SQLite rather than `scripts/data.json`.
+- Generate this exact contract from SQLite rather than hand-authored reader data.
 - Compare a SQLite server response byte-for-byte by normalized JSON with its
   static projection.
 - Define whether route timestamps/elevation need public extension fields.

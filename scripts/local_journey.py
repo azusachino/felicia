@@ -152,7 +152,7 @@ def preprocess(args: argparse.Namespace) -> None:
                 "review_note": "Edit label/selection; this is the author's stop decision.",
             }
         )
-    write_json(workspace / "stops.json", {"schema": "felicia.local.stops.v1", "stops": stops})
+    write_json(workspace / "stops.json", {"schema": "felicia.stops.v1", "stops": stops})
 
     mementos = []
     for index, source in enumerate(plan.get("mementos", []), start=1):
@@ -180,7 +180,7 @@ def preprocess(args: argparse.Namespace) -> None:
                 "author_note": "Edit title, kind, kind_data, and media before preview.",
             }
         )
-    write_json(workspace / "mementos.json", {"schema": "felicia.local.mementos.v1", "mementos": mementos})
+    write_json(workspace / "mementos.json", {"schema": "felicia.mementos.v1", "mementos": mementos})
 
     # The planner derives the journey's date bounds from the route, visit, and
     # media timestamps; today's date is only the fallback for a plan that could
@@ -192,7 +192,7 @@ def preprocess(args: argparse.Namespace) -> None:
     write_json(
         workspace / "journey.json",
         {
-            "schema": "felicia.local.journey.v1",
+            "schema": "felicia.journey.v1",
             "id": args.journey,
             "journal_id": args.journal,
             "slug": args.slug,

@@ -1,7 +1,7 @@
 import { describe, expect, test, mock, beforeAll, afterAll } from "bun:test"
 import { loadJourney, loadJourneys } from "./source"
 import type { ApiJourney, ApiMemento } from "@felicia/shared"
-import { loadGoldenRouteFixture } from "./fixtures"
+import { loadGoldenRouteFixture } from "../../tests/fixtures"
 
 // Access import.meta.env in a type-safe way that is extensible and avoids ESLint any/ignore rules
 const importMeta = import.meta as unknown as {
@@ -21,7 +21,7 @@ if (!importMeta.env) {
 }
 
 const originalFetch = globalThis.fetch
-const journeyID = "0190cbde-f300-7000-8000-111111111111"
+let journeyID = ""
 
 describe("source API", () => {
   let japanSpringJourney: ApiJourney
@@ -31,6 +31,7 @@ describe("source API", () => {
     const fixture = await loadGoldenRouteFixture()
     japanSpringJourney = fixture.journey
     japanSpringMementos = fixture.mementos
+    journeyID = japanSpringJourney.id
   })
 
   afterAll(() => {
@@ -51,18 +52,18 @@ describe("source API", () => {
 
     const journey = await loadJourney(journeyID)
 
-    expect(journey.id).toBe("0190cbde-f300-7000-8000-111111111111")
-    expect(journey.title.en).toBe("Narita Express Day Trip")
-    expect(journey.mementos).toHaveLength(5)
+    expect(journey.id).toBe(journeyID)
+    expect(journey.title.en).toBe(japanSpringJourney.title)
+    expect(journey.mementos).toHaveLength(japanSpringMementos.length)
   })
 
   test("loadJourneys fetches list, then detail/mementos for each, and adapts (dev mode)", async () => {
     const listFixture = [
       {
         id: journeyID,
-        slug: "golden-route",
-        title: "日本ゴールデンルート",
-        memento_count: 11,
+        slug: japanSpringJourney.slug,
+        title: japanSpringJourney.title,
+        memento_count: japanSpringMementos.length,
         representative_dots: [],
       },
     ]
@@ -84,7 +85,7 @@ describe("source API", () => {
     const journeys = await loadJourneys()
 
     expect(journeys).toHaveLength(1)
-    expect(journeys[0].id).toBe("0190cbde-f300-7000-8000-111111111111")
+    expect(journeys[0].id).toBe(journeyID)
     expect(journeys[0].representativeDots).toEqual([])
   })
 

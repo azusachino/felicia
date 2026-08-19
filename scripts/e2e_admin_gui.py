@@ -199,7 +199,7 @@ def seed_journey(db_path: Path, media_root: Path, workspace_root: Path) -> str:
     write_json(
         workspace / "journey.json",
         {
-            "schema": "felicia.local.journey.v1",
+            "schema": "felicia.journey.v1",
             "id": ids.journey,
             "journal_id": ids.journal,
             "slug": ids.slug,
@@ -212,11 +212,11 @@ def seed_journey(db_path: Path, media_root: Path, workspace_root: Path) -> str:
         },
     )
     write_json(
-        workspace / "stops.json", {"schema": "felicia.local.stops.v1", "stops": []}
+        workspace / "stops.json", {"schema": "felicia.stops.v1", "stops": []}
     )
     write_json(
         workspace / "mementos.json",
-        {"schema": "felicia.local.mementos.v1", "mementos": []},
+        {"schema": "felicia.mementos.v1", "mementos": []},
     )
     (workspace / "route.gpx").write_text(MINIMAL_GPX, encoding="utf-8")
 

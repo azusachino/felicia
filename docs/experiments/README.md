@@ -73,7 +73,6 @@ result or the product owner explicitly chooses a direction without experimentati
 Current evidence:
 
 - [2026-07-17 provider baseline](2026-07-17-provider-baseline.md)
-- [2026-07-17 GitHub Pages design demo](2026-07-17-pages-design-demo.md)
 - [2026-07-17 public read contract](2026-07-17-public-read-contract.md)
 - [2026-08-16 real-trip CLI walkthrough](2026-08-16-real-trip-cli-walkthrough.md) —
   a real Timeline export and iPhone photo folder through the local-authoring
@@ -85,8 +84,7 @@ Current evidence:
 The repository already contains the first input set and orchestration examples:
 
 - `scripts/test_journey_workflow.py` — `uv`-runnable HTTP workflow case;
-- `scripts/data.json` and `scripts/data.schema.json` — current seed input and its
-  validation shape;
+- `publication/journeys/` — the production publication catalog;
 - `scripts/tracks/*.gpx` — source GPX fixtures;
 - `ops/compose.yaml` — disposable PostgreSQL, Valkey, API, Caddy, and tunnel
   integration;
@@ -100,5 +98,4 @@ The repository already contains the first input set and orchestration examples:
 - the static publisher does not yet copy local public media derivatives;
 - the GitHub Pages workflow and static design demo exist, but deployment and
   browser review are still outstanding;
-- the existing `scripts/data.json` is a useful fixture, but it is not evidence that
-  JSON should be Felicia's canonical model.
+- the production catalog is publication input, not the canonical storage model.

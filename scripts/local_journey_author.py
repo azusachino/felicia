@@ -123,5 +123,5 @@ def interactive_author(args: Namespace) -> None:
             )
     write_json(workspace / "journey.json", journey)
     write_json(workspace / "stops.json", stop_data)
-    write_json(workspace / "mementos.json", {"schema": "felicia.local.mementos.v1", "mementos": mementos})
+    write_json(workspace / "mementos.json", {"schema": "felicia.mementos.v1", "mementos": mementos})
     print(f"authoring saved: stops={len(curated_stops)}, mementos={len(mementos)}")

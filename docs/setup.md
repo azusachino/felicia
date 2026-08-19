@@ -5,14 +5,14 @@
 
 ## Prerequisites
 
-- **nix** (flakes enabled) — the complete repository toolchain. `nix develop` enters a
-  shell with Go 1.26, Bun, uv, Prettier, golangci-lint, goose, sqlc, and **PostgreSQL 18 +
-  PostGIS**. You usually don't need to enter it manually: `make` wraps the shell automatically.
+- **mise** — the complete repository toolchain declared in [`mise.toml`](../mise.toml).
+  It provides Go 1.26, Bun, Python, uv, golangci-lint, goose, and sqlc. You usually don't
+  need to activate it manually: `make` runs each tool through `mise exec`.
 
 ## Common commands
 
 ```bash
-nix develop         # optional: enter the repository toolchain shell
+mise install        # install the pinned repository tools
 make help           # list targets
 make admin          # start the local admin GUI (authoring surface)
 make docs           # live-preview the docs (see below)

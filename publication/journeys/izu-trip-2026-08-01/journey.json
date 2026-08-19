@@ -1,0 +1,13 @@
+{
+  "schema": "felicia.journey.v1",
+  "id": "44724c10-9202-5ba2-8550-cf6f94ad7998",
+  "journal_id": "0190cbde-f300-7000-8000-000000000000",
+  "slug": "izu-trip-2026-08-01",
+  "title": "Izu Trip — August 2026",
+  "place": "Izu Peninsula",
+  "country": "Japan",
+  "region": "Shizuoka",
+  "date_start": "2026-08-01",
+  "date_end": "2026-08-02",
+  "source_ref": "route.gpx"
+}

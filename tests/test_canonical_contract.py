@@ -11,9 +11,10 @@ from pathlib import Path
 class CanonicalSeedContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.data = json.loads(
-            (Path(__file__).parents[1] / "scripts" / "data.json").read_text()
-        )
+        workspace = Path(__file__).parents[1] / "publication" / "journeys" / "izu-trip-2026-08-01"
+        journey = json.loads((workspace / "journey.json").read_text(encoding="utf-8"))
+        mementos = json.loads((workspace / "mementos.json").read_text(encoding="utf-8"))
+        cls.data = {"journeys": [{**journey, "mementos": mementos["mementos"]}]}
 
     def test_every_seed_memento_has_namespaced_source_identity(self):
         for journey in self.data["journeys"]:

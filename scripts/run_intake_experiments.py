@@ -132,9 +132,9 @@ def main() -> None:
         results.append(case_result("evil-large-gpx", "pass" if large["exit_code"] == 0 else "fail", large, points=20_000, note="measurement is a baseline; GPX parser currently materializes the XML document"))
 
         package = workspace / "preview.zip"
-        package_build = run(["python3", "scripts/build_preview_package.py"])
-        if package_build["exit_code"] == 0 and (ROOT / ".felicia" / "preview.zip").exists():
-            shutil.copy(ROOT / ".felicia" / "preview.zip", package)
+        package_build = run(["python3", "scripts/build_publication_package.py"])
+        if package_build["exit_code"] == 0 and (ROOT / ".felicia" / "publication.zip").exists():
+            shutil.copy(ROOT / ".felicia" / "publication.zip", package)
             validate = run([str(CLI), "package", "validate", str(package)])
             results.append(case_result("US-06-safe-publish", "pass" if validate["exit_code"] == 0 else "fail", validate, raw_gpx_public=False, note="prepared-package path only"))
         else:

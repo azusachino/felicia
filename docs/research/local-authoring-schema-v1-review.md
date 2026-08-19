@@ -10,7 +10,7 @@ generated at `.felicia/experiments/intake/report.json` by:
 make cli-build
 uv run python scripts/run_intake_experiments.py \
   --out .felicia/experiments/intake/report.json
-BASE_PATH=/ nix develop --command uv run python scripts/felicia.py preview
+BASE_PATH=/ mise exec -- uv run python scripts/felicia.py publish
 ```
 
 ## Story results

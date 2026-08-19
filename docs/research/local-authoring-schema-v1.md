@@ -1,19 +1,23 @@
 # Local authoring schema v1
 
-The local workflow has a root `workspace.json` index plus four journey JSON
+The authoring and publication workflows share a root index plus four journey JSON
 documents. `plan.json` is generated evidence; the other three are editable
 authoring state.
 
 | File             | Schema identifier                      | Ownership | Purpose                                          |
 | ---------------- | -------------------------------------- | --------- | ------------------------------------------------ |
-| `workspace.json` | `felicia.local.workspace.v1`           | Author    | Index multiple journey workspaces                |
+| `workspace.json` | `felicia.workspace.v1`                 | Author    | Index multiple journey workspaces                |
 | `plan.json`      | `felicia.intake.plan` + `version: "1"` | Felicia   | Reproducible source-derived plan and diagnostics |
-| `journey.json`   | `felicia.local.journey.v1`             | Author    | Journey metadata and date range                  |
-| `stops.json`     | `felicia.local.stops.v1`               | Author    | Keep/ignore decisions and stop labels            |
-| `mementos.json`  | `felicia.local.mementos.v1`            | Author    | Memento order, kind, content, and selected media |
+| `journey.json`   | `felicia.journey.v1`                   | Author    | Journey metadata and date range                  |
+| `stops.json`     | `felicia.stops.v1`                     | Author    | Keep/ignore decisions and stop labels            |
+| `mementos.json`  | `felicia.mementos.v1`                  | Author    | Memento order, kind, content, and selected media |
 
 The machine-readable definitions are in
-[`schemas/local-authoring-v1.schema.json`](../../schemas/local-authoring-v1.schema.json).
+[`schemas/journey-v1.schema.json`](../../schemas/journey-v1.schema.json).
+
+The production catalog uses `catalog.json` with `felicia.catalog.v1`; its
+journey directories use the same `journey.json`, `stops.json`, and
+`mementos.json` contract as authoring.
 
 ## v1 rules
 

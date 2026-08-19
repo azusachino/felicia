@@ -1,5 +1,5 @@
 {
-  "schema": "felicia.local.stops.v1",
+  "schema": "felicia.stops.v1",
   "stops": [
     {
       "candidate_key": "harbor",

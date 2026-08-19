@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://felicia.local/schemas/local-authoring-v1.schema.json",
-  "title": "Felicia local authoring v1",
-  "description": "Definitions for the editable local journey workspace. Each file selects one definition below.",
+  "$id": "https://github.com/azusachino/felicia/schemas/journey-v1.schema.json",
+  "title": "Felicia journey data contract v1",
+  "description": "Stable definitions for journey bundles and publication catalogs. Each file selects one definition below.",
   "$defs": {
     "coordinate": {
       "type": "array",
@@ -35,7 +35,7 @@
       "type": "object",
       "required": ["schema", "id", "journal_id", "slug", "title", "date_start", "date_end"],
       "properties": {
-        "schema": { "const": "felicia.local.journey.v1" },
+        "schema": { "const": "felicia.journey.v1" },
         "id": { "type": "string", "format": "uuid" },
         "journal_id": { "type": "string", "format": "uuid" },
         "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
@@ -68,7 +68,22 @@
       "type": "object",
       "required": ["schema", "version", "journal_id", "journeys"],
       "properties": {
-        "schema": { "const": "felicia.local.workspace.v1" },
+        "schema": { "const": "felicia.workspace.v1" },
+        "version": { "const": "1" },
+        "journal_id": { "type": "string", "format": "uuid" },
+        "journeys": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/workspace_journey" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "catalog": {
+      "type": "object",
+      "required": ["schema", "version", "journal_id", "journeys"],
+      "properties": {
+        "schema": { "const": "felicia.catalog.v1" },
         "version": { "const": "1" },
         "journal_id": { "type": "string", "format": "uuid" },
         "journeys": {
@@ -99,7 +114,7 @@
       "type": "object",
       "required": ["schema", "stops"],
       "properties": {
-        "schema": { "const": "felicia.local.stops.v1" },
+        "schema": { "const": "felicia.stops.v1" },
         "stops": { "type": "array", "items": { "$ref": "#/$defs/stop" } }
       },
       "additionalProperties": false
@@ -145,7 +160,7 @@
       "type": "object",
       "required": ["schema", "mementos"],
       "properties": {
-        "schema": { "const": "felicia.local.mementos.v1" },
+        "schema": { "const": "felicia.mementos.v1" },
         "mementos": { "type": "array", "items": { "$ref": "#/$defs/memento" } }
       },
       "additionalProperties": false

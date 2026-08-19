@@ -1,0 +1,145 @@
+{
+  "schema": "felicia.stops.v1",
+  "stops": [
+    {
+      "candidate_key": "derived-route:cluster-001",
+      "selected": true,
+      "label": "",
+      "coord": [
+        139.77633442058735,
+        35.71441855180115
+      ],
+      "arrive": "2026-08-01T07:34:07+09:00",
+      "depart": "2026-08-01T08:11:27+09:00",
+      "confidence": 0.5,
+      "source_index": 1,
+      "review_note": "Edit label/selection; this is the author's stop decision."
+    },
+    {
+      "candidate_key": "derived-route:cluster-002",
+      "selected": true,
+      "label": "",
+      "coord": [
+        138.9673692778631,
+        35.31354835670368
+      ],
+      "arrive": "2026-08-01T11:36:11+09:00",
+      "depart": "2026-08-01T12:22:46+09:00",
+      "confidence": 0.5,
+      "source_index": 2,
+      "review_note": "Edit label/selection; this is the author's stop decision."
+    },
+    {
+      "candidate_key": "derived-route:cluster-003",
+      "selected": true,
+      "label": "",
+      "coord": [
+        138.85690286401788,
+        34.66565363231559
+      ],
+      "arrive": "2026-08-01T18:29:36+09:00",
+      "depart": "2026-08-02T09:23:42+09:00",
+      "confidence": 0.5,
+      "source_index": 3,
+      "review_note": "Edit label/selection; this is the author's stop decision."
+    },
+    {
+      "candidate_key": "derived-route:cluster-004",
+      "selected": true,
+      "label": "",
+      "coord": [
+        138.9969854201326,
+        34.74594347588782
+      ],
+      "arrive": "2026-08-02T10:31:43+09:00",
+      "depart": "2026-08-02T10:59:01+09:00",
+      "confidence": 0.5,
+      "source_index": 4,
+      "review_note": "Edit label/selection; this is the author's stop decision."
+    },
+    {
+      "candidate_key": "derived-route:cluster-005",
+      "selected": true,
+      "label": "Omuroyama Lift",
+      "coord": [
+        139.09748834845627,
+        34.90707404290038
+      ],
+      "arrive": "2026-08-02T11:43:22+09:00",
+      "depart": "2026-08-02T12:29:38+09:00",
+      "confidence": 0.5,
+      "source_index": 5,
+      "review_note": "Edit label/selection; this is the author's stop decision."
+    },
+    {
+      "candidate_key": "derived-route:cluster-006",
+      "selected": true,
+      "label": "Kujuppama Beach approach",
+      "coord": [
+        139.13757939780564,
+        34.89421941521071
+      ],
+      "arrive": "2026-08-02T13:53:09+09:00",
+      "depart": "2026-08-02T15:07:13+09:00",
+      "confidence": 0.5,
+      "source_index": 6,
+      "review_note": "Edit label/selection; this is the author's stop decision."
+    },
+    {
+      "candidate_key": "derived-route:cluster-007",
+      "selected": true,
+      "label": "Jogasaki Coast",
+      "coord": [
+        139.1394129782168,
+        34.89179224182174
+      ],
+      "arrive": "2026-08-02T15:08:20+09:00",
+      "depart": "2026-08-02T15:53:29+09:00",
+      "confidence": 0.5,
+      "source_index": 7,
+      "review_note": "Edit label/selection; this is the author's stop decision."
+    },
+    {
+      "candidate_key": "derived-route:cluster-008",
+      "selected": true,
+      "label": "",
+      "coord": [
+        139.5272867224869,
+        35.53315748494045
+      ],
+      "arrive": "2026-08-02T19:30:28+09:00",
+      "depart": "2026-08-02T19:57:43+09:00",
+      "confidence": 0.5,
+      "source_index": 8,
+      "review_note": "Edit label/selection; this is the author's stop decision."
+    },
+    {
+      "candidate_key": "derived-route:cluster-009",
+      "selected": true,
+      "label": "",
+      "coord": [
+        139.71100618761767,
+        35.81639391267363
+      ],
+      "arrive": "2026-08-02T21:20:52+09:00",
+      "depart": "2026-08-02T21:44:03+09:00",
+      "confidence": 0.5,
+      "source_index": 9,
+      "review_note": "Edit label/selection; this is the author's stop decision."
+    },
+    {
+      "candidate_key": "manual:kujuppama-beach",
+      "selected": true,
+      "label": "Kujuppama Beach",
+      "coord": [
+        138.980745,
+        34.66671166666666
+      ],
+      "arrive": "2026-08-01T16:12:35+09:00",
+      "depart": "2026-08-01T16:12:35+09:00",
+      "confidence": 1.0,
+      "source_index": 10,
+      "review_note": "Manual stop from IMG_2681.heic EXIF GPS; not a GPX dwell cluster."
+    }
+  ]
+}

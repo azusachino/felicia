@@ -119,7 +119,7 @@ projection:
   entry path from a real GPX file and a photo folder found it broken at
   every step: eight consecutive blockers between `make journey-local` and a
   packaged journey. Four were contract drift against
-  `schemas/local-authoring-v1.schema.json` (the planner's `date_start`/
+  `schemas/journey-v1.schema.json` (the planner's `date_start`/
   `date_end`; a candidate's deliberately-unset `kind`; and the whole
   `stop_candidate` definition, still spelled in Go PascalCase after
   `domain.StopCandidate` gained snake_case tags), two were nil maps and
@@ -144,8 +144,8 @@ projection:
   [`docs/publish.md`](../publish.md) covering both routes, the base-path table,
   and the failure modes, linked from the README and the docs index. A person
   taking the deployable artifact from their own journal previously had to hand-
-  assemble it (`make static-build` compiles the fixture demo, not an authored
-  journal), so `make site-build` and `make site-verify` now name that surface
+  assemble it (`make site-build` compiles an authored journal), so `make site-build`
+  and `make site-verify` now name that surface
   per the third development-flow constraint in `AGENTS.md`. No change to the
   pipeline itself; stage status unchanged.
 

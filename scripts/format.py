@@ -85,6 +85,10 @@ def format_markdown(check: bool) -> bool:
     # path usable before `make web-install` and avoid loading the Svelte plugin.
     result = run(
         [
+            "bun",
+            "run",
+            "--cwd",
+            "apps/felicia-public-site",
             "prettier",
             "--no-config",
             "--parser",

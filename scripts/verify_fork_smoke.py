@@ -39,13 +39,17 @@ def main() -> None:
 
         environment = os.environ.copy()
         environment["BASE_PATH"] = BASE_PATH
-        run(["bun", "install", "--frozen-lockfile"], cwd=checkout, env=environment)
+        run(["mise", "exec", "--", "bun", "install", "--frozen-lockfile"], cwd=checkout, env=environment)
         run(
-            ["uv", "run", "python", "scripts/felicia.py", "preview"],
+            ["mise", "exec", "--", "uv", "run", "python", "scripts/felicia.py", "publish"],
             cwd=checkout,
             env=environment,
         )
-        run(["uv", "run", "python", "scripts/verify_static_artifact.py"], cwd=checkout, env=environment)
+        run(
+            ["mise", "exec", "--", "uv", "run", "python", "scripts/verify_static_artifact.py"],
+            cwd=checkout,
+            env=environment,
+        )
 
         dist = checkout / "apps" / "felicia-public-site" / "dist"
         assert (dist / "index.html").is_file()
