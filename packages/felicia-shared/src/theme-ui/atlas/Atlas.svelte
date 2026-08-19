@@ -1,14 +1,10 @@
 <script lang="ts">
-  import V4Detail from "./V4Detail.svelte"
-  import V4Map from "./V4Map.svelte"
-  import V4Stub from "./V4Stub.svelte"
+  import AtlasDetail from "./AtlasDetail.svelte"
+  import AtlasMap from "./AtlasMap.svelte"
+  import AtlasStub from "./AtlasStub.svelte"
   import type { Journey, Lang, Memento, Theme } from "../../data"
 
-  let {
-    lang = $bindable("ja"),
-    theme = $bindable("dark"),
-    loadJourneys,
-  }: { lang?: Lang; theme?: Theme; loadJourneys: () => Promise<Journey[]> } = $props()
+  let { lang = $bindable("ja"), theme = $bindable("dark"), loadJourneys }: { lang?: Lang; theme?: Theme; loadJourneys: () => Promise<Journey[]> } = $props()
   let journeys = $state<Journey[]>([])
   let newestFirst = $state(true)
   let isLoading = $state(true)
@@ -148,7 +144,7 @@
     </div>
   {:else if orderedJourneys.length}
     <div class="map-surface" aria-hidden="true">
-      <V4Map {journeys} {activeJourneyId} {activeMementoId} {lang} {theme} onSelect={(id) => (selectedMementoId = id)} />
+      <AtlasMap {journeys} {activeJourneyId} {activeMementoId} {lang} {theme} onSelect={(id) => (selectedMementoId = id)} />
     </div>
 
     <header class="hero">
@@ -181,7 +177,7 @@
           <div class="stub-field" aria-label={t(entry.journey.title)}>
             {#each entry.mementos as memento (memento.id)}
               <div class:active={memento.id === activeMementoId} class="memento-entry" data-journey-id={entry.journey.id} use:observeMemento={memento}>
-                <V4Stub {memento} {lang} photoLabel={label.photos} selected={memento.id === selectedMementoId} onSelect={() => selectMemento(memento, entry.journey.id)} />
+                <AtlasStub {memento} {lang} photoLabel={label.photos} selected={memento.id === selectedMementoId} onSelect={() => selectMemento(memento, entry.journey.id)} />
               </div>
             {/each}
           </div>
@@ -190,7 +186,7 @@
     </div>
 
     {#if selectedMemento}
-      <V4Detail memento={selectedMemento} {lang} photoLabel={label.photos} photosHeading={label.photosHeading} closeLabel={label.close} storyLabel={label.story} onClose={closeMemento} />
+      <AtlasDetail memento={selectedMemento} {lang} photoLabel={label.photos} photosHeading={label.photosHeading} closeLabel={label.close} storyLabel={label.story} onClose={closeMemento} />
     {/if}
   {:else}
     <div class="status">{label.journeys}: 0</div>

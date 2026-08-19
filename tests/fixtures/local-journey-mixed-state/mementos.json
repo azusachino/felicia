@@ -12,7 +12,7 @@
       "title": "Unreviewed candidate find",
       "place": "Osaka",
       "geom": [135.5, 34.7],
-      "kind_data": {},
+      "kind_data": {"name": "Unreviewed candidate find"},
       "media": []
     },
     {
@@ -26,7 +26,7 @@
       "title": "Draft receipt awaiting essay",
       "place": "Osaka",
       "geom": [135.5, 34.7],
-      "kind_data": {"vendor_note": "sample"},
+      "kind_data": {"shop": "Draft Shop", "total": {"amount": 100, "currency": "JPY"}},
       "media": [
         {"path": "apps/felicia-public-site/public/kyoto_temple.jpg", "caption": "receipt photo draft"}
       ]
@@ -45,7 +45,7 @@
       "vendor": "Kuromon Market",
       "essay": "An essay drafted but held back from publish for later review.",
       "authored_fields": ["title", "vendor", "essay"],
-      "kind_data": {"stamp_name": "Kuromon Goshuin"},
+      "kind_data": {"name": "Kuromon Goshuin"},
       "media": [
         {"path": "apps/felicia-public-site/public/tokyo_night.jpg", "caption": "stamp photo"}
       ]
@@ -56,10 +56,16 @@
       "seq": 4,
       "kind": "transit",
       "occurred_at": "2026-05-01T13:00:00+09:00",
+      "occurred_tz": "Asia/Tokyo",
       "state": "published",
       "title": "Published minimal ticket",
       "place": "Osaka",
-      "kind_data": {"operator": "Osaka Metro"},
+      "geom": [[135.500, 34.733], [135.520, 34.680]],
+      "kind_data": {
+        "operator": "Osaka Metro",
+        "from": {"name": "Osaka", "coords": [135.500, 34.733]},
+        "to": {"name": "Namba", "coords": [135.520, 34.680]}
+      },
       "media": []
     },
     {
@@ -78,7 +84,7 @@
       "price_amount": 1500,
       "price_currency": "JPY",
       "authored_fields": ["title", "vendor", "essay", "price_amount", "price_currency"],
-      "kind_data": {"item": "omamori"},
+      "kind_data": {"name": "omamori"},
       "media": [
         {"path": "apps/felicia-public-site/public/osaka_plushie.jpg", "caption": "the omamori souvenir"}
       ]
@@ -94,7 +100,7 @@
       "title": "Archived receipt with a missing photo",
       "place": "Osaka",
       "geom": [135.52, 34.68],
-      "kind_data": {},
+      "kind_data": {"shop": "Archived Shop", "total": {"amount": 500, "currency": "JPY"}},
       "media": [
         {"path": "does-not-exist-on-disk.jpg", "caption": "lost photo"}
       ]

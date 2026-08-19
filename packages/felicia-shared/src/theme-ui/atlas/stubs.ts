@@ -6,7 +6,7 @@ export interface StubTemplate {
 }
 
 // The registry is deliberately small: kind selects the visual form while the
-// memento remains the shared data contract used by every V4 surface.
+// memento remains the shared data contract used by every Atlas surface.
 export const stubTemplates: Record<MementoKind, StubTemplate> = {
   transit: { id: "transit", label: "transit ticket" },
   stamp: { id: "stamp", label: "stamp" },
@@ -14,6 +14,7 @@ export const stubTemplates: Record<MementoKind, StubTemplate> = {
   receipt: { id: "receipt", label: "receipt" },
   souvenir: { id: "souvenir", label: "souvenir card" },
   live: { id: "live", label: "concert stub" },
+  ticket: { id: "ticket", label: "admission ticket" },
 }
 
 export function templateFor(kind: string) {

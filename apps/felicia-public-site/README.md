@@ -6,7 +6,7 @@ The demo is fixture-only: no backend, no auth, and no live source connectors. It
 review the product shape before the roadmap hardens. The four named reader languages share the
 same fixture data (`src/data.ts`) and theme/language state:
 
-- **Cartography (default)** — the liuaaron-aligned **map reader**: journey index rail → dark route map
+- **Atlas (default)** — the map-and-story reader: journey index rail → route map → memento detail
   hero → paper detail. **The map is the front door** (`felicia:decision:map-first-landing`):
   all journeys dim, the selected one bright, mementos as numbered stubs along the route.
   Reaches the collection via **Collection →**.
@@ -14,7 +14,7 @@ same fixture data (`src/data.ts`) and theme/language state:
   essay + gallery) with a shelf **carousel** across all journeys. A **depth view** — the seed
   of a future souvenir-shelf landing (per PM feedback 2026-07-07), not the door.
 - **Techo (`#techo`)** — _paper journal._ A two-page spread for route and memento context.
-- **Atlas (`#atlas`)** — _editorial atlas._ A scroll-driven route and story composition.
+- **Cartography (`#cartography`)** — _editorial atlas._ A scroll-driven route and story composition.
 
 The first priority is the artifact moat. If the memento + essay/gallery interaction does not
 feel compelling, ingestion and authoring automation should not be first on the roadmap.

@@ -36,12 +36,12 @@ Modeled on [liuaaron.com](https://liuaaron.com/) · _"Aaron's Waypoints."_
 
 The web demo renders the **same** `{ journey, visit, memento }` fixtures four ways — proof the data contract is presentation-agnostic. Flip between them with the on-screen switcher (deep-linkable).
 
-|     | Front door           | Route      | What it is                                                                                                                                               |
-| --- | -------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 🗺️  | **Cartography**      | `/`        | liuaaron-aligned: journey rail → dark MapLibre map → paper detail. _The default._                                                                        |
-| 🗄️  | **Cabinet**          | `#cabinet` | Memento-first shelf; a "greatest-hits" browse across every trip.                                                                                         |
-| 📓  | **Techo (手帳)**     | `#techo`   | Warm paper notebook: a journal-index spread, then the trip on a real map with mementos clustered by **place/visit** — open a place to read its memories. |
-| 🌐  | **Atlas (世界地図)** | `#atlas`   | Full-map atlas index across every journey; mementos render as `kind`-designed collectible stubs (one stub design per registry kind).                     |
+|     | Front door                 | Route          | What it is                                                                                                                                               |
+| --- | -------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 🗺️  | **Atlas**                  | `/`            | map-and-story reader: journey rail → route map → memento detail. _The default._                                                                          |
+| 🗄️  | **Cabinet**                | `#cabinet`     | Memento-first shelf; a "greatest-hits" browse across every trip.                                                                                         |
+| 📓  | **Techo (手帳)**           | `#techo`       | Warm paper notebook: a journal-index spread, then the trip on a real map with mementos clustered by **place/visit** — open a place to read its memories. |
+| 🌐  | **Cartography (世界地図)** | `#cartography` | Full-map atlas index across every journey; mementos render as `kind`-designed collectible stubs (one stub design per registry kind).                     |
 
 > The checked-in fixtures keep UI design work fast; the same shape is served by the working backend.
 
@@ -119,7 +119,7 @@ make web-dev          # Vite dev server → http://localhost:5173
 ```
 
 Then use the switcher at the bottom (`地図 / コレクション / 手帳 / 世界地図`), or jump straight in:
-`/` (map) · `#collection` · `#techo` · `#atlas`. Toggle language (日本語 / EN / 中文) and light/dark in each design's header.
+`/` (Atlas) · `#cabinet` · `#techo` · `#cartography`. Toggle language (日本語 / EN / 中文) and light/dark in each design's header.
 
 ```bash
 make web-check        # svelte-check + eslint

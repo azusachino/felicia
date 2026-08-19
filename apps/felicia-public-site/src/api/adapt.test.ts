@@ -145,4 +145,22 @@ describe("adaptJourney", () => {
     expect(result.mementos[0].transit?.from.coords).toEqual([139.7671, 35.6812])
     expect(result.mementos[0].transit?.to.name).toBe("Kyoto")
   })
+
+  test("preserves ticket mementos for the shared ticket template", () => {
+    const result = adaptJourney(journey(), [
+      memento({
+        kind: "ticket",
+        title: "大室山リフト",
+        kind_data: {
+          name: "Omuroyama Climbing Lift",
+          ticket_type: "おとな往復（中学生以上）",
+          price: { amount: 1000, currency: "JPY" },
+          venue: { name: "Omuroyama Lift", coords: [139.0975, 34.9071] },
+        },
+      }),
+    ])
+
+    expect(result.mementos[0].kind).toBe("ticket")
+    expect(result.mementos[0].kindData?.ticket_type).toBe("おとな往復（中学生以上）")
+  })
 })

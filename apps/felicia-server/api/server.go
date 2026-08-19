@@ -224,6 +224,8 @@ func (s *Server) Handler() http.Handler {
 		r.Post("/journals", s.handleCreateJournal)
 		r.Post("/journals/{id}/reset-mock", s.handleResetMockJournal)
 		r.Get("/journeys", s.handleListJourneys)
+		r.Post("/local-journeys/scan", s.handleScanLocalJourney)
+		r.Post("/local-journeys/import", s.handleImportLocalJourney)
 		r.Get("/journeys/{id}", s.handleGetJourney)
 		r.Post("/journeys", s.handleUpsertJourney)
 		r.Post("/journeys/{id}/legs", s.handleCreateTransitLeg)

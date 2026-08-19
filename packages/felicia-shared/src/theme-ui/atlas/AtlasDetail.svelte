@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { Lang, Memento } from "../../data"
-  import V4Stub from "./V4Stub.svelte"
+  import AtlasStub from "./AtlasStub.svelte"
+  import PhotoLightbox from "../PhotoLightbox.svelte"
+  import { message } from "../../i18n/catalog"
 
   let {
     memento,
@@ -26,7 +28,7 @@
 <aside class="detail-panel" aria-label={t(memento.title)}>
   <button class="detail-close" type="button" aria-label={closeLabel} onclick={onClose}>×</button>
   <div class="detail-scroll">
-    <V4Stub {memento} {lang} {photoLabel} onSelect={() => undefined} />
+    <AtlasStub {memento} {lang} {photoLabel} onSelect={() => undefined} />
 
     <header class="detail-heading">
       <p>{t(memento.date)} · {t(memento.place)}</p>
@@ -44,7 +46,7 @@
         <div class="gallery-grid">
           {#each memento.photos as photo, index (`${photo.src}:${index}`)}
             <figure class:tilt-left={index % 2 === 0}>
-              <img src={photo.src} alt={t(photo.caption)} />
+              <PhotoLightbox src={photo.src} alt={t(photo.caption)} caption={t(photo.caption)} openLabel={message(lang, "ui.zoom")} {closeLabel} imageClass="detail-photo" />
               <figcaption>{t(photo.caption)}</figcaption>
             </figure>
           {/each}
@@ -161,8 +163,7 @@
     transform: rotate(-2deg);
   }
 
-  figure img {
-    display: block;
+  :global(.detail-photo) {
     width: 100%;
     aspect-ratio: 1 / 0.82;
     object-fit: cover;

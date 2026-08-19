@@ -14,6 +14,11 @@
       "minItems": 2,
       "maxItems": 2
     },
+    "line": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/coordinate" },
+      "minItems": 2
+    },
     "media": {
       "type": "object",
       "required": ["path"],
@@ -106,13 +111,19 @@
         "id": { "type": "string", "format": "uuid" },
         "stop_key": { "type": "string", "minLength": 1 },
         "seq": { "type": "integer", "minimum": 1 },
-        "kind": { "enum": ["goods", "live", "transit", "stamp", "receipt"] },
+        "kind": { "enum": ["goods", "live", "transit", "stamp", "receipt", "souvenir", "ticket"] },
         "occurred_at": { "type": "string", "format": "date-time" },
         "occurred_tz": { "type": "string", "minLength": 1 },
         "state": { "enum": ["candidate", "draft", "authored", "published", "archived"] },
         "title": { "type": "string" },
         "place": { "type": "string" },
-        "geom": { "anyOf": [{ "$ref": "#/$defs/coordinate" }, { "type": "null" }] },
+        "geom": {
+          "anyOf": [
+            { "$ref": "#/$defs/coordinate" },
+            { "$ref": "#/$defs/line" },
+            { "type": "null" }
+          ]
+        },
         "kind_data": { "type": "object" },
         "essay": { "type": "string" },
         "vendor": { "type": "string" },

@@ -42,6 +42,7 @@ services:
     environment:
       DATABASE_DSN: postgres://postgres:password@db:5432/felicia?sslmode=disable
       CACHE_ADDR: cache:6379
+      FELICIA_HOST: "0.0.0.0"
       PORT: "8080"
     ports:
       - "8080:8080"

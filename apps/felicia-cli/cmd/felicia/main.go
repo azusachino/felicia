@@ -229,7 +229,14 @@ func packageCommand(args []string, output io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("validate package contents: %w", err)
 	}
-	return writeJSON(output, map[string]any{"package_id": pkg.Manifest.PackageID, "schema_version": pkg.Manifest.SchemaVersion, "files": len(pkg.Files), "journeys": 1, "mementos": len(document.Mementos), "photos": len(document.Photos)})
+	registry, err := importer.DefaultRegistry()
+	if err != nil {
+		return fmt.Errorf("load kind registry: %w", err)
+	}
+	if err := importer.ValidatePackageDocument(document, registry); err != nil {
+		return fmt.Errorf("validate package contents: %w", err)
+	}
+	return writeJSON(output, map[string]any{"package_id": pkg.Manifest.PackageID, "schema_version": pkg.Manifest.SchemaVersion, "files": len(pkg.Files), "journeys": 1, "candidates": len(document.Stops), "mementos": len(document.Mementos), "photos": len(document.Photos)})
 }
 
 func importCommand(args []string, output io.Writer) error {
@@ -252,8 +259,15 @@ func importCommand(args []string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
+	registry, err := importer.DefaultRegistry()
+	if err != nil {
+		return err
+	}
+	if err := importer.ValidatePackageDocument(document, registry); err != nil {
+		return err
+	}
 	if !*apply {
-		return writeJSON(output, map[string]any{"mode": "dry-run", "package_id": pkg.Manifest.PackageID, "journeys": 1, "mementos": len(document.Mementos), "photos": len(document.Photos)})
+		return writeJSON(output, map[string]any{"mode": "dry-run", "package_id": pkg.Manifest.PackageID, "journeys": 1, "candidates": len(document.Stops), "mementos": len(document.Mementos), "photos": len(document.Photos)})
 	}
 	if *database == "" {
 		return errors.New("--db is required with --apply")
@@ -282,7 +296,7 @@ func importCommand(args []string, output io.Writer) error {
 			return err
 		}
 	}
-	return writeJSON(output, map[string]any{"mode": "apply", "package_id": pkg.Manifest.PackageID, "journeys": report.Journeys, "mementos": report.Mementos, "photos": report.Photos})
+	return writeJSON(output, map[string]any{"mode": "apply", "package_id": pkg.Manifest.PackageID, "journeys": report.Journeys, "candidates": report.Candidates, "mementos": report.Mementos, "photos": report.Photos})
 }
 
 func compileCommand(args []string, output io.Writer) error {

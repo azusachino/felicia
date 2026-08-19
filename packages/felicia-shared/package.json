@@ -13,7 +13,11 @@
     "./contracts/public": "./src/contracts/public.ts"
   },
   "dependencies": {
+    "d3-shape": "^3.2.0",
     "maplibre-gl": "^5.9.0",
     "svelte": "^5.38.0"
+  },
+  "devDependencies": {
+    "@types/d3-shape": "^3.1.7"
   }
 }

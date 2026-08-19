@@ -85,7 +85,7 @@ func writeFixturePackage(t *testing.T, filename string) string {
 	t.Helper()
 	files := map[string][]byte{
 		"journey.yaml":     []byte("id: 00000000-0000-0000-0000-000000000001\njournal_id: 00000000-0000-0000-0000-000000000002\nslug: sample\ntitle: Sample journey\nplace: Kyoto\ndate_start: 2026-04-01\ndate_end: 2026-04-01\n"),
-		"mementos.yaml":    []byte("- id: 00000000-0000-0000-0000-000000000003\n  seq: 1\n  kind: transit\n  occurred_at: 2026-04-01T09:00:00+09:00\n  occurred_tz: Asia/Tokyo\n  state: published\n  title: Train ticket\n  place: Kyoto\n  geom: [135.7681, 35.0116]\n  kind_data:\n    operator: JR West\n  photos:\n    - id: 00000000-0000-0000-0000-000000000004\n      path: media/ticket.jpg\n      content_hash: sha256:ticket\n      seq: 1\n"),
+		"mementos.yaml":    []byte("- id: 00000000-0000-0000-0000-000000000003\n  seq: 1\n  kind: transit\n  occurred_at: 2026-04-01T09:00:00+09:00\n  occurred_tz: Asia/Tokyo\n  state: published\n  title: Train ticket\n  place: Kyoto\n  geom: [[135.7681, 35.0116], [139.7671, 35.6812]]\n  kind_data:\n    operator: JR West\n    from: {name: Kyoto, coords: [135.7681, 35.0116]}\n    to: {name: Tokyo, coords: [139.7671, 35.6812]}\n  photos:\n    - id: 00000000-0000-0000-0000-000000000004\n      path: media/ticket.jpg\n      content_hash: sha256:ticket\n      seq: 1\n"),
 		"route.gpx":        []byte(`<?xml version="1.0"?><gpx><trk><trkseg><trkpt lat="35.0116" lon="135.7681"/><trkpt lat="35.6812" lon="139.7671"/></trkseg></trk></gpx>`),
 		"media/ticket.jpg": fixtureJPEG(t),
 	}

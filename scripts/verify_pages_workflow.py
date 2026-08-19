@@ -19,14 +19,15 @@ def main() -> None:
         "pages: write",
         "id-token: write",
         "github.event.repository.name",
-        "cachix/install-nix-action@v30",
+        "actions/checkout@v7",
+        "cachix/install-nix-action@v31",
         "nix develop --command bun install --frozen-lockfile",
         "nix develop --command uv run python scripts/felicia.py preview",
         "nix develop --command uv run python scripts/verify_static_artifact.py",
         "path: apps/felicia-public-site/dist",
-        "actions/configure-pages@v5",
-        "actions/upload-pages-artifact@v3",
-        "actions/deploy-pages@v4",
+        "actions/configure-pages@v6",
+        "actions/upload-pages-artifact@v5",
+        "actions/deploy-pages@v5",
     )
     missing = [value for value in required if value not in workflow]
     assert not missing, f"workflow invariants missing: {missing}"

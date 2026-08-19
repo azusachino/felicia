@@ -40,6 +40,22 @@ def build_package(args: Namespace) -> Path:
     files: dict[str, bytes] = {}
     journey_yaml = {key: value for key, value in journey.items() if key != "schema"}
     files["journey.yaml"] = (json.dumps(journey_yaml, ensure_ascii=False) + "\n").encode()
+    package_stops = []
+    for stop in stop_data.get("stops", []):
+        if not stop.get("selected", stop.get("state", "kept") == "kept") or stop.get("state", "kept") == "ignored":
+            continue
+        package_stops.append(
+            {
+                "derivation_version": "gpx-stops-v1",
+                "key": stop.get("candidate_key", ""),
+                "label": stop.get("label", ""),
+                "coord": stop.get("coord"),
+                "arrive": stop.get("arrive", ""),
+                "depart": stop.get("depart", ""),
+                "confidence": stop.get("confidence", 0),
+            }
+        )
+    files["stops.yaml"] = (json.dumps(package_stops, ensure_ascii=False) + "\n").encode()
     package_mementos = []
     copied_media: dict[str, bytes] = {}
     for memento in memento_data.get("mementos", []):

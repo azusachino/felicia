@@ -11,6 +11,20 @@ export interface AdminJourney {
   authored_fields: string[]
 }
 
+export interface LocalJourneyPlan {
+  journey_id: string
+  workspace: string
+  plan: {
+    date_start?: string
+    date_end?: string
+    routes: unknown[]
+    stops: AdminStopCandidate[]
+    mementos: Array<{ occurred_at: string; media: unknown[] }>
+    issues: Array<{ severity: string; code: string; message: string }>
+  }
+  files: Record<string, string>
+}
+
 export type MementoState = "candidate" | "draft" | "authored" | "published" | "archived"
 
 export interface AdminMemento {
@@ -333,6 +347,20 @@ function asArray<T>(value: T[] | null): T[] {
 
 export async function listJourneys(): Promise<AdminJourney[]> {
   return asArray(await getJSON<AdminJourney[] | null>("/api/admin/journeys"))
+}
+
+export async function scanLocalJourney(request: { workspace: string; journey_id?: string }): Promise<LocalJourneyPlan> {
+  return postJSON<LocalJourneyPlan>("/api/admin/local-journeys/scan", request)
+}
+
+export async function importLocalJourney(request: {
+  workspace: string
+  journey_id: string
+  slug: string
+  title: string
+  place?: string
+}): Promise<{ status: string; journey: AdminJourney; plan: LocalJourneyPlan["plan"] }> {
+  return postJSON<{ status: string; journey: AdminJourney; plan: LocalJourneyPlan["plan"] }>(`/api/admin/local-journeys/import`, request)
 }
 
 export async function getJourney(journeyId: string): Promise<AdminJourney> {

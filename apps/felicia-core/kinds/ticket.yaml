@@ -1,0 +1,11 @@
+kind: ticket
+anchor: point
+stub: ticket
+fields:
+  - { name: name, type: text, required: true }
+  - { name: venue, type: venue, required: true }
+  - { name: date, type: date, required: true }
+  - { name: ticket_variant, type: enum, required: false, values: [live, mountain, admission] }
+  - { name: ticket_type, type: text, required: false }
+  - { name: price, type: money, required: false }
+  - { name: source_url, type: url, required: false }

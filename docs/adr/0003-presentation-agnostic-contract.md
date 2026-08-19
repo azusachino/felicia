@@ -13,7 +13,7 @@ supersedes: []
 
 ## Context
 
-As we designed different frontends (v1 Map Reader, v2 Memento-First Collection, v3 Techo/Paper layout), we risked polluting the database schema with view-specific metadata (e.g. columns like `carousel_index`, `is_landing_featured`, `is_washed_out`, or specific styling parameters). This couples database models directly to ephemeral frontend designs.
+As we designed different frontends (Atlas, Cabinet, and Techo), we risked polluting the database schema with view-specific metadata (e.g. columns like `carousel_index`, `is_landing_featured`, `is_washed_out`, or specific styling parameters). This couples database models directly to ephemeral frontend designs.
 
 ## Decision
 

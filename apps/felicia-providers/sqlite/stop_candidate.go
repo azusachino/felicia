@@ -95,11 +95,16 @@ func (r *Repository) UpsertStopCandidate(ctx context.Context, candidate *domain.
 	if err != nil {
 		return fmt.Errorf("encode stop candidate authored fields: %w", err)
 	}
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin stop candidate upsert: %w", err)
+	tx, ownTransaction := r.db.(*sql.Tx)
+	if !ownTransaction {
+		tx, err = r.conn.BeginTx(ctx, nil)
+		if err != nil {
+			return fmt.Errorf("begin stop candidate upsert: %w", err)
+		}
 	}
-	defer func() { _ = tx.Rollback() }()
+	if !ownTransaction {
+		defer func() { _ = tx.Rollback() }()
+	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO tb_stop_candidates(id, journey_id, derivation_version, candidate_key, label, authored_fields, geom, arrive, depart, confidence, state, provenance, revision, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
 ON CONFLICT(journey_id, derivation_version, candidate_key) DO UPDATE SET
@@ -143,8 +148,10 @@ ON CONFLICT(journey_id, derivation_version, candidate_key) DO UPDATE SET
 			return fmt.Errorf("insert stop candidate evidence: %w", err)
 		}
 	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit stop candidate upsert: %w", err)
+	if !ownTransaction {
+		if err := tx.Commit(); err != nil {
+			return fmt.Errorf("commit stop candidate upsert: %w", err)
+		}
 	}
 	return nil
 }

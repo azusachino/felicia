@@ -5,6 +5,7 @@
   import { message, type MessageKey } from "../../i18n/catalog"
   import type { Journey } from "../../data"
   import { onMount } from "svelte"
+  import PhotoLightbox from "../PhotoLightbox.svelte"
 
   // Techo (手帳, paper notebook) front door. View 1 (landing) is the
   // journal index — a two-page spread with a paper sketch map. View 2 (detail)
@@ -12,11 +13,7 @@
   // (map is the index — felicia:decision:map-first-landing), and opening a place
   // reveals its memories (a place holds several) as paper cards with essay +
   // gallery. Styled with Tailwind (felicia:decision:techo-paper).
-  let {
-    lang = $bindable("ja"),
-    theme = $bindable("dark"),
-    loadJourneys,
-  }: { lang?: Lang; theme?: Theme; loadJourneys: () => Promise<Journey[]> } = $props()
+  let { lang = $bindable("ja"), theme = $bindable("dark"), loadJourneys }: { lang?: Lang; theme?: Theme; loadJourneys: () => Promise<Journey[]> } = $props()
 
   let journeys = $state<Journey[]>([])
   let isLoading = $state(true)
@@ -175,10 +172,6 @@
     if (!selectedJourney || selectedMementoIndex >= selectedJourney.mementos.length - 1) return
     selectedMementoIndex += 1
     selectedPlaceKey = selectedJourney.mementos[selectedMementoIndex]?.visitId ?? null
-  }
-
-  function onPhotoError(event: Event) {
-    ;(event.currentTarget as HTMLImageElement).style.display = "none"
   }
 
   // Washi tape texture: a small fixed palette cycled by card index.
@@ -485,7 +478,14 @@
               <div class="mt-4 flex flex-col gap-3">
                 {#each selectedMemento.photos as photo, index (`${photo.src}:${index}`)}
                   <figure class="m-0 overflow-hidden rounded-md border border-black/5">
-                    <img src={photo.src} alt={t(selectedMemento.title)} class="block aspect-[4/3] w-full object-cover" onerror={onPhotoError} />
+                    <PhotoLightbox
+                      src={photo.src}
+                      alt={t(selectedMemento.title)}
+                      caption={t(photo.caption)}
+                      openLabel={t("ui.zoom")}
+                      closeLabel={t("ui.close")}
+                      imageClass="block aspect-[4/3] w-full object-cover"
+                    />
                     <figcaption class="px-3 py-2 text-xs text-ink-soft">
                       {t(photo.caption)}
                     </figcaption>

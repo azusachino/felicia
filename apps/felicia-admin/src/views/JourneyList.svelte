@@ -1,6 +1,16 @@
 <script lang="ts">
   import { onMount } from "svelte"
-  import { compileSite, getBuildStatus, loadJourneySummaries, type AdminJourneySummary, type CompileReport, type MementoState } from "../api"
+  import {
+    compileSite,
+    getBuildStatus,
+    importLocalJourney,
+    loadJourneySummaries,
+    scanLocalJourney,
+    type AdminJourneySummary,
+    type CompileReport,
+    type LocalJourneyPlan,
+    type MementoState,
+  } from "../api"
   import { journeyDetailHash } from "../router"
 
   const stateOrder: MementoState[] = ["candidate", "draft", "authored", "published", "archived"]
@@ -8,6 +18,14 @@
   let summaries = $state<AdminJourneySummary[]>([])
   let loading = $state(true)
   let error = $state("")
+  let showNewJourney = $state(false)
+  let workspace = $state("")
+  let slug = $state("")
+  let title = $state("")
+  let place = $state("")
+  let scanState = $state<"idle" | "scanning" | "ready" | "importing" | "error">("idle")
+  let scanError = $state("")
+  let scanned = $state<LocalJourneyPlan | null>(null)
 
   async function load() {
     loading = true
@@ -70,6 +88,36 @@
     return pending > 0 ? `Build & preview (${pending})` : "Build & preview"
   }
 
+  async function scanWorkspace() {
+    scanState = "scanning"
+    scanError = ""
+    scanned = null
+    try {
+      scanned = await scanLocalJourney({ workspace })
+      scanState = "ready"
+    } catch (cause) {
+      scanError = actionErrorMessage(cause)
+      scanState = "error"
+    }
+  }
+
+  async function importWorkspace() {
+    if (!scanned) return
+    scanState = "importing"
+    scanError = ""
+    try {
+      await importLocalJourney({ workspace, journey_id: scanned.journey_id, slug, title, place })
+      showNewJourney = false
+      scanned = null
+      scanState = "idle"
+      await load()
+      await loadBuildStatus()
+    } catch (cause) {
+      scanError = actionErrorMessage(cause)
+      scanState = "error"
+    }
+  }
+
   onMount(() => {
     load()
     loadBuildStatus()
@@ -82,8 +130,40 @@
       <p class="eyebrow">Felicia / Journeys</p>
       <h1>Journeys</h1>
     </div>
-    <button class="secondary" type="button" onclick={load} disabled={loading}>{loading ? "Loading…" : "Refresh"}</button>
+    <div class="header-actions">
+      <button class="secondary" type="button" onclick={() => (showNewJourney = !showNewJourney)}>{showNewJourney ? "Close" : "New journey"}</button>
+      <button class="secondary" type="button" onclick={load} disabled={loading}>{loading ? "Loading…" : "Refresh"}</button>
+    </div>
   </header>
+
+  {#if showNewJourney}
+    <section class="new-journey" aria-labelledby="new-journey-title">
+      <p class="eyebrow">Local source intake</p>
+      <h2 id="new-journey-title">Scan a trip folder</h2>
+      <p class="hint">Choose a folder containing <code>route.gpx</code>, <code>photos/</code>, and optional <code>photos.jsonl</code>. Scan is read-only; import creates reviewable candidates only.</p>
+      <div class="new-journey-form">
+        <label>Folder path<input bind:value={workspace} placeholder="/Users/you/trips/izu-trip-2026-08-01" /></label>
+        <label>Slug<input bind:value={slug} placeholder="izu-trip-2026-08-01" /></label>
+        <label>Title<input bind:value={title} placeholder="Izu, 2026-08-01 to 2026-08-02" /></label>
+        <label>Place<input bind:value={place} placeholder="Izu" /></label>
+      </div>
+      <div class="new-journey-actions">
+        <button class="secondary" type="button" onclick={scanWorkspace} disabled={!workspace || scanState === "scanning"}>{scanState === "scanning" ? "Scanning…" : "Scan and preview"}</button>
+        {#if scanned}
+          <button type="button" onclick={importWorkspace} disabled={!slug || !title || scanState === "importing"}>{scanState === "importing" ? "Importing…" : "Confirm import"}</button>
+        {/if}
+      </div>
+      {#if scanError}<p class="api-error" role="alert">{scanError}</p>{/if}
+      {#if scanned}
+        <div class="scan-result">
+          <strong>Dry-run result</strong>
+          <span>{scanned.plan.date_start ?? "?"} – {scanned.plan.date_end ?? "?"}</span>
+          <span>{scanned.plan.routes.length} routes · {scanned.plan.stops.length} stop candidates · {scanned.plan.mementos.length} memento candidates</span>
+          {#if scanned.plan.issues.length > 0}<span class="scan-warning">{scanned.plan.issues.length} review notes</span>{/if}
+        </div>
+      {/if}
+    </section>
+  {/if}
 
   {#if loading}
     <p class="hint">Loading journeys…</p>
@@ -151,6 +231,55 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 16px;
+  }
+  .header-actions,
+  .new-journey-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .new-journey {
+    margin-top: 24px;
+    padding: 20px 24px;
+    border: 1px solid #dfd4c1;
+    border-radius: 12px;
+    background: rgb(255 250 242 / 70%);
+  }
+  .new-journey h2 {
+    margin: 2px 0 0;
+  }
+  .new-journey-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin: 18px 0;
+  }
+  .new-journey-form label {
+    display: grid;
+    gap: 5px;
+    color: #6b5137;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .new-journey-form input {
+    min-width: 0;
+    padding: 9px 10px;
+    border: 1px solid #d8cdbb;
+    border-radius: 6px;
+    font: inherit;
+  }
+  .scan-result {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+    padding: 12px;
+    color: #6b5137;
+    background: #f7eddd;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  .scan-warning {
+    color: #9f522d;
   }
   .secondary {
     border: 1px solid #d8cdbb;

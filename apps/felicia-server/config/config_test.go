@@ -50,7 +50,7 @@ func TestLoadUsesSQLiteDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if cfg.DatabaseDriver != defaultDatabaseDriver || cfg.DatabasePath != defaultDatabasePath || cfg.Port != defaultPort || cfg.CacheAddr != defaultCacheAddr || cfg.RDPEpsilon != defaultRDPEpsilon || cfg.TransitSegmentLenM != defaultTransitSegmentLenM {
+	if cfg.DatabaseDriver != defaultDatabaseDriver || cfg.DatabasePath != defaultDatabasePath || cfg.Host != defaultHost || cfg.Port != defaultPort || cfg.CacheAddr != defaultCacheAddr || cfg.RDPEpsilon != defaultRDPEpsilon || cfg.TransitSegmentLenM != defaultTransitSegmentLenM {
 		t.Errorf("unexpected defaults: %+v", cfg)
 	}
 

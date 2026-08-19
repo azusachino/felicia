@@ -61,17 +61,17 @@ All daily operations go through `make <target>`. **Tools:** Go, Bun, uv, Prettie
 golangci-lint, goose, sqlc, and PostgreSQL 18 + PostGIS come from the **nix flake**
 (`nix develop`, or `make` wraps them automatically).
 
-| Target          | Does                                                                 |
-| --------------- | -------------------------------------------------------------------- |
-| `make fmt`      | format Go                                                            |
-| `make vet`      | `go vet ./...`                                                       |
-| `make lint`     | `golangci-lint run` (nix)                                            |
-| `make test`     | `go test -race -cover ./...`                                         |
-| `make check`    | fmt + vet + lint + test + feature contracts — **before commit**      |
-| `make build`    | build all binaries                                                   |
-| `make validate` | check + build + public/admin/private frontend checks — **before PR** |
-| `make migrate`  | `goose up` (needs `DATABASE_DSN`)                                    |
-| `make admin`    | local admin GUI: authoring API + felicia-admin on `127.0.0.1`        |
+| Target          | Does                                                                             |
+| --------------- | -------------------------------------------------------------------------------- |
+| `make fmt`      | format Go                                                                        |
+| `make vet`      | `go vet ./...`                                                                   |
+| `make lint`     | `golangci-lint run` (nix)                                                        |
+| `make test`     | `go test -race -cover ./...`                                                     |
+| `make check`    | fmt + vet + lint + test + feature contracts — **before commit**                  |
+| `make build`    | build all binaries                                                               |
+| `make validate` | check + build + public/admin/private frontend checks — **before PR**             |
+| `make migrate`  | `goose up` (needs `DATABASE_DSN`)                                                |
+| `make admin`    | local admin GUI: authoring API + felicia-admin on `0.0.0.0` for Tailscale access |
 
 ## Coding Conventions
 
@@ -125,13 +125,12 @@ stops being possible.
    documented flow could not be started from the documentation. If a person is
    meant to open it, `make help` names it.
 
-4. **Local-only surfaces bind loopback, and packaging must not publish them.**
-   The admin API is unauthenticated by design because ADR-0025 keeps it on the
-   author's machine. That holds only while nothing binds it outward: today
-   `apps/felicia-server/cmd/api` listens on `0.0.0.0` and `ops/compose.yaml` publishes it,
-   leaving a reverse-proxy path matcher as the sole thing separating public from
-   admin. Local surfaces bind `127.0.0.1`; deployment packaging never publishes
-   the admin port.
+4. **The local authoring stack may bind the tailnet, and packaging must not publish it.**
+   `make admin` binds the API, site preview, and admin GUI to `0.0.0.0` so the
+   author can use them from a Tailscale client; use `FELICIA_HOST=127.0.0.1`
+   for a host-only session. The admin API remains unauthenticated by design,
+   so the host firewall/Tailscale policy must be the access boundary. Deployment
+   packaging never publishes the admin port.
 
 5. **Superseding an ADR answers the costs the superseded one enumerated.**
    [ADR-0008](docs/adr/0008-single-user-local-first-ssg.md) rejected a second

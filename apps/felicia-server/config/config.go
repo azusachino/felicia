@@ -14,6 +14,7 @@ import (
 )
 
 const (
+	defaultHost               = "127.0.0.1"
 	defaultPort               = "8080"
 	defaultDatabaseDriver     = "sqlite"
 	defaultDatabasePath       = "felicia.db"
@@ -38,6 +39,7 @@ type Config struct {
 	DatabaseDriver string `koanf:"database.driver"`
 	DatabaseDSN    string `koanf:"database.dsn"`
 	DatabasePath   string `koanf:"database.path"`
+	Host           string `koanf:"server.host"`
 	Port           string `koanf:"server.port"`
 	// RatePerSecond/RateBurst tune the per-client API rate limiter; zero
 	// keeps the server's built-in defaults. Test harnesses raise them so
@@ -114,6 +116,7 @@ func load(path string, lookup func(string) (string, bool), required bool) (Confi
 		DatabaseDriver:     k.String("database.driver"),
 		DatabaseDSN:        k.String("database.dsn"),
 		DatabasePath:       k.String("database.path"),
+		Host:               k.String("server.host"),
 		Port:               k.String("server.port"),
 		RatePerSecond:      k.Float64("server.rate_per_second"),
 		RateBurst:          k.Int("server.rate_burst"),
@@ -149,6 +152,9 @@ func (c Config) Validate() error {
 	if c.Port == "" {
 		return errors.New("server port is required")
 	}
+	if c.Host == "" {
+		return errors.New("server host is required")
+	}
 	if c.RDPEpsilon <= 0 {
 		return errors.New("ingest rdp_epsilon must be positive")
 	}
@@ -170,7 +176,7 @@ func (c Config) Validate() error {
 func defaults() map[string]any {
 	return map[string]any{
 		"database": map[string]any{"driver": defaultDatabaseDriver, "path": defaultDatabasePath},
-		"server":   map[string]any{"port": defaultPort},
+		"server":   map[string]any{"host": defaultHost, "port": defaultPort},
 		"cache":    map[string]any{"addr": defaultCacheAddr},
 		"ingest": map[string]any{
 			"rdp_epsilon":              defaultRDPEpsilon,
@@ -198,6 +204,7 @@ func environmentOverrides(lookup func(string) (string, bool)) map[string]any {
 	set("database.dsn", "FELICIA_DATABASE_DSN", "DATABASE_DSN")
 	set("database.driver", "FELICIA_DATABASE_DRIVER", "DATABASE_DRIVER")
 	set("database.path", "FELICIA_DATABASE_PATH", "DATABASE_PATH")
+	set("server.host", "FELICIA_HOST", "SERVER_HOST")
 	set("server.port", "FELICIA_PORT", "PORT")
 	set("server.rate_per_second", "FELICIA_RATE_PER_SECOND", "RATE_PER_SECOND")
 	set("server.rate_burst", "FELICIA_RATE_BURST", "RATE_BURST")

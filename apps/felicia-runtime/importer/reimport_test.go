@@ -31,6 +31,9 @@ func newLifecycleStore() *lifecycleStore {
 
 func (s *lifecycleStore) EnsureJournal(context.Context, *domain.Journal) error    { return nil }
 func (s *lifecycleStore) UpsertPhoto(context.Context, *domain.MementoPhoto) error { return nil }
+func (s *lifecycleStore) WithTransaction(_ context.Context, fn func(domain.Repository) error) error {
+	return fn(s)
+}
 
 func (s *lifecycleStore) ApplyIngestJourneyPatch(context.Context, *domain.IngestJourneyPatch) error {
 	return nil
@@ -122,6 +125,9 @@ func newAuthorshipStore(journey *domain.Journey) *authorshipStore {
 
 func (s *authorshipStore) EnsureJournal(context.Context, *domain.Journal) error    { return nil }
 func (s *authorshipStore) UpsertPhoto(context.Context, *domain.MementoPhoto) error { return nil }
+func (s *authorshipStore) WithTransaction(_ context.Context, fn func(domain.Repository) error) error {
+	return fn(s)
+}
 
 func (s *authorshipStore) UpsertJourney(_ context.Context, journey *domain.Journey) error {
 	s.journeyUpserts++

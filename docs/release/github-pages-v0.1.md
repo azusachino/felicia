@@ -56,7 +56,7 @@ BASE_PATH=/felicia/ make static-publish
    demo**.
 4. The workflow derives the project-site path from
    `github.event.repository.name`; no owner or repository name is hardcoded.
-5. Review the deployment URL and test `/`, `#collection`, `#techo`, and `#atlas`.
+5. Review the deployment URL and test `/`, `#cabinet`, `#techo`, and `#atlas`.
 
 The workflow requires no database, Valkey, S3/R2 credentials, API server, or
 private secrets. It only publishes files produced by the repository build.

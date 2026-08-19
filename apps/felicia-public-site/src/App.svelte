@@ -1,12 +1,20 @@
 <script lang="ts">
-  import { designLanguageFromId, resolveLocale, themeFromId, type ApiSiteSettings, type Lang, type Theme } from "@felicia/shared"
+  import { onMount } from "svelte"
+  import { designLanguageFromHash, designLanguageFromId, designLanguages, message, resolveLocale, themeFromId, type ApiSiteSettings, type Lang, type Theme } from "@felicia/shared"
   import { loadJourneys, loadSiteSettings } from "./api/source"
 
-  // The public reader is locked to a single design, chosen by the author from
-  // the admin GUI (FELICIA-ADMIN-02 M2) and served as part of `/api/v1/site`.
-  // The shared design-language registry remains the source of truth for what designs
-  // exist; this shell just resolves the configured one and renders it.
   let settings = $state<ApiSiteSettings | null>(null)
+  let routeHash = $state(typeof window === "undefined" ? "" : window.location.hash)
+
+  onMount(() => {
+    const syncHash = () => (routeHash = window.location.hash)
+    window.addEventListener("hashchange", syncHash)
+    window.addEventListener("popstate", syncHash)
+    return () => {
+      window.removeEventListener("hashchange", syncHash)
+      window.removeEventListener("popstate", syncHash)
+    }
+  })
 
   $effect(() => {
     loadSiteSettings()
@@ -17,7 +25,11 @@
       })
   })
 
-  const active = $derived(designLanguageFromId(settings?.design))
+  // The saved site design is the canonical default. A hash is an explicit,
+  // shareable preview override, so authors can compare every registered design
+  // without changing the published setting.
+  const configured = $derived(designLanguageFromId(settings?.design))
+  const active = $derived(routeHash ? designLanguageFromHash(routeHash) : configured)
   const Active = $derived(active.component)
 
   // lang/theme are shared across the mounted design so switching keeps your
@@ -43,8 +55,78 @@
       document.documentElement.style.setProperty("--accent", settings.accent)
     }
   })
+
+  function selectDesign(id: string) {
+    const design = designLanguageFromId(id)
+    const url = design.hash ? design.hash : window.location.pathname + window.location.search
+    window.history.pushState({}, "", url)
+    routeHash = design.hash
+  }
 </script>
 
-{#key active.id}
-  <Active bind:lang bind:theme {loadJourneys} />
-{/key}
+<div class="public-reader-shell">
+  <nav class="public-design-switcher" aria-label={message(lang, "system.design")}>
+    {#each designLanguages as design (design.id)}
+      <button type="button" class:active={active.id === design.id} aria-pressed={active.id === design.id} onclick={() => selectDesign(design.id)}>
+        {message(lang, design.labelKey)}
+      </button>
+    {/each}
+  </nav>
+
+  {#key active.id}
+    <Active bind:lang bind:theme {loadJourneys} />
+  {/key}
+</div>
+
+<style>
+  .public-reader-shell {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  .public-design-switcher {
+    position: fixed;
+    z-index: 60;
+    top: 1rem;
+    left: 50%;
+    display: flex;
+    gap: 0.2rem;
+    max-width: calc(100vw - 2rem);
+    overflow-x: auto;
+    padding: 0.25rem;
+    border: 1px solid color-mix(in srgb, #fff 18%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, #09090b 78%, transparent);
+    backdrop-filter: blur(12px);
+    transform: translateX(-50%);
+  }
+
+  .public-design-switcher button {
+    border: 0;
+    border-radius: 999px;
+    padding: 0.38rem 0.65rem;
+    color: #a1a1aa;
+    background: transparent;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  .public-design-switcher button:hover,
+  .public-design-switcher button.active {
+    color: #18120d;
+    background: #fdba74;
+  }
+
+  @media (max-width: 700px) {
+    .public-design-switcher {
+      top: 0.65rem;
+      right: 0.65rem;
+      left: 0.65rem;
+      justify-content: center;
+      transform: none;
+    }
+  }
+</style>

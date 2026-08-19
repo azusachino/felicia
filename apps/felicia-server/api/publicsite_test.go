@@ -27,7 +27,7 @@ func TestHandleGetPublicSiteReflectsAdminPut(t *testing.T) {
 	// via json.Decoder, which consumes the recorder's buffer).
 	firstBody := w.Body.String()
 	defaults := decodeSiteSettings(t, w)
-	if defaults.Design != "cartography" || defaults.DefaultLanguage != "ja" || defaults.DefaultTheme != "dark" {
+	if defaults.Design != "atlas" || defaults.DefaultLanguage != "ja" || defaults.DefaultTheme != "dark" {
 		t.Fatalf("unexpected defaults: %+v", defaults)
 	}
 

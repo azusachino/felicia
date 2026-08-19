@@ -7,6 +7,7 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 5174,
+    allowedHosts: ["harus-macmini", "harus-mini"],
     // Same-origin dev against a local API server without CORS wiring
     // (apps/felicia-server/cmd/api doesn't set an allowed origin), mirroring how the
     // compiled artifact serves /api/* from the site origin:

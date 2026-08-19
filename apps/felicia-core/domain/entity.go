@@ -30,7 +30,7 @@ type SiteSettings struct {
 	JournalID       uuid.UUID `json:"journal_id"`
 	Title           string    `json:"title"`
 	Description     string    `json:"description"`
-	Design          string    `json:"design"`           // cartography|cabinet|techo|atlas
+	Design          string    `json:"design"`           // atlas|cartography|cabinet|techo
 	DefaultLanguage string    `json:"default_language"` // ja|en|zh
 	DefaultTheme    string    `json:"default_theme"`    // dark|light
 	Accent          string    `json:"accent"`           // "#rrggbb" or ""
@@ -39,10 +39,10 @@ type SiteSettings struct {
 }
 
 // DefaultSiteSettings is the projection used when a journal has never saved
-// site settings — "absent settings" behaves like the cartography site in the default
+// site settings — "absent settings" behaves like the Atlas site in the default
 // language and theme, with no title/description/accent authored yet.
 func DefaultSiteSettings(journalID uuid.UUID) SiteSettings {
-	return SiteSettings{JournalID: journalID, Design: "cartography", DefaultLanguage: "ja", DefaultTheme: "dark"}
+	return SiteSettings{JournalID: journalID, Design: "atlas", DefaultLanguage: "ja", DefaultTheme: "dark"}
 }
 
 // Journey represents a travel trip.
@@ -227,4 +227,13 @@ type Repository interface {
 	GetPhoto(ctx context.Context, id uuid.UUID) (*MementoPhoto, error)
 	ListPhotosByMemento(ctx context.Context, mementoID uuid.UUID) ([]*MementoPhoto, error)
 	UpsertPhoto(ctx context.Context, photo *MementoPhoto) error
+}
+
+// TransactionalRepository runs a callback against one database transaction.
+// The callback receives the transaction-scoped Repository, keeping the
+// transaction boundary provider-neutral without making domain depend on a
+// concrete database driver.
+type TransactionalRepository interface {
+	Repository
+	WithTransaction(context.Context, func(Repository) error) error
 }

@@ -26,15 +26,17 @@ make validate       # check + build             — before PR
 the API on SQLite, then runs the `felicia-admin` dev server against it through
 Vite's `/api` proxy, and prints the URLs:
 
-- **admin GUI** — `http://127.0.0.1:5174/`
-- **site preview** — `http://127.0.0.1:8081/`, serving whatever the Site &
+- **admin GUI** — `http://localhost:5174/` (bind: `0.0.0.0`)
+- **site preview** — `http://localhost:8081/` (bind: `0.0.0.0`), serving whatever the Site &
   Deploy page's Build action last compiled
 
-Both bind loopback only, and the authored database defaults to
-`.felicia/local.sqlite` — per [ADR-0025](adr/0025-static-and-self-hosted-modes.md)
-the admin never runs on a server and the journal never leaves the machine. Only
-the compiled `dist/` is publishable. Override with `--api-port`, `--gui-port`,
-or `--db` (or `PORT` / `ADMIN_GUI_PORT` / `DATABASE_PATH`).
+From another device on the same tailnet, replace `localhost` with the host's
+Tailscale IP or MagicDNS name. The admin API is unauthenticated, so keep the
+host firewall and Tailscale ACLs as the access boundary. For a host-only
+session, run `FELICIA_HOST=127.0.0.1 make admin`. The authored database defaults
+to `.felicia/local.sqlite`; only the compiled `dist/` is publishable. Override
+with `--host`, `--api-port`, `--gui-port`, or `--db` (or `FELICIA_HOST`, `PORT`,
+`ADMIN_GUI_PORT`, or `DATABASE_PATH`).
 
 `make check` covers every Go workspace module, UV feature-contract tests, and repository
 formatting. `make web-check` adds frontend type, lint, and formatting checks.
