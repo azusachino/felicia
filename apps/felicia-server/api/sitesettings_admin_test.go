@@ -41,7 +41,7 @@ func TestGetSiteSettingsDefaultsOnEmptyDB(t *testing.T) {
 	}
 
 	got := decodeSiteSettings(t, w)
-	want := siteSettingsPayload{Design: "cartography", DefaultLanguage: "ja", DefaultTheme: "dark"}
+	want := siteSettingsPayload{Design: "atlas", DefaultLanguage: "ja", DefaultTheme: "dark"}
 	if got != want {
 		t.Errorf("defaults = %+v, want %+v", got, want)
 	}

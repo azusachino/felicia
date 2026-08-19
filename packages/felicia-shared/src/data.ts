@@ -3,7 +3,7 @@
 import type { MessageKey } from "./i18n/catalog"
 
 export type Coordinates = [number, number]
-export type MementoKind = "goods" | "transit" | "stamp" | "receipt" | "souvenir" | "live"
+export type MementoKind = "goods" | "transit" | "stamp" | "receipt" | "souvenir" | "live" | "ticket"
 export type Lang = "ja" | "en" | "zh"
 export type { Theme } from "./theme-ui/themes"
 
@@ -66,6 +66,7 @@ export const kindLabel: Record<MementoKind, MessageKey> = {
   receipt: "kind.receipt",
   souvenir: "kind.souvenir",
   live: "kind.live",
+  ticket: "kind.ticket",
 }
 
 export const uiText = {
@@ -73,6 +74,7 @@ export const uiText = {
   all: "ui.all",
   story: "ui.story",
   close: "ui.close",
+  zoom: "ui.zoom",
 } satisfies Record<string, MessageKey>
 
 export interface MementoCard {

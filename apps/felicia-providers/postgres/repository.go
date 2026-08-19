@@ -23,6 +23,7 @@ import (
 
 // Compile-time check that pgRepository satisfies the domain contract.
 var _ domain.Repository = (*pgRepository)(nil)
+var _ domain.TransactionalRepository = (*pgRepository)(nil)
 var _ domain.ObservationStore = (*pgRepository)(nil)
 var _ ports.SiteSettingsStore = (*pgRepository)(nil)
 
@@ -57,6 +58,22 @@ func (r *pgRepository) CreateJournal(ctx context.Context, journal *domain.Journa
 		CreatedAt: toTimestamptz(journal.CreatedAt),
 	}); err != nil {
 		return fmt.Errorf("create journal %s: %w", journal.ID, err)
+	}
+	return nil
+}
+
+// EnsureJournal creates the journal used by an imported journey without
+// making repeat imports fail on the existing single-tenant row.
+func (r *pgRepository) EnsureJournal(ctx context.Context, journal *domain.Journal) error {
+	if journal == nil || journal.ID == uuid.Nil {
+		return errors.New("journal with ID is required")
+	}
+	if journal.CreatedAt.IsZero() {
+		journal.CreatedAt = time.Now().UTC()
+	}
+	_, err := r.db.Exec(ctx, `INSERT INTO tb_journal (id, created_at) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING`, journal.ID, toTimestamptz(journal.CreatedAt))
+	if err != nil {
+		return fmt.Errorf("ensure journal %s: %w", journal.ID, err)
 	}
 	return nil
 }
@@ -498,6 +515,34 @@ func (r *pgRepository) ApplyMementoAggregate(ctx context.Context, aggregate *dom
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit memento aggregate: %w", err)
+	}
+	return nil
+}
+
+// WithTransaction runs a provider-neutral callback against a transaction
+// scoped repository. pgxpool and pgx connections both expose Begin through
+// this small interface.
+func (r *pgRepository) WithTransaction(ctx context.Context, fn func(domain.Repository) error) error {
+	if fn == nil {
+		return errors.New("transaction callback is required")
+	}
+	beg, ok := r.db.(interface {
+		Begin(context.Context) (pgx.Tx, error)
+	})
+	if !ok {
+		return errors.New("repository database does not support transactions")
+	}
+	tx, err := beg.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	txRepo := &pgRepository{q: db.New(tx), db: tx}
+	if err := fn(txRepo); err != nil {
+		_ = tx.Rollback(ctx)
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit transaction: %w", err)
 	}
 	return nil
 }

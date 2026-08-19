@@ -11,10 +11,14 @@ export default defineConfig({
   },
   server: {
     host: "0.0.0.0",
-    allowedHosts: ["harus-mini"],
+    allowedHosts: ["harus-macmini", "harus-mini"],
     proxy: {
       "/api/v1": {
         target: "http://localhost:8080",
+        changeOrigin: true,
+      },
+      "/media": {
+        target: "http://localhost:8081",
         changeOrigin: true,
       },
     },

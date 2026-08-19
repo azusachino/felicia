@@ -65,6 +65,13 @@ Felicia server → private admin + public reader
 The static artifact must not contain drafts, private originals, raw source records,
 database files, secrets, or unrounded private geometry.
 
+The local authoring stack may bind to `0.0.0.0` so its admin GUI and compiled-site
+preview are reachable from the author's Tailscale devices. This is a local
+networking choice, not hosted administration: the admin API remains
+unauthenticated and host firewall/Tailscale ACLs are the access boundary. The
+deployment package still exposes only the intended public reader path and never
+publishes the admin port.
+
 ## Consequences
 
 - GitHub Pages is a supported product target, not merely a demo deployment.

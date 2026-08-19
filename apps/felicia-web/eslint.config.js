@@ -4,7 +4,7 @@ import ts from "typescript-eslint"
 import svelte from "eslint-plugin-svelte"
 
 export default ts.config(
-  { ignores: [] },
+  { ignores: ["dist/"] },
   js.configs.recommended,
   ...ts.configs.recommended,
   ...svelte.configs.recommended,

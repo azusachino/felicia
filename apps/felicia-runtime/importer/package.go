@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -14,18 +15,19 @@ import (
 
 	"github.com/azusachino/felicia/apps/felicia-core/domain"
 	journeypackage "github.com/azusachino/felicia/apps/felicia-core/journeypackage"
+	"github.com/azusachino/felicia/apps/felicia-core/ports"
 )
 
 // PackageDocument is the normalized, database-independent import document.
 type PackageDocument struct {
 	Journey  *domain.Journey
+	Stops    []*domain.StopCandidate
 	Mementos []*domain.Memento
 	Photos   []*domain.MementoPhoto
 }
 
-// PackageStore is the first local import composition seam. The SQLite provider
-// implements EnsureJournal; apps/felicia-server/PostgreSQL composition can add the same
-// idempotent operation later without changing package normalization.
+// PackageStore is the import composition seam. Providers implement the
+// idempotent journal operation alongside the domain repository.
 type PackageStore interface {
 	domain.Repository
 	EnsureJournal(context.Context, *domain.Journal) error
@@ -33,9 +35,10 @@ type PackageStore interface {
 
 // ImportReport summarizes one applied package.
 type ImportReport struct {
-	Journeys int
-	Mementos int
-	Photos   int
+	Journeys   int
+	Candidates int
+	Mementos   int
+	Photos     int
 }
 
 // ApplyPackage writes a normalized package into the canonical store. Source
@@ -51,6 +54,34 @@ func ApplyPackage(ctx context.Context, document *PackageDocument, store PackageS
 	if store == nil {
 		return ImportReport{}, fmt.Errorf("package store is required")
 	}
+	registry, err := DefaultRegistry()
+	if err != nil {
+		return ImportReport{}, fmt.Errorf("load kind registry: %w", err)
+	}
+	if err := ValidatePackageDocument(document, registry); err != nil {
+		return ImportReport{}, err
+	}
+	transactional, ok := store.(domain.TransactionalRepository)
+	if !ok {
+		return ImportReport{}, fmt.Errorf("package store does not support transactions")
+	}
+	var report ImportReport
+	err = transactional.WithTransaction(ctx, func(repository domain.Repository) error {
+		packageStore, ok := repository.(PackageStore)
+		if !ok {
+			return fmt.Errorf("transaction repository does not support package import")
+		}
+		var err error
+		report, err = applyPackage(ctx, document, packageStore)
+		return err
+	})
+	if err != nil {
+		return ImportReport{}, err
+	}
+	return report, nil
+}
+
+func applyPackage(ctx context.Context, document *PackageDocument, store PackageStore) (ImportReport, error) {
 	if err := store.EnsureJournal(ctx, &domain.Journal{ID: document.Journey.JournalID}); err != nil {
 		return ImportReport{}, fmt.Errorf("ensure journal: %w", err)
 	}
@@ -82,7 +113,18 @@ func ApplyPackage(ctx context.Context, document *PackageDocument, store PackageS
 			return ImportReport{}, fmt.Errorf("import photo %s: %w", photo.ID, err)
 		}
 	}
-	return ImportReport{Journeys: 1, Mementos: len(document.Mementos), Photos: len(document.Photos)}, nil
+	if len(document.Stops) > 0 {
+		candidates, ok := store.(ports.StopCandidateStore)
+		if !ok {
+			return ImportReport{}, fmt.Errorf("package store does not support intake candidates")
+		}
+		for _, candidate := range document.Stops {
+			if err := candidates.UpsertStopCandidate(ctx, candidate); err != nil {
+				return ImportReport{}, fmt.Errorf("import stop candidate %s: %w", candidate.Identity.Key, err)
+			}
+		}
+	}
+	return ImportReport{Journeys: 1, Candidates: len(document.Stops), Mementos: len(document.Mementos), Photos: len(document.Photos)}, nil
 }
 
 type journeyFile struct {
@@ -98,6 +140,17 @@ type journeyFile struct {
 	DateEnd   string `yaml:"date_end"`
 }
 
+type stopFile struct {
+	ID                string    `yaml:"id"`
+	DerivationVersion string    `yaml:"derivation_version"`
+	Key               string    `yaml:"key"`
+	Label             string    `yaml:"label"`
+	Coord             []float64 `yaml:"coord"`
+	Arrive            string    `yaml:"arrive"`
+	Depart            string    `yaml:"depart"`
+	Confidence        float64   `yaml:"confidence"`
+}
+
 type mementoFile struct {
 	ID             string         `yaml:"id"`
 	Seq            int            `yaml:"seq"`
@@ -106,7 +159,7 @@ type mementoFile struct {
 	OccurredTZ     string         `yaml:"occurred_tz"`
 	Title          string         `yaml:"title"`
 	Place          string         `yaml:"place"`
-	Geom           []float64      `yaml:"geom"`
+	Geom           any            `yaml:"geom"`
 	Vendor         string         `yaml:"vendor"`
 	Essay          string         `yaml:"essay"`
 	PriceAmount    *int64         `yaml:"price_amount"`
@@ -164,6 +217,19 @@ func DecodePackage(pkg *journeypackage.Package) (*PackageDocument, error) {
 		return nil, err
 	}
 	document := &PackageDocument{Journey: journey}
+	var rawStops []stopFile
+	if _, ok := pkg.Files["stops.yaml"]; ok {
+		if err := decodeYAML(pkg, "stops.yaml", &rawStops); err != nil {
+			return nil, err
+		}
+		for index, raw := range rawStops {
+			candidate, err := normalizeStop(pkg, journey.ID, raw)
+			if err != nil {
+				return nil, fmt.Errorf("stop %d: %w", index+1, err)
+			}
+			document.Stops = append(document.Stops, candidate)
+		}
+	}
 	for index, raw := range rawMementos {
 		memento, photos, err := normalizeMemento(pkg, journey.ID, raw)
 		if err != nil {
@@ -173,6 +239,42 @@ func DecodePackage(pkg *journeypackage.Package) (*PackageDocument, error) {
 		document.Photos = append(document.Photos, photos...)
 	}
 	return document, nil
+}
+
+func normalizeStop(pkg *journeypackage.Package, journeyID uuid.UUID, raw stopFile) (*domain.StopCandidate, error) {
+	if raw.ID == "" {
+		raw.ID = uuid.NewSHA1(uuid.Nil, []byte("package:"+pkg.Manifest.PackageID+":"+raw.Key)).String()
+	}
+	id, err := uuid.Parse(raw.ID)
+	if err != nil {
+		return nil, fmt.Errorf("id: %w", err)
+	}
+	if raw.DerivationVersion == "" || raw.Key == "" || len(raw.Coord) != 2 {
+		return nil, fmt.Errorf("derivation_version, key, and coordinate are required")
+	}
+	if raw.Coord[0] < -180 || raw.Coord[0] > 180 || raw.Coord[1] < -90 || raw.Coord[1] > 90 || (raw.Coord[0] == 0 && raw.Coord[1] == 0) {
+		return nil, fmt.Errorf("coordinate is invalid")
+	}
+	arrive, err := time.Parse(time.RFC3339, raw.Arrive)
+	if err != nil {
+		return nil, fmt.Errorf("arrive: %w", err)
+	}
+	depart, err := time.Parse(time.RFC3339, raw.Depart)
+	if err != nil {
+		return nil, fmt.Errorf("depart: %w", err)
+	}
+	if depart.Before(arrive) || raw.Confidence < 0 || raw.Confidence > 1 {
+		return nil, fmt.Errorf("time range or confidence is invalid")
+	}
+	source := domain.SourceIdentity{System: "package:" + pkg.Manifest.PackageID, ExternalID: raw.Key}
+	return &domain.StopCandidate{
+		ID: id, JourneyID: journeyID,
+		Identity: domain.CandidateIdentity{DerivationVersion: raw.DerivationVersion, Key: raw.Key},
+		Label:    raw.Label, Coord: orb.Point{raw.Coord[0], raw.Coord[1]}, Arrive: arrive, Depart: depart,
+		Confidence: raw.Confidence, State: domain.CandidateProposed,
+		Evidence:   []domain.EvidenceRef{{Kind: domain.EvidenceRoute, Source: source, Locator: raw.Key}},
+		Provenance: []domain.Provenance{{Source: source, ObservedAt: arrive, Confidence: raw.Confidence}},
+	}, nil
 }
 
 func normalizeJourney(raw journeyFile) (*domain.Journey, error) {
@@ -210,15 +312,9 @@ func normalizeMemento(pkg *journeypackage.Package, journeyID uuid.UUID, raw meme
 	if raw.Kind == "" || raw.Seq < 1 {
 		return nil, nil, fmt.Errorf("kind and positive seq are required")
 	}
-	if len(raw.Geom) != 0 && len(raw.Geom) != 2 {
-		return nil, nil, fmt.Errorf("geom must contain longitude and latitude")
-	}
-	var geom orb.Geometry
-	if len(raw.Geom) == 2 {
-		if raw.Geom[0] < -180 || raw.Geom[0] > 180 || raw.Geom[1] < -90 || raw.Geom[1] > 90 {
-			return nil, nil, fmt.Errorf("geom coordinate is out of range")
-		}
-		geom = orb.Point{raw.Geom[0], raw.Geom[1]}
+	geom, err := normalizeGeometry(raw.Geom)
+	if err != nil {
+		return nil, nil, err
 	}
 	kindData, err := json.Marshal(raw.KindData)
 	if err != nil {
@@ -245,6 +341,58 @@ func normalizeMemento(pkg *journeypackage.Package, journeyID uuid.UUID, raw meme
 		photos = append(photos, &domain.MementoPhoto{ID: photoID, MementoID: id, ObjectKey: rawPhoto.Path, ContentHash: rawPhoto.ContentHash, Caption: optional(rawPhoto.Caption), Seq: rawPhoto.Seq, SourceRef: optional("package:" + pkg.Manifest.PackageID + ":" + rawPhoto.ID)})
 	}
 	return memento, photos, nil
+}
+
+func normalizeGeometry(raw any) (orb.Geometry, error) {
+	if raw == nil {
+		return nil, nil
+	}
+	encoded, err := json.Marshal(raw)
+	if err != nil {
+		return nil, fmt.Errorf("geom: %w", err)
+	}
+	var value any
+	if err := json.Unmarshal(encoded, &value); err != nil {
+		return nil, fmt.Errorf("geom: %w", err)
+	}
+	coords, ok := value.([]any)
+	if !ok || len(coords) == 0 {
+		return nil, fmt.Errorf("geom must be a coordinate pair or line")
+	}
+	if len(coords) == 2 && isCoordinateNumber(coords[0]) && isCoordinateNumber(coords[1]) {
+		point := orb.Point{number(coords[0]), number(coords[1])}
+		if !validCoordinate(point) {
+			return nil, fmt.Errorf("geom coordinate is out of range")
+		}
+		return point, nil
+	}
+	line := make(orb.LineString, 0, len(coords))
+	for _, rawPoint := range coords {
+		pair, ok := rawPoint.([]any)
+		if !ok || len(pair) != 2 || !isCoordinateNumber(pair[0]) || !isCoordinateNumber(pair[1]) {
+			return nil, fmt.Errorf("geom line must contain longitude and latitude pairs")
+		}
+		point := orb.Point{number(pair[0]), number(pair[1])}
+		if !validCoordinate(point) {
+			return nil, fmt.Errorf("geom coordinate is out of range")
+		}
+		line = append(line, point)
+	}
+	if len(line) < 2 {
+		return nil, fmt.Errorf("geom line must contain at least two points")
+	}
+	return line, nil
+}
+
+func isCoordinateNumber(value any) bool {
+	n, ok := value.(float64)
+	return ok && !math.IsNaN(n) && !math.IsInf(n, 0)
+}
+
+func number(value any) float64 { return value.(float64) }
+
+func validCoordinate(point orb.Point) bool {
+	return point.X() >= -180 && point.X() <= 180 && point.Y() >= -90 && point.Y() <= 90
 }
 
 func decodeGPX(data []byte) (orb.MultiLineString, error) {

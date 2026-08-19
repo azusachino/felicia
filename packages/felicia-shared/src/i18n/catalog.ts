@@ -15,10 +15,12 @@ export type MessageKey =
   | "kind.receipt"
   | "kind.souvenir"
   | "kind.live"
+  | "kind.ticket"
   | "ui.journeys"
   | "ui.all"
   | "ui.story"
   | "ui.close"
+  | "ui.zoom"
 
 export type Catalog = Record<MessageKey, string>
 
@@ -38,10 +40,12 @@ export const catalogs: Record<Locale, Catalog> = {
     "kind.receipt": "レシート",
     "kind.souvenir": "おみやげ",
     "kind.live": "ライブ",
+    "kind.ticket": "入場券",
     "ui.journeys": "旅の記録",
     "ui.all": "すべて表示",
     "ui.story": "物語",
     "ui.close": "閉じる",
+    "ui.zoom": "写真を拡大",
   },
   en: {
     "design.cartography": "Cartography",
@@ -58,10 +62,12 @@ export const catalogs: Record<Locale, Catalog> = {
     "kind.receipt": "Receipt",
     "kind.souvenir": "Souvenir",
     "kind.live": "Live",
+    "kind.ticket": "Ticket",
     "ui.journeys": "Journeys",
     "ui.all": "View all",
     "ui.story": "The Story",
     "ui.close": "Close",
+    "ui.zoom": "Open photo",
   },
   zh: {
     "design.cartography": "地图志",
@@ -78,10 +84,12 @@ export const catalogs: Record<Locale, Catalog> = {
     "kind.receipt": "收据",
     "kind.souvenir": "纪念品",
     "kind.live": "演出",
+    "kind.ticket": "票券",
     "ui.journeys": "旅程",
     "ui.all": "查看全部",
     "ui.story": "故事",
     "ui.close": "关闭",
+    "ui.zoom": "放大照片",
   },
 }
 

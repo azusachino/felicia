@@ -58,7 +58,7 @@ function price(amount: number | undefined, currency: string | undefined): string
 }
 
 function kind(value: string): MementoKind {
-  const known: MementoKind[] = ["goods", "transit", "stamp", "receipt", "souvenir", "live"]
+  const known: MementoKind[] = ["goods", "transit", "stamp", "receipt", "souvenir", "live", "ticket"]
   return known.includes(value as MementoKind) ? (value as MementoKind) : "goods"
 }
 

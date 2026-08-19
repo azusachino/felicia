@@ -2,6 +2,7 @@ package local
 
 import (
 	"context"
+	"encoding/binary"
 	"os"
 	"path/filepath"
 	"testing"
@@ -92,4 +93,50 @@ func TestPhotoSourceAppliesValidSidecarAndSkipsMalformedRecords(t *testing.T) {
 	if assets[0].At.IsZero() || assets[0].Coord == nil || assets[0].Title != "Ticket" || assets[0].Provenance.Source.System != "local-sidecar" || assets[0].Provenance.Confidence != .9 {
 		t.Fatalf("sidecar metadata was not applied: %#v", assets[0])
 	}
+}
+
+func TestPhotoSourceReadsEXIFTimestampAndSidecarOverridesIt(t *testing.T) {
+	dir := t.TempDir()
+	photo := filepath.Join(dir, "photo.jpg")
+	if err := os.WriteFile(photo, minimalEXIFJPEG("2026:08:02 13:09:35"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	assets, err := NewPhotoSource(dir).FetchAssets(context.Background(), time.Time{}, time.Time{})
+	if err != nil || len(assets) != 1 {
+		t.Fatalf("EXIF assets = %#v, %v", assets, err)
+	}
+	if got := assets[0].At.Format("2006-01-02 15:04:05"); got != "2026-08-02 13:09:35" {
+		t.Fatalf("EXIF timestamp = %q, asset = %#v", got, assets[0])
+	}
+	if assets[0].Provenance.Source.System != "local-exif" {
+		t.Fatalf("EXIF provenance = %#v", assets[0].Provenance)
+	}
+
+	sidecar := filepath.Join(dir, "photos.jsonl")
+	if err := os.WriteFile(sidecar, []byte(`{"path":"photo.jpg","at":"2026-08-02T15:12:39+09:00"}`+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	assets, err = NewPhotoSourceWithSidecar(dir, sidecar).FetchAssets(context.Background(), time.Time{}, time.Time{})
+	if err != nil || len(assets) != 1 {
+		t.Fatalf("sidecar assets = %#v, %v", assets, err)
+	}
+	if got := assets[0].At.Format(time.RFC3339); got != "2026-08-02T15:12:39+09:00" || assets[0].Provenance.Source.System != "local-sidecar" {
+		t.Fatalf("sidecar did not override EXIF: %#v", assets[0])
+	}
+}
+
+func minimalEXIFJPEG(timestamp string) []byte {
+	value := append([]byte(timestamp), 0)
+	tiff := []byte{'I', 'I', 42, 0, 8, 0, 0, 0, 1, 0}
+	tiff = binary.LittleEndian.AppendUint16(tiff, 0x9003)
+	tiff = binary.LittleEndian.AppendUint16(tiff, 2)
+	tiff = binary.LittleEndian.AppendUint32(tiff, uint32(len(value)))
+	tiff = binary.LittleEndian.AppendUint32(tiff, 26)
+	tiff = binary.LittleEndian.AppendUint32(tiff, 0)
+	tiff = append(tiff, value...)
+	payload := append([]byte("Exif\x00\x00"), tiff...)
+	result := []byte{0xff, 0xd8, 0xff, 0xe1}
+	result = binary.BigEndian.AppendUint16(result, uint16(len(payload)+2))
+	result = append(result, payload...)
+	return append(result, 0xff, 0xd9)
 }

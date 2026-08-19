@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Lang, Memento } from "../../data"
   import { templateFor } from "./stubs"
+  import TicketStub from "../TicketStub.svelte"
 
   let {
     memento,
@@ -18,15 +19,6 @@
 
   const t = (value: { ja: string; en: string; zh: string }) => value[lang]
   const template = $derived(templateFor(memento.kind))
-
-  function stationName(station: { name: string; ja: string }) {
-    return lang === "en" ? station.name : station.ja
-  }
-
-  function kindValue(key: string) {
-    const value = memento.kindData?.[key]
-    return typeof value === "string" ? value : ""
-  }
 </script>
 
 <button
@@ -38,6 +30,7 @@
   class:stub-goods={memento.kind === "goods"}
   class:stub-receipt={memento.kind === "receipt"}
   class:stub-souvenir={memento.kind === "souvenir"}
+  class:stub-ticket={memento.kind === "ticket"}
   aria-label={t(memento.title)}
   onclick={onSelect}
 >
@@ -48,17 +41,8 @@
       <strong>{t(memento.title)}</strong>
       <small>{t(memento.place)}</small>
     </div>
-  {:else if memento.kind === "transit" && memento.transit}
-    <div class="ticket-side">
-      <span>{t(memento.date)}</span>
-      <strong>{kindValue("operator") || t(memento.transit.operator)}</strong>
-      <small>{kindValue("line") || t(memento.transit.line)}</small>
-    </div>
-    <div class="ticket-main">
-      <span class="ticket-label">{template?.label}</span>
-      <strong>{stationName(memento.transit.from)} → {stationName(memento.transit.to)}</strong>
-      <small>{memento.transit.fare}</small>
-    </div>
+  {:else if memento.kind === "transit" || memento.kind === "ticket"}
+    <TicketStub {memento} {lang} />
   {:else if memento.kind === "stamp"}
     <div class="stamp-mark">印</div>
     <div class="stamp-copy">
@@ -139,26 +123,13 @@
     text-transform: uppercase;
   }
 
-  .stub-transit {
-    flex-direction: row;
-    gap: 1rem;
-    background: linear-gradient(105deg, #d9effa 0 39%, #c0e5f4 39% 40%, #d9effa 40%);
+  .stub-transit,
+  .stub-ticket {
+    display: block;
+    padding: 0;
+    background: transparent;
   }
 
-  .ticket-side,
-  .ticket-main {
-    display: flex;
-    min-width: 0;
-    flex: 1;
-    flex-direction: column;
-    gap: 0.35rem;
-  }
-
-  .ticket-side {
-    border-right: 1px dashed #6a8b99;
-  }
-
-  .ticket-label,
   .tag-kind,
   .card-kind {
     color: #71695e;

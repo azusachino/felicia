@@ -4,10 +4,10 @@ import type { Component } from "svelte"
 import type { Journey, Lang } from "../data"
 import type { MessageKey } from "../i18n/catalog"
 import type { Theme } from "./themes"
-import Cartography from "./cartography/Cartography.svelte"
 import Cabinet from "./cabinet/Cabinet.svelte"
 import Techo from "./techo/Techo.svelte"
 import Atlas from "./atlas/Atlas.svelte"
+import Cartography from "./cartography/Cartography.svelte"
 
 export type DesignId = "cartography" | "cabinet" | "techo" | "atlas"
 
@@ -21,13 +21,13 @@ export interface DesignLanguage {
 }
 
 // Ordered as they appear in the switcher. The first entry is the default
-// (empty hash): Cartography, the map reader (felicia:decision:map-first-landing).
+// (empty hash): Atlas, the map-and-story reader.
 export const designLanguages: DesignLanguage[] = [
   {
-    id: "cartography",
+    id: "atlas",
     hash: "",
-    labelKey: "design.cartography",
-    component: Cartography as unknown as DesignLanguage["component"],
+    labelKey: "design.atlas",
+    component: Atlas as unknown as DesignLanguage["component"],
   },
   {
     id: "cabinet",
@@ -42,10 +42,10 @@ export const designLanguages: DesignLanguage[] = [
     component: Techo as unknown as DesignLanguage["component"],
   },
   {
-    id: "atlas",
-    hash: "#atlas",
-    labelKey: "design.atlas",
-    component: Atlas as unknown as DesignLanguage["component"],
+    id: "cartography",
+    hash: "#cartography",
+    labelKey: "design.cartography",
+    component: Cartography as unknown as DesignLanguage["component"],
   },
 ]
 

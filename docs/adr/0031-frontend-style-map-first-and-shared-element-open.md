@@ -31,7 +31,7 @@ direction," tracked this gap):
 2. **Signature open interaction** — shared-element morph vs. tear/unfold vs. flip.
 
 In the time since, `apps/web-public/src/{v1,v2,v3,v4}` grew four parallel reader
-designs (`v1` "Map", `v2` "Collection", `v3` "Journal", `v4` "Atlas") as prior
+designs (Cartography, Cabinet, Techo, and Atlas) as prior
 exploration, but none of them is a direct, committed answer to either fork — they
 predate this decision, not implement it.
 

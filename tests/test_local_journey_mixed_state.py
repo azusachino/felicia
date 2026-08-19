@@ -131,8 +131,8 @@ class LocalJourneyMixedStateWorkflowTest(unittest.TestCase):
         self.assertEqual({"Published minimal ticket", "Published souvenir with full story"}, set(by_title))
 
         minimal = by_title["Published minimal ticket"]
-        self.assertNotIn("geom", minimal, "minimal published memento should omit its unset geometry")
-        self.assertEqual("", minimal.get("occurred_tz", ""))
+        self.assertEqual("LineString", minimal["geom"]["type"])
+        self.assertEqual("Asia/Tokyo", minimal["occurred_tz"])
         self.assertNotIn("photos", minimal, "minimal published memento has no photos")
 
         full = by_title["Published souvenir with full story"]

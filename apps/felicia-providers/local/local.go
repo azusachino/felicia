@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/paulmach/orb"
+	"github.com/rwcarlsen/goexif/exif"
 
 	"github.com/azusachino/felicia/apps/felicia-core/domain"
 )
@@ -76,10 +77,9 @@ func (s *GPXSource) FetchRoutes(ctx context.Context, from, to time.Time) ([]doma
 	return routes, nil
 }
 
-// PhotoSource walks a local media directory. Local files have no dependable
-// capture timestamp without EXIF decoding; At is therefore zero and the
-// planner leaves them visible as unattached evidence instead of treating file
-// modification time as a memory timestamp.
+// PhotoSource walks a local media directory and reads capture metadata from
+// EXIF when the file format exposes it. A sidecar remains the explicit
+// override for formats such as HEIC, or for corrected timestamps and GPS.
 type PhotoSource struct {
 	root    string
 	sidecar string
@@ -198,6 +198,44 @@ func applySidecar(asset *domain.PhotoAsset, record sidecarRecord) {
 	if record.Kind != "" {
 		asset.Kind = domain.MediaKind(record.Kind)
 	}
+}
+
+func readEXIF(filename string) (time.Time, *orb.Point, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return time.Time{}, nil, err
+	}
+	defer func() { _ = file.Close() }()
+	metadata, err := exif.Decode(file)
+	if err != nil {
+		// Unsupported containers and images without EXIF are valid local input;
+		// the caller keeps the asset and lets the sidecar supply metadata.
+		return time.Time{}, nil, nil
+	}
+	at := exifTimestamp(metadata)
+	var coord *orb.Point
+	if latitude, longitude, err := metadata.LatLong(); err == nil && latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180 {
+		point := orb.Point{longitude, latitude}
+		coord = &point
+	}
+	return at, coord, nil
+}
+
+func exifTimestamp(metadata *exif.Exif) time.Time {
+	for _, field := range []exif.FieldName{exif.DateTimeOriginal, exif.DateTime} {
+		tag, err := metadata.Get(field)
+		if err != nil {
+			continue
+		}
+		value, err := tag.StringVal()
+		if err != nil {
+			continue
+		}
+		if at, err := time.ParseInLocation("2006:01:02 15:04:05", value, time.Local); err == nil {
+			return at
+		}
+	}
+	return time.Time{}
 }
 
 func safeRelativePath(value string) bool {
@@ -329,5 +367,15 @@ func localAsset(root, path string) (domain.PhotoAsset, error) {
 		kind = domain.MediaVideo
 	}
 	source := domain.SourceIdentity{System: "local-media", ExternalID: relative}
-	return domain.PhotoAsset{ID: relative, Kind: kind, Checksum: "sha256:" + hex.EncodeToString(sum[:]), SourceRef: source.Ref(), Provenance: domain.Provenance{Source: source, Confidence: 1}, URI: relative, MIME: mime.TypeByExtension(filepath.Ext(path)), Title: strings.TrimSuffix(filepath.Base(path), filepath.Ext(path)), Provider: "local"}, nil
+	asset := domain.PhotoAsset{ID: relative, Kind: kind, Checksum: "sha256:" + hex.EncodeToString(sum[:]), SourceRef: source.Ref(), Provenance: domain.Provenance{Source: source, Confidence: 1}, URI: relative, MIME: mime.TypeByExtension(filepath.Ext(path)), Title: strings.TrimSuffix(filepath.Base(path), filepath.Ext(path)), Provider: "local"}
+	at, coord, err := readEXIF(path)
+	if err != nil {
+		return domain.PhotoAsset{}, fmt.Errorf("read EXIF %s: %w", path, err)
+	}
+	if !at.IsZero() || coord != nil {
+		asset.Provenance = domain.Provenance{Source: domain.SourceIdentity{System: "local-exif", ExternalID: relative}, ObservedAt: at, Confidence: 0.8}
+	}
+	asset.At = at
+	asset.Coord = coord
+	return asset, nil
 }

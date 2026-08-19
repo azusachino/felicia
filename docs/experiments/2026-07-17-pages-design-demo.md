@@ -9,13 +9,12 @@ date: "2026-07-17"
 This is an implementation experiment for Felicia's first portable reader. It
 tries the existing public designs against one generated static data projection:
 
-- `#collection` — collection/index-oriented presentation;
+- `#cabinet` — collection/index-oriented presentation;
 - `#techo` — memento/story-oriented presentation;
 - `#atlas` — map/index-oriented presentation.
 
-The experiment does not select a design or settle the application architecture.
-The three surfaces are alternative readers of the same output and remain
-available for product review.
+Atlas is now the default design. The named surfaces remain alternative readers
+of the same output and remain available for product review.
 
 ## Reproduction
 

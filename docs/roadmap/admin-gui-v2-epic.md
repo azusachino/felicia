@@ -66,11 +66,11 @@ resource-upload path.
 
 ### M2 — Site identity: design pick, style, `site.json` (landed)
 
-| Task                                                 | Status | Outcome                                                                                                      |
-| ---------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------ |
-| 02.2a `site.json` contract                           | done   | Title/description/design/language/theme/accent via `GET/PUT /api/admin/site-settings` → `/api/v1/site.json`. |
-| 02.2b Reader consumption — one design per deployment | done   | Deployed site boots into `site.json`'s design (default `cartography`); switcher removed.                     |
-| 02.2c Site page: design picker + site info + style   | done   | Four design cards + site info + style fields, saved through 02.2a.                                           |
+| Task                                               | Status | Outcome                                                                                                                  |
+| -------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------ |
+| 02.2a `site.json` contract                         | done   | Title/description/design/language/theme/accent via `GET/PUT /api/admin/site-settings` → `/api/v1/site.json`.             |
+| 02.2b Reader consumption — named design registry   | done   | Deployed site boots into `site.json`'s design (default `atlas`); the public preview switcher can try every named design. |
+| 02.2c Site page: design picker + site info + style | done   | Four design cards + site info + style fields, saved through 02.2a.                                                       |
 
 Bounded to site-level _tokens_, not a theming engine (fonts, per-design
 palettes, layout knobs stay out).

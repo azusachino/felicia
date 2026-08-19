@@ -7,9 +7,8 @@ admin is a local process over a local database, and nothing here can publish.
 
 Two deliberate choices:
 
-  * The GUI binds 127.0.0.1, never 0.0.0.0. `apps/felicia-admin/vite.config.ts`
-    defaults to 0.0.0.0 so the E2E harness can reach it from a container; an
-    authoring session has no such need and must not be reachable from the LAN.
+  * The local stack binds 0.0.0.0 by default so the author can reach it over
+    Tailscale. Override `FELICIA_HOST=127.0.0.1` for a host-only session.
   * The database defaults under `.felicia/` (gitignored) instead of the repo
     root. The authored journal is exactly the thing ADR-0025 says never leaves
     the machine, so its default location must not be a committable path. It is
@@ -33,12 +32,11 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parent.parent
 WEB_ADMIN = ROOT / "apps" / "felicia-admin"
 API_BINARY = Path(tempfile.gettempdir()) / f"felicia-admin-api-{os.getpid()}"
 DEFAULT_DATABASE = ROOT / ".felicia" / "local.sqlite"
-LOOPBACK = "127.0.0.1"
+LOCALHOST = "127.0.0.1"
 
 
 def run(command: list[str], *, env: dict[str, str] | None = None, cwd: Path = ROOT) -> None:
@@ -67,6 +65,7 @@ def wait_ready(process: subprocess.Popen, base_url: str, timeout_s: int = 60) ->
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Start the local admin GUI")
+    parser.add_argument("--host", default=os.environ.get("FELICIA_HOST", "0.0.0.0"))
     parser.add_argument("--api-port", default=os.environ.get("PORT", "8080"))
     parser.add_argument("--gui-port", default=os.environ.get("ADMIN_GUI_PORT", "5174"))
     parser.add_argument(
@@ -86,6 +85,7 @@ def start_api(arguments: argparse.Namespace) -> subprocess.Popen:
         {
             "DATABASE_DRIVER": "sqlite",
             "DATABASE_PATH": str(database),
+            "FELICIA_HOST": arguments.host,
             "PORT": arguments.api_port,
             # An authoring session is single-user; Valkey is a serving-side
             # cache and requiring it here would add a container to the loop.
@@ -99,7 +99,7 @@ def start_gui(arguments: argparse.Namespace) -> None:
     if not (WEB_ADMIN / "node_modules").exists():
         run(["bun", "install"], cwd=ROOT)
     environment = os.environ.copy()
-    environment["VITE_API_PROXY"] = f"http://{LOOPBACK}:{arguments.api_port}"
+    environment["VITE_API_PROXY"] = f"http://{LOCALHOST}:{arguments.api_port}"
     run(
         [
             "bun",
@@ -107,7 +107,7 @@ def start_gui(arguments: argparse.Namespace) -> None:
             "dev",
             "--",
             "--host",
-            LOOPBACK,
+            arguments.host,
             "--port",
             arguments.gui_port,
             "--strictPort",
@@ -122,14 +122,18 @@ def main() -> int:
     api: subprocess.Popen | None = None
     try:
         api = start_api(arguments)
-        base_url = f"http://{LOOPBACK}:{arguments.api_port}"
+        base_url = f"http://{LOCALHOST}:{arguments.api_port}"
         wait_ready(api, base_url)
         # flush: this banner is the only place the URLs appear, and stdout is
         # block-buffered whenever the caller redirects it to a file or pipe.
-        print(f"admin GUI:      http://{LOOPBACK}:{arguments.gui_port}/", flush=True)
+        print(
+            f"admin GUI:      http://localhost:{arguments.gui_port}/ (bind: {arguments.host})",
+            flush=True,
+        )
         print(f"admin API:      {base_url}/api/admin", flush=True)
         print(
-            f"site preview:   http://{LOOPBACK}:8081/  (after a Build in Site & Deploy)",
+            f"site preview:   http://localhost:8081/ (bind: {arguments.host}, "
+            "after a Build in Site & Deploy)",
             flush=True,
         )
         print(f"database:       {arguments.db}", flush=True)

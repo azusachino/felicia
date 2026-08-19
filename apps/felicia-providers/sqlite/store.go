@@ -34,7 +34,14 @@ var _ ports.SiteSettingsStore = (*Repository)(nil)
 
 // Repository persists the canonical model in a local SQLite database.
 type Repository struct {
-	db *sql.DB
+	db   queryer
+	conn *sql.DB
+}
+
+type queryer interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+	QueryRowContext(context.Context, string, ...any) *sql.Row
 }
 
 // Open opens a SQLite file. Use ":memory:" for isolated tests.
@@ -43,7 +50,7 @@ func Open(path string) (*Repository, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite: %w", err)
 	}
-	r := &Repository{db: db}
+	r := &Repository{db: db, conn: db}
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 	if _, err := db.ExecContext(context.Background(), "PRAGMA foreign_keys = ON"); err != nil {
@@ -73,7 +80,29 @@ func Open(path string) (*Repository, error) {
 }
 
 // Close releases the database handle.
-func (r *Repository) Close() error { return r.db.Close() }
+func (r *Repository) Close() error { return r.conn.Close() }
+
+// WithTransaction applies one callback against a transaction-scoped
+// repository. Package import uses this seam so a failed child write cannot
+// leave a journal or journey partially persisted.
+func (r *Repository) WithTransaction(ctx context.Context, fn func(domain.Repository) error) error {
+	if fn == nil {
+		return errors.New("transaction callback is required")
+	}
+	tx, err := r.conn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	txRepo := &Repository{db: tx, conn: r.conn}
+	if err := fn(txRepo); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit transaction: %w", err)
+	}
+	return nil
+}
 
 func now() string { return time.Now().UTC().Format(time.RFC3339Nano) }
 

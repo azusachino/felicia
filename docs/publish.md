@@ -12,19 +12,21 @@ photos stay local and are gitignored
 ([ADR-0025](adr/0025-static-and-self-hosted-modes.md),
 [ADR-0026](adr/0026-local-first-media-and-blob-storage.md)).
 
-There is **no hosted admin**. The authoring GUI runs on `127.0.0.1` on your own
-machine and is never deployed; GitHub only ever holds the static site.
+There is **no hosted admin**. The authoring GUI runs from your own machine and
+is never deployed; `make admin` binds the local stack to `0.0.0.0` for access
+over Tailscale. GitHub only ever holds the static site. Because the admin API is
+unauthenticated, keep the host firewall and Tailscale ACLs as the access boundary.
 
 ## Two routes
 
-|                            | **A — CI build**                        | **B — Local authoring** (recommended) |
-| -------------------------- | --------------------------------------- | ------------------------------------- |
-| Content lives in           | JSON files committed to the repo        | local SQLite, never committed         |
-| Authoring interface        | a text editor                           | the admin GUI                         |
-| Built by                   | GitHub Actions                          | your machine                          |
-| Site title / design choice | not available (defaults to cartography) | set in the GUI                        |
-| Privacy                    | journal content is in git history       | only `dist/` leaves the machine       |
-| Needs a fork               | yes (for `.github/workflows/`)          | no — any checkout plus an empty repo  |
+|                            | **A — CI build**                  | **B — Local authoring** (recommended) |
+| -------------------------- | --------------------------------- | ------------------------------------- |
+| Content lives in           | JSON files committed to the repo  | local SQLite, never committed         |
+| Authoring interface        | a text editor                     | the admin GUI                         |
+| Built by                   | GitHub Actions                    | your machine                          |
+| Site title / design choice | not available (defaults to Atlas) | set in the GUI                        |
+| Privacy                    | journal content is in git history | only `dist/` leaves the machine       |
+| Needs a fork               | yes (for `.github/workflows/`)    | no — any checkout plus an empty repo  |
 
 Route A is how the project's own demo site is published. Route B is the
 intended path for a personal journal.
@@ -32,6 +34,42 @@ intended path for a personal journal.
 ---
 
 ## Route B — local authoring
+
+### The trip folder contract
+
+Put each trip's source files together before opening admin:
+
+```text
+my-trip/
+├── route.gpx
+├── photos/
+│   ├── IMG_2699.jpeg
+│   └── IMG_2708.jpeg
+└── photos.jsonl              # optional EXIF/GPS/title overrides
+```
+
+The scanner treats paths in `photos.jsonl` as relative to `photos/`. Use one
+JSON object per line; `at` is the capture timestamp and `coord` is
+`[longitude, latitude]`:
+
+```jsonl
+{"path":"IMG_2699.jpeg","at":"2026-08-02T13:09:35+09:00"}
+{"path":"IMG_2708.jpeg","at":"2026-08-02T15:12:39+09:00"}
+```
+
+The GPX and original photos remain private source evidence. Scan and preview
+derive editable draft records from them; they do not rewrite the files. The
+admin scan/import surface is planned; until it lands, `make journey-local`
+performs the scan and writes the editable workspace under
+`.felicia/local-journey/<slug>`:
+
+```bash
+make journey-local GPX=~/my-trip/route.gpx PHOTOS=~/my-trip/photos \
+  SIDECAR=~/my-trip/photos.jsonl SLUG=my-trip TITLE="My trip"
+```
+
+See [ADR-0035](adr/0035-local-journey-workspace-and-preview.md) for the
+dry-run, provenance, draft-preview, and named-design boundaries.
 
 ### 1. Get the code and a site repo
 
@@ -110,8 +148,8 @@ Two things decide whether this produces anything:
 make admin
 ```
 
-- admin GUI — `http://127.0.0.1:5174/`
-- site preview — `http://127.0.0.1:8081/`
+- admin GUI — `http://localhost:5174/` (use the host's Tailscale IP or MagicDNS name remotely)
+- site preview — `http://localhost:8081/` (same Tailscale access)
 
 Confirm stop candidates in the intake inbox, write essays in the memento editor,
 then advance each memento `draft → authored → published`. Imported mementos

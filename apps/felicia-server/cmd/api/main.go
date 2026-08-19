@@ -5,6 +5,7 @@ import (
 	"context"
 	"io/fs"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 
@@ -104,13 +105,15 @@ func run(logger *slog.Logger) error {
 	// preview listener degrades the Site page but must not take the admin
 	// API down with it.
 	go func() {
-		logger.Info("starting site preview server", "url", "http://localhost:"+cfg.SitePreviewPort)
-		if err := http.ListenAndServe(":"+cfg.SitePreviewPort, api.PreviewHandler(server.SiteOutDir, cfg.SiteSpaDist)); err != nil {
+		listenAddr := net.JoinHostPort(cfg.Host, cfg.SitePreviewPort)
+		logger.Info("starting site preview server", "bind", listenAddr)
+		if err := http.ListenAndServe(listenAddr, api.PreviewHandler(server.SiteOutDir, cfg.SiteSpaDist)); err != nil {
 			logger.Error("site preview server stopped", "err", err)
 		}
 	}()
 
 	// 5. Start local admin web server
-	logger.Info("starting admin server", "url", "http://localhost:"+cfg.Port)
-	return http.ListenAndServe(":"+cfg.Port, server.Handler())
+	listenAddr := net.JoinHostPort(cfg.Host, cfg.Port)
+	logger.Info("starting admin server", "bind", listenAddr)
+	return http.ListenAndServe(listenAddr, server.Handler())
 }

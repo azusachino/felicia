@@ -3,8 +3,10 @@
   import { onMount, tick } from "svelte"
   import { cubicOut } from "svelte/easing"
   import { crossfade, fade } from "svelte/transition"
-  import { kindLabel, uiText, type Coordinates, type Journey, type L, type Lang, type Memento, type MementoKind, type Station, type Theme } from "../../data"
+  import { kindLabel, uiText, type Coordinates, type Journey, type L, type Lang, type Memento, type MementoKind, type Theme } from "../../data"
   import { message, type MessageKey } from "../../i18n/catalog"
+  import PhotoLightbox from "../PhotoLightbox.svelte"
+  import TicketStub from "../TicketStub.svelte"
 
   // Cartography — the liuaaron-aligned map reader: journey index rail -> map
   // hero -> paper detail. The map is the index. Reached from Cabinet as the
@@ -48,8 +50,6 @@
   })
 
   $: t = (value: L | MessageKey) => (typeof value === "string" ? message(lang, value) : value[lang])
-  $: stationName = (s: Station) => (lang === "en" ? s.name : s.ja)
-
   // kind_data is the template registry's untyped bag (ADR-0006): read it
   // defensively so a memento authored with only its required field still
   // renders a deliberate stub rather than an empty box.
@@ -467,22 +467,8 @@
           </div>
 
           <div class="stub-card {selected.kind}" in:receiveStub={{ key: selected.id }} out:sendStub={{ key: selected.id }}>
-            {#if selected.kind === "transit" && selected.transit}
-              <div class="ticket-face">
-                <div class="ticket-line">
-                  <span>{t(selected.transit.operator)}</span>
-                  <strong>{t(selected.transit.line)}</strong>
-                </div>
-                <div class="station-pair">
-                  <span>{stationName(selected.transit.from)}</span>
-                  <b>→</b>
-                  <span>{stationName(selected.transit.to)}</span>
-                </div>
-                <div class="ticket-meta">
-                  <span>{t(selected.date)}</span>
-                  <span>{selected.transit.fare}</span>
-                </div>
-              </div>
+            {#if selected.kind === "transit" || selected.kind === "ticket"}
+              <TicketStub memento={selected} {lang} />
             {:else if selected.kind === "stamp"}
               <!-- 御朱印 — ink on washi; the vermilion seal block is the signature. -->
               <div class="washi-face">
@@ -584,7 +570,7 @@
             <div class="gallery">
               {#each selected.photos as photo, index (`${photo.src}:${index}`)}
                 <figure>
-                  <img src={photo.src} alt={t(selected.title)} />
+                  <PhotoLightbox src={photo.src} alt={t(selected.title)} caption={t(photo.caption)} openLabel={t(uiText.zoom)} closeLabel={t(uiText.close)} />
                   <figcaption>{t(photo.caption)}</figcaption>
                 </figure>
               {/each}

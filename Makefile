@@ -132,7 +132,7 @@ test-postgres: ## Run PostgreSQL tests against the disposable test database
 	DATABASE_DSN= FELICIA_TEST_DATABASE_DSN="$(FELICIA_TEST_DATABASE_DSN)" $(MAKE) test
 
 test-features: ## Run offline Python feature-contract tests
-	$(UV_RUN) run --group dev ruff check scripts tests
+	$(UV_RUN) run --group dev ruff check --config pyproject.toml scripts tests
 	$(UV_RUN) run python -m unittest discover -s tests
 
 layout-check: ## Verify application/package layout and dependency boundaries

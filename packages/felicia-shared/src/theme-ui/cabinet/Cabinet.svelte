@@ -1,8 +1,10 @@
 <script lang="ts">
   import { fade, fly } from "svelte/transition"
   import { onMount } from "svelte"
-  import { kindLabel, uiText, type Journey, type MementoCard, type L, type Lang, type Memento, type Station, type Theme } from "../../data"
+  import { kindLabel, uiText, type Journey, type MementoCard, type L, type Lang, type Memento, type Theme } from "../../data"
   import { message, type MessageKey } from "../../i18n/catalog"
+  import PhotoLightbox from "../PhotoLightbox.svelte"
+  import TicketStub from "../TicketStub.svelte"
 
   // Cabinet — memento-first front door. The detailed memento "page" is the
   // centre; a preview carousel is the index. Cartography is reached as the
@@ -26,7 +28,6 @@
   let error: string | null = null
 
   $: t = (value: L | MessageKey) => (typeof value === "string" ? message(lang, value) : value[lang])
-  $: stationName = (s: Station) => (lang === "en" ? s.name : s.ja)
   $: memento = selected?.memento as Memento | undefined
 
   onMount(() => {
@@ -85,22 +86,8 @@
         <div class="cabinet-detail" in:fade={{ duration: 200 }}>
           <div class="cabinet-stub-col" in:fly={{ y: 14, duration: 320, delay: 40 }}>
             <div class="stub-card {memento.kind}">
-              {#if memento.kind === "transit" && memento.transit}
-                <div class="ticket-face">
-                  <div class="ticket-line">
-                    <span>{t(memento.transit.operator)}</span>
-                    <strong>{t(memento.transit.line)}</strong>
-                  </div>
-                  <div class="station-pair">
-                    <span>{stationName(memento.transit.from)}</span>
-                    <b>→</b>
-                    <span>{stationName(memento.transit.to)}</span>
-                  </div>
-                  <div class="ticket-meta">
-                    <span>{t(memento.date)}</span>
-                    <span>{memento.transit.fare}</span>
-                  </div>
-                </div>
+              {#if memento.kind === "transit" || memento.kind === "ticket"}
+                <TicketStub {memento} {lang} />
               {:else if memento.kind === "stamp"}
                 <div class="stamp-face">
                   <span>御朱印</span>
@@ -149,7 +136,7 @@
               <div class="gallery">
                 {#each memento.photos as photo, index (`${photo.src}:${index}`)}
                   <figure>
-                    <img src={photo.src} alt={t(memento.title)} />
+                    <PhotoLightbox src={photo.src} alt={t(memento.title)} caption={t(photo.caption)} openLabel={t(uiText.zoom)} closeLabel={t(uiText.close)} />
                     <figcaption>{t(photo.caption)}</figcaption>
                   </figure>
                 {/each}
