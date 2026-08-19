@@ -2,7 +2,7 @@
 
 Every other local-journey fixture in this repository is a hand-written
 workspace, so nothing exercised the producer itself. That let the planner's
-output drift away from `schemas/local-authoring-v1.schema.json` field by field
+output drift away from `schemas/journey-v1.schema.json` field by field
 until `make journey-local` could not be packaged at all, and let a key-casing
 mismatch drop every photo without a word. This test runs the real compiled CLI
 and asserts the producer's own output against the repository's own schema.

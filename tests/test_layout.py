@@ -25,7 +25,7 @@ class LayoutBoundaryTests(unittest.TestCase):
             SHARED / "src" / "theme-ui" / "themes.ts",
             ROOT / "ops",
             ROOT / "contracts" / "canonical" / "v1" / "schema.json",
-            ROOT / "publication" / "journeys" / "workspace.json",
+            ROOT / "publication" / "journeys" / "catalog.json",
         ):
             self.assertTrue(path.exists(), path)
 

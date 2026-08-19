@@ -254,7 +254,7 @@ manifest reconciliation removes it from the artifact.
    Each journey directory contains one `journey.json`, selected stops, authored
    mementos, a rounded public route, and public image derivatives.
    Add future journeys by adding the same file set and one entry to
-   `publication/journeys/workspace.json`; the publisher discovers them without
+   `publication/journeys/catalog.json`; the publisher discovers them without
    source-code edits.
 6. Verify locally with `make pages-preview` (`http://localhost:8082`).
 7. Push to `main`; the workflow rebuilds and deploys.

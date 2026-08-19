@@ -14,7 +14,7 @@ runs the **real publication pipeline** against the production journey catalog:
 The catalog is data-driven. Add a new directory under `publication/journeys/`
 with the same `journey.json`, `stops.json`, `mementos.json`, `route.gpx`, and
 public `media/` set, then add its path and identity to
-`publication/journeys/workspace.json`. The publisher discovers every manifest
+`publication/journeys/catalog.json`. The publisher discovers every manifest
 entry; adding a journey does not require a Go, TypeScript, or workflow change.
 
 ## Deployment topology (why the repo stays clean)

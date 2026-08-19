@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://felicia.local/contracts/canonical/v1/schema.json",
+  "$id": "https://github.com/azusachino/felicia/contracts/canonical/v1/schema.json",
   "title": "Felicia canonical contract v1",
   "description": "Stable Felicia-owned data shapes. Transport adapters may project these records, but provider-specific fields do not belong here.",
   "$defs": {

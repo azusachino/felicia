@@ -1,5 +1,5 @@
 {
-  "schema": "felicia.local.journey.v1",
+  "schema": "felicia.journey.v1",
   "id": "0190cbde-f300-7000-9000-a00000000002",
   "journal_id": "0190cbde-f300-7000-9000-000000000000",
   "slug": "zero-published-journey",

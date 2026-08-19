@@ -50,13 +50,12 @@ def build_from_publication_workspace(source: Path, workspace: Path) -> Path:
 def main() -> None:
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     source_root = ROOT / "publication" / "journeys"
-    manifest = source_root / "workspace.json"
-    if manifest.is_file():
-        validate_workspace_root(source_root)
-        entries = json.loads(manifest.read_text(encoding="utf-8"))["journeys"]
-        sources = [(source_root / entry["path"]).resolve() for entry in entries]
-    else:
-        sources = [source_root, *sorted(path for path in source_root.iterdir() if path.is_dir())]
+    manifest = source_root / "catalog.json"
+    if not manifest.is_file():
+        raise SystemExit(f"catalog.json is required in checked-in publication source: {source_root}")
+    validate_workspace_root(source_root)
+    entries = json.loads(manifest.read_text(encoding="utf-8"))["journeys"]
+    sources = [(source_root / entry["path"]).resolve() for entry in entries]
     shutil.rmtree(PACKAGE_DIR, ignore_errors=True)
     PACKAGE_DIR.mkdir(parents=True, exist_ok=True)
     generated = []

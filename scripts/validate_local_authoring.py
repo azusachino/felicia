@@ -9,9 +9,10 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 
 ROOT = Path(__file__).resolve().parent.parent
-SCHEMA_PATH = ROOT / "schemas" / "local-authoring-v1.schema.json"
+SCHEMA_PATH = ROOT / "schemas" / "journey-v1.schema.json"
 DEFINITION_FOR_FILE = {
     "workspace.json": "workspace",
+    "catalog.json": "catalog",
     "journey.json": "journey",
     "stops.json": "stops_file",
     "mementos.json": "mementos_file",
@@ -20,7 +21,9 @@ DEFINITION_FOR_FILE = {
 
 
 def validate_workspace_root(root: Path) -> None:
-    manifest_path = root / "workspace.json"
+    manifest_path = root / "catalog.json"
+    if not manifest_path.is_file():
+        manifest_path = root / "workspace.json"
     validate_document(manifest_path)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     root_resolved = root.resolve()
@@ -31,32 +34,32 @@ def validate_workspace_root(root: Path) -> None:
         try:
             journey_path.relative_to(root_resolved)
         except ValueError as error:
-            raise ValueError(f"workspace journey escapes root: {entry['path']}") from error
+            raise ValueError(f"catalog journey escapes root: {entry['path']}") from error
         if journey_path in seen_paths:
-            raise ValueError(f"workspace journey path is duplicated: {entry['path']}")
+            raise ValueError(f"catalog journey path is duplicated: {entry['path']}")
         if entry["id"] in seen_ids:
-            raise ValueError(f"workspace journey ID is duplicated: {entry['id']}")
+            raise ValueError(f"catalog journey ID is duplicated: {entry['id']}")
         seen_paths.add(journey_path)
         seen_ids.add(entry["id"])
     for entry in manifest["journeys"]:
         journey_path = (root / entry["path"]).resolve()
         if not journey_path.is_dir():
-            raise ValueError(f"workspace journey directory is missing: {entry['path']}")
+            raise ValueError(f"catalog journey directory is missing: {entry['path']}")
         validate_workspace(journey_path)
         journey = json.loads((journey_path / "journey.json").read_text(encoding="utf-8"))
         if journey["id"] != entry["id"]:
-            raise ValueError(f"workspace journey ID mismatch: {entry['path']}")
+            raise ValueError(f"catalog journey ID mismatch: {entry['path']}")
         if journey["journal_id"] != manifest["journal_id"]:
-            raise ValueError(f"workspace journal ID mismatch: {entry['path']}")
+            raise ValueError(f"catalog journal ID mismatch: {entry['path']}")
         if entry.get("slug") and journey.get("slug") != entry["slug"]:
-            raise ValueError(f"workspace journey slug mismatch: {entry['path']}")
+            raise ValueError(f"catalog journey slug mismatch: {entry['path']}")
 
 
 def validate_document(path: Path) -> None:
     try:
         definition = DEFINITION_FOR_FILE[path.name]
     except KeyError as error:
-        raise ValueError(f"unsupported local authoring file: {path.name}") from error
+        raise ValueError(f"unsupported journey contract file: {path.name}") from error
     document = json.loads(path.read_text(encoding="utf-8"))
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
     selected = {"$schema": schema["$schema"], "$defs": schema["$defs"], "$ref": f"#/$defs/{definition}"}
@@ -85,7 +88,7 @@ if __name__ == "__main__":
     parser.add_argument("workspace", type=Path)
     args = parser.parse_args()
     workspace = args.workspace.resolve()
-    if (workspace / "workspace.json").is_file():
+    if (workspace / "catalog.json").is_file() or (workspace / "workspace.json").is_file():
         validate_workspace_root(workspace)
         print(f"publication catalog valid: {args.workspace}")
     else:

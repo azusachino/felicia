@@ -119,7 +119,7 @@ projection:
   entry path from a real GPX file and a photo folder found it broken at
   every step: eight consecutive blockers between `make journey-local` and a
   packaged journey. Four were contract drift against
-  `schemas/local-authoring-v1.schema.json` (the planner's `date_start`/
+  `schemas/journey-v1.schema.json` (the planner's `date_start`/
   `date_end`; a candidate's deliberately-unset `kind`; and the whole
   `stop_candidate` definition, still spelled in Go PascalCase after
   `domain.StopCandidate` gained snake_case tags), two were nil maps and

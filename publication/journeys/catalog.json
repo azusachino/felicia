@@ -1,5 +1,5 @@
 {
-  "schema": "felicia.local.workspace.v1",
+  "schema": "felicia.catalog.v1",
   "version": "1",
   "journal_id": "0190cbde-f300-7000-8000-000000000000",
   "journeys": [
