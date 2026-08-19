@@ -1,8 +1,6 @@
 <script lang="ts">
-  import { designs } from "./designs"
-  import type { Lang, Theme } from "./data"
-  import { resolveLocale } from "./i18n/catalog"
-  import { loadSiteSettings, type ApiSiteSettings } from "./api/source"
+  import { designs, resolveLocale, type ApiSiteSettings, type Lang, type Theme } from "@felicia/shared"
+  import { loadJourneys, loadSiteSettings } from "./api/source"
 
   // The public reader is locked to a single design, chosen by the author from
   // the admin GUI (FELICIA-ADMIN-02 M2) and served as part of `/api/v1/site`.
@@ -48,5 +46,5 @@
 </script>
 
 {#key active.id}
-  <Active bind:lang bind:theme />
+  <Active bind:lang bind:theme {loadJourneys} />
 {/key}

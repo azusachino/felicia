@@ -2,7 +2,6 @@
   import { kindLabel, type Coordinates, type L, type Lang, type Memento, type Theme } from "../data"
   import TripMap from "./TripMap.svelte"
   import TechoIndexMap from "./TechoIndexMap.svelte"
-  import { loadJourneys } from "../api/source"
   import { message, type MessageKey } from "../i18n/catalog"
   import type { Journey } from "../data"
   import { onMount } from "svelte"
@@ -13,7 +12,11 @@
   // (map is the index — felicia:decision:map-first-landing), and opening a place
   // reveals its memories (a place holds several) as paper cards with essay +
   // gallery. Styled with Tailwind (felicia:decision:techo-paper-v3).
-  let { lang = $bindable("ja"), theme = $bindable("dark") }: { lang?: Lang; theme?: Theme } = $props()
+  let {
+    lang = $bindable("ja"),
+    theme = $bindable("dark"),
+    loadJourneys,
+  }: { lang?: Lang; theme?: Theme; loadJourneys: () => Promise<Journey[]> } = $props()
 
   let journeys = $state<Journey[]>([])
   let isLoading = $state(true)

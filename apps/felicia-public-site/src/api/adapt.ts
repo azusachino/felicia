@@ -1,5 +1,4 @@
-import type { Coordinates, Journey, L, Memento, MementoKind, Station, Visit } from "../data"
-import type { ApiGeoJSONGeometry, ApiJourney, ApiMemento } from "./types"
+import type { ApiGeoJSONGeometry, ApiJourney, ApiMemento, Coordinates, Journey, L, Memento, MementoKind, Station, Visit } from "@felicia/shared"
 
 function authored(canonical: string | undefined): L {
   const value = canonical ?? ""

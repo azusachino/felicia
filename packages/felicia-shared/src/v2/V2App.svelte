@@ -1,14 +1,14 @@
 <script lang="ts">
   import { fade, fly } from "svelte/transition"
   import { onMount } from "svelte"
-  import { loadJourneys } from "../api/source"
-  import { kindLabel, uiText, type MementoCard, type L, type Lang, type Memento, type Station, type Theme } from "../data"
+  import { kindLabel, uiText, type Journey, type MementoCard, type L, type Lang, type Memento, type Station, type Theme } from "../data"
   import { message, type MessageKey } from "../i18n/catalog"
 
   // v2 — memento-first front door. The detailed memento "page" is the centre;
   // a preview carousel is the index. The map (v1) is reached as the "more" view.
   export let lang: Lang = "ja"
   export let theme: Theme = "dark"
+  export let loadJourneys: () => Promise<Journey[]>
   export let toMap: (() => void) | undefined = undefined
 
   const title = { ja: "旅の残り香", en: "What Lingers", zh: "旅途余香" }

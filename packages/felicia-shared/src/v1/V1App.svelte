@@ -3,7 +3,6 @@
   import { onMount, tick } from "svelte"
   import { cubicOut } from "svelte/easing"
   import { crossfade, fade } from "svelte/transition"
-  import { loadJourneys } from "../api/source"
   import { kindLabel, uiText, type Coordinates, type Journey, type L, type Lang, type Memento, type MementoKind, type Station, type Theme } from "../data"
   import { message, type MessageKey } from "../i18n/catalog"
 
@@ -11,6 +10,7 @@
   // paper detail. The map is the index. Reached from v2 as the "more" view.
   export let lang: Lang = "ja"
   export let theme: Theme = "dark"
+  export let loadJourneys: () => Promise<Journey[]>
   export let toMemories: (() => void) | undefined = undefined
 
   let journeys: Journey[] = []

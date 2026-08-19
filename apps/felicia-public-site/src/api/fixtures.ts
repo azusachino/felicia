@@ -1,4 +1,4 @@
-import type { ApiJourney, ApiMemento } from "./types"
+import type { ApiJourney, ApiMemento } from "@felicia/shared"
 
 type Scenario = {
   journeys: Array<{

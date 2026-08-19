@@ -63,4 +63,13 @@ export interface ApiJourneyPayload {
   mementos: ApiMemento[]
 }
 
+export interface ApiSiteSettings {
+  title: string
+  description: string
+  design: "v1" | "v2" | "v3" | "v4"
+  default_language: "ja" | "en" | "zh"
+  default_theme: "dark" | "light"
+  accent: string
+}
+
 export type { Coordinates, MementoKind }

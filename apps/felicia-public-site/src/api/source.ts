@@ -1,20 +1,10 @@
-import type { Journey } from "../data"
+import type { ApiJourney, ApiJourneyListItem, ApiMemento, ApiSiteSettings, Journey } from "@felicia/shared"
 import { adaptJourney } from "./adapt"
-import type { ApiJourney, ApiJourneyListItem, ApiMemento } from "./types"
 
 function endpoint(path: string): string {
   const apiBase = import.meta.env.VITE_API_BASE || ""
   const baseURL = apiBase || import.meta.env.BASE_URL || "/"
   return `${baseURL.replace(/\/$/, "")}${path}.json`
-}
-
-export interface ApiSiteSettings {
-  title: string
-  description: string
-  design: "v1" | "v2" | "v3" | "v4"
-  default_language: "ja" | "en" | "zh"
-  default_theme: "dark" | "light"
-  accent: string
 }
 
 export async function loadSiteSettings(): Promise<ApiSiteSettings> {

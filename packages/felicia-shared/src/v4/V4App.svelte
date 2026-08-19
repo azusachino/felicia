@@ -2,10 +2,13 @@
   import V4Detail from "./V4Detail.svelte"
   import V4Map from "./V4Map.svelte"
   import V4Stub from "./V4Stub.svelte"
-  import { loadJourneys } from "../api/source"
   import type { Journey, Lang, Memento, Theme } from "../data"
 
-  let { lang = $bindable("ja"), theme = $bindable("dark") }: { lang?: Lang; theme?: Theme } = $props()
+  let {
+    lang = $bindable("ja"),
+    theme = $bindable("dark"),
+    loadJourneys,
+  }: { lang?: Lang; theme?: Theme; loadJourneys: () => Promise<Journey[]> } = $props()
   let journeys = $state<Journey[]>([])
   let newestFirst = $state(true)
   let isLoading = $state(true)

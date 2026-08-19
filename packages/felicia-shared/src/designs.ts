@@ -5,7 +5,7 @@
 // PM design = drop a `<Name>App.svelte` under web/src/<id>/ and add one entry
 // here — no router surgery.
 import type { Component } from "svelte"
-import type { Lang, Theme } from "./data"
+import type { Journey, Lang, Theme } from "./data"
 import type { MessageKey } from "./i18n/catalog"
 import V1App from "./v1/V1App.svelte"
 import V2App from "./v2/V2App.svelte"
@@ -18,7 +18,7 @@ export interface Design {
   hash: string
   // Static system-locale key; never derived from user content.
   labelKey: MessageKey
-  component: Component<{ lang?: Lang; theme?: Theme }>
+  component: Component<{ lang?: Lang; theme?: Theme; loadJourneys: () => Promise<Journey[]> }>
 }
 
 // Ordered as they appear in the switcher. The first entry is the default
