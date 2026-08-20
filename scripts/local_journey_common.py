@@ -17,7 +17,7 @@ NAMESPACE = uuid.UUID("0190cbde-f300-7000-8000-999999999999")
 # The workspace a bare `make journey-local` writes to when no --workspace is
 # given: one directory per derived slug under this root, never a single
 # shared path (see derive_journey_identity -- issue #72).
-DEFAULT_WORKSPACE_ROOT = ROOT / ".felicia" / "local-journey"
+DEFAULT_WORKSPACE_ROOT = ROOT / ".felicia" / "workspaces"
 
 
 def write_json(path: Path, value: Any) -> None:
@@ -69,7 +69,7 @@ def derive_journey_identity(gpx: Path) -> tuple[str, str]:
     """
     digest = hashlib.sha256(gpx.read_bytes()).hexdigest()
     journey_id = str(uuid.uuid5(NAMESPACE, f"journey:{digest}"))
-    slug = f"local-{digest[:12]}"
+    slug = f"journey-{digest[:12]}"
     return journey_id, slug
 
 

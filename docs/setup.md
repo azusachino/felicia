@@ -33,8 +33,11 @@ Vite's `/api` proxy, and prints the URLs:
 From another device on the same tailnet, replace `localhost` with the host's
 Tailscale IP or MagicDNS name. The admin API is unauthenticated, so keep the
 host firewall and Tailscale ACLs as the access boundary. For a host-only
-session, run `FELICIA_HOST=127.0.0.1 make admin`. The authored database defaults
-to `.felicia/local.sqlite`; only the compiled `dist/` is publishable. Override
+session, run `FELICIA_HOST=127.0.0.1 make admin`. Private local state conventionally
+lives below `.felicia/`: the authored database defaults to `.felicia/felicia.sqlite`,
+and generated journey workspaces live under `.felicia/workspaces/<slug>`. New local
+paths must not add a `local-*` child prefix. Only the compiled `dist/` is publishable.
+Override
 with `--host`, `--api-port`, `--gui-port`, or `--db` (or `FELICIA_HOST`, `PORT`,
 `ADMIN_GUI_PORT`, or `DATABASE_PATH`).
 

@@ -7,7 +7,7 @@ from argparse import Namespace
 from pathlib import Path
 
 from scripts.local_journey import build_package, guard_workspace_identity, resolve_identity
-from scripts.local_journey_common import derive_journey_identity
+from scripts.local_journey_common import DEFAULT_WORKSPACE_ROOT, derive_journey_identity
 from scripts.validate_local_authoring import validate_document, validate_workspace, validate_workspace_root
 
 
@@ -361,6 +361,9 @@ class LocalJourneyIdentityTest(unittest.TestCase):
             second = derive_journey_identity(gpx)
             self.assertEqual(first, second, "re-hashing the same bytes must yield the same identity")
 
+    def test_default_workspace_uses_the_private_workspaces_root(self):
+        self.assertEqual(Path(__file__).resolve().parents[1] / ".felicia" / "workspaces", DEFAULT_WORKSPACE_ROOT)
+
     def test_derive_journey_identity_differs_for_different_bytes(self):
         with tempfile.TemporaryDirectory() as directory:
             gpx_a = Path(directory) / "a.gpx"
@@ -371,6 +374,8 @@ class LocalJourneyIdentityTest(unittest.TestCase):
             journey_b, slug_b = derive_journey_identity(gpx_b)
             self.assertNotEqual(journey_a, journey_b)
             self.assertNotEqual(slug_a, slug_b)
+            self.assertTrue(slug_a.startswith("journey-"))
+            self.assertFalse(slug_a.startswith("local-"))
 
     def test_resolve_identity_fills_in_defaults_from_gpx_when_unset(self):
         with tempfile.TemporaryDirectory() as directory:

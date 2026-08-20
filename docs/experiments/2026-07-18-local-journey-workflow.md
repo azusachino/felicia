@@ -12,8 +12,7 @@ uv run python scripts/local_journey.py run \
   --journey 0190cbde-f300-7000-8000-111111111111 \
   --gpx path/to/route.gpx \
   --photos path/to/photos \
-  --sidecar path/to/photos.jsonl \
-  --workspace .felicia/local-journey
+  --sidecar path/to/photos.jsonl
 ```
 
 This command preprocesses the sources, asks the user to confirm/rename stops,
@@ -31,8 +30,7 @@ uv run python scripts/local_journey.py preprocess \
   --journey 0190cbde-f300-7000-8000-111111111111 \
   --gpx path/to/route.gpx \
   --photos path/to/photos \
-  --sidecar path/to/photos.jsonl \
-  --workspace .felicia/local-journey
+  --sidecar path/to/photos.jsonl
 ```
 
 The command runs the real `felicia-cli journey plan` and writes:
@@ -48,11 +46,14 @@ rename “Osaka cluster” to “Dotonbori”, or add a memento for an attractio
 was not inferable from GPS. A local agent can make the same edits while keeping
 the source plan unchanged.
 
+The command prints the resolved workspace path. Use that `.felicia/workspaces/<slug>`
+path for the package and preview stages below.
+
 ## 2. Package and preview
 
 ```sh
-uv run python scripts/local_journey.py package --workspace .felicia/local-journey
-uv run python scripts/local_journey.py preview --workspace .felicia/local-journey
+uv run python scripts/local_journey.py package --workspace .felicia/workspaces/<slug>
+uv run python scripts/local_journey.py preview --workspace .felicia/workspaces/<slug>
 ```
 
 `package` includes only selected stops and their mementos, copies referenced
@@ -61,7 +62,7 @@ media into the package, and emits the existing version-1 portable package. The
 SQLite database, and runs the existing static compiler to:
 
 ```text
-.felicia/local-journey/site/
+.felicia/workspaces/<slug>/site/
 ```
 
 The command is safe to repeat after editing the JSON, although the workspace

@@ -35,7 +35,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 WEB_ADMIN = ROOT / "apps" / "felicia-admin"
 API_BINARY = Path(tempfile.gettempdir()) / f"felicia-admin-api-{os.getpid()}"
-DEFAULT_DATABASE = ROOT / ".felicia" / "local.sqlite"
+DEFAULT_DATABASE = ROOT / ".felicia" / "felicia.sqlite"
 LOCALHOST = "127.0.0.1"
 
 
