@@ -13,6 +13,10 @@ related:
 
 # ADR 0034: Application and Shared Package Layout
 
+> Frontend package naming and ownership were subsequently refined by
+> [ADR-0038](0038-named-frontend-package-boundaries.md). This ADR remains the
+> historical record of the application/shared cut-over.
+
 ## Context
 
 Felicia has reached the point where the current flat Go workspace and
@@ -55,7 +59,7 @@ docs/                    # project documentation and ADRs
 ```
 
 `apps/` names executable or independently buildable application boundaries.
-`packages/felicia-shared` is the only frontend package allowed to own the
+`packages/felicia-reader` is the only frontend package allowed to own the
 public reader's view contract, named theme registry, reader compositions,
 shared styles, and reader-facing localization. The registry exposes the four
 named design languages `cartography`, `cabinet`, `techo`, and `atlas`; the old
@@ -97,7 +101,7 @@ source files.
 
 `contracts/canonical/v1/schema.json` remains the canonical cross-language
 contract. Go publication types remain the server-side public projection and
-compiler boundary. `packages/felicia-shared` owns the TypeScript reader view
+compiler boundary. `packages/felicia-reader` owns the TypeScript reader view
 models and design inputs derived from that public boundary; it does not invent
 a competing schema. HTTP and static-artifact adapters translate at the host
 edge.

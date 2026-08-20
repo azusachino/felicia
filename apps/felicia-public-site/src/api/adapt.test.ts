@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import type { ApiJourney, ApiMemento } from "@felicia/shared"
-import { adaptJourney } from "@felicia/shared"
+import type { ApiJourney, ApiMemento } from "@felicia/reader"
+import { adaptJourney } from "@felicia/reader"
 import { loadGoldenRouteFixture } from "../../tests/fixtures"
 
 const journey = (overrides: Partial<ApiJourney> = {}): ApiJourney => ({

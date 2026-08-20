@@ -15,7 +15,11 @@ apps/
   felicia-web/           # private reader host
   felicia-public-site/   # public reader host
 packages/
-  felicia-shared/        # reader contracts, named themes, components, styles
+  felicia-model/         # reader data, public contracts, locale/theme settings
+  felicia-runtime/       # renderer-neutral scene and action runtime
+  felicia-components/    # reusable reader components and component contracts
+  felicia-renderers/     # renderer ports and adapters
+  felicia-reader/        # reader facade, registry, concrete compositions, styles
 contracts/               # canonical cross-language contract source
 publication/journeys/    # sanitized production journey catalog
 ops/                     # deployment-owned files
@@ -29,13 +33,15 @@ The Go modules point inward toward `felicia-core`; server and CLI composition
 depend on publication, never the other way around. No application module is a
 library dependency of another application module.
 
-The shared frontend package owns the public reader's view models, named theme
-registry (`cartography`, `cabinet`, `techo`, and `atlas`), compositions, styles,
-and reader localization. The admin host owns authoring and may preview the
-shared reader, but remains an admin application. The private reader host owns
-the live/private API shell. The public-site host owns browser bootstrapping and
-transport/static-artifact adaptation. Admin preview and the public site use the
-same shared reader renderer; the private host is a separate live-reader shell.
+The frontend packages have explicit ownership: `felicia-model` owns the reader
+view models and public transport projections; `felicia-runtime` owns
+renderer-neutral scene meaning; `felicia-components` owns reusable visual
+building blocks; `felicia-renderers` owns renderer seams; and `felicia-reader`
+owns the named design registry (`cartography`, `cabinet`, `techo`, and `atlas`),
+concrete compositions, localization, and styles. The admin host owns authoring
+and may preview the reader facade, but remains an admin application. The private
+reader host owns the live/private API shell. The public-site host owns browser
+bootstrapping and transport/static-artifact adaptation.
 
 `contracts/canonical/v1/schema.json` remains the canonical cross-language
 contract. TypeScript package types are reader-facing projections, not a second

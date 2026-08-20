@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { designLanguageFromId, resolveLocale, themeFromId, type ApiSiteSettings, type Lang, type Theme } from "@felicia/shared"
+  import { designLanguageFromId, resolveLocale, themeFromId, type ApiSiteSettings, type Lang, type Theme } from "@felicia/reader"
   import { loadJourneys, loadSiteSettings } from "./api/source"
 
   let settings = $state<ApiSiteSettings | null>(null)

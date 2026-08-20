@@ -34,7 +34,7 @@
       "name": "@felicia/public-site",
       "version": "0.1.0",
       "dependencies": {
-        "@felicia/shared": "workspace:*",
+        "@felicia/reader": "workspace:*",
         "maplibre-gl": "^5.9.0",
         "svelte": "^5.38.0",
       },
@@ -60,7 +60,7 @@
       "name": "@felicia/web",
       "version": "0.1.0",
       "dependencies": {
-        "@felicia/shared": "workspace:*",
+        "@felicia/reader": "workspace:*",
         "maplibre-gl": "^5.9.0",
         "svelte": "^5.38.0",
       },
@@ -82,10 +82,28 @@
         "vite": "^7.2.0",
       },
     },
-    "packages/felicia-shared": {
-      "name": "@felicia/shared",
+    "packages/felicia-components": {
+      "name": "@felicia/components",
       "version": "0.1.0",
       "dependencies": {
+        "@felicia/model": "workspace:*",
+        "@felicia/runtime": "workspace:*",
+        "d3-shape": "^3.2.0",
+        "svelte": "^5.38.0",
+      },
+    },
+    "packages/felicia-model": {
+      "name": "@felicia/model",
+      "version": "0.1.0",
+    },
+    "packages/felicia-reader": {
+      "name": "@felicia/reader",
+      "version": "0.1.0",
+      "dependencies": {
+        "@felicia/components": "workspace:*",
+        "@felicia/model": "workspace:*",
+        "@felicia/renderers": "workspace:*",
+        "@felicia/runtime": "workspace:*",
         "d3-ease": "^3.0.1",
         "d3-geo": "^3.1.1",
         "d3-interpolate": "^3.0.1",
@@ -102,6 +120,20 @@
         "@types/d3-selection": "^3.0.11",
         "@types/d3-shape": "^3.1.7",
         "@types/d3-timer": "^3.0.2",
+      },
+    },
+    "packages/felicia-renderers": {
+      "name": "@felicia/renderers",
+      "version": "0.1.0",
+      "dependencies": {
+        "@felicia/runtime": "workspace:*",
+      },
+    },
+    "packages/felicia-runtime": {
+      "name": "@felicia/runtime",
+      "version": "0.1.0",
+      "dependencies": {
+        "@felicia/model": "workspace:*",
       },
     },
   },
@@ -176,9 +208,17 @@
 
     "@felicia/admin": ["@felicia/admin@workspace:apps/felicia-admin"],
 
+    "@felicia/components": ["@felicia/components@workspace:packages/felicia-components"],
+
+    "@felicia/model": ["@felicia/model@workspace:packages/felicia-model"],
+
     "@felicia/public-site": ["@felicia/public-site@workspace:apps/felicia-public-site"],
 
-    "@felicia/shared": ["@felicia/shared@workspace:packages/felicia-shared"],
+    "@felicia/reader": ["@felicia/reader@workspace:packages/felicia-reader"],
+
+    "@felicia/renderers": ["@felicia/renderers@workspace:packages/felicia-renderers"],
+
+    "@felicia/runtime": ["@felicia/runtime@workspace:packages/felicia-runtime"],
 
     "@felicia/web": ["@felicia/web@workspace:apps/felicia-web"],
 

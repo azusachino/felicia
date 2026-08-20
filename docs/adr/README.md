@@ -34,4 +34,5 @@ This directory stores the immutable records of design and architecture choices m
 | [0033](0033-authored-field-protection-and-the-journey-ingest-seam.md) | Authored-Field Protection and the Journey Ingest Seam    | 2026-08-16 | Accepted |
 | [0034](0034-application-and-shared-package-layout.md)                 | Application and Shared Package Layout                    | 2026-08-19 | Accepted |
 | [0037](0037-private-local-development-layout.md)                      | Private Local Development Layout                         | 2026-08-20 | Accepted |
-| [0036](0036-theme-runtime-and-scene-actions.md)                       | Shared Theme Runtime and Scene Actions                   | 2026-08-20 | Accepted |
+| [0038](0038-named-frontend-package-boundaries.md)                     | Named Frontend Package Boundaries                        | 2026-08-20 | Accepted |
+| [0036](0036-theme-runtime-and-scene-actions.md)                       | Reader Runtime and Scene Actions                         | 2026-08-20 | Accepted |

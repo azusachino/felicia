@@ -1,6 +1,6 @@
 ---
 id: "0036"
-title: "Shared Theme Runtime and Scene Actions"
+title: "Reader Runtime and Scene Actions"
 status: "accepted"
 date: "2026-08-20"
 related:
@@ -9,7 +9,7 @@ related:
   - "0034"
 ---
 
-# ADR 0036: Shared Theme Runtime and Scene Actions
+# ADR 0036: Reader Runtime and Scene Actions
 
 ## Context
 
@@ -25,18 +25,21 @@ renderer choice must not become the data model or the event choreography.
 
 ## Decision
 
-Keep one `@felicia/shared` package for now and establish an explicit internal
-runtime boundary:
+Use flat, actual package boundaries and keep Tabi nested under the reader's
+incubating theme area until it is promoted:
 
 ```text
-theme-ui/
-  runtime/                 # renderer-neutral scene, event, action, timeline contracts
-  components/              # reusable reader component contracts and later implementations
-  renderers/               # renderer seams; Three.js is a future implementation
-  _incubating/<theme>/     # theme-specific contracts before registry admission
+packages/
+  felicia-model/           # reader data and public contracts
+  felicia-runtime/         # renderer-neutral scene, event, action, timeline contracts
+  felicia-components/      # reusable reader component contracts and implementations
+  felicia-renderers/       # renderer seams; Three.js is a future implementation
+  felicia-reader/
+    src/theme-ui/          # named reader designs and styles
+      _incubating/tabi/    # Tabi contracts and implementation before registry admission
 ```
 
-The shared runtime models:
+The runtime package models:
 
 - a `JourneyScene` with the true route origin, destination, route, and stops;
 - semantic actions such as `travel`, `arrive`, `reveal`, `inspect`, `pickup`,
@@ -53,9 +56,9 @@ Tabi remains incubating and unregistered until its full design rework is
 approved. Its skeleton may define a manifest, model vocabulary, and action
 vocabulary, but it must not expose the current renderer as an approved preview.
 
-Do not split this boundary into several npm packages yet. Split only when an
-independent consumer, release cadence, or dependency-isolation requirement is
-real and documented.
+The package names describe their actual responsibility; none uses a generic
+`shared` or `theme` suffix. Split further only when an independent consumer,
+release cadence, or dependency-isolation requirement is real and documented.
 
 ## Consequences
 
@@ -66,7 +69,7 @@ real and documented.
   camera move, a card transition, or a static state.
 - The first implementation still has to choose a concrete protagonist,
   palette, stop-authoring format, and renderer composition for Tabi.
-- The shared package gains a small amount of vocabulary before it has a second
+- The runtime package gains a small amount of vocabulary before it has a second
   production theme; the contracts must therefore stay narrow and be revised
   when the next theme exercises them.
 
@@ -74,9 +77,9 @@ real and documented.
 
 - **Put the entire Tabi implementation in the registry immediately:** this
   would make an unreviewed visual experiment part of the public theme contract.
-- **Create separate runtime, components, and renderer npm packages now:** this
-  would add release and dependency boundaries before independent consumers
-  exist.
+- **Keep runtime, components, and renderer concerns inside the reader package:**
+  this would make intended reuse boundaries cosmetic and force unrelated
+  consumers through the reader facade.
 - **Let each theme invent its own event names:** this would make cross-theme
   journey behavior impossible to test and compare.
 - **Build a generic game engine:** this would solve speculative future mechanics

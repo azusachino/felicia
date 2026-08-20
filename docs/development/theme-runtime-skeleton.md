@@ -18,34 +18,23 @@ replace the existing map-based themes.
 
 ## Package boundary
 
-All of this work starts inside `packages/felicia-shared`. Hosts continue to
-load the existing named registry. The shared package owns public reader
-contracts and theme composition; hosts own bootstrapping, transport, and
-authoring concerns.
-
-Split packages only after at least one of these is demonstrated:
-
-- a consumer needs the runtime without the reader components;
-- a renderer needs a dependency set that the other themes should not install;
-- the runtime and themes need independent release or compatibility policy.
+The package boundaries are flat. Hosts continue to load the named registry from
+`felicia-reader`; model data, runtime semantics, reusable components, and
+renderer ports are imported from their actual packages. Hosts own bootstrapping,
+transport, and authoring concerns.
 
 ## Skeleton layout
 
 ```text
-packages/felicia-shared/src/theme-ui/
-  runtime/
-    actions.ts       # semantic action vocabulary
-    events.ts        # journey event vocabulary
-    scene.ts         # route/stops/scene model
-    timeline.ts      # phase and playback state
-    theme.ts         # theme capability metadata
-  components/
-    contracts.ts     # reusable board, stop, artifact, and archive inputs
-  renderers/
-    renderer.ts      # renderer-neutral mount/render/action seam
-  _incubating/tabi/
-    contract.ts      # Tabi manifest and theme-owned vocabulary
-    composite.ts     # Tabi composition input, still unregistered
+packages/
+  felicia-model/src/         # reader data and public contracts
+  felicia-runtime/src/       # semantic action, event, scene, timeline contracts
+  felicia-components/src/    # reusable board, stop, artifact, archive inputs
+  felicia-renderers/src/     # renderer-neutral mount/render/action seam
+  felicia-reader/src/theme-ui/
+    _incubating/tabi/
+      contract.ts    # Tabi manifest and theme-owned vocabulary
+      composite.ts   # Tabi composition input, still unregistered
 ```
 
 The files are contracts first. A concrete Svelte component or renderer is
@@ -80,7 +69,7 @@ inspect(memento-7) -> character: idle + memory: inspect
 return-home -> character: travel + board: restore-home
 ```
 
-The mapping belongs to the theme. The shared layer supplies the stable terms,
+The mapping belongs to the theme. The runtime package supplies the stable terms,
 not a universal animation clip list.
 
 ## Implementation tracks
@@ -103,9 +92,10 @@ route truth or event semantics are correct.
 The skeleton is complete when:
 
 - `make web-check` passes;
-- the shared package type-checks the new contracts;
-- Tabi remains absent from `theme-ui/registry.ts`;
-- no new renderer dependency is required;
+- `felicia-model`, `felicia-runtime`, `felicia-components`,
+  `felicia-renderers`, and `felicia-reader` type-check and build;
+- Tabi remains absent from `felicia-reader/src/theme-ui/registry.ts`;
+- the skeleton does not require Three.js yet;
 - the existing `cartography`, `cabinet`, `techo`, and `atlas` themes remain
   unchanged.
 

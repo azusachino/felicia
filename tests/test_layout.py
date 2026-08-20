@@ -4,7 +4,11 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SHARED = ROOT / "packages" / "felicia-shared"
+READER = ROOT / "packages" / "felicia-reader"
+MODEL = ROOT / "packages" / "felicia-model"
+RUNTIME = ROOT / "packages" / "felicia-runtime"
+COMPONENTS = ROOT / "packages" / "felicia-components"
+RENDERERS = ROOT / "packages" / "felicia-renderers"
 GO_IMPORT = re.compile(r"github\.com/azusachino/felicia/apps/felicia-([a-z-]+)")
 
 
@@ -20,9 +24,12 @@ class LayoutBoundaryTests(unittest.TestCase):
             ROOT / "apps" / "felicia-admin",
             ROOT / "apps" / "felicia-web",
             ROOT / "apps" / "felicia-public-site",
-            SHARED,
-            SHARED / "src" / "theme-ui" / "registry.ts",
-            SHARED / "src" / "theme-ui" / "themes.ts",
+            READER,
+            READER / "src" / "theme-ui" / "registry.ts",
+            MODEL / "src" / "themes.ts",
+            RUNTIME / "src" / "scene.ts",
+            COMPONENTS / "src" / "contracts.ts",
+            RENDERERS / "src" / "renderer.ts",
             ROOT / "ops",
             ROOT / "contracts" / "canonical" / "v1" / "schema.json",
             ROOT / "publication" / "journeys" / "catalog.json",
@@ -39,17 +46,20 @@ class LayoutBoundaryTests(unittest.TestCase):
             "deploy",
             "apps/web-admin",
             "apps/web-public",
-            "packages/felicia-shared/src/v1",
-            "packages/felicia-shared/src/v2",
-            "packages/felicia-shared/src/v3",
-            "packages/felicia-shared/src/v4",
+            "packages/felicia-reader/src/v1",
+            "packages/felicia-reader/src/v2",
+            "packages/felicia-reader/src/v3",
+            "packages/felicia-reader/src/v4",
         )
         for path in legacy_paths:
             self.assertFalse((ROOT / path).exists(), path)
 
-    def test_shared_package_has_no_host_or_transport_dependency(self):
+    def test_frontend_packages_have_no_host_or_transport_dependency(self):
         source = "\n".join(
-            path.read_text(encoding="utf-8") for path in SHARED.rglob("*") if path.is_file()
+            path.read_text(encoding="utf-8")
+            for package in (READER, MODEL, RUNTIME, COMPONENTS, RENDERERS)
+            for path in package.rglob("*")
+            if path.is_file()
         )
         forbidden_imports = (
             "apps/felicia-web",
@@ -60,11 +70,11 @@ class LayoutBoundaryTests(unittest.TestCase):
         for forbidden in forbidden_imports:
             self.assertNotIn(forbidden, source, forbidden)
 
-        registry = (SHARED / "src" / "theme-ui" / "registry.ts").read_text(encoding="utf-8")
+        registry = (READER / "src" / "theme-ui" / "registry.ts").read_text(encoding="utf-8")
         for old_id in ("v1", "v2", "v3", "v4"):
             self.assertNotIn(f'id: "{old_id}"', registry, old_id)
 
-        package = json.loads((SHARED / "package.json").read_text(encoding="utf-8"))
+        package = json.loads((READER / "package.json").read_text(encoding="utf-8"))
         self.assertIn(".", package["exports"])
         self.assertIn("./public.css", package["exports"])
 

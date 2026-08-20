@@ -1,0 +1,21 @@
+{
+  "name": "@felicia/components",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "svelte": "./src/index.ts",
+      "import": "./src/index.ts"
+    },
+    "./PhotoLightbox.svelte": "./src/PhotoLightbox.svelte",
+    "./TicketStub.svelte": "./src/TicketStub.svelte"
+  },
+  "dependencies": {
+    "@felicia/model": "workspace:*",
+    "@felicia/runtime": "workspace:*",
+    "d3-shape": "^3.2.0",
+    "svelte": "^5.38.0"
+  }
+}

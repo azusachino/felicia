@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte"
-  import { designLanguageFromHash, designLanguageFromId, designLanguages, message, resolveLocale, themeFromId, type ApiSiteSettings, type Lang, type Theme } from "@felicia/shared"
+  import { designLanguageFromHash, designLanguageFromId, designLanguages, message, resolveLocale, themeFromId, type ApiSiteSettings, type Lang, type Theme } from "@felicia/reader"
   import { loadJourneys, loadSiteSettings } from "./api/source"
 
   let settings = $state<ApiSiteSettings | null>(null)

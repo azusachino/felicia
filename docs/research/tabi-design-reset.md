@@ -6,7 +6,7 @@
 > the next guess. The mechanics work and are documented (`docs/tutorials/d3/` and
 > `docs/tutorials/maplibre/` in harus-workstation). The _design_ never got decided on paper —
 > it got discovered by trial. This note is the stop: the code is parked at
-> `packages/felicia-shared/src/theme-ui/_incubating/tabi/`, unregistered, and this is the
+> `packages/felicia-reader/src/theme-ui/_incubating/tabi/`, unregistered, and this is the
 > diagnosis plus the open questions to settle before it's touched again.
 
 ## The actual goal (learned after the first draft of this note)
