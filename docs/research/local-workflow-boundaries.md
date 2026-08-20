@@ -19,7 +19,7 @@ local_journey_package.py       portable package serialization + media hashing
 felicia-cli import/static      importer, SQLite provider, publication compiler
         │
         ▼
-packages/felicia-shared                  reader contracts + theme registry + presentations
+packages/felicia-reader                  reader contracts + theme registry + presentations
 apps/felicia-public-site                API/static adaptation + browser host
 ```
 

@@ -1,4 +1,4 @@
-import { adaptJourney, type ApiJourney, type ApiJourneyListItem, type ApiMemento, type ApiSiteSettings, type Journey } from "@felicia/shared"
+import { adaptJourney, type ApiJourney, type ApiJourneyListItem, type ApiMemento, type ApiSiteSettings, type Journey } from "@felicia/reader"
 
 function endpoint(path: string): string {
   const base = import.meta.env.VITE_API_BASE || ""

@@ -159,7 +159,7 @@ admin-build: ## Build admin frontend for production (bun + vite)
 site-build: cli-build ## Build the deployable site (SPA + your journal) into apps/felicia-public-site/dist
 	BASE_PATH="$${BASE_PATH:-/}" $(BUN) run web:public:build
 	./bin/felicia-cli static compile \
-		--db "$${DATABASE_PATH:-.felicia/local.sqlite}" \
+		--db "$${DATABASE_PATH:-.felicia/felicia.sqlite}" \
 		--media-root "$${MEDIA_ROOT:-.felicia/media}" \
 		--out "$${SITE_DIST:-apps/felicia-public-site/dist}"
 

@@ -1,6 +1,6 @@
 import { describe, expect, test, mock, beforeAll, afterAll } from "bun:test"
 import { loadJourney, loadJourneys } from "./source"
-import type { ApiJourney, ApiMemento } from "@felicia/shared"
+import type { ApiJourney, ApiMemento } from "@felicia/reader"
 import { loadGoldenRouteFixture } from "../../tests/fixtures"
 
 // Access import.meta.env in a type-safe way that is extensible and avoids ESLint any/ignore rules

@@ -41,7 +41,8 @@ where you author _essays / photo curation / animation_. The importer is **field-
 ```
 apps/{felicia-core,felicia-runtime,felicia-providers,felicia-publication,
 felicia-server,felicia-cli,felicia-admin,felicia-web,felicia-public-site}/
-packages/felicia-shared/  contracts/  ops/  scripts/  docs/
+packages/{felicia-model,felicia-runtime,felicia-components,felicia-renderers,
+felicia-reader}/  contracts/  ops/  scripts/  docs/
 ```
 
 The ownership map and dependency direction are defined in
@@ -50,9 +51,11 @@ The ownership map and dependency direction are defined in
 `felicia-core` is the pure domain and port layer (no I/O). `felicia-runtime`
 owns use cases, `felicia-providers` owns persistence implementations,
 `felicia-publication` owns the public contract, and apps/felicia-server/CLI adapters compose
-runtime and publication ports. `felicia-shared` owns the public reader contract,
-named theme registry, and renderer; the admin, private reader, and public site
-remain separate hosts.
+runtime and publication ports. `felicia-reader` owns the public reader facade,
+named design registry, and concrete compositions. `felicia-model` owns reader
+data/public contracts; `felicia-runtime`, `felicia-components`, and
+`felicia-renderers` are reusable package boundaries. The admin, private reader,
+and public site remain separate hosts.
 The root Go module has been retired; all Go code is built through `go.work`.
 
 ## Build, Run & Test

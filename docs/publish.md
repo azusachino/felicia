@@ -61,7 +61,7 @@ The GPX and original photos remain private source evidence. Scan and preview
 derive editable draft records from them; they do not rewrite the files. The
 admin scan/import surface is planned; until it lands, `make journey-local`
 performs the scan and writes the editable workspace under
-`.felicia/local-journey/<slug>`:
+`.felicia/workspaces/<slug>`:
 
 ```bash
 make journey-local GPX=~/my-trip/route.gpx PHOTOS=~/my-trip/photos \
@@ -108,7 +108,7 @@ gets a distinct id, slug, and workspace directory. Name the trip yourself with
 make journey-local GPX=~/trip/route.gpx PHOTOS=~/trip/photos SLUG=kyoto-2026 TITLE="Kyoto 2026"
 ```
 
-That writes an editable workspace to `.felicia/local-journey/<slug>` (printed
+That writes an editable workspace to `.felicia/workspaces/<slug>` (printed
 by the command): `journey.json`, `stops.json`, `mementos.json`, plus the
 planner's `plan.json`. Pointing a workspace that already holds a _different_
 journey at a new trip is a loud error, never a silent overwrite. Edit the
@@ -116,9 +116,9 @@ titles and selections, then package and import it — reuse the workspace path
 the command printed:
 
 ```bash
-uv run python scripts/local_journey.py package --workspace .felicia/local-journey/kyoto-2026
-./bin/felicia-cli import --db .felicia/local.sqlite --media-root .felicia/media \
-  --apply .felicia/local-journey/kyoto-2026/journey.zip
+uv run python scripts/local_journey.py package --workspace .felicia/workspaces/kyoto-2026
+./bin/felicia-cli import --db .felicia/felicia.sqlite --media-root .felicia/media \
+  --apply .felicia/workspaces/kyoto-2026/journey.zip
 ```
 
 Repeat with a different GPX/`SLUG` for a second trip — it imports alongside
@@ -161,7 +161,7 @@ On the **Site & Deploy** page set the site title and description, pick one of
 the four designs, and set the default language, theme, and accent colour. A
 deployed site presents exactly one design.
 
-Defaults: journal `.felicia/local.sqlite`, media `.felicia/media`, compile
+Defaults: journal `.felicia/felicia.sqlite`, media `.felicia/media`, compile
 output `.felicia/site`. Override with `--db` / `DATABASE_PATH`, `--media-root`,
 or the Site & Deploy output directory.
 
@@ -183,7 +183,7 @@ above: `DATABASE_PATH`, `MEDIA_ROOT`, and `SITE_DIST`. Keeping the journal
 outside the checkout is a good idea — it survives re-cloning:
 
 ```bash
-DATABASE_PATH=~/felicia-data/local.sqlite MEDIA_ROOT=~/felicia-data/media \
+DATABASE_PATH=~/felicia-data/felicia.sqlite MEDIA_ROOT=~/felicia-data/media \
   BASE_PATH=/my-travels/ make site-build
 ```
 

@@ -23,7 +23,7 @@ Example local configuration:
 ```toml
 [database]
 driver = "sqlite"
-path = "felicia.db"
+path = ".felicia/felicia.sqlite"
 
 [server]
 port = "8080"
@@ -44,13 +44,13 @@ missing required configuration.
 
 ```bash
 make admin               # authoring GUI, same database as make dev
-make dev                 # API with SQLite at .felicia/local.sqlite
+make dev                 # API with SQLite at .felicia/felicia.sqlite
 make dev-sqlite          # explicit SQLite API
 make dev-postgres        # PostgreSQL/PostGIS stack, migration, seed, web app
 make migrate             # PostgreSQL migrations only
 ```
 
-`make dev` and `make admin` share `.felicia/local.sqlite` on purpose: authoring
+`make dev` and `make admin` share `.felicia/felicia.sqlite` on purpose: authoring
 in the GUI and then serving the public reader should read one journal, not two.
 `.felicia/` is gitignored, which the repo-root default it replaced was not — the
 authored journal is the one artifact
@@ -63,8 +63,20 @@ is not renamed or copied automatically. An existing repo-root `felicia.db` is
 still opened by setting `DATABASE_PATH=felicia.db`, or move it once:
 
 ```bash
-mkdir -p .felicia && mv felicia.db .felicia/local.sqlite
+mkdir -p .felicia && mv felicia.db .felicia/felicia.sqlite
 ```
+
+## Local filesystem convention
+
+Felicia's private development state lives below `.felicia/`:
+
+- `.felicia/felicia.sqlite` is the default local database.
+- `.felicia/workspaces/<slug>/` contains generated journey workspaces.
+- `.felicia/media/` and `.felicia/site/` are reserved for shared local assets and previews.
+
+New local paths must not introduce a `local-*` child prefix. Feature names such as
+`local-journey` may remain in historical documentation or test fixtures when they
+describe an older contract.
 
 SQLite applies its embedded schema when the provider opens the database. The
 file provider enables foreign keys, WAL mode, a busy timeout, and a bounded

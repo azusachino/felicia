@@ -14,7 +14,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@felicia/shared": "workspace:*",
+    "@felicia/reader": "workspace:*",
     "maplibre-gl": "^5.9.0",
     "svelte": "^5.38.0"
   },

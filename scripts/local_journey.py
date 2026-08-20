@@ -232,7 +232,7 @@ def parser() -> argparse.ArgumentParser:
         "--workspace",
         type=Path,
         default=None,
-        help="defaults to .felicia/local-journey/<slug> for preprocess/run "
+        help="defaults to .felicia/workspaces/<slug> for preprocess/run "
         "(derived from --slug or the GPX content); required for package/preview "
         "when not reusing that default",
     )

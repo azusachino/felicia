@@ -1,4 +1,4 @@
-import type { ApiJourney, ApiMemento } from "@felicia/shared"
+import type { ApiJourney, ApiMemento } from "@felicia/reader"
 
 export async function loadGoldenRouteFixture(): Promise<{
   journey: ApiJourney

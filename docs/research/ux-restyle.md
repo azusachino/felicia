@@ -108,7 +108,7 @@ ADR-0031:
 
 - ADR-0031 freezes the _direction_; a **frontend style spec** (design tokens, per-kind
   stub anatomy, motion spec) is still the next step before implementation.
-- None of the four current reader prototypes (`packages/felicia-shared/src/theme-ui/{cartography,cabinet,techo,atlas}`) is
+- None of the four current reader prototypes (`packages/felicia-reader/src/theme-ui/{cartography,cabinet,techo,atlas}`) is
   a clean match for the decided layout — `cartography` is an index rail, `techo` is a book-spread,
   `atlas` is scroll-driven. Building (or adapting a prototype into) the reader that
   actually matches ADR-0031 is separate follow-up implementation work.

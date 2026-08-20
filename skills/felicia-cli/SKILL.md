@@ -121,8 +121,7 @@ uv run python scripts/local_journey.py preprocess \
   --journey 00000000-0000-0000-0000-000000000001 \
   --gpx /path/to/route.gpx \
   --photos /path/to/photos \
-  --sidecar /path/to/photos.jsonl \
-  --workspace .felicia/local-journey
+  --sidecar /path/to/photos.jsonl
 ```
 
 The workspace contains:
@@ -134,6 +133,9 @@ The workspace contains:
 - `route.gpx`: private source route;
 - optional `workspace.json`: root index when one directory contains multiple
   journey workspaces.
+
+The command prints the resolved `.felicia/workspaces/<slug>` path; replace
+`<slug>` in the commands below with that value.
 
 Authoring rules:
 
@@ -148,7 +150,7 @@ Authoring rules:
 Validate before packaging:
 
 ```sh
-uv run python scripts/validate_local_authoring.py .felicia/local-journey
+uv run python scripts/validate_local_authoring.py .felicia/workspaces/<slug>
 ```
 
 ## Package and preview
@@ -157,13 +159,13 @@ Package one reviewed journey:
 
 ```sh
 uv run python scripts/local_journey.py package \
-  --workspace .felicia/local-journey
+  --workspace .felicia/workspaces/<slug>
 ```
 
 Validate the actual transport archive:
 
 ```sh
-./bin/felicia-cli package validate .felicia/local-journey/journey.zip
+./bin/felicia-cli package validate .felicia/workspaces/<slug>/journey.zip
 ```
 
 The current public package accepts only public local JPEG, PNG, and WebP image
@@ -175,7 +177,7 @@ Run the complete local preview:
 
 ```sh
 uv run python scripts/local_journey.py preview \
-  --workspace .felicia/local-journey
+  --workspace .felicia/workspaces/<slug>
 ```
 
 This imports into workspace-local SQLite and compiles a static site. It does not

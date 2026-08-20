@@ -1,4 +1,4 @@
-import { adaptJourney, type ApiJourney, type ApiJourneyListItem, type ApiMemento, type ApiSiteSettings, type Journey } from "@felicia/shared"
+import { adaptJourney, type ApiJourney, type ApiJourneyListItem, type ApiMemento, type ApiSiteSettings, type Journey } from "@felicia/reader"
 
 function mediaURL(value: string): string {
   if (/^(?:https?:)?\//.test(value)) return value
