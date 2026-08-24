@@ -12,6 +12,7 @@
   let activeJourneyId = $state<string | null>(null)
   let activeMementoId = $state<string | null>(null)
   let selectedMementoId = $state<string | null>(null)
+  let indexOpen = $state(true)
 
   const orderedJourneys = $derived(
     [...journeys]
@@ -37,8 +38,11 @@
       newest: "Newest",
       oldest: "Oldest",
       journeys: "旅",
+      mementos: "件",
       photos: "photos",
       photosHeading: "写真",
+      indexOpen: "目録",
+      indexClose: "目録を閉じる",
       loading: "読み込み中…",
       retry: "再試行",
       close: "閉じる",
@@ -50,8 +54,11 @@
       newest: "Newest",
       oldest: "Oldest",
       journeys: "journeys",
+      mementos: "mementos",
       photos: "photos",
       photosHeading: "Photos",
+      indexOpen: "Index",
+      indexClose: "Hide index",
       loading: "Loading…",
       retry: "Retry",
       close: "Close",
@@ -63,8 +70,11 @@
       newest: "Newest",
       oldest: "Oldest",
       journeys: "次旅程",
+      mementos: "件纪念物",
       photos: "photos",
       photosHeading: "照片",
+      indexOpen: "目录",
+      indexClose: "关闭目录",
       loading: "加载中…",
       retry: "重试",
       close: "关闭",
@@ -127,6 +137,22 @@
     selectedMementoId = memento.id
   }
 
+  function selectMementoById(mementoId: string) {
+    for (const journey of journeys) {
+      const memento = journey.mementos.find((item) => item.id === mementoId)
+      if (memento) {
+        selectMemento(memento, journey.id)
+        return
+      }
+    }
+  }
+
+  function jumpToJourney(journeyId: string) {
+    activeJourneyId = journeyId
+    const target = document.querySelector<HTMLElement>(`[data-journey-id="${journeyId}"]`)
+    target?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" })
+  }
+
   function closeMemento() {
     selectedMementoId = null
   }
@@ -143,9 +169,46 @@
       <button type="button" onclick={loadData}>{label.retry}</button>
     </div>
   {:else if orderedJourneys.length}
-    <div class="map-surface" aria-hidden="true">
-      <AtlasMap {journeys} {activeJourneyId} {activeMementoId} {lang} {theme} onSelect={(id) => (selectedMementoId = id)} />
+    <div class="map-surface" aria-label="Journey map">
+      <AtlasMap {journeys} {activeJourneyId} {activeMementoId} {lang} {theme} onSelect={selectMementoById} />
     </div>
+
+    <button class="index-toggle" type="button" aria-expanded={indexOpen} onclick={() => (indexOpen = !indexOpen)}>
+      <span aria-hidden="true">{indexOpen ? "−" : "+"}</span>
+      {indexOpen ? label.indexClose : label.indexOpen}
+    </button>
+
+    {#if indexOpen}
+      <aside class="atlas-index" aria-label={label.journeys}>
+        <div class="atlas-index-head">
+          <div>
+            <p class="index-kicker">FELICIA / ATLAS</p>
+            <h2>{label.journeys}</h2>
+          </div>
+          <span class="index-total">{orderedJourneys.length}</span>
+        </div>
+        <div class="atlas-index-list">
+          {#each orderedJourneys as entry (entry.journey.id)}
+            <button class:active={entry.journey.id === activeJourneyId} class="atlas-journey" type="button" onclick={() => jumpToJourney(entry.journey.id)}>
+              <span class="atlas-journey-title">{t(entry.journey.title)}</span>
+              <span class="atlas-journey-meta">{t(entry.journey.place)} · {t(entry.journey.dates)}</span>
+              <span class="atlas-journey-count">{entry.mementos.length} {label.mementos}</span>
+            </button>
+          {/each}
+        </div>
+        {#if activeJourney}
+          <div class="atlas-index-mementos">
+            <p class="index-kicker">{t(activeJourney.title)}</p>
+            {#each activeJourney.mementos.slice(0, 4) as memento, index (memento.id)}
+              <button class:active={memento.id === activeMementoId} type="button" onclick={() => selectMemento(memento, activeJourney.id)}>
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <strong>{t(memento.title)}</strong>
+              </button>
+            {/each}
+          </div>
+        {/if}
+      </aside>
+    {/if}
 
     <header class="hero">
       <p class="brand">F E L I C I A / ATLAS</p>
@@ -198,19 +261,21 @@
     --ink: #f5f5f5;
     --muted: #a8a8a8;
     --orange: var(--accent, #d46728);
+    --waypoints-bg: #121212;
     min-height: 100%;
     height: 100%;
     overflow-y: auto;
     overscroll-behavior-y: contain;
     background: #121212;
     color: var(--ink);
-    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-family: Outfit, ui-sans-serif, system-ui, sans-serif;
   }
 
   .waypoints.light {
     --ink: #2d2925;
     --muted: #706a65;
     --orange: var(--accent, #b45f26);
+    --waypoints-bg: #e7e0d5;
     background: #e7e0d5;
   }
 
@@ -218,7 +283,7 @@
     position: fixed;
     z-index: 0;
     inset: 0;
-    pointer-events: none;
+    pointer-events: auto;
   }
 
   .map-surface :global(.maplibregl-map) {
@@ -230,6 +295,155 @@
   .journey-stream {
     position: relative;
     z-index: 1;
+  }
+
+  .index-toggle {
+    position: fixed;
+    z-index: 5;
+    bottom: 1.25rem;
+    left: 1.25rem;
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 0.9rem;
+    border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent);
+    border-radius: 999px;
+    color: var(--ink);
+    background: color-mix(in srgb, var(--waypoints-bg) 82%, transparent);
+    box-shadow: 0 0.75rem 2rem #0005;
+    backdrop-filter: blur(12px);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .index-toggle span {
+    display: grid;
+    width: 1.25rem;
+    height: 1.25rem;
+    place-items: center;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  .atlas-index {
+    position: fixed;
+    z-index: 4;
+    top: 5.5rem;
+    left: 1.25rem;
+    display: flex;
+    width: min(21rem, calc(100vw - 2.5rem));
+    max-height: min(70vh, 36rem);
+    flex-direction: column;
+    gap: 1rem;
+    overflow-y: auto;
+    padding: 1.15rem;
+    border: 1px solid color-mix(in srgb, var(--ink) 20%, transparent);
+    border-radius: 1rem;
+    color: var(--ink);
+    background: color-mix(in srgb, var(--waypoints-bg) 88%, transparent);
+    box-shadow: 0 1.5rem 4rem #0007;
+    backdrop-filter: blur(18px) saturate(120%);
+  }
+
+  .atlas-index-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .atlas-index h2 {
+    margin: 0.15rem 0 0;
+    font-size: 1.4rem;
+    letter-spacing: -0.04em;
+  }
+
+  .index-kicker {
+    margin: 0;
+    color: var(--orange);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .index-total {
+    display: grid;
+    min-width: 2rem;
+    height: 2rem;
+    place-items: center;
+    border: 1px solid color-mix(in srgb, var(--ink) 24%, transparent);
+    border-radius: 50%;
+    color: var(--orange);
+    font:
+      700 0.75rem/1 ui-monospace,
+      monospace;
+  }
+
+  .atlas-index-list,
+  .atlas-index-mementos {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .atlas-journey,
+  .atlas-index-mementos button {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
+    width: 100%;
+    padding: 0.7rem;
+    border: 1px solid transparent;
+    border-radius: 0.6rem;
+    color: var(--ink);
+    background: transparent;
+    text-align: left;
+  }
+
+  .atlas-journey:hover,
+  .atlas-journey.active,
+  .atlas-index-mementos button:hover,
+  .atlas-index-mementos button.active {
+    border-color: color-mix(in srgb, var(--orange) 65%, transparent);
+    background: color-mix(in srgb, var(--orange) 18%, transparent);
+  }
+
+  .atlas-journey-title,
+  .atlas-index-mementos strong {
+    font-size: 0.88rem;
+    font-weight: 700;
+  }
+
+  .atlas-journey-meta,
+  .atlas-journey-count {
+    color: var(--muted);
+    font-size: 0.7rem;
+  }
+
+  .atlas-index-mementos {
+    border-top: 1px solid color-mix(in srgb, var(--ink) 16%, transparent);
+    padding-top: 0.9rem;
+  }
+
+  .atlas-index-mementos button {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .atlas-index-mementos button > span {
+    color: var(--orange);
+    font:
+      700 0.68rem/1 ui-monospace,
+      monospace;
   }
 
   .hero {
@@ -367,6 +581,21 @@
   }
 
   @media (max-width: 640px) {
+    .atlas-index {
+      top: auto;
+      right: 0.75rem;
+      bottom: 4.75rem;
+      left: 0.75rem;
+      width: auto;
+      max-height: min(52vh, 27rem);
+    }
+
+    .index-toggle {
+      right: 1rem;
+      bottom: 1rem;
+      left: auto;
+    }
+
     .hero {
       min-height: 100svh;
       padding-top: 8rem;

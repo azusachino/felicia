@@ -2,6 +2,7 @@
   import maplibregl, { type StyleSpecification } from "maplibre-gl"
   import "maplibre-gl/dist/maplibre-gl.css"
   import { onMount } from "svelte"
+  import { geoDistance } from "d3-geo"
   import type { Coordinates, Journey, Memento, Theme } from "@felicia/model"
 
   let {
@@ -24,6 +25,7 @@
   let map: maplibregl.Map | undefined
   let loaded = $state(false)
   let resizeObserver: ResizeObserver | undefined
+  let prefersReducedMotion = $state(false)
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- imperative MapLibre marker cache
   const markers = new Map<string, maplibregl.Marker>()
 
@@ -86,7 +88,13 @@
     if (!map || !journey) return
     const bounds = boundsOf(coordinatesFor(journey))
     if (!bounds) return
-    map.fitBounds(bounds, { padding: 80, maxZoom: 9, duration: 700 })
+    const distance = journeyDistance(journey)
+    map.fitBounds(bounds, { padding: 80, maxZoom: 9, duration: prefersReducedMotion ? 0 : Math.min(900, 360 + distance * 180) })
+  }
+
+  function journeyDistance(journey: Journey) {
+    const coordinates = journey.routeSegments?.length ? journey.routeSegments.flat() : journey.route
+    return coordinates.slice(1).reduce((total, coordinate, index) => total + geoDistance(coordinates[index], coordinate), 0)
   }
 
   function markerElement(memento: Memento, index: number) {
@@ -146,6 +154,10 @@
 
   onMount(() => {
     if (!container) return
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
+    prefersReducedMotion = motionQuery.matches
+    const onMotionChange = (event: MediaQueryListEvent) => (prefersReducedMotion = event.matches)
+    motionQuery.addEventListener("change", onMotionChange)
     map = new maplibregl.Map({
       container,
       style: mapStyle,
@@ -190,6 +202,7 @@
 
     return () => {
       resizeObserver?.disconnect()
+      motionQuery.removeEventListener("change", onMotionChange)
       resizeObserver = undefined
       markers.forEach((marker) => marker.remove())
       markers.clear()
