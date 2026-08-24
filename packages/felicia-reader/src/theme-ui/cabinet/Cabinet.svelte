@@ -364,13 +364,13 @@
   }
 
   .cabinet-preview.active {
-    border-color: rgba(253, 186, 116, 0.6);
+    border-color: color-mix(in srgb, var(--accent-strong) 60%, transparent);
     border-left-color: var(--accent-ink);
-    background: rgba(251, 146, 60, 0.1);
+    background: var(--accent-soft);
   }
 
   .cabinet-preview--transit {
-    border-left-color: #fb923c;
+    border-left-color: var(--accent-strong);
   }
 
   .cabinet-preview--stamp {

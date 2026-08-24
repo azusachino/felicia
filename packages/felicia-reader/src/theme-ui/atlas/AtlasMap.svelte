@@ -177,14 +177,14 @@
         type: "line",
         source: "routes",
         layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": "#ff7b3a", "line-width": 2, "line-opacity": 0.22 },
+        paint: { "line-color": "#7fd8cb", "line-width": 2, "line-opacity": 0.3 },
       })
       map.addLayer({
         id: "route-active-glow",
         type: "line",
         source: "routes",
         filter: ["==", ["get", "journeyId"], activeJourneyId ?? ""],
-        paint: { "line-color": "#ff7b3a", "line-width": 8, "line-opacity": 0.14, "line-blur": 4 },
+        paint: { "line-color": "#ff9b72", "line-width": 8, "line-opacity": 0.16, "line-blur": 4 },
       })
       map.addLayer({
         id: "route-active",
@@ -192,7 +192,7 @@
         source: "routes",
         filter: ["==", ["get", "journeyId"], activeJourneyId ?? ""],
         layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": "#ff7b3a", "line-width": 3, "line-opacity": 0.8 },
+        paint: { "line-color": "#ff9b72", "line-width": 3, "line-opacity": 0.88 },
       })
       loaded = true
       refresh()
@@ -237,9 +237,9 @@
     width: 2rem;
     height: 2rem;
     place-items: center;
-    border: 2px solid #f7ead7;
+    border: 2px solid #e8f4ef;
     border-radius: 999px;
-    background: #bd5724;
+    background: #123344;
     box-shadow:
       0 0 0 3px #171412aa,
       0 4px 12px #0008;
@@ -257,7 +257,7 @@
 
   :global(.atlas-marker.is-active) {
     z-index: 2;
-    background: #ff7b3a;
+    background: #ff9b72;
     transform: scale(1.16);
   }
 
@@ -268,8 +268,8 @@
     min-width: 1rem;
     padding: 0.15rem;
     border-radius: 999px;
-    background: #f7ead7;
-    color: #30251d;
+    background: #e8f4ef;
+    color: #123344;
     font-size: 0.6rem;
     font-style: normal;
   }

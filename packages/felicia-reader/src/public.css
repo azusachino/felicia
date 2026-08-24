@@ -10,7 +10,7 @@
   --color-ink: #3a2f1c;
   --color-ink-soft: #5a4622;
   --color-ink-faint: #7a5c30;
-  --color-terracotta: #b45f26;
+  --color-terracotta: #d9674c;
   --font-mincho: "Zen Old Mincho", serif;
   --font-spectral: "Spectral", serif;
 }
@@ -55,47 +55,62 @@ button {
 }
 
 /* Theme tokens: dark is default; .theme-light overrides. The warm paper stubs
-   (ticket / stamp / goods faces) are physical objects and stay warm in both. */
+   (ticket / stamp / goods faces) are physical objects and stay warm in both.
+   Glass belongs to the reader shell, not the paper itself. */
 .app-shell {
-  --bg: #09090b;
-  --text: #fafafa;
-  --text-soft: #d4d4d8;
-  --muted: #a1a1aa;
-  --faint: #71717a;
-  --border: rgba(255, 255, 255, 0.1);
-  --hover: rgba(255, 255, 255, 0.04);
-  --card: rgba(255, 255, 255, 0.04);
-  --chip-bg: #18181b;
-  --chip-border: #52525b;
-  --accent-ink: var(--accent, #fdba74);
-  --ctrl-bg: rgba(15, 23, 42, 0.82);
+  --bg: #07131f;
+  --bg-deep: #06101a;
+  --text: #f1f7f5;
+  --text-soft: #d0e0de;
+  --muted: #9ab0b4;
+  --faint: #718b91;
+  --border: rgba(180, 222, 217, 0.16);
+  --hover: rgba(180, 222, 217, 0.07);
+  --card: rgba(175, 222, 216, 0.06);
+  --chip-bg: #102533;
+  --chip-border: #456a73;
+  --accent-ink: var(--accent, #ff9b72);
+  --route: #7fd8cb;
+  --ctrl-bg: rgba(11, 32, 45, 0.78);
   --ctrl-invert: 1;
   --stub-shade: rgba(0, 0, 0, 0.5);
-  --surface-raised: rgba(18, 20, 26, 0.92);
-  --accent-soft: rgba(253, 186, 116, 0.14);
-  --accent-strong: #fb923c;
+  --surface-raised: rgba(12, 35, 47, 0.72);
+  --accent-soft: rgba(255, 155, 114, 0.14);
+  --accent-strong: #ff9b72;
+  --glass-bg: rgba(12, 35, 47, 0.66);
+  --glass-bg-deep: rgba(5, 19, 30, 0.84);
+  --glass-border: rgba(194, 237, 229, 0.2);
+  --glass-highlight: rgba(255, 255, 255, 0.16);
+  --glass-shadow: rgba(0, 7, 14, 0.32);
   --radius-control: 0.5rem;
   --radius-surface: 1rem;
 }
 
 .app-shell.theme-light {
-  --bg: #f7f5f0;
-  --text: #1c1917;
-  --text-soft: #292524;
-  --muted: #57534e;
-  --faint: #78716c;
-  --border: rgba(0, 0, 0, 0.1);
-  --hover: rgba(0, 0, 0, 0.035);
-  --card: rgba(0, 0, 0, 0.03);
-  --chip-bg: #ffffff;
-  --chip-border: #d6d3d1;
-  --accent-ink: var(--accent, #ea580c);
-  --ctrl-bg: rgba(255, 255, 255, 0.92);
+  --bg: #eaf3f1;
+  --bg-deep: #dcebe9;
+  --text: #102832;
+  --text-soft: #23424b;
+  --muted: #527078;
+  --faint: #708c91;
+  --border: rgba(13, 52, 64, 0.15);
+  --hover: rgba(35, 97, 104, 0.07);
+  --card: rgba(255, 255, 255, 0.45);
+  --chip-bg: #f6fbf8;
+  --chip-border: #9dbab6;
+  --accent-ink: var(--accent, #d9674c);
+  --route: #2c9e9a;
+  --ctrl-bg: rgba(246, 252, 249, 0.78);
   --ctrl-invert: 0;
   --stub-shade: rgba(60, 40, 20, 0.3);
-  --surface-raised: rgba(255, 255, 255, 0.94);
-  --accent-soft: rgba(194, 65, 12, 0.1);
-  --accent-strong: #c2410c;
+  --surface-raised: rgba(246, 252, 249, 0.72);
+  --accent-soft: rgba(217, 103, 76, 0.12);
+  --accent-strong: #c9583e;
+  --glass-bg: rgba(246, 252, 249, 0.62);
+  --glass-bg-deep: rgba(220, 235, 233, 0.76);
+  --glass-border: rgba(30, 91, 95, 0.18);
+  --glass-highlight: rgba(255, 255, 255, 0.78);
+  --glass-shadow: rgba(46, 91, 96, 0.16);
 }
 
 html {
@@ -111,7 +126,7 @@ select {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent-strong, #fb923c);
+  outline: 2px solid var(--accent-strong, #ff9b72);
   outline-offset: 3px;
 }
 
@@ -140,7 +155,9 @@ select {
 
 .app-shell {
   @apply grid h-full grid-cols-[320px_minmax(0,1fr)_420px];
-  background: var(--bg);
+  background:
+    radial-gradient(circle at 78% 12%, color-mix(in srgb, var(--route) 12%, transparent), transparent 30%),
+    linear-gradient(135deg, var(--bg), var(--bg-deep));
   color: var(--text);
 }
 
@@ -148,8 +165,11 @@ select {
 
 .index-rail {
   @apply flex flex-col gap-4 overflow-y-auto px-5 py-6;
-  background: var(--bg);
-  border-right: 1px solid var(--border);
+  background: linear-gradient(145deg, var(--glass-bg), var(--glass-bg-deep));
+  border-right: 1px solid var(--glass-border);
+  box-shadow: inset -1px 0 0 var(--glass-highlight), 1rem 0 3rem var(--glass-shadow);
+  backdrop-filter: blur(22px) saturate(135%);
+  -webkit-backdrop-filter: blur(22px) saturate(135%);
 }
 
 .rail-toolbar {
@@ -159,6 +179,7 @@ select {
 .lang-switch {
   @apply flex rounded-md p-0.5;
   border: 1px solid var(--border);
+  background: var(--card);
 }
 
 .lang-switch button {
@@ -169,7 +190,8 @@ select {
 }
 
 .lang-switch button.active {
-  @apply bg-orange-400 text-zinc-950;
+  color: #17202a;
+  background: var(--accent-strong);
 }
 
 .theme-toggle {
@@ -229,8 +251,8 @@ select {
 }
 
 .journey-item.active {
-  @apply bg-orange-400/10;
-  border-color: rgba(253, 186, 116, 0.6);
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent-strong) 60%, transparent);
 }
 
 .journey-item-title {
@@ -266,8 +288,8 @@ select {
 }
 
 .timeline-item.active {
-  @apply bg-orange-400/10;
-  border-color: rgba(253, 186, 116, 0.6);
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent-strong) 60%, transparent);
 }
 
 .timeline-glyph {
@@ -287,7 +309,9 @@ select {
 }
 
 .timeline-item.active .timeline-glyph {
-  @apply border-orange-300 bg-orange-400 text-zinc-950;
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+  color: #17202a;
 }
 
 .timeline-body {
@@ -323,8 +347,11 @@ select {
 
 .detail-panel {
   @apply relative z-20 overflow-y-auto px-6 py-6 shadow-2xl;
-  background: var(--bg);
-  border-left: 1px solid var(--border);
+  background: linear-gradient(145deg, var(--glass-bg), var(--glass-bg-deep));
+  border-left: 1px solid var(--glass-border);
+  box-shadow: inset 1px 0 0 var(--glass-highlight), -1rem 0 3rem var(--glass-shadow);
+  backdrop-filter: blur(22px) saturate(135%);
+  -webkit-backdrop-filter: blur(22px) saturate(135%);
 }
 
 .detail-inner {

@@ -7,8 +7,8 @@ each design to tell the same journey in its own visual language.
 ## Design read
 
 Reading this as a redesign of a personal, map-first travel journal for one
-reader, with a tactile editorial atlas language, leaning toward tinted charcoal,
-warm paper, and restrained cinematic motion.
+reader, with a tactile editorial atlas language, leaning toward midnight blue,
+apricot route light, mint signals, warm paper, and restrained cinematic motion.
 
 The working dials are:
 
@@ -53,10 +53,18 @@ surface where the design owns the document focus.
 
 ## Visual system
 
-The shell uses one neutral family and one accent family. Dark mode is tinted
-charcoal rather than pure black; light mode is a cool stone derived from the
-same hue. Warm amber/orange is reserved for routes, selected states, and paper
-materials. Red is reserved for actual error or destructive state.
+The shell uses one midnight-to-mist neutral family and two signal colors. Dark
+mode is a blue-green midnight rather than pure black; light mode is a cool mist
+derived from the same hue. Apricot marks selected states and the Felicia route;
+mint carries the quieter route network and map signals. Warm paper remains a
+physical material for mementos, and red is reserved for actual error or
+destructive state.
+
+The public shell may use liquid-glass surfaces for navigation, indexes, and
+detail panels: translucent layered fills, a hairline highlight, soft elevation,
+and backdrop blur where supported. Glass is an interface layer, not a material
+replacement for the paper memento system. The public mark is a native SVG
+waypoint: a paper note crossing a two-tone route on a midnight field.
 
 The shape scale is intentionally narrow:
 

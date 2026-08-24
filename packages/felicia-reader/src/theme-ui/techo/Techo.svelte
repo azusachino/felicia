@@ -509,7 +509,7 @@
     --paper-1: #fdf9f0;
     --paper-2: #f3ecdb;
     --paper-3: #efe7d5;
-    --terracotta: var(--accent, #b45f26);
+    --terracotta: var(--accent, #d9674c);
     --hairline: rgba(90, 66, 30, 0.3);
     --hairline-strong: rgba(90, 66, 30, 0.4);
 
