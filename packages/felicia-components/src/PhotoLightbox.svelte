@@ -36,10 +36,6 @@
   function handleKeydown(event: KeyboardEvent) {
     if (open && event.key === "Escape") close()
   }
-
-  function handleBackdropClick(event: MouseEvent) {
-    if (event.target === event.currentTarget) close()
-  }
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -49,7 +45,7 @@
 </button>
 
 {#if open}
-  <div use:portal class="photo-lightbox" role="dialog" aria-modal="true" aria-label={alt} onclick={handleBackdropClick}>
+  <div use:portal class="photo-lightbox" role="dialog" aria-modal="true" aria-label={alt} tabindex="-1">
     <div class="lightbox-frame">
       <button bind:this={closeButton} type="button" class="lightbox-close" aria-label={closeLabel} onclick={close}>×</button>
       <img class="lightbox-image" {src} {alt} />
