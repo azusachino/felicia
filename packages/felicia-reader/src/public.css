@@ -19,7 +19,7 @@
   color: #f8fafc;
   background: #08090d;
   font-family:
-    Inter,
+    Outfit,
     ui-sans-serif,
     system-ui,
     -apple-system,
@@ -71,6 +71,11 @@ button {
   --ctrl-bg: rgba(15, 23, 42, 0.82);
   --ctrl-invert: 1;
   --stub-shade: rgba(0, 0, 0, 0.5);
+  --surface-raised: rgba(18, 20, 26, 0.92);
+  --accent-soft: rgba(253, 186, 116, 0.14);
+  --accent-strong: #fb923c;
+  --radius-control: 0.5rem;
+  --radius-surface: 1rem;
 }
 
 .app-shell.theme-light {
@@ -88,6 +93,26 @@ button {
   --ctrl-bg: rgba(255, 255, 255, 0.92);
   --ctrl-invert: 0;
   --stub-shade: rgba(60, 40, 20, 0.3);
+  --surface-raised: rgba(255, 255, 255, 0.94);
+  --accent-soft: rgba(194, 65, 12, 0.1);
+  --accent-strong: #c2410c;
+}
+
+html {
+  color-scheme: dark;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+a,
+input,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-strong, #fb923c);
+  outline-offset: 3px;
 }
 
 /* Visually hidden but screen-reader-audible — used for live-region
@@ -137,7 +162,7 @@ button {
 }
 
 .lang-switch button {
-  @apply rounded px-2.5 py-1 text-xs font-semibold;
+  @apply min-h-11 min-w-11 rounded px-2.5 py-1 text-xs font-semibold;
   color: var(--muted);
   background: transparent;
   border: 0;
@@ -148,7 +173,7 @@ button {
 }
 
 .theme-toggle {
-  @apply flex h-8 w-8 items-center justify-center rounded-md text-sm;
+  @apply flex h-11 w-11 items-center justify-center rounded-md text-sm;
   color: var(--text);
   background: transparent;
   border: 1px solid var(--border);
@@ -178,7 +203,7 @@ button {
 }
 
 .all-btn {
-  @apply rounded-md px-2.5 py-1 text-xs font-semibold;
+  @apply min-h-11 rounded-md px-3 text-xs font-semibold;
   color: var(--muted);
   background: transparent;
   border: 1px solid var(--border);
@@ -309,7 +334,7 @@ button {
 /* Sticky within .detail-panel's own scroll (there's no separate inner
    scroll wrapper here, unlike Atlas) so it stays reachable while scrolled. */
 .detail-close {
-  @apply sticky top-0 z-10 flex h-8 w-8 shrink-0 items-center justify-center self-end rounded-full text-base leading-none;
+  @apply sticky top-0 z-10 flex h-11 w-11 shrink-0 items-center justify-center self-end rounded-full text-base leading-none;
   color: var(--text);
   background: var(--ctrl-bg);
   border: 1px solid var(--border);
@@ -896,5 +921,16 @@ button {
   .detail-panel {
     border-left: 0;
     border-top: 1px solid var(--border);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
