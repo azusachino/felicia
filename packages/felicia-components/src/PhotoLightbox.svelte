@@ -9,7 +9,18 @@
   export let imageClass = ""
 
   let open = false
+  let triggerButton: HTMLButtonElement
   let closeButton: HTMLButtonElement
+
+  function portal(node: HTMLElement) {
+    document.body.appendChild(node)
+
+    return {
+      destroy() {
+        node.remove()
+      },
+    }
+  }
 
   async function show() {
     open = true
@@ -19,23 +30,28 @@
 
   function close() {
     open = false
+    triggerButton?.focus()
   }
 
   function handleKeydown(event: KeyboardEvent) {
     if (open && event.key === "Escape") close()
   }
+
+  function handleBackdropClick(event: MouseEvent) {
+    if (event.target === event.currentTarget) close()
+  }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
-<button type="button" class="photo-trigger" aria-label={openLabel} on:click={show}>
+<button bind:this={triggerButton} type="button" class="photo-trigger" aria-label={openLabel} onclick={show}>
   <img {src} {alt} class={imageClass} />
 </button>
 
 {#if open}
-  <div class="photo-lightbox" role="dialog" aria-modal="true" aria-label={alt}>
+  <div use:portal class="photo-lightbox" role="dialog" aria-modal="true" aria-label={alt} onclick={handleBackdropClick}>
     <div class="lightbox-frame">
-      <button bind:this={closeButton} type="button" class="lightbox-close" aria-label={closeLabel} on:click={close}>×</button>
+      <button bind:this={closeButton} type="button" class="lightbox-close" aria-label={closeLabel} onclick={close}>×</button>
       <img class="lightbox-image" {src} {alt} />
       {#if caption}
         <p>{caption}</p>
@@ -67,6 +83,7 @@
     inset: 0;
     display: grid;
     place-items: center;
+    overflow: auto;
     padding: 1.5rem;
     background: rgb(0 0 0 / 82%);
   }
@@ -94,8 +111,8 @@
     z-index: 1;
     top: 0.4rem;
     right: 0.4rem;
-    width: 2rem;
-    height: 2rem;
+    width: 2.75rem;
+    height: 2.75rem;
     border: 1px solid rgb(255 255 255 / 35%);
     border-radius: 999px;
     color: #fff;
