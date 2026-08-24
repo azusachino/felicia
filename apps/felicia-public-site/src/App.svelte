@@ -64,10 +64,16 @@
   }
 </script>
 
-<div class="public-reader-shell">
+<div class="public-reader-shell" class:theme-light={theme === "light"}>
   <nav class="public-design-switcher" aria-label={message(lang, "system.design")}>
     {#each designLanguages as design (design.id)}
-      <button type="button" class:active={active.id === design.id} aria-pressed={active.id === design.id} onclick={() => selectDesign(design.id)}>
+      <button
+        type="button"
+        class:active={active.id === design.id}
+        aria-current={active.id === design.id ? "page" : undefined}
+        aria-pressed={active.id === design.id}
+        onclick={() => selectDesign(design.id)}
+      >
         {message(lang, design.labelKey)}
       </button>
     {/each}
@@ -80,9 +86,20 @@
 
 <style>
   .public-reader-shell {
+    --switcher-bg: rgba(9, 9, 11, 0.82);
+    --switcher-border: rgba(255, 255, 255, 0.18);
+    --switcher-text: #d4d4d8;
     position: relative;
     width: 100%;
     height: 100%;
+    color-scheme: dark;
+  }
+
+  .public-reader-shell.theme-light {
+    --switcher-bg: rgba(255, 255, 255, 0.9);
+    --switcher-border: rgba(28, 25, 23, 0.14);
+    --switcher-text: #57534e;
+    color-scheme: light;
   }
 
   .public-design-switcher {
@@ -94,11 +111,13 @@
     gap: 0.2rem;
     max-width: calc(100vw - 2rem);
     overflow-x: auto;
-    padding: 0.25rem;
-    border: 1px solid color-mix(in srgb, #fff 18%, transparent);
+    min-height: 3.25rem;
+    padding: 0.35rem;
+    border: 1px solid var(--switcher-border);
     border-radius: 999px;
-    background: color-mix(in srgb, #09090b 78%, transparent);
+    background: var(--switcher-bg);
     backdrop-filter: blur(12px);
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.18);
     transform: translateX(-50%);
   }
 
@@ -106,18 +125,31 @@
     border: 0;
     border-radius: 999px;
     padding: 0.38rem 0.65rem;
-    color: #a1a1aa;
+    color: var(--switcher-text);
     background: transparent;
     font-size: 0.68rem;
     font-weight: 700;
     letter-spacing: 0.04em;
     white-space: nowrap;
+    transition:
+      color 180ms ease,
+      background 180ms ease,
+      transform 180ms ease;
   }
 
   .public-design-switcher button:hover,
   .public-design-switcher button.active {
     color: #18120d;
     background: #fdba74;
+  }
+
+  .public-design-switcher button:active {
+    transform: scale(0.97);
+  }
+
+  .public-design-switcher button:focus-visible {
+    outline-color: #fdba74;
+    outline-offset: -2px;
   }
 
   @media (max-width: 700px) {

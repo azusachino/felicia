@@ -67,9 +67,9 @@
       </div>
       <div class="cabinet-controls">
         <div class="lang-switch" role="group" aria-label="Language">
-          <button class:active={lang === "ja"} on:click={() => (lang = "ja")}>日本語</button>
-          <button class:active={lang === "en"} on:click={() => (lang = "en")}>EN</button>
-          <button class:active={lang === "zh"} on:click={() => (lang = "zh")}>中文</button>
+          <button class:active={lang === "ja"} aria-pressed={lang === "ja"} on:click={() => (lang = "ja")}>日本語</button>
+          <button class:active={lang === "en"} aria-pressed={lang === "en"} on:click={() => (lang = "en")}>EN</button>
+          <button class:active={lang === "zh"} aria-pressed={lang === "zh"} on:click={() => (lang = "zh")}>中文</button>
         </div>
         <button class="theme-toggle" on:click={toggleTheme} aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}>
           {theme === "dark" ? "☀" : "☾"}
@@ -232,6 +232,12 @@
     max-width: 68rem;
     margin: 0 auto;
     align-items: start;
+  }
+
+  .cabinet-shell :global(button:focus-visible),
+  .cabinet-shell :global(a:focus-visible) {
+    outline: 2px solid var(--accent-ink);
+    outline-offset: 3px;
   }
 
   .cabinet-stub-col {

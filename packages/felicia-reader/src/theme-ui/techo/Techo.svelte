@@ -373,7 +373,7 @@
 
         <nav class="year-tabs" aria-label="Years">
           {#each years as year (year)}
-            <button type="button" class="year-tab cursor-pointer border border-solid focus:outline-none" class:active={year === activeYear} onclick={() => selectYear(year)}>
+            <button type="button" class="year-tab cursor-pointer border border-solid" class:active={year === activeYear} aria-pressed={year === activeYear} onclick={() => selectYear(year)}>
               {year}
             </button>
           {/each}
@@ -420,7 +420,7 @@
             </div>
             <button
               type="button"
-              class="flex h-7 w-7 items-center justify-center rounded-full border border-black/10 bg-paper-2 hover:bg-paper-3 text-base text-ink-soft cursor-pointer transition focus:outline-none"
+              class="flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-paper-2 hover:bg-paper-3 text-base text-ink-soft cursor-pointer transition"
               onclick={backToLanding}
               aria-label={t(backLabel)}
             >
@@ -431,7 +431,7 @@
           <div class="flex items-center justify-between border-b border-dashed border-black/15 pb-3">
             <button
               type="button"
-              class="flex items-center gap-1 font-mono text-xs text-ink-soft disabled:opacity-30 disabled:cursor-not-allowed hover-accent transition cursor-pointer bg-transparent border-none p-0 focus:outline-none"
+              class="flex min-h-11 items-center gap-1 font-mono text-xs text-ink-soft disabled:opacity-30 disabled:cursor-not-allowed hover-accent transition cursor-pointer bg-transparent border-none p-0"
               disabled={selectedMementoIndex === 0}
               onclick={goToPrevMemento}
             >
@@ -442,7 +442,7 @@
             </span>
             <button
               type="button"
-              class="flex items-center gap-1 font-mono text-xs text-ink-soft disabled:opacity-30 disabled:cursor-not-allowed hover-accent transition cursor-pointer bg-transparent border-none p-0 focus:outline-none"
+              class="flex min-h-11 items-center gap-1 font-mono text-xs text-ink-soft disabled:opacity-30 disabled:cursor-not-allowed hover-accent transition cursor-pointer bg-transparent border-none p-0"
               disabled={selectedMementoIndex === selectedJourney.mementos.length - 1}
               onclick={goToNextMemento}
             >
@@ -534,6 +534,12 @@
   .techo-shell.is-detail {
     padding: 0;
     display: block;
+  }
+
+  .techo-shell :global(button:focus-visible),
+  .techo-shell :global(a:focus-visible) {
+    outline: 2px solid var(--terracotta);
+    outline-offset: 3px;
   }
 
   .detail-back {

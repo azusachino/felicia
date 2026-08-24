@@ -180,12 +180,10 @@
   @keyframes open-panel {
     from {
       opacity: 0;
-      transform: translateX(1.5rem);
     }
 
     to {
       opacity: 1;
-      transform: translateX(0);
     }
   }
 
