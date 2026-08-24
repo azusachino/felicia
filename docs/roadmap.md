@@ -89,6 +89,7 @@ Deliverables:
 - Keep a dark MapLibre route map, journey index, visit/memento markers, and responsive mobile layout.
 - Render the first memento templates from structured data rather than per-item markup.
 - Implement the signature open interaction into an essay and photo gallery.
+- Align Atlas, Cabinet, Techo, and Cartography behind the shared reader UI/UX contract: map/index access, paper memento semantics, accessible controls, and reduced-motion behavior.
 - Remove prototype/scaffolding chrome from the public reader.
 - Verify Japanese, English, Chinese system UI, keyboard navigation, reduced motion, and readable essay typography.
 
