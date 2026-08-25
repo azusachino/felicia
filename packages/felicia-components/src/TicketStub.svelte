@@ -258,6 +258,23 @@
     font-size: 1.25rem;
     white-space: nowrap;
   }
+
+  @media (max-width: 700px) {
+    .ticket-body {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ticket-price {
+      width: 100%;
+      flex-direction: row;
+      align-items: center;
+      border-top: 1px dashed rgb(36 18 3 / 38%);
+      border-left: 0;
+      padding-top: 0.6rem;
+      padding-left: 0;
+    }
+  }
+
   .ticket-source {
     position: relative;
     z-index: 1;
