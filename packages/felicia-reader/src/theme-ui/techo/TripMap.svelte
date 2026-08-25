@@ -146,7 +146,7 @@
         id: "route-glow",
         type: "line",
         source: "route",
-        paint: { "line-color": "#f97316", "line-width": 8, "line-opacity": 0.16, "line-blur": 4 },
+        paint: { "line-color": "#ff9b72", "line-width": 8, "line-opacity": 0.18, "line-blur": 4 },
       })
       map.addLayer({
         id: "route-line",
@@ -154,7 +154,7 @@
         source: "route",
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
-          "line-color": "#fb923c",
+          "line-color": "#ff9b72",
           "line-width": 4,
           "line-opacity": 0.95,
         },

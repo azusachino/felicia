@@ -142,14 +142,17 @@
     return bounds
   }
 
-  const fitPadding = { top: 80, bottom: 80, left: 80, right: 460 }
+  function fitPadding() {
+    const width = map?.getContainer().clientWidth ?? 0
+    return { top: 80, bottom: 80, left: 80, right: width < 1000 ? 80 : 460 }
+  }
 
   function fitAll() {
     if (!map) return
     const bounds = boundsOf(journeys.flatMap((journey) => journey.route))
     if (!bounds) return
     map.fitBounds(bounds, {
-      padding: fitPadding,
+      padding: fitPadding(),
       maxZoom: 6.5,
       duration: 800,
     })
@@ -159,7 +162,7 @@
     if (!map) return
     const bounds = boundsOf(journey.route)
     if (!bounds) return
-    map.fitBounds(bounds, { padding: fitPadding, maxZoom: 9, duration: 800 })
+    map.fitBounds(bounds, { padding: fitPadding(), maxZoom: 9, duration: 800 })
   }
 
   function markerElement(memento: Memento, seq: number) {
@@ -266,7 +269,7 @@
       const bounds = boundsOf([memento.transit.from.coords, memento.transit.to.coords])
       if (!bounds) return
       map.fitBounds(bounds, {
-        padding: fitPadding,
+        padding: fitPadding(),
         maxZoom: 10.5,
         duration: 700,
       })
@@ -306,7 +309,7 @@
         id: "routes-all",
         type: "line",
         source: "routes",
-        paint: { "line-color": "#fb923c", "line-width": 2, "line-opacity": 0.28 },
+        paint: { "line-color": "#7fd8cb", "line-width": 2, "line-opacity": 0.32 },
       })
       // Selected journey, bright + glow.
       map.addLayer({
@@ -314,14 +317,14 @@
         type: "line",
         source: "routes",
         filter: ["==", ["get", "journeyId"], selectedJourneyId],
-        paint: { "line-color": "#f97316", "line-width": 8, "line-opacity": 0.16, "line-blur": 4 },
+        paint: { "line-color": "#ff9b72", "line-width": 8, "line-opacity": 0.18, "line-blur": 4 },
       })
       map.addLayer({
         id: "route-active",
         type: "line",
         source: "routes",
         filter: ["==", ["get", "journeyId"], selectedJourneyId],
-        paint: { "line-color": "#fb923c", "line-width": 3, "line-opacity": 0.95 },
+        paint: { "line-color": "#ff9b72", "line-width": 3, "line-opacity": 0.95 },
       })
 
       map.addSource("transit", { type: "geojson", data: transitFeatures(selectedJourney) })
@@ -329,7 +332,7 @@
         id: "transit",
         type: "line",
         source: "transit",
-        paint: { "line-color": "#fde68a", "line-width": 4, "line-opacity": 0.9 },
+        paint: { "line-color": "#f4d8b2", "line-width": 4, "line-opacity": 0.9 },
       })
 
       rebuildMarkers(selectedJourney)

@@ -1,6 +1,6 @@
 module github.com/azusachino/felicia/apps/felicia-core
 
-go 1.26
+go 1.27
 
 require (
 	github.com/google/go-cmp v0.7.0

@@ -258,25 +258,31 @@
 
 <style>
   .waypoints {
-    --ink: #f5f5f5;
-    --muted: #a8a8a8;
-    --orange: var(--accent, #d46728);
-    --waypoints-bg: #121212;
+    --ink: #f1f7f5;
+    --muted: #a2b8bb;
+    --orange: var(--accent, #ff9b72);
+    --route: #7fd8cb;
+    --waypoints-bg: #07131f;
     min-height: 100%;
     height: 100%;
     overflow-y: auto;
     overscroll-behavior-y: contain;
-    background: #121212;
+    background:
+      radial-gradient(circle at 72% 8%, rgba(127, 216, 203, 0.12), transparent 28%),
+      #07131f;
     color: var(--ink);
     font-family: Outfit, ui-sans-serif, system-ui, sans-serif;
   }
 
   .waypoints.light {
-    --ink: #2d2925;
-    --muted: #706a65;
-    --orange: var(--accent, #b45f26);
-    --waypoints-bg: #e7e0d5;
-    background: #e7e0d5;
+    --ink: #102832;
+    --muted: #527078;
+    --orange: var(--accent, #d9674c);
+    --route: #2c9e9a;
+    --waypoints-bg: #eaf3f1;
+    background:
+      radial-gradient(circle at 72% 8%, rgba(44, 158, 154, 0.14), transparent 28%),
+      #eaf3f1;
   }
 
   .map-surface {
@@ -307,12 +313,13 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.65rem 0.9rem;
-    border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent);
+    border: 1px solid color-mix(in srgb, var(--route) 38%, transparent);
     border-radius: 999px;
     color: var(--ink);
-    background: color-mix(in srgb, var(--waypoints-bg) 82%, transparent);
-    box-shadow: 0 0.75rem 2rem #0005;
-    backdrop-filter: blur(12px);
+    background: color-mix(in srgb, var(--waypoints-bg) 68%, transparent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 0.75rem 2rem rgba(0, 7, 14, 0.32);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
     font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.08em;
@@ -342,12 +349,13 @@
     gap: 1rem;
     overflow-y: auto;
     padding: 1.15rem;
-    border: 1px solid color-mix(in srgb, var(--ink) 20%, transparent);
+    border: 1px solid color-mix(in srgb, var(--route) 30%, transparent);
     border-radius: 1rem;
     color: var(--ink);
-    background: color-mix(in srgb, var(--waypoints-bg) 88%, transparent);
-    box-shadow: 0 1.5rem 4rem #0007;
-    backdrop-filter: blur(18px) saturate(120%);
+    background: color-mix(in srgb, var(--waypoints-bg) 66%, transparent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 1.5rem 4rem rgba(0, 7, 14, 0.38);
+    backdrop-filter: blur(24px) saturate(145%);
+    -webkit-backdrop-filter: blur(24px) saturate(145%);
   }
 
   .atlas-index-head {
@@ -494,9 +502,12 @@
     display: flex;
     margin-top: 1.5rem;
     padding: 0.2rem;
-    border: 1px solid #444;
+    border: 1px solid color-mix(in srgb, var(--route) 32%, transparent);
     border-radius: 0.7rem;
-    background: #353535b8;
+    background: color-mix(in srgb, var(--waypoints-bg) 64%, transparent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 0.75rem 2rem rgba(0, 7, 14, 0.22);
+    backdrop-filter: blur(16px) saturate(130%);
+    -webkit-backdrop-filter: blur(16px) saturate(130%);
   }
 
   .sort button {
@@ -508,8 +519,8 @@
   }
 
   .sort button.active {
-    color: #fff;
-    background: #686868;
+    color: #17202a;
+    background: var(--orange);
   }
 
   .journey-section {

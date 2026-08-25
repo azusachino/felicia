@@ -16,6 +16,6 @@
     "@felicia/model": "workspace:*",
     "@felicia/runtime": "workspace:*",
     "d3-shape": "^3.2.0",
-    "svelte": "^5.38.0"
+    "svelte": "^5.56.10"
   }
 }

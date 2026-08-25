@@ -100,6 +100,7 @@
 
   .detail-scroll :global(.stub) {
     align-self: center;
+    flex: 0 0 auto;
     width: min(100%, 25rem);
     cursor: default;
     transform: rotate(-1deg);

@@ -105,7 +105,7 @@
   .stub:focus-visible,
   .stub.selected {
     z-index: 2;
-    outline: 2px solid #ff7b3a;
+    outline: 2px solid #ff9b72;
     outline-offset: 3px;
     box-shadow: 0 1rem 3rem #000b;
     transform: translateY(-0.35rem) rotate(0);

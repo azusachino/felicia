@@ -17,7 +17,7 @@ COMPOSE ?= $(shell \
 	elif command -v docker >/dev/null 2>&1; then echo docker compose; \
 	else echo ''; fi)
 
-.PHONY: help fmt fmt-check vet lint test test-api test-features layout-check test-sqlite test-postgres check build cli-build experiment-intake journey-local validate deps-check tidy db-up db-down migrate seed admin dev dev-sqlite dev-postgres test-workflow test-workflow-postgres test-admin-e2e sqlc mock-up mock-down web-install web-check web-build admin-check admin-build web-private-check web-private-build site-build site-verify pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
+.PHONY: help fmt fmt-check vet lint test test-api test-features layout-check test-sqlite test-postgres check build cli-build experiment-intake journey-local validate deps-check tidy db-up db-down migrate seed admin dev dev-sqlite dev-postgres test-workflow test-workflow-postgres test-admin-e2e sqlc mock-up mock-down browser-mock web-install web-check web-build admin-check admin-build web-private-check web-private-build site-build site-verify pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -103,6 +103,9 @@ mock-up: ## Start the mock Dawarich+Immich upstream in the background (:8099)
 
 mock-down: ## Stop the mock upstream
 	@pkill -f scripts/mock_upstream.py && echo "mock stopped" || echo "no mock running"
+
+browser-mock: ## Serve deterministic public-reader data for browser verification
+	$(BUN) scripts/browser_preview_mock.ts
 
 test-api: ## Run Python-based E2E API integration tests (requires running server)
 	$(UV_RUN) run python scripts/test_api.py

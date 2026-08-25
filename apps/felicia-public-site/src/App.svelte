@@ -64,7 +64,12 @@
   }
 </script>
 
-<div class="public-reader-shell" class:theme-light={theme === "light"}>
+<div class="public-reader-shell" class:theme-light={theme === "light"} class:design-cabinet={active.id === "cabinet"} class:design-cartography={active.id === "cartography"}>
+  <a class="public-brand" href="/" aria-label="Felicia home">
+    <img src="/felicia-mark.svg" alt="" aria-hidden="true" />
+    <span>felicia</span>
+  </a>
+
   <nav class="public-design-switcher" aria-label={message(lang, "system.design")}>
     {#each designLanguages as design (design.id)}
       <button
@@ -86,9 +91,13 @@
 
 <style>
   .public-reader-shell {
-    --switcher-bg: rgba(9, 9, 11, 0.82);
-    --switcher-border: rgba(255, 255, 255, 0.18);
-    --switcher-text: #d4d4d8;
+    --switcher-bg: rgba(9, 25, 37, 0.72);
+    --switcher-border: rgba(184, 232, 221, 0.2);
+    --switcher-text: #c8d9dc;
+    --switcher-active: #ff9b72;
+    --switcher-active-text: #17202a;
+    --glass-highlight: rgba(255, 255, 255, 0.2);
+    --glass-shadow: rgba(1, 9, 17, 0.3);
     position: relative;
     width: 100%;
     height: 100%;
@@ -96,10 +105,58 @@
   }
 
   .public-reader-shell.theme-light {
-    --switcher-bg: rgba(255, 255, 255, 0.9);
-    --switcher-border: rgba(28, 25, 23, 0.14);
-    --switcher-text: #57534e;
+    --switcher-bg: rgba(241, 248, 246, 0.78);
+    --switcher-border: rgba(13, 41, 55, 0.16);
+    --switcher-text: #41606a;
+    --switcher-active: #f08f69;
+    --switcher-active-text: #17202a;
+    --glass-highlight: rgba(255, 255, 255, 0.78);
+    --glass-shadow: rgba(34, 73, 82, 0.16);
     color-scheme: light;
+  }
+
+  .public-brand {
+    position: fixed;
+    z-index: 60;
+    top: 1rem;
+    left: 1rem;
+    display: inline-flex;
+    min-height: 3.25rem;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.35rem 0.85rem 0.35rem 0.35rem;
+    border: 1px solid var(--switcher-border);
+    border-radius: 999px;
+    color: var(--switcher-text);
+    background: var(--switcher-bg);
+    box-shadow:
+      inset 0 1px 0 var(--glass-highlight),
+      0 1rem 3rem var(--glass-shadow);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-decoration: none;
+    text-transform: lowercase;
+  }
+
+  .public-brand img {
+    width: 2.45rem;
+    height: 2.45rem;
+    border-radius: 0.72rem;
+  }
+
+  .public-brand:hover {
+    border-color: color-mix(in srgb, var(--switcher-active) 58%, transparent);
+  }
+
+  .public-reader-shell.design-cabinet :global(.cabinet-top) {
+    padding-left: 10rem;
+  }
+
+  .public-reader-shell.design-cartography :global(.index-rail) {
+    padding-top: 6rem;
   }
 
   .public-design-switcher {
@@ -116,8 +173,11 @@
     border: 1px solid var(--switcher-border);
     border-radius: 999px;
     background: var(--switcher-bg);
-    backdrop-filter: blur(12px);
-    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.18);
+    box-shadow:
+      inset 0 1px 0 var(--glass-highlight),
+      0 1rem 3rem var(--glass-shadow);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
     transform: translateX(-50%);
   }
 
@@ -139,8 +199,8 @@
 
   .public-design-switcher button:hover,
   .public-design-switcher button.active {
-    color: #18120d;
-    background: #fdba74;
+    color: var(--switcher-active-text);
+    background: var(--switcher-active);
   }
 
   .public-design-switcher button:active {
@@ -148,13 +208,33 @@
   }
 
   .public-design-switcher button:focus-visible {
-    outline-color: #fdba74;
+    outline-color: var(--switcher-active);
     outline-offset: -2px;
   }
 
   @media (max-width: 700px) {
-    .public-design-switcher {
+    .public-reader-shell.design-cabinet :global(.cabinet-top) {
+      padding-left: 1.25rem;
+    }
+
+    .public-reader-shell.design-cartography :global(.index-rail) {
+      padding-top: 7.5rem;
+    }
+
+    .public-brand {
       top: 0.65rem;
+      left: 0.65rem;
+      min-height: 2.75rem;
+      padding-right: 0.65rem;
+    }
+
+    .public-brand img {
+      width: 2rem;
+      height: 2rem;
+    }
+
+    .public-design-switcher {
+      top: 4rem;
       right: 0.65rem;
       left: 0.65rem;
       justify-content: center;

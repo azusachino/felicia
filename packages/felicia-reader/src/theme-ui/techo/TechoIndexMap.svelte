@@ -100,7 +100,7 @@
         source: "journeys",
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
-          "line-color": ["case", ["get", "selected"], "#f97316", "#bd8b61"],
+          "line-color": ["case", ["get", "selected"], "#ff9b72", "#7aa8a6"],
           "line-width": ["case", ["get", "selected"], 4, 2],
           "line-opacity": ["case", ["get", "selected"], 0.95, 0.5],
         },
@@ -111,7 +111,7 @@
         type: "circle",
         source: "places",
         paint: {
-          "circle-color": "#f97316",
+          "circle-color": "#ff9b72",
           "circle-radius": 5,
           "circle-stroke-color": "#fff8ed",
           "circle-stroke-width": 2,
