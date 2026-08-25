@@ -31,6 +31,7 @@
   const configured = $derived(designLanguageFromId(settings?.design))
   const active = $derived(routeHash ? designLanguageFromHash(routeHash) : configured)
   const Active = $derived(active.component)
+  const markUrl = `${import.meta.env.BASE_URL}felicia-mark.svg`
 
   // lang/theme are shared across the mounted design so switching keeps your
   // reading state. lang keeps its existing localStorage override precedence
@@ -66,7 +67,7 @@
 
 <div class="public-reader-shell" class:theme-light={theme === "light"} class:design-cabinet={active.id === "cabinet"} class:design-cartography={active.id === "cartography"}>
   <a class="public-brand" href="/" aria-label="Felicia home">
-    <img src="/felicia-mark.svg" alt="" aria-hidden="true" />
+    <img src={markUrl} alt="" aria-hidden="true" />
     <span>felicia</span>
   </a>
 
