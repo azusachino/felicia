@@ -9,13 +9,13 @@ class DiscoverModulesTest(unittest.TestCase):
     def test_parses_use_block(self):
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory) / "go.work"
-            work.write_text("go 1.26\n\nuse (\n\t./apps/felicia-core\n\t./apps/felicia-server\n)\n")
+            work.write_text("go 1.27\n\nuse (\n\t./apps/felicia-core\n\t./apps/felicia-server\n)\n")
             self.assertEqual(discover_modules(work), ["apps/felicia-core", "apps/felicia-server"])
 
     def test_parses_single_line_use(self):
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory) / "go.work"
-            work.write_text("go 1.26\n\nuse ./apps/felicia-core\n")
+            work.write_text("go 1.27\n\nuse ./apps/felicia-core\n")
             self.assertEqual(discover_modules(work), ["apps/felicia-core"])
 
     def test_workspace_modules_have_manifests(self):

@@ -6,7 +6,7 @@
 ## Prerequisites
 
 - **mise** — the complete repository toolchain declared in [`mise.toml`](../mise.toml).
-  It provides Go 1.26, Bun, Python, uv, golangci-lint, goose, and sqlc. You usually don't
+  It provides Go 1.27, Bun, Python, uv, golangci-lint, goose, and sqlc. You usually don't
   need to activate it manually: `make` runs each tool through `mise exec`.
 
 ## Common commands

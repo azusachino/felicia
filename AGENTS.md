@@ -21,7 +21,7 @@ journey and its per-stage status live in
 
 ## Tech Stack & Architecture
 
-- **Backend:** Go 1.26 — API, runtime, provider, and core modules in one `go.work` workspace.
+- **Backend:** Go 1.27 — API, runtime, provider, and core modules in one `go.work` workspace.
 - **DB:** SQLite is the local-first provider; PostgreSQL remains supported for deployments that need it.
 - **Object storage:** S3-compatible interface; **R2** backend (MinIO/B2 swappable by config).
 - **Frontend:** Vite + MapLibre GL SPAs — public site, private reader, and admin authoring app (bun workspace).
