@@ -1,18 +1,29 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <defs>
     <linearGradient id="field" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#0a1727" />
-      <stop offset="1" stop-color="#123344" />
+      <stop stop-color="#091625" />
+      <stop offset="1" stop-color="#17364a" />
     </linearGradient>
-    <linearGradient id="paper" x1="18" y1="14" x2="48" y2="48" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#fff8ed" />
-      <stop offset="1" stop-color="#f4d8b2" />
+    <linearGradient id="route" x1="10" y1="48" x2="52" y2="32" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ff9b72" />
+      <stop offset="1" stop-color="#7fd8cb" />
     </linearGradient>
+    <radialGradient id="flower" cx="32" cy="20" r="14" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#e4fff5" />
+      <stop offset="1" stop-color="#7fd8cb" />
+    </radialGradient>
+    <path id="petal" d="M32 24c-4.7-3.9-4.5-9 0-12.2 4.5 3.2 4.7 8.3 0 12.2Z" />
   </defs>
   <rect width="64" height="64" rx="17" fill="url(#field)" />
-  <path d="M9 48c9-1 10-15 19-15 8 0 8 11 17 10 5 0 7-5 10-11" fill="none" stroke="#7fd8cb" stroke-linecap="round" stroke-width="2.5" />
-  <path d="M10 48c9-1 10-15 19-15" fill="none" stroke="#ff9b72" stroke-linecap="round" stroke-width="2.5" />
-  <path d="m17 13 25 3 6 9-4 26-27-4z" fill="url(#paper)" stroke="#fff8ed" stroke-width="1.5" />
-  <path d="m20 17 18 2M19 23l20 2M18 29l14 2" fill="none" stroke="#0d2937" stroke-linecap="round" stroke-width="1.8" />
-  <circle cx="44" cy="42" r="4.5" fill="#ff9b72" stroke="#0d2937" stroke-width="2" />
+  <path d="M8.5 48.5c8.4-1.1 11.4-12 19-11.4 6.6.5 8.2 8.1 14.1 7.6 5.3-.4 8.2-6.9 12.2-13.6" fill="none" stroke="#396778" stroke-linecap="round" stroke-width="1.5" />
+  <path d="M9 49c7.8-1 11.7-11.4 18.4-9.6 5.2 1.4 7.8 7.7 13.9 5.3 3.9-1.5 6.4-5.8 8.7-10.2" fill="none" stroke="url(#route)" stroke-linecap="round" stroke-width="2.6" />
+  <path d="M27.3 39.6c1.2-4.7 3.4-7.9 4.7-13.1" fill="none" stroke="#7fd8cb" stroke-linecap="round" stroke-width="2.4" />
+  <g fill="url(#flower)" stroke="#f2fff9" stroke-width="0.8">
+    <use href="#petal" />
+    <use href="#petal" transform="rotate(72 32 24)" />
+    <use href="#petal" transform="rotate(144 32 24)" />
+    <use href="#petal" transform="rotate(216 32 24)" />
+    <use href="#petal" transform="rotate(288 32 24)" />
+  </g>
+  <circle cx="32" cy="24" r="3.8" fill="#ff9b72" stroke="#091625" stroke-width="1.6" />
 </svg>
