@@ -132,7 +132,7 @@
 
   .tag-kind,
   .card-kind {
-    color: #71695e;
+    color: #3a2f22;
     font-size: 0.65rem;
     letter-spacing: 0.15em;
     text-transform: uppercase;

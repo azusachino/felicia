@@ -248,7 +248,14 @@
       700 0.75rem/1 ui-sans-serif,
       system-ui,
       sans-serif;
-    cursor: default;
+  }
+
+  /* Keep the visible marker at 2rem (map density) but grow the actual hit
+     area to the project's 44px touch-target minimum. */
+  :global(.atlas-marker)::after {
+    content: "";
+    position: absolute;
+    inset: calc((2rem - 2.75rem) / 2);
   }
 
   :global(.atlas-marker.is-dimmed) {

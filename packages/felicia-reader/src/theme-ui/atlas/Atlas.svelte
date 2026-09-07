@@ -35,18 +35,22 @@
     ja: {
       title: "旅の地図帳",
       subtitle: "旅の記憶を、チケットのかたちで",
-      newest: "Newest",
-      oldest: "Oldest",
+      newest: "新しい順",
+      oldest: "古い順",
       journeys: "旅",
       mementos: "件",
-      photos: "photos",
+      photos: "枚",
       photosHeading: "写真",
-      indexOpen: "目録",
+      indexOpen: "目録を開く",
       indexClose: "目録を閉じる",
       loading: "読み込み中…",
       retry: "再試行",
       close: "閉じる",
-      story: "Story",
+      story: "物語",
+      journeyMap: "旅の地図",
+      links: "リンク",
+      sortJourneys: "旅の並べ替え",
+      more: (n: number) => `ほか${n}件`,
     },
     en: {
       title: "Felicia's Waypoints",
@@ -57,28 +61,36 @@
       mementos: "mementos",
       photos: "photos",
       photosHeading: "Photos",
-      indexOpen: "Index",
+      indexOpen: "Show index",
       indexClose: "Hide index",
       loading: "Loading…",
       retry: "Retry",
       close: "Close",
       story: "Story",
+      journeyMap: "Journey map",
+      links: "Links",
+      sortJourneys: "Sort journeys",
+      more: (n: number) => `+${n} more`,
     },
     zh: {
       title: "旅行图册",
       subtitle: "以纪念物记录旅途",
-      newest: "Newest",
-      oldest: "Oldest",
+      newest: "最新",
+      oldest: "最早",
       journeys: "次旅程",
       mementos: "件纪念物",
-      photos: "photos",
+      photos: "张照片",
       photosHeading: "照片",
-      indexOpen: "目录",
+      indexOpen: "打开目录",
       indexClose: "关闭目录",
       loading: "加载中…",
       retry: "重试",
       close: "关闭",
       story: "故事",
+      journeyMap: "旅程地图",
+      links: "链接",
+      sortJourneys: "旅程排序",
+      more: (n: number) => `还有${n}件`,
     },
   } as const
 
@@ -135,6 +147,12 @@
     activeJourneyId = journeyId
     activeMementoId = memento.id
     selectedMementoId = memento.id
+    // The index and detail panels overlap below 640px -- the detail panel
+    // takes over the role the index was playing, so close it rather than
+    // stack both fixed-position panels on a narrow viewport.
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 640px)").matches) {
+      indexOpen = false
+    }
   }
 
   function selectMementoById(mementoId: string) {
@@ -160,6 +178,8 @@
   $effect(() => loadData())
 </script>
 
+<svelte:window onkeydown={(event) => event.key === "Escape" && closeMemento()} />
+
 <main class="waypoints" class:light={theme === "light"}>
   {#if isLoading}
     <div class="status" role="status">{label.loading}</div>
@@ -169,7 +189,7 @@
       <button type="button" onclick={loadData}>{label.retry}</button>
     </div>
   {:else if orderedJourneys.length}
-    <div class="map-surface" aria-label="Journey map">
+    <div class="map-surface" aria-label={label.journeyMap}>
       <AtlasMap {journeys} {activeJourneyId} {activeMementoId} {lang} {theme} onSelect={selectMementoById} />
     </div>
 
@@ -183,7 +203,7 @@
         <div class="atlas-index-head">
           <div>
             <p class="index-kicker">FELICIA / ATLAS</p>
-            <h2>{label.journeys}</h2>
+            <h2 lang={lang}>{label.journeys}</h2>
           </div>
           <span class="index-total">{orderedJourneys.length}</span>
         </div>
@@ -205,6 +225,9 @@
                 <strong>{t(memento.title)}</strong>
               </button>
             {/each}
+            {#if activeJourney.mementos.length > 4}
+              <p class="index-more">{label.more(activeJourney.mementos.length - 4)}</p>
+            {/if}
           </div>
         {/if}
       </aside>
@@ -212,15 +235,15 @@
 
     <header class="hero">
       <p class="brand">F E L I C I A / ATLAS</p>
-      <h1>{label.title}</h1>
+      <h1 lang={lang}>{label.title}</h1>
       <p>{label.subtitle}</p>
-      <nav class="social" aria-label="Links">
+      <nav class="social" aria-label={label.links}>
         <a href="https://github.com" aria-label="GitHub">◉</a>
         <a href="https://x.com" aria-label="X">𝕏</a>
         <a href="https://telegram.org" aria-label="Telegram">➤</a>
         <a href="mailto:hello@example.com" aria-label="Email">✉</a>
       </nav>
-      <div class="sort" role="group" aria-label="Sort journeys">
+      <div class="sort" role="group" aria-label={label.sortJourneys}>
         <button type="button" class:active={newestFirst} aria-pressed={newestFirst} onclick={() => (newestFirst = true)}>{label.newest}</button>
         <button type="button" class:active={!newestFirst} aria-pressed={!newestFirst} onclick={() => (newestFirst = false)}>{label.oldest}</button>
       </div>
@@ -371,6 +394,14 @@
     letter-spacing: -0.04em;
   }
 
+  /* Negative tracking optically tightens Latin type; CJK glyphs already fill
+     a full-width em with no natural inter-character gap, so the same value
+     crowds them instead. */
+  .atlas-index h2:lang(ja),
+  .atlas-index h2:lang(zh) {
+    letter-spacing: normal;
+  }
+
   .index-kicker {
     margin: 0;
     color: var(--orange);
@@ -440,6 +471,12 @@
     padding-top: 0.9rem;
   }
 
+  .index-more {
+    margin: 0.2rem 0 0;
+    color: var(--muted);
+    font-size: 0.72rem;
+  }
+
   .atlas-index-mementos button {
     display: grid;
     grid-template-columns: 2rem minmax(0, 1fr);
@@ -477,6 +514,11 @@
     font-weight: 800;
     letter-spacing: -0.06em;
     text-shadow: 0 5px 18px #000;
+  }
+
+  .hero h1:lang(ja),
+  .hero h1:lang(zh) {
+    letter-spacing: normal;
   }
 
   .hero > p:not(.brand),
