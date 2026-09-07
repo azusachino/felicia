@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { tick } from "svelte"
-
   export let src: string
   export let alt: string
   export let caption = ""
@@ -8,53 +6,38 @@
   export let closeLabel = "Close"
   export let imageClass = ""
 
-  let open = false
   let triggerButton: HTMLButtonElement
-  let closeButton: HTMLButtonElement
+  let dialogEl: HTMLDialogElement
 
-  function portal(node: HTMLElement) {
-    document.body.appendChild(node)
-
-    return {
-      destroy() {
-        node.remove()
-      },
-    }
-  }
-
-  async function show() {
-    open = true
-    await tick()
-    closeButton?.focus()
+  function show() {
+    dialogEl?.showModal()
   }
 
   function close() {
-    open = false
+    dialogEl?.close()
+  }
+
+  // Fires on Escape and on our own close() call alike -- native <dialog>
+  // already supplies the focus trap and Escape handling; this only needs to
+  // return focus to whatever opened it.
+  function onDialogClose() {
     triggerButton?.focus()
   }
-
-  function handleKeydown(event: KeyboardEvent) {
-    if (open && event.key === "Escape") close()
-  }
 </script>
-
-<svelte:window onkeydown={handleKeydown} />
 
 <button bind:this={triggerButton} type="button" class="photo-trigger" aria-label={openLabel} onclick={show}>
   <img {src} {alt} class={imageClass} />
 </button>
 
-{#if open}
-  <div use:portal class="photo-lightbox" role="dialog" aria-modal="true" aria-label={alt} tabindex="-1">
-    <div class="lightbox-frame">
-      <button bind:this={closeButton} type="button" class="lightbox-close" aria-label={closeLabel} onclick={close}>×</button>
-      <img class="lightbox-image" {src} {alt} />
-      {#if caption}
-        <p>{caption}</p>
-      {/if}
-    </div>
+<dialog bind:this={dialogEl} class="photo-lightbox" aria-label={alt} onclose={onDialogClose}>
+  <div class="lightbox-frame">
+    <button type="button" class="lightbox-close" aria-label={closeLabel} onclick={close}>×</button>
+    <img class="lightbox-image" {src} {alt} />
+    {#if caption}
+      <p>{caption}</p>
+    {/if}
   </div>
-{/if}
+</dialog>
 
 <style>
   .photo-trigger {
@@ -78,9 +61,18 @@
     z-index: 100;
     inset: 0;
     display: grid;
-    place-items: center;
     overflow: auto;
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+    place-items: center;
     padding: 1.5rem;
+    border: 0;
+    background: transparent;
+  }
+
+  .photo-lightbox::backdrop {
     background: rgb(0 0 0 / 82%);
   }
 

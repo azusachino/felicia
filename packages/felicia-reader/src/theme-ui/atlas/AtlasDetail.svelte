@@ -76,12 +76,14 @@
   }
 
   .detail-close {
+    display: grid;
     position: absolute;
     z-index: 1;
     top: 0.7rem;
     right: 0.7rem;
-    width: 2rem;
-    height: 2rem;
+    width: 2.75rem;
+    height: 2.75rem;
+    place-items: center;
     border: 1px solid #a99a87;
     border-radius: 50%;
     color: #594b3d;
