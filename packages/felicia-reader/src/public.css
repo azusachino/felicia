@@ -177,13 +177,13 @@ select {
 }
 
 .lang-switch {
-  @apply flex rounded-md p-0.5;
+  @apply flex rounded-lg p-0.5;
   border: 1px solid var(--border);
   background: var(--card);
 }
 
 .lang-switch button {
-  @apply min-h-11 min-w-11 rounded px-2.5 py-1 text-xs font-semibold;
+  @apply min-h-11 min-w-11 rounded-lg px-2.5 py-1 text-xs font-semibold;
   color: var(--muted);
   background: transparent;
   border: 0;
@@ -195,7 +195,7 @@ select {
 }
 
 .theme-toggle {
-  @apply flex h-11 w-11 items-center justify-center rounded-md text-sm;
+  @apply flex h-11 w-11 items-center justify-center rounded-lg text-sm;
   color: var(--text);
   background: transparent;
   border: 1px solid var(--border);
@@ -225,7 +225,7 @@ select {
 }
 
 .all-btn {
-  @apply min-h-11 rounded-md px-3 text-xs font-semibold;
+  @apply min-h-11 rounded-lg px-3 text-xs font-semibold;
   color: var(--muted);
   background: transparent;
   border: 1px solid var(--border);
@@ -293,7 +293,7 @@ select {
 }
 
 .timeline-glyph {
-  @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sm font-black;
+  @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-black;
   background: var(--chip-bg);
   border: 2px solid var(--chip-border);
   color: var(--text);
@@ -448,7 +448,10 @@ select {
   color: #241203;
 }
 
-.goods-face span,
+.goods-face span {
+  @apply text-xs font-bold uppercase tracking-[0.2em] opacity-90;
+}
+
 .stamp-face span {
   @apply text-xs font-bold uppercase tracking-[0.2em] opacity-80;
 }
@@ -458,7 +461,10 @@ select {
   @apply mt-10 block text-3xl font-black leading-tight;
 }
 
-.goods-face small,
+.goods-face small {
+  @apply mt-5 block text-sm font-semibold opacity-90;
+}
+
 .stamp-face small {
   @apply mt-5 block text-sm font-semibold opacity-80;
 }
@@ -539,7 +545,7 @@ select {
 
 .washi-date {
   @apply mt-5 block text-xs font-semibold tracking-[0.14em];
-  color: rgba(36, 26, 16, 0.55);
+  color: rgba(36, 26, 16, 0.68);
 }
 
 /* goods — kraft swing tag --------------------------------------------------- */
@@ -569,7 +575,7 @@ select {
 
 .tag-kind {
   @apply m-0 text-[0.68rem] font-bold uppercase tracking-[0.22em];
-  color: rgba(53, 32, 12, 0.68);
+  color: rgba(53, 32, 12, 0.9);
 }
 
 .tag-name {
@@ -579,13 +585,13 @@ select {
 
 .tag-source {
   @apply m-0 mt-2 text-sm font-semibold;
-  color: rgba(53, 32, 12, 0.75);
+  color: rgba(53, 32, 12, 0.9);
 }
 
 .tag-foot {
   @apply mt-auto flex items-baseline justify-between gap-3 pt-4 text-xs font-semibold uppercase tracking-[0.16em];
   border-top: 1px solid rgba(66, 40, 14, 0.35);
-  color: rgba(53, 32, 12, 0.72);
+  color: rgba(53, 32, 12, 0.9);
 }
 
 .tag-foot b {
@@ -780,7 +786,7 @@ select {
 
 .postcard-dateline {
   @apply m-0 text-[0.7rem] font-semibold uppercase tracking-[0.18em];
-  color: rgba(47, 36, 21, 0.6);
+  color: rgba(47, 36, 21, 0.68);
 }
 
 .postcard-message {
@@ -864,6 +870,11 @@ select {
 
 .gallery img {
   @apply block aspect-[4/3] w-full object-cover;
+  /* Depth outline that follows the theme automatically: --text is light in
+     dark mode and dark in light mode, so this never needs a separate
+     .theme-light override. */
+  outline: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  outline-offset: -1px;
 }
 
 .gallery figcaption {
@@ -874,7 +885,15 @@ select {
 /* Map markers (read on both dark + light tiles) --------------------------- */
 
 .map-marker {
-  @apply flex h-10 w-10 items-center justify-center rounded-md border-2 border-zinc-400 bg-zinc-950/90 text-sm font-black text-zinc-200 shadow-xl transition;
+  @apply relative flex h-10 w-10 items-center justify-center rounded-[2px] border-2 border-zinc-400 bg-zinc-950/90 text-sm font-black text-zinc-200 shadow-xl transition;
+}
+
+/* Keep the visible 40px marker but grow the actual hit area to the reader's
+   44px touch-target minimum. */
+.map-marker::after {
+  content: "";
+  position: absolute;
+  inset: calc((2.5rem - 2.75rem) / 2);
 }
 
 .map-marker:hover,
@@ -913,6 +932,14 @@ select {
 
 .techo-mark:hover {
   transform: scale(1.1);
+}
+
+/* Keep the visible 36px circle but grow the actual hit area to the reader's
+   44px touch-target minimum. */
+.techo-mark::after {
+  content: "";
+  position: absolute;
+  inset: calc((2.25rem - 2.75rem) / 2);
 }
 
 .techo-mark.is-active {
