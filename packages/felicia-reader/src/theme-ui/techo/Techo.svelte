@@ -5,6 +5,7 @@
   import { message, type MessageKey } from "@felicia/model"
   import type { Journey } from "@felicia/model"
   import { onMount } from "svelte"
+  import { fade, fly } from "svelte/transition"
   import PhotoLightbox from "@felicia/components/PhotoLightbox.svelte"
 
   // Techo (手帳, paper notebook) front door. View 1 (landing) is the
@@ -22,9 +23,16 @@
   let view = $state<"landing" | "detail">("landing")
   let selectedPlaceKey = $state<string | null>(null)
   let selectedMementoIndex = $state(0)
+  let prefersReducedMotion = $state(false)
 
   function handleKeydown(event: KeyboardEvent) {
-    if (view !== "detail" || !selectedMemento) return
+    if (view !== "detail") return
+    if (event.key === "Escape") {
+      event.preventDefault()
+      backToLanding()
+      return
+    }
+    if (!selectedMemento) return
     if (event.key === "ArrowLeft") {
       event.preventDefault()
       goToPrevMemento()
@@ -91,6 +99,7 @@
   const mapPlaces = $derived(
     placeGroups.map((group) => ({
       key: group.key,
+      label: t(group.label),
       coords: group.coords,
       seq: group.seq,
       count: group.mementos.length,
@@ -136,6 +145,11 @@
   }
 
   onMount(() => {
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
+    prefersReducedMotion = motionQuery.matches
+    const onMotionChange = (event: MediaQueryListEvent) => (prefersReducedMotion = event.matches)
+    motionQuery.addEventListener("change", onMotionChange)
+
     const restoreFromURL = () => {
       const id = window.location.hash.match(/^#techo\/journeys\/([^/]+)$/)?.[1]
       const index = id ? journeys.findIndex((journey) => journey.id === id) : -1
@@ -149,7 +163,10 @@
       }
     }
     window.addEventListener("popstate", restoreFromURL)
-    return () => window.removeEventListener("popstate", restoreFromURL)
+    return () => {
+      window.removeEventListener("popstate", restoreFromURL)
+      motionQuery.removeEventListener("change", onMotionChange)
+    }
   })
 
   function selectPlace(key: string) {
@@ -216,7 +233,7 @@
 
   const journeyCountLabel = $derived.by(() => {
     const n = journeys.length
-    if (lang === "en") return `${n} journeys`
+    if (lang === "en") return `${n} journey${n === 1 ? "" : "s"}`
     if (lang === "zh") return `${n}次旅程`
     return `${n}つの旅`
   })
@@ -257,6 +274,14 @@
   const backLabel = { ja: "手帳に戻る", en: "Back to journal", zh: "返回手帳" } satisfies L
   const prevMemoryLabel = { ja: "前の記憶", en: "Previous memory", zh: "上一段记忆" } satisfies L
   const nextMemoryLabel = { ja: "次の記憶", en: "Next memory", zh: "下一段记忆" } satisfies L
+  const errorTitle = { ja: "読み込みエラー", en: "Loading error", zh: "加载错误" } satisfies L
+  const retryLabel = { ja: "再試行", en: "Retry", zh: "重试" } satisfies L
+  const emptyTitle = { ja: "旅の記録がありません", en: "No journeys recorded", zh: "暂无旅程记录" } satisfies L
+  const emptyText = {
+    ja: "現在、この手帳には記録された旅がありません。",
+    en: "There are no journeys recorded in this journal.",
+    zh: "此手帐中目前没有记录的旅程。",
+  } satisfies L
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
@@ -264,7 +289,7 @@
 <main class="techo-shell" class:theme-light={theme === "light"} class:is-detail={view === "detail"}>
   {#if view === "landing"}
     <!-- View 1: the journal index — sketch map on the left, journey cards on the right. -->
-    <div class="techo-frame">
+    <div class="techo-frame" in:fade={{ duration: prefersReducedMotion ? 0 : 220 }}>
       <div class="techo-spread">
         {#if isLoading}
           <!-- Map page skeleton -->
@@ -305,9 +330,9 @@
           </section>
           <section class="techo-page techo-page--index" aria-label="Journal index error">
             <div class="error-container">
-              <h2 class="error-title">読み込みエラー / Loading Error</h2>
+              <h2 class="error-title">{t(errorTitle)}</h2>
               <p class="error-text">{error}</p>
-              <button type="button" class="retry-button" onclick={loadData}>再試行 / Retry</button>
+              <button type="button" class="retry-button" onclick={loadData}>{t(retryLabel)}</button>
             </div>
           </section>
         {:else if journeys.length === 0}
@@ -316,10 +341,8 @@
           </section>
           <section class="techo-page techo-page--index" aria-label="Journal index empty">
             <div class="empty-container">
-              <h2 class="error-title">旅の記録がありません</h2>
-              <p class="empty-text">
-                現在、この手帳には記録された旅がありません。<br />There are no journeys recorded in this journal.
-              </p>
+              <h2 class="error-title">{t(emptyTitle)}</h2>
+              <p class="empty-text">{t(emptyText)}</p>
             </div>
           </section>
         {:else}
@@ -383,7 +406,11 @@
   {:else}
     <!-- View 2: the journey on a real map; mementos cluster by place, opening a
          place reveals its memories. -->
-    <section class="relative h-full w-full overflow-hidden bg-paper-2" aria-label={t(selectedJourney.title)}>
+    <section
+      class="relative h-full w-full overflow-hidden bg-paper-2"
+      aria-label={t(selectedJourney.title)}
+      in:fade={{ duration: prefersReducedMotion ? 0 : 220 }}
+    >
       <TripMap places={mapPlaces} route={selectedJourney.route} transit={transitPairs} activeKey={selectedPlaceKey} {theme} onSelect={selectPlace} />
 
       <header class="pointer-events-none absolute left-6 top-6 z-10 flex items-start gap-3">
@@ -408,6 +435,7 @@
           class="absolute right-0 top-0 z-10 flex h-full w-[min(30rem,46vw)] flex-col gap-5 overflow-y-auto bg-paper-1/95 px-6 py-6 shadow-2xl backdrop-blur"
           aria-label="Memories at this place"
           aria-keyshortcuts="ArrowLeft ArrowRight"
+          in:fly={{ x: 24, duration: prefersReducedMotion ? 0 : 240 }}
         >
           <div class="flex items-start justify-between">
             <div>
@@ -510,6 +538,12 @@
     --paper-2: #f3ecdb;
     --paper-3: #efe7d5;
     --terracotta: var(--accent, #d9674c);
+    /* Darkened text/label role: --terracotta itself is ~3.3:1 against the
+       paper backgrounds (and against its own reversed near-white text),
+       below the 4.5:1 AA floor for normal text. Decorative/border/route
+       uses keep --terracotta; only text and text-on-terracotta pairings
+       use this. */
+    --terracotta-text: #a8492f;
     --hairline: rgba(90, 66, 30, 0.3);
     --hairline-strong: rgba(90, 66, 30, 0.4);
 
@@ -555,7 +589,7 @@
     border-radius: 0.45rem;
     background: rgba(253, 249, 240, 0.95);
     box-shadow: 0 0.35rem 0.8rem rgba(58, 47, 28, 0.18);
-    color: var(--terracotta);
+    color: var(--terracotta-text);
     cursor: pointer;
     font-family: ui-monospace, "SFMono-Regular", monospace;
     font-size: 0.72rem;
@@ -574,17 +608,19 @@
      custom property above) — used where accent-colored text needs to track
      the author's chosen accent at runtime. */
   .text-accent {
-    color: var(--terracotta);
+    color: var(--terracotta-text);
   }
 
   .hover-accent:hover {
-    color: var(--terracotta);
+    color: var(--terracotta-text);
   }
 
   .techo-frame {
     position: relative;
     width: min(94vw, 76rem);
     max-height: 92vh;
+    /* 0.9rem outer radius = 0.4rem inner page radius + 0.5rem padding below,
+       so the two curves nest concentrically. */
     border-radius: 0.9rem;
     background: var(--paper-3);
     box-shadow:
@@ -612,14 +648,14 @@
 
   .techo-page--map {
     background: var(--paper-2);
-    border-top-left-radius: 0.9rem;
-    border-bottom-left-radius: 0.9rem;
+    border-top-left-radius: 0.4rem;
+    border-bottom-left-radius: 0.4rem;
   }
 
   .techo-page--index {
     background: var(--paper-1);
-    border-top-right-radius: 0.9rem;
-    border-bottom-right-radius: 0.9rem;
+    border-top-right-radius: 0.4rem;
+    border-bottom-right-radius: 0.4rem;
   }
 
   /* --- View 1: OSM index map --- */
@@ -654,7 +690,7 @@
     font-family: ui-monospace, "SFMono-Regular", monospace;
     font-size: 0.95rem;
     letter-spacing: 0.4em;
-    color: var(--terracotta);
+    color: var(--terracotta-text);
   }
 
   .brand-tagline {
@@ -740,7 +776,7 @@
     font-size: 0.62rem;
     letter-spacing: 0.06em;
     color: #fff;
-    background: var(--terracotta);
+    background: var(--terracotta-text);
     border-radius: 0.25rem;
     padding: 0.2rem 0.5rem;
   }
@@ -761,14 +797,11 @@
 
   .card-kinds {
     margin: 0.45rem 0 0;
-    overflow: hidden;
-    color: var(--terracotta);
+    color: var(--terracotta-text);
     font-family: "IBM Plex Mono", monospace;
     font-size: 0.62rem;
     letter-spacing: 0.08em;
-    text-overflow: ellipsis;
     text-transform: uppercase;
-    white-space: nowrap;
   }
 
   .card-divider {
@@ -789,14 +822,14 @@
 
   .card-count {
     font-weight: 700;
-    color: var(--terracotta);
+    color: var(--terracotta-text);
   }
 
   .card-action {
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
-    color: var(--terracotta);
+    color: var(--terracotta-text);
   }
 
   .year-tabs {
@@ -824,8 +857,8 @@
 
   .year-tab.active {
     color: #fdf6ec;
-    background: var(--terracotta);
-    border-color: var(--terracotta);
+    background: var(--terracotta-text);
+    border-color: var(--terracotta-text);
   }
 
   @media (max-width: 900px) {
@@ -842,7 +875,17 @@
     }
 
     .year-tabs {
-      display: none;
+      position: static;
+      flex-direction: row;
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      margin-top: 0.5rem;
+      padding: 0 0.5rem;
+    }
+
+    .year-tab {
+      writing-mode: horizontal-tb;
+      flex: 0 0 auto;
     }
   }
 
@@ -929,16 +972,17 @@
     border: 1px solid var(--terracotta);
     border-radius: 0.25rem;
     background: transparent;
-    color: var(--terracotta);
+    color: var(--terracotta-text);
     font-family: inherit;
     font-size: 0.85rem;
     font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition-property: background-color, color;
+    transition-duration: 150ms;
   }
 
   .retry-button:hover {
-    background: var(--terracotta);
+    background: var(--terracotta-text);
     color: #fdf6ec;
   }
 </style>

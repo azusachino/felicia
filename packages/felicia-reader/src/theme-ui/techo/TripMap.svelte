@@ -10,6 +10,7 @@
   // mementos. Selecting a place is bubbled up; the parent opens its memories.
   interface Place {
     key: string
+    label: string
     coords: Coordinates
     seq: number
     count: number
@@ -35,6 +36,7 @@
   let map: maplibregl.Map | undefined
   let loaded = $state(false)
   let resizeObserver: ResizeObserver | undefined
+  let prefersReducedMotion = false
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- imperative maplibre marker cache, not reactive UI state
   const markers = new Map<string, maplibregl.Marker>()
 
@@ -79,14 +81,14 @@
     if (!map) return
     const coords = [...route, ...places.map((place) => place.coords)]
     if (!coords.length) return
-    map.fitBounds(boundsOf(coords), { padding: fitPadding, maxZoom: 9, duration: 700 })
+    map.fitBounds(boundsOf(coords), { padding: fitPadding, maxZoom: 9, duration: prefersReducedMotion ? 0 : 700 })
   }
 
   function markerElement(place: Place) {
     const button = document.createElement("button")
     button.type = "button"
     button.className = "techo-mark"
-    button.setAttribute("aria-label", `Place ${place.seq}`)
+    button.setAttribute("aria-label", `${place.seq}. ${place.label}`)
     button.innerHTML = `<span>${place.seq}</span>${place.count > 1 ? `<i class="techo-mark-count">${place.count}</i>` : ""}`
     button.addEventListener("click", (e) => {
       e.stopPropagation()
@@ -120,6 +122,11 @@
   }
 
   onMount(() => {
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
+    prefersReducedMotion = motionQuery.matches
+    const onMotionChange = (event: MediaQueryListEvent) => (prefersReducedMotion = event.matches)
+    motionQuery.addEventListener("change", onMotionChange)
+
     map = new maplibregl.Map({
       container,
       style: mapStyle,
@@ -141,12 +148,17 @@
 
     map.on("load", () => {
       if (!map) return
+      // Read the theme's own runtime-overridable token once at setup,
+      // instead of duplicating its default value as a literal -- see
+      // TechoIndexMap.svelte for the same recipe.
+      const terracotta = getComputedStyle(container).getPropertyValue("--terracotta").trim() || "#d9674c"
+
       map.addSource("route", { type: "geojson", data: routeGeoJson() })
       map.addLayer({
         id: "route-glow",
         type: "line",
         source: "route",
-        paint: { "line-color": "#ff9b72", "line-width": 8, "line-opacity": 0.18, "line-blur": 4 },
+        paint: { "line-color": terracotta, "line-width": 8, "line-opacity": 0.18, "line-blur": 4 },
       })
       map.addLayer({
         id: "route-line",
@@ -154,7 +166,7 @@
         source: "route",
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
-          "line-color": "#ff9b72",
+          "line-color": terracotta,
           "line-width": 4,
           "line-opacity": 0.95,
         },
@@ -182,6 +194,7 @@
     return () => {
       resizeObserver?.disconnect()
       resizeObserver = undefined
+      motionQuery.removeEventListener("change", onMotionChange)
       markers.forEach((marker) => marker.remove())
       markers.clear()
       map?.remove()

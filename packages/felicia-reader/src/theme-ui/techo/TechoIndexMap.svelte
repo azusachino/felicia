@@ -21,6 +21,7 @@
   let map: maplibregl.Map | undefined
   let loaded = $state(false)
   let resizeObserver: ResizeObserver | undefined
+  let prefersReducedMotion = false
 
   const style = "https://tiles.openfreemap.org/styles/liberty"
 
@@ -56,7 +57,7 @@
     if (!coords.length) return
     const bounds = new maplibregl.LngLatBounds(coords[0], coords[0])
     coords.forEach((coord) => bounds.extend(coord))
-    map.fitBounds(bounds, { padding: 48, maxZoom: 3.2, duration: 500 })
+    map.fitBounds(bounds, { padding: 48, maxZoom: 3.2, duration: prefersReducedMotion ? 0 : 500 })
   }
 
   function refreshData() {
@@ -67,6 +68,11 @@
   }
 
   onMount(() => {
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
+    prefersReducedMotion = motionQuery.matches
+    const onMotionChange = (event: MediaQueryListEvent) => (prefersReducedMotion = event.matches)
+    motionQuery.addEventListener("change", onMotionChange)
+
     map = new maplibregl.Map({
       container,
       style,
@@ -93,6 +99,14 @@
 
     map.on("load", () => {
       if (!map) return
+      // Read the theme's own runtime-overridable tokens once at setup,
+      // instead of duplicating their default values as literals -- an
+      // author-configured --accent would otherwise silently stop applying
+      // to the map the moment the view switches away from CSS-styled chrome.
+      const styles = getComputedStyle(container)
+      const terracotta = styles.getPropertyValue("--terracotta").trim() || "#d9674c"
+      const ink = styles.getPropertyValue("--ink").trim() || "#3a2f1c"
+
       map.addSource("journeys", { type: "geojson", data: routeData() })
       map.addLayer({
         id: "journey-routes",
@@ -100,7 +114,7 @@
         source: "journeys",
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
-          "line-color": ["case", ["get", "selected"], "#ff9b72", "#7aa8a6"],
+          "line-color": ["case", ["get", "selected"], terracotta, "#7aa8a6"],
           "line-width": ["case", ["get", "selected"], 4, 2],
           "line-opacity": ["case", ["get", "selected"], 0.95, 0.5],
         },
@@ -111,7 +125,7 @@
         type: "circle",
         source: "places",
         paint: {
-          "circle-color": "#ff9b72",
+          "circle-color": terracotta,
           "circle-radius": 5,
           "circle-stroke-color": "#fff8ed",
           "circle-stroke-width": 2,
@@ -128,7 +142,7 @@
           "text-anchor": "top",
         },
         paint: {
-          "text-color": "#4c3a27",
+          "text-color": ink,
           "text-halo-color": "#fff8ed",
           "text-halo-width": 1.5,
         },
@@ -141,6 +155,7 @@
     return () => {
       resizeObserver?.disconnect()
       resizeObserver = undefined
+      motionQuery.removeEventListener("change", onMotionChange)
       map?.remove()
       map = undefined
     }

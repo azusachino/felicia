@@ -19,6 +19,15 @@
     map: { ja: "← 地図", en: "← Map", zh: "← 地图" },
     onMap: { ja: "地図で見る →", en: "See on the map →", zh: "在地图上查看 →" },
     memories: { ja: "記憶", en: "Memories", zh: "回忆" },
+    loading: { ja: "読み込み中…", en: "Loading…", zh: "加载中…" },
+    retry: { ja: "再試行", en: "Retry", zh: "重试" },
+    noMementos: { ja: "記憶がありません", en: "No mementos", zh: "暂无回忆" },
+    mementoDetail: { ja: "記憶の詳細", en: "Memento detail", zh: "回忆详情" },
+    mementoShelf: { ja: "記憶の棚", en: "Memento shelf", zh: "回忆架" },
+    themeToLight: { ja: "ライトテーマに切り替え", en: "Switch to light theme", zh: "切换到浅色主题" },
+    themeToDark: { ja: "ダークテーマに切り替え", en: "Switch to dark theme", zh: "切换到深色主题" },
+    pauseShelf: { ja: "棚のスクロールを一時停止", en: "Pause shelf scrolling", zh: "暂停货架滚动" },
+    resumeShelf: { ja: "棚のスクロールを再開", en: "Resume shelf scrolling", zh: "继续货架滚动" },
   }
 
   let allMementos: MementoCard[] = []
@@ -26,11 +35,15 @@
   let selected: MementoCard | undefined
   let isLoading = true
   let error: string | null = null
+  let prefersReducedMotion = false
+  let shelfPaused = false
 
   $: t = (value: L | MessageKey) => (typeof value === "string" ? message(lang, value) : value[lang])
   $: memento = selected?.memento as Memento | undefined
 
-  onMount(() => {
+  function load() {
+    isLoading = true
+    error = null
     loadJourneys()
       .then((data) => {
         allMementos = data.flatMap((journey) => journey.mementos.map((item) => ({ memento: item, journey })))
@@ -43,6 +56,15 @@
       .finally(() => {
         isLoading = false
       })
+  }
+
+  onMount(() => {
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
+    prefersReducedMotion = motionQuery.matches
+    const onMotionChange = (event: MediaQueryListEvent) => (prefersReducedMotion = event.matches)
+    motionQuery.addEventListener("change", onMotionChange)
+    load()
+    return () => motionQuery.removeEventListener("change", onMotionChange)
   })
 
   function select(card: MementoCard) {
@@ -52,13 +74,25 @@
   function toggleTheme() {
     theme = theme === "dark" ? "light" : "dark"
   }
+
+  function toggleShelfPaused() {
+    shelfPaused = !shelfPaused
+  }
 </script>
 
 <main class="app-shell cabinet-shell" class:theme-light={theme === "light"}>
   {#if isLoading}
-    <div class="cabinet-status">Loading…</div>
+    <div class="cabinet-status">{t(label.loading)}</div>
   {:else if error}
-    <div class="cabinet-status">{error}</div>
+    <div class="cabinet-status cabinet-status--recover" role="alert">
+      <p>{error}</p>
+      <div class="cabinet-status-actions">
+        <button class="all-btn" on:click={load}>{t(label.retry)}</button>
+        {#if toMap}
+          <button class="all-btn" on:click={toMap}>{t(label.map)}</button>
+        {/if}
+      </div>
+    </div>
   {:else if selected && memento}
     <header class="cabinet-top">
       <div class="cabinet-brand">
@@ -66,12 +100,12 @@
         <h1>{t(title)}</h1>
       </div>
       <div class="cabinet-controls">
-        <div class="lang-switch" role="group" aria-label="Language">
+        <div class="lang-switch" role="group" aria-label={t("system.language")}>
           <button class:active={lang === "ja"} aria-pressed={lang === "ja"} on:click={() => (lang = "ja")}>日本語</button>
           <button class:active={lang === "en"} aria-pressed={lang === "en"} on:click={() => (lang = "en")}>EN</button>
           <button class:active={lang === "zh"} aria-pressed={lang === "zh"} on:click={() => (lang = "zh")}>中文</button>
         </div>
-        <button class="theme-toggle" on:click={toggleTheme} aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}>
+        <button class="theme-toggle" on:click={toggleTheme} aria-label={theme === "dark" ? t(label.themeToLight) : t(label.themeToDark)}>
           {theme === "dark" ? "☀" : "☾"}
         </button>
         {#if toMap}
@@ -81,10 +115,10 @@
     </header>
 
     <!-- The memento detail "page": the centre of Cabinet. -->
-    <section class="cabinet-stage" aria-label="Memento detail">
+    <section class="cabinet-stage" aria-label={t(label.mementoDetail)}>
       {#key memento.id}
-        <div class="cabinet-detail" in:fade={{ duration: 200 }}>
-          <div class="cabinet-stub-col" in:fly={{ y: 14, duration: 320, delay: 40 }}>
+        <div class="cabinet-detail" in:fade={{ duration: prefersReducedMotion ? 0 : 200 }}>
+          <div class="cabinet-stub-col" in:fly={{ y: 14, duration: prefersReducedMotion ? 0 : 320, delay: prefersReducedMotion ? 0 : 40 }}>
             <div class="stub-card {memento.kind}">
               {#if memento.kind === "transit" || memento.kind === "ticket"}
                 <TicketStub {memento} {lang} />
@@ -151,15 +185,22 @@
       {/key}
     </section>
 
-    <!-- The preview carousel: the index. Auto-scrolls; pauses on hover. -->
-    <footer class="cabinet-carousel" aria-label="Memento shelf">
-      <p class="eyebrow cabinet-carousel-head">{t(label.memories)}</p>
-      <div class="cabinet-shelf">
+    <!-- The preview carousel: the index. Auto-scrolls; pauses on hover, focus, or the pause button. -->
+    <footer class="cabinet-carousel" aria-label={t(label.mementoShelf)}>
+      <div class="cabinet-carousel-head">
+        <p class="eyebrow">{t(label.memories)}</p>
+        <button class="cabinet-shelf-pause" on:click={toggleShelfPaused} aria-pressed={shelfPaused}>
+          {shelfPaused ? "▶" : "⏸"}
+          <span class="sr-only">{shelfPaused ? t(label.resumeShelf) : t(label.pauseShelf)}</span>
+        </button>
+      </div>
+      <div class="cabinet-shelf" class:paused={shelfPaused}>
         <div class="cabinet-track">
           {#each shelf as card, i (i)}
             <button
               class="cabinet-preview cabinet-preview--{card.memento.kind}"
               class:active={card.memento.id === memento.id}
+              aria-current={card.memento.id === memento.id ? "true" : undefined}
               aria-hidden={i >= allMementos.length}
               tabindex={i >= allMementos.length ? -1 : 0}
               on:click={() => select(card)}
@@ -174,7 +215,14 @@
       </div>
     </footer>
   {:else}
-    <div class="cabinet-status">No mementos</div>
+    <div class="cabinet-status cabinet-status--recover">
+      <p>{t(label.noMementos)}</p>
+      {#if toMap}
+        <div class="cabinet-status-actions">
+          <button class="all-btn" on:click={toMap}>{t(label.map)}</button>
+        </div>
+      {/if}
+    </div>
   {/if}
 </main>
 
@@ -195,13 +243,33 @@
     color: var(--muted);
   }
 
+  .cabinet-status--recover {
+    gap: 1rem;
+    text-align: center;
+    justify-items: center;
+  }
+
+  .cabinet-status--recover p {
+    margin: 0;
+  }
+
+  .cabinet-status-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
   .cabinet-top {
     display: flex;
+    flex-wrap: wrap;
     align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
     padding: 1.25rem 1.75rem;
     border-bottom: 1px solid var(--border);
+  }
+
+  .cabinet-brand {
+    min-width: 0;
   }
 
   .cabinet-brand h1 {
@@ -264,7 +332,7 @@
   }
 
   .cabinet-facts dt {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.16em;
@@ -286,6 +354,7 @@
 
   .cabinet-onmap {
     align-self: flex-start;
+    min-height: 2.75rem;
     padding: 0.55rem 1rem;
     border-radius: 0.5rem;
     font-size: 0.85rem;
@@ -307,7 +376,28 @@
   }
 
   .cabinet-carousel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
     margin: 0 0 1rem;
+  }
+
+  .cabinet-shelf-pause {
+    display: flex;
+    height: 2rem;
+    width: 2rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid var(--border);
+    font-size: 0.7rem;
+  }
+
+  .cabinet-shelf-pause:hover {
+    background: var(--hover);
   }
 
   .cabinet-shelf {
@@ -324,7 +414,8 @@
   }
 
   .cabinet-shelf:hover .cabinet-track,
-  .cabinet-shelf:focus-within .cabinet-track {
+  .cabinet-shelf:focus-within .cabinet-track,
+  .cabinet-shelf.paused .cabinet-track {
     animation-play-state: paused;
   }
 
@@ -374,7 +465,9 @@
   }
 
   .cabinet-preview--stamp {
-    border-left-color: #ef4444;
+    /* Not red -- red is reserved for error/destructive state
+       (reader-ui-ux-contract.md). */
+    border-left-color: #d97706;
   }
 
   .cabinet-preview--goods {
@@ -382,7 +475,7 @@
   }
 
   .cabinet-preview-kind {
-    font-size: 0.66rem;
+    font-size: 0.75rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.18em;

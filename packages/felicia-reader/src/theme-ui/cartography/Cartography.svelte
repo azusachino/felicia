@@ -36,6 +36,10 @@
   let detailHeadingEl: HTMLHeadingElement | undefined
   let prefersReducedMotion = false
 
+  const loadingLabel = { ja: "読み込み中…", en: "Loading…", zh: "加载中…" } satisfies L
+  const retryLabel = { ja: "再試行", en: "Retry", zh: "重试" } satisfies L
+  const emptyLabel = { ja: "旅の記録がありません", en: "No journeys", zh: "暂无旅程" } satisfies L
+
   const [sendStub, receiveStub] = crossfade({
     duration: (d: number) => (prefersReducedMotion ? 0 : Math.min(500, 220 + Math.sqrt(d) * 8)),
     easing: cubicOut,
@@ -154,7 +158,7 @@
     map.fitBounds(bounds, {
       padding: fitPadding(),
       maxZoom: 6.5,
-      duration: 800,
+      duration: prefersReducedMotion ? 0 : 800,
     })
   }
 
@@ -162,7 +166,7 @@
     if (!map) return
     const bounds = boundsOf(journey.route)
     if (!bounds) return
-    map.fitBounds(bounds, { padding: fitPadding(), maxZoom: 9, duration: 800 })
+    map.fitBounds(bounds, { padding: fitPadding(), maxZoom: 9, duration: prefersReducedMotion ? 0 : 800 })
   }
 
   function markerElement(memento: Memento, seq: number) {
@@ -271,11 +275,11 @@
       map.fitBounds(bounds, {
         padding: fitPadding(),
         maxZoom: 10.5,
-        duration: 700,
+        duration: prefersReducedMotion ? 0 : 700,
       })
       return
     }
-    map.flyTo({ center: memento.coords, zoom: 9.6, duration: 700, essential: true })
+    map.flyTo({ center: memento.coords, zoom: 9.6, duration: prefersReducedMotion ? 0 : 700, essential: true })
   }
 
   function applyMapTheme(next: Theme) {
@@ -348,7 +352,9 @@
 
   $: applyMapTheme(theme)
 
-  onMount(() => {
+  function load() {
+    isLoading = true
+    error = null
     loadJourneys()
       .then(async (data) => {
         journeys = data
@@ -362,6 +368,10 @@
         error = reason instanceof Error ? reason.message : String(reason)
         isLoading = false
       })
+  }
+
+  onMount(() => {
+    load()
 
     const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
     prefersReducedMotion = motionQuery.matches
@@ -382,9 +392,12 @@
 <main class="app-shell" class:theme-light={theme === "light"}>
   <div class="sr-only" role="status" aria-live="polite">{liveMessage}</div>
   {#if isLoading}
-    <div class="cartography-status">Loading…</div>
+    <div class="cartography-status">{t(loadingLabel)}</div>
   {:else if error}
-    <div class="cartography-status">{error}</div>
+    <div class="cartography-status cartography-status--recover" role="alert">
+      <p>{error}</p>
+      <button class="all-btn" on:click={load}>{t(retryLabel)}</button>
+    </div>
   {:else if selectedJourney && selected}
     <!-- Index rail: journeys (world index) -> selected journey's chronological timeline. -->
     <aside class="index-rail" aria-label="Journey index">
@@ -415,7 +428,12 @@
       <ol class="journey-list" aria-label="Journeys">
         {#each journeys as journey (journey.id)}
           <li>
-            <button class="journey-item" class:active={journey.id === selectedJourneyId} on:click={() => selectJourney(journey)}>
+            <button
+              class="journey-item"
+              class:active={journey.id === selectedJourneyId}
+              aria-current={journey.id === selectedJourneyId ? "true" : undefined}
+              on:click={() => selectJourney(journey)}
+            >
               <span class="journey-item-title">{t(journey.title)}</span>
               <span class="journey-item-meta">{t(journey.dates)} · {t(journey.place)}</span>
               <span class="journey-item-count">{countLabel(journey.mementos.length)}</span>
@@ -425,7 +443,12 @@
               <ol class="timeline" aria-label="Mementos in order">
                 {#each journey.mementos as memento, index (memento.id)}
                   <li>
-                    <button class="timeline-item" class:active={memento.id === selected.id} on:click={() => selectMemento(memento)}>
+                    <button
+                      class="timeline-item"
+                      class:active={memento.id === selected.id}
+                      aria-current={memento.id === selected.id ? "true" : undefined}
+                      on:click={() => selectMemento(memento)}
+                    >
                       <span class="timeline-glyph timeline-glyph--{memento.kind}">{index + 1}</span>
                       <span class="timeline-body">
                         <span class="timeline-date">{t(memento.date)}</span>
@@ -573,7 +596,7 @@
             <div class="gallery">
               {#each selected.photos as photo, index (`${photo.src}:${index}`)}
                 <figure>
-                  <PhotoLightbox src={photo.src} alt={t(selected.title)} caption={t(photo.caption)} openLabel={t(uiText.zoom)} closeLabel={t(uiText.close)} />
+                  <PhotoLightbox src={photo.src} alt={t(photo.caption)} caption={t(photo.caption)} openLabel={t(uiText.zoom)} closeLabel={t(uiText.close)} />
                   <figcaption>{t(photo.caption)}</figcaption>
                 </figure>
               {/each}
@@ -583,7 +606,7 @@
       {/key}
     </aside>
   {:else}
-    <div class="cartography-status">No journeys</div>
+    <div class="cartography-status">{t(emptyLabel)}</div>
   {/if}
 </main>
 
@@ -594,5 +617,15 @@
     min-height: 100%;
     place-items: center;
     color: var(--muted);
+  }
+
+  .cartography-status--recover {
+    gap: 1rem;
+    text-align: center;
+    justify-items: center;
+  }
+
+  .cartography-status--recover p {
+    margin: 0;
   }
 </style>
