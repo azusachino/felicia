@@ -285,7 +285,10 @@ func importCommand(args []string, output io.Writer) error {
 		if !strings.HasPrefix(filename, "media/") {
 			continue
 		}
-		destination, err := publication.SafeJoin(*mediaRoot, filename)
+		// Install by content identity, using the same derivation the importer
+		// recorded, so a member name shared with another package cannot
+		// overwrite that package's bytes (ADR-0026).
+		destination, err := publication.SafeJoin(*mediaRoot, importer.MediaObjectKey(filename, importer.MediaDigest(data)))
 		if err != nil {
 			return err
 		}

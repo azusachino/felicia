@@ -2,10 +2,13 @@ package importer
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"math"
+	"path"
 	"strings"
 	"time"
 
@@ -335,12 +338,52 @@ func normalizeMemento(pkg *journeypackage.Package, journeyID uuid.UUID, raw meme
 		if rawPhoto.Path == "" || rawPhoto.ContentHash == "" || rawPhoto.Seq < 1 {
 			return nil, nil, fmt.Errorf("photo %d requires path, content_hash, and positive seq", index+1)
 		}
-		if _, ok := pkg.Files[rawPhoto.Path]; !ok {
+		data, ok := pkg.Files[rawPhoto.Path]
+		if !ok {
 			return nil, nil, fmt.Errorf("photo %q is missing from package", rawPhoto.Path)
 		}
-		photos = append(photos, &domain.MementoPhoto{ID: photoID, MementoID: id, ObjectKey: rawPhoto.Path, ContentHash: rawPhoto.ContentHash, Caption: optional(rawPhoto.Caption), Seq: rawPhoto.Seq, SourceRef: optional("package:" + pkg.Manifest.PackageID + ":" + rawPhoto.ID)})
+		// Media identity comes from the bytes, never from the member name
+		// (ADR-0026). Two packages may both carry `media/ticket.jpg` holding
+		// different photos; keying storage on that name let one silently
+		// replace the other's bytes. The digest is computed here rather than
+		// trusted from content_hash, so a package cannot choose where its
+		// bytes land, and the declared value is verified against it.
+		digest := MediaDigest(data)
+		if err := verifyDeclaredHash(rawPhoto.ContentHash, digest); err != nil {
+			return nil, nil, fmt.Errorf("photo %q: %w", rawPhoto.Path, err)
+		}
+		photos = append(photos, &domain.MementoPhoto{ID: photoID, MementoID: id, ObjectKey: MediaObjectKey(rawPhoto.Path, digest), ContentHash: "sha256:" + digest, Caption: optional(rawPhoto.Caption), Seq: rawPhoto.Seq, SourceRef: optional("package:" + pkg.Manifest.PackageID + ":" + rawPhoto.ID)})
 	}
 	return memento, photos, nil
+}
+
+// MediaDigest is the content identity of an original: the lowercase hex SHA-256
+// of its bytes. It is the stable contract ADR-0026 names, and the only thing
+// storage identity may be derived from.
+func MediaDigest(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
+}
+
+// MediaObjectKey is where an original with this digest is stored, shared by the
+// importer that records the reference and by the composition root that installs
+// the bytes, so the two cannot drift. The member's base name is kept for
+// legibility only; uniqueness comes entirely from the digest, so two packages
+// carrying the same member name land in different directories.
+func MediaObjectKey(memberPath string, digest string) string {
+	return path.Join("media", digest, path.Base(memberPath))
+}
+
+// verifyDeclaredHash rejects a package whose declared content_hash disagrees
+// with its own bytes. Without this the declaration would decide where bytes are
+// stored, which is the authority the digest is supposed to take away. Both the
+// bare hex and the `sha256:` prefixed spelling the tooling emits are accepted.
+func verifyDeclaredHash(declared string, digest string) error {
+	normalized := strings.TrimPrefix(strings.ToLower(strings.TrimSpace(declared)), "sha256:")
+	if normalized != digest {
+		return fmt.Errorf("content_hash %q does not match the bytes (sha256:%s)", declared, digest)
+	}
+	return nil
 }
 
 func normalizeGeometry(raw any) (orb.Geometry, error) {
