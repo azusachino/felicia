@@ -11,7 +11,7 @@ Per [ADR-0025](../adr/0025-static-and-self-hosted-modes.md), the primary
 release workflow is server-mode authoring compiled into a static artifact.
 The selected shape:
 
-```
+```text
 Dawarich / Immich or local GPX + photos          (data stays on the author's machine)
   → felicia local server (SQLite): import + intake planning
   → felicia-admin GUI: review stop candidates → edit mementos → write essays → publish

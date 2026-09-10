@@ -10,7 +10,7 @@
 
 ## The flow
 
-```
+```text
 1. INGEST    GPX / Dawarich track  +  Immich photos
                 track  → the amber route line
                 photos ⨝ track on timestamp → CANDIDATE anchors (auto-proposed)

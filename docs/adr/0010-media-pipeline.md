@@ -34,7 +34,7 @@ Two planes, one seam.
      image must not leak them),
    - content-addresses by `content_hash` (Immich `checksum`) → `object_key =
 photos/{hash}/{variant}.webp`; upload is idempotent (skip if present), so re-import is free
-     and de-duped,
+   and de-duped,
    - records `memento_photos{ object_key, content_hash, … }` (columns already exist).
 
 3. **Object store = S3-compatible R2** (MinIO/B2 swappable by config; `internal/objectstore`),

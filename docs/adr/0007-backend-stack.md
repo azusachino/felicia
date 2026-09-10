@@ -28,7 +28,7 @@ The libraries and tools selected:
 5. **Object Storage (minio-go v7):** A lightweight, S3-compatible client that allows pointing at Cloudflare R2, MinIO, or Backblaze B2 via simple configuration.
 6. **Migrations (goose):** Simple, SQL-based database migrations.
 
-### PostgreSQL 18 Exploitation:
+### PostgreSQL 18 Exploitation
 
 We explicitly target PostgreSQL 18 to leverage its modern features:
 

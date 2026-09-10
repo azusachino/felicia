@@ -24,7 +24,7 @@ Dawarich's trick isn't "be generic." It accepts OwnTracks / Overland / GPSLogger
 translates each into **one** internal point shape; everything downstream is generic over that
 shape, not over the sources. Copy exactly this — normalize at the edge, keep the core narrow:
 
-```
+```text
 internal/domain (pure, no I/O) — the normalized shapes everything joins on
   TrackPoint  { At; Lat; Lon }
   PhotoAsset  { ID; At; Lat?; Lon?; Kind }   // Lat/Lon nil → fill from track by timestamp
@@ -32,7 +32,7 @@ internal/domain (pure, no I/O) — the normalized shapes everything joins on
 
 Two small **typed roles** at the seam — not N generic sources:
 
-```
+```text
 TrackSource  { Track(from, to) -> []TrackPoint }     // Dawarich impls this
 PhotoSource  { Assets(Query)   -> []PhotoAsset  }     // Immich impls this
 ```
@@ -49,7 +49,7 @@ data model has grown the full pipeline **`points → tracks → visits @ places 
 (`felicia:decision:place-as-derived-visit`, data-model §Places). So the `TrackSource` role yields
 more than points:
 
-```
+```text
 TrackSource {
   Track(from, to)  -> []TrackPoint    // the polyline → journeys.gps_route
   Visits(from, to) -> []Visit         // stays: {coord, label, arrive, depart} → derived places
@@ -105,7 +105,7 @@ dialect.
 "Some kind of query to assemble a memento" sounds clean, but the assembly _is_ the product,
 and none of it is expressible as a generic OpenAPI field mapping:
 
-```
+```text
 pull track  ─┐
 pull assets ─┴─▶ timestamp-join ─▶ cluster (time+space) ─▶ pick stub
                                                           └▶ vision-LLM pre-fill kind/vendor/price
