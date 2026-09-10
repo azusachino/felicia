@@ -16,7 +16,7 @@
 //   - Validation issues come back as domain.Issue{Field, Code} — capitalized,
 //     no json tags, same as AdminTemplateField in api.ts.
 
-import type { AdminIssue, AdminTemplateField, MementoGeom, UpsertMementoGeom, UpsertMementoRequest, UpsertPhotoRequest } from "./api"
+import type { AdminIssue, AdminMementoDetail, AdminTemplateField, MementoGeom, UpsertMementoGeom, UpsertMementoRequest, UpsertPhotoRequest } from "./api"
 
 // --- Date/time -------------------------------------------------------------
 
@@ -378,4 +378,25 @@ export function buildPhotoPayload(id: string, mementoId: string, fields: PhotoFo
     taken_at: fields.takenAt ? toRFC3339(fields.takenAt) : undefined,
     source_ref: fields.sourceRef.trim() || undefined,
   }
+}
+
+// Fields the other writer changed between the copy this editor loaded and the
+// copy now on the server. Shown on a save conflict so the author can decide
+// whether their draft still makes sense, without building a merge UI: the
+// question "what moved under me" is answerable from two records, while "how do
+// I combine them" is a design this surface deliberately does not have.
+export function serverChangedFields(loaded: AdminMementoDetail, current: AdminMementoDetail): string[] {
+  const comparable: [string, unknown, unknown][] = [
+    ["title", loaded.title, current.title],
+    ["place", loaded.place, current.place],
+    ["essay", loaded.essay ?? "", current.essay ?? ""],
+    ["vendor", loaded.vendor ?? "", current.vendor ?? ""],
+    ["date and time", loaded.occurred_at, current.occurred_at],
+    ["timezone", loaded.occurred_tz, current.occurred_tz],
+    ["price", `${loaded.price_amount ?? ""} ${loaded.price_currency ?? ""}`, `${current.price_amount ?? ""} ${current.price_currency ?? ""}`],
+    ["state", loaded.state, current.state],
+    ["location", JSON.stringify(loaded.geom ?? null), JSON.stringify(current.geom ?? null)],
+    ["kind details", JSON.stringify(loaded.kind_data ?? {}), JSON.stringify(current.kind_data ?? {})],
+  ]
+  return comparable.filter(([, before, after]) => before !== after).map(([label]) => label)
 }

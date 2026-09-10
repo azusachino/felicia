@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { AdminTemplateField } from "./api"
+import type { AdminMementoDetail, AdminTemplateField, MementoGeom } from "./api"
 import {
   buildKindData,
   buildPhotoPayload,
@@ -21,6 +21,7 @@ import {
   toRFC3339,
   unpublishActionLabel,
   FORM_LEVEL_ISSUE_KEY,
+  serverChangedFields,
 } from "./mementoForm"
 
 const transitFields: AdminTemplateField[] = [
@@ -346,5 +347,50 @@ describe("photo payload mapping", () => {
     })
     expect(payload.taken_at).toBe("2026-03-21T09:00:00Z")
     expect(payload.source_ref).toBeUndefined()
+  })
+})
+
+describe("serverChangedFields (conflict reporting)", () => {
+  const base: AdminMementoDetail = {
+    id: "memento-1",
+    journey_id: "journey-1",
+    kind: "transit",
+    seq: 1,
+    occurred_at: "2026-04-01T09:00:00+09:00",
+    occurred_tz: "Asia/Tokyo",
+    geom: [139.7671, 35.6812] as MementoGeom,
+    title: "Train ticket",
+    place: "Kyoto",
+    essay: "A quiet departure.",
+    kind_data: { operator: "JR West" },
+    authored_fields: ["title"],
+    state: "draft",
+    revision: 3,
+    created_at: "2026-04-01T00:00:00Z",
+    updated_at: "2026-04-01T00:00:00Z",
+  }
+
+  test("reports nothing when the server copy is unchanged", () => {
+    expect(serverChangedFields(base, { ...base, revision: 4 })).toEqual([])
+  })
+
+  test("names the fields the other writer touched", () => {
+    const current = { ...base, title: "Shinkansen ticket", essay: "Rewritten by someone else." }
+    expect(serverChangedFields(base, current)).toEqual(["title", "essay"])
+  })
+
+  test("treats a missing optional and an empty string as the same value", () => {
+    const loaded = { ...base, essay: undefined, vendor: undefined }
+    const current = { ...base, essay: "", vendor: "" }
+    expect(serverChangedFields(loaded, current)).toEqual([])
+  })
+
+  test("notices location and kind detail changes without diffing their contents", () => {
+    const current: AdminMementoDetail = { ...base, geom: [139.9, 35.9] as MementoGeom, kind_data: { operator: "JR East" } }
+    expect(serverChangedFields(base, current)).toEqual(["location", "kind details"])
+  })
+
+  test("notices a lifecycle state change, which decides whether a retry publishes", () => {
+    expect(serverChangedFields(base, { ...base, state: "published" })).toEqual(["state"])
   })
 })
