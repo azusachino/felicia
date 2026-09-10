@@ -386,6 +386,14 @@ func (r *Repository) ListJourneys(ctx context.Context) ([]*domain.Journey, error
 	return result, rows.Err()
 }
 
+// afterIngestRead runs between the ingest read and the write that follows it,
+// and does nothing in production. It exists because that gap is the whole
+// defect: a concurrency bug is only fixed if a test can reproduce the
+// interleaving, and the interleaving here is too narrow for a stress loop to
+// hit reliably. Tests in this package replace it to widen the window; no
+// production path observes it.
+var afterIngestRead = func() {}
+
 // ApplyIngestJourneyPatch applies source-owned journey fields without taking
 // authorship. Every masked field the stored row already claims as authored is
 // skipped, and the stored authored mask is written back unchanged, so a
@@ -395,6 +403,18 @@ func (r *Repository) ApplyIngestJourneyPatch(ctx context.Context, patch *domain.
 	if patch == nil || patch.Journey == nil {
 		return errors.New("ingest journey patch is required")
 	}
+	// The read, the ownership decision and the write are one unit. Separately
+	// they are a race: ingest reads a journey, the author sets a title and
+	// marks it authored, then ingest writes back the copy it read and both the
+	// title and the mask protecting it are gone. Nothing detects that, and the
+	// mask is what ADR-0033 relies on. A transaction holds this provider's
+	// single pooled connection for the whole sequence, so no other statement
+	// can land in the middle of it.
+	if _, inTransaction := r.db.(*sql.Tx); !inTransaction {
+		return r.WithTransaction(ctx, func(repo domain.Repository) error {
+			return repo.ApplyIngestJourneyPatch(ctx, patch)
+		})
+	}
 	current, err := r.GetJourney(ctx, patch.Journey.ID)
 	switch {
 	case errors.Is(err, sql.ErrNoRows), errors.Is(err, domain.ErrNotFound):
@@ -402,6 +422,7 @@ func (r *Repository) ApplyIngestJourneyPatch(ctx context.Context, patch *domain.
 	case err != nil:
 		return fmt.Errorf("load journey ingest target %s: %w", patch.Journey.ID, err)
 	}
+	afterIngestRead()
 	if current.JournalID == uuid.Nil {
 		current.JournalID = patch.Journey.JournalID
 	}
