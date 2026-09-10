@@ -7,6 +7,8 @@ GO      ?= $(MISE_RUN) go
 BUN     ?= $(MISE_RUN) bun
 GOOSE   := $(MISE_RUN) goose
 SQLC    := $(MISE_RUN) sqlc
+# Markdown formatting is local-only; rumdl is supplied by Nix on PATH.
+RUMDL   ?= rumdl
 
 DATABASE_DSN ?= postgres://postgres:password@localhost:5432/felicia?sslmode=disable
 PORT ?= 8080
@@ -17,17 +19,23 @@ COMPOSE ?= $(shell \
 	elif command -v docker >/dev/null 2>&1; then echo docker compose; \
 	else echo ''; fi)
 
-.PHONY: help fmt fmt-check vet lint test test-api test-features layout-check test-sqlite test-postgres check build cli-build experiment-intake journey-local validate deps-check tidy db-up db-down migrate seed admin dev dev-sqlite dev-postgres test-workflow test-workflow-postgres test-admin-e2e sqlc mock-up mock-down browser-mock web-install web-check web-build admin-check admin-build web-private-check web-private-build site-build site-verify pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
+.PHONY: help fmt fmt-check fmt-docs fmt-docs-check vet lint test test-api test-features layout-check test-sqlite test-postgres check check-ci build cli-build experiment-intake journey-local validate deps-check tidy db-up db-down migrate seed admin dev dev-sqlite dev-postgres test-workflow test-workflow-postgres test-admin-e2e sqlc mock-up mock-down browser-mock web-install web-check web-build admin-check admin-build web-private-check web-private-build site-build site-verify pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
 		awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-13s\033[0m %s\n", $$1, $$2}'
 
-fmt: ## Format Go and frontend code
+fmt: fmt-docs ## Format Go, frontend code and Markdown
 	$(UV_RUN) run python scripts/format.py
 
-fmt-check: ## Check Go and frontend formatting without modifying files
+fmt-check: fmt-docs-check ## Check Go, frontend and Markdown without modifying files
 	$(UV_RUN) run python scripts/format.py --check
+
+fmt-docs: ## Fix Markdown lint with rumdl
+	$(RUMDL) check --config .rumdl.toml --fix .
+
+fmt-docs-check: ## Check Markdown with rumdl
+	$(RUMDL) check --config .rumdl.toml .
 
 vet: ## Run go vet
 	$(UV_RUN) run python scripts/go_tasks.py vet
@@ -38,7 +46,9 @@ lint: ## Lint Go (golangci-lint, from mise)
 test: ## Run Go tests with race detector + coverage
 	$(UV_RUN) run python scripts/go_tasks.py test
 
-check: fmt-check vet lint test test-features ## Pre-commit gate
+check: fmt-check check-ci ## Local pre-commit gate, including formatting
+
+check-ci: vet lint test test-features ## CI checks without local formatting tools
 
 build: ## Build all binaries
 	$(UV_RUN) run python scripts/go_tasks.py build

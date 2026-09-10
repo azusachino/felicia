@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   backend:
-    name: Backend (make check)
+    name: Backend (make check-ci)
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -44,8 +44,8 @@ jobs:
       - name: Apply migrations
         run: DATABASE_DSN="$CI_DATABASE_DSN" make migrate
 
-      - name: Check (fmt, vet, lint, race tests)
-        run: FELICIA_TEST_DATABASE_DSN="$CI_DATABASE_DSN" make check
+      - name: Check (vet, lint, race tests)
+        run: FELICIA_TEST_DATABASE_DSN="$CI_DATABASE_DSN" make check-ci
 
       - name: SQLite journey workflow
         run: make test-workflow

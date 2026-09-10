@@ -83,7 +83,7 @@ identical:
 
 ## W1 — iPhone solo (the baseline)
 
-**During the trip**
+### During the trip
 
 - **Overland** (iOS) posts significant-location-change points to
   `https://track.<domain>` continuously — battery-cheap, survives multi-day trips,
@@ -93,7 +93,7 @@ identical:
 - Ticket stubs: photograph **in the moment when you can** (best EXIF), or batch them
   at the hotel — precedence rules absorb either.
 
-**After the trip**
+### After the trip
 
 ```bash
 # in Immich: album "Jeju 2026", ⭐ the ticket shots

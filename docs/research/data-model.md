@@ -4,7 +4,7 @@
 > zero. Derives from the decisions in [`backend-stack.md`](backend-stack.md) (D1–D8), the plan revision in [`backend-plan-revision.md`](backend-plan-revision.md), and
 > supersedes the ticket-era ER in [`archive/design.md`](../archive/design.md) §4.
 > It defines the DDL schema strictly for **PostgreSQL 18 + PostGIS**.
-
+>
 > **Status note (2026-07-18).** The storage framing below predates
 > [ADR-0017](../adr/0017-sqlite-first-storage.md): SQLite is now the default
 > local provider and PostgreSQL/PostGIS is optional (provider matrix in
@@ -26,7 +26,6 @@
    and translations add a **language axis**; the importer never clobbers authored work.
 5. **Uniform memento** — one `mementos` table, `kind`-tagged, kind-specifics in `kind_data`
    jsonb. New kinds = new enum value, not new tables.
-
 6. **Canonical observation seam** — source adapters map provider DTOs into
    `SourceIdentity`, `Observation`, `Route`, `Visit`, `MediaAsset`, and
    `MementoCandidate` values before the write side sees them. Provenance records

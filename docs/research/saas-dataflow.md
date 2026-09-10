@@ -6,12 +6,12 @@
 > route and memento input.** Research-stage sketch — a candidate, not a spec. Sits
 > downstream of [`product-vs-personal.md`](product-vs-personal.md) and the
 > [direction](../direction.md).
-
+>
 > **Updated 2026-06-14:** the "ticket" here generalizes to **memento** (`kind`-tagged) —
 > see [`mementos-not-tickets.md`](mementos-not-tickets.md). The flow below is unchanged in
 > shape; the stub-creation step (3) just accepts more sources (Wallet `.pkpass`, email,
 > goods-photo + vision-LLM) behind the _same seam_, and `TICKET` below is now `MEMENTO`.
-
+>
 > **Updated 2026-06-23:** the active MVP UI stack is **Svelte + TypeScript + Tailwind**.
 > **Updated 2026-07-01:** the map renderer is **MapLibre GL** for token-free OSS local demos.
 > There is no desktop plan yet.

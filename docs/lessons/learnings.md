@@ -1,3 +1,5 @@
+# Learnings
+
 > Project-local fallback lessons captured when asobi was unavailable. Migrate into asobi when possible.
 
 ## 2026-07-12 — stable-journey-identifiers

@@ -1,0 +1,12 @@
+[global]
+# Match the workstation Markdown policy: prose is not hard-wrapped.
+disable = ["MD013"]
+exclude = ["node_modules/**", ".venv/**", ".felicia/**", "site/**", "apps/*/dist/**"]
+
+[per-file-ignores]
+# The agent entry point is an include directive, not a prose document.
+"CLAUDE.md" = ["MD041"]
+# README uses an HTML wrapper for the project banner.
+"README.md" = ["MD033", "MD041"]
+# Archived issue bodies inherit their title from the issue itself.
+"docs/archive/github-issues/*.md" = ["MD041"]
