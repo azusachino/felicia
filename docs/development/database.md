@@ -1,9 +1,19 @@
 # Database development
 
-Felicia supports two persistence providers behind the same repository contract:
+SQLite is the **only v1 persistence provider**
+([ADR-0032](../adr/0032-sqlite-first-v1-postgres-follow-up.md)). It backs local
+development, single-user operation, the API, the admin GUI, the CLI compiler and
+every release gate.
 
-- SQLite is the default for local development and single-user operation.
-- PostgreSQL/PostGIS is available for deployment and provider-parity coverage.
+PostgreSQL/PostGIS remains in the tree behind the same repository contract, as
+frozen work deferred to a v1.1/v1.2 milestone. It is not a supported v1
+deployment target, it is not covered by any v1 gate, and a supported executable
+**refuses to start** when PostgreSQL is selected rather than running an
+unsupported provider. New v1 schema changes are not duplicated into it.
+
+Configuring a DSN for a provider you did not select is also a startup error, not
+a silent default -- the hole that once let `ops/compose.yaml` run on a throwaway
+in-container SQLite file while PostgreSQL and every migration sat unused.
 
 ## Configuration precedence
 
@@ -46,7 +56,7 @@ missing required configuration.
 make admin               # authoring GUI, same database as make dev
 make dev                 # API with SQLite at .felicia/felicia.sqlite
 make dev-sqlite          # explicit SQLite API
-make dev-postgres        # PostgreSQL/PostGIS stack, migration, seed, web app
+make dev-postgres        # [non-v1] PostgreSQL/PostGIS stack -- deferred, see ADR-0032
 make migrate             # PostgreSQL migrations only
 ```
 

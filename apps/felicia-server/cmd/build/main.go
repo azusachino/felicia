@@ -1,4 +1,15 @@
-// Package main implements the command-line entry point for the Static Site Compiler.
+// Package main implements a PostgreSQL-backed static site compiler.
+//
+// NOT PART OF V1. This entry point composes the PostgreSQL provider, which
+// ADR-0032 defers to v1.1/v1.2, so it is experimental deferred-provider work
+// and no v1 workflow, gate or deployment invokes it. It does use the shared
+// publication.StaticCompiler, so it is not a second compiler -- only a second
+// composition root, and provider choice per composition root is what ADR-0028
+// permits.
+//
+// The supported path is `felicia-cli static compile`, which does the same job
+// against SQLite. Prefer that; reach for this only while working on
+// PostgreSQL re-entry.
 package main
 
 import (

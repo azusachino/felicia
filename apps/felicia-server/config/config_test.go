@@ -10,7 +10,7 @@ func TestLoadAppliesTOMLThenEnvironment(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "felicia.toml")
 	if err := os.WriteFile(path, []byte(`
 [database]
-dsn = "postgres://from-file"
+# dsn removed: a DSN for an unselected provider is now a configuration error
 
 [server]
 port = "9090"
@@ -34,7 +34,7 @@ transit_segment_length_m = 200000
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if cfg.Port != "9191" || cfg.DatabaseDSN != "postgres://from-file" || cfg.CacheAddr != "" {
+	if cfg.Port != "9191" || cfg.CacheAddr != "" {
 		t.Errorf("unexpected base config: %+v", cfg)
 	}
 	if cfg.Dawarich.URL != "https://dawarich.example" || cfg.Dawarich.APIKey != "legacy-key" || cfg.Immich.URL != "https://immich.example" {
@@ -55,21 +55,23 @@ func TestLoadUsesSQLiteDefaults(t *testing.T) {
 	}
 
 	if _, err := Load("", lookup(map[string]string{"DATABASE_DRIVER": "postgres"})); err == nil {
-		t.Error("expected postgres without DATABASE_DSN to fail")
+		t.Error("expected an explicit postgres selection to fail as deferred (ADR-0032)")
 	}
 }
 
+// Precedence is unchanged. It is asserted on values that remain legal, since
+// a DSN is now refused outright whichever variable carries it.
 func TestLoadPrefersFeliciaEnvironment(t *testing.T) {
 	cfg, err := Load("", lookup(map[string]string{
-		"DATABASE_DSN":         "postgres://legacy",
-		"FELICIA_DATABASE_DSN": "postgres://preferred",
-		"DAWARICH_URL":         "https://legacy.example",
-		"FELICIA_DAWARICH_URL": "https://preferred.example",
+		"DATABASE_PATH":         "legacy.db",
+		"FELICIA_DATABASE_PATH": "preferred.db",
+		"DAWARICH_URL":          "https://legacy.example",
+		"FELICIA_DAWARICH_URL":  "https://preferred.example",
 	}))
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if cfg.DatabaseDSN != "postgres://preferred" || cfg.Dawarich.URL != "https://preferred.example" {
+	if cfg.DatabasePath != "preferred.db" || cfg.Dawarich.URL != "https://preferred.example" {
 		t.Errorf("FELICIA_* overrides were not preferred: %+v", cfg)
 	}
 }

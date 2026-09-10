@@ -140,14 +140,25 @@ func load(path string, lookup func(string) (string, bool), required bool) (Confi
 
 // Validate checks the values that would make the API unsafe or inoperable.
 func (c Config) Validate() error {
-	if c.DatabaseDriver != "sqlite" && c.DatabaseDriver != "postgres" {
-		return fmt.Errorf("database driver must be sqlite or postgres, got %q", c.DatabaseDriver)
+	// SQLite is the only v1 persistence contract (ADR-0032). PostgreSQL is a
+	// frozen non-v1 provider, so a supported executable refuses to start on it
+	// rather than running an unsupported one.
+	if c.DatabaseDriver == "postgres" {
+		return errors.New("database driver \"postgres\" is deferred to v1.1/v1.2 and not supported by this executable (ADR-0032); unset DATABASE_DRIVER to use sqlite")
 	}
-	if c.DatabaseDriver == "sqlite" && c.DatabasePath == "" {
+	if c.DatabaseDriver != "sqlite" {
+		return fmt.Errorf("database driver must be sqlite, got %q", c.DatabaseDriver)
+	}
+	if c.DatabasePath == "" {
 		return errors.New("database path is required for sqlite")
 	}
-	if c.DatabaseDriver == "postgres" && c.DatabaseDSN == "" {
-		return errors.New("DATABASE_DSN environment variable is required for postgres")
+	// A DSN configured for a provider that was not selected is a
+	// mis-selection, never a silent default. ops/compose.yaml shipped exactly
+	// this and ran on a throwaway in-container SQLite file while PostgreSQL,
+	// PostGIS and every migration sat unused, with nothing in the logs to say
+	// so (AGENTS.md development-flow constraint 1, ADR-0021).
+	if c.DatabaseDSN != "" {
+		return errors.New("DATABASE_DSN is set but the sqlite driver is selected: a DSN for an unselected provider is a configuration error, not a default")
 	}
 	if c.Port == "" {
 		return errors.New("server port is required")
