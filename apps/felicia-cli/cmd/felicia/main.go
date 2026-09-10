@@ -277,29 +277,67 @@ func importCommand(args []string, output io.Writer) error {
 		return err
 	}
 	defer func() { _ = repo.Close() }()
+	// Originals are installed before the transaction that references them.
+	// A failed import may leave unreferenced blobs, which are inert and
+	// recoverable; it must never leave committed rows pointing at bytes that
+	// are absent or truncated, which nothing detects and no retry repairs.
+	if err := installPackageMedia(pkg, *mediaRoot); err != nil {
+		return err
+	}
 	report, err := importer.ApplyPackage(context.Background(), document, repo)
 	if err != nil {
 		return err
 	}
+	return writeJSON(output, map[string]any{"mode": "apply", "package_id": pkg.Manifest.PackageID, "journeys": report.Journeys, "candidates": report.Candidates, "mementos": report.Mementos, "photos": report.Photos})
+}
+
+// installPackageMedia writes every media member into the media root under its
+// content identity. Content addressing makes this idempotent: the path encodes
+// the digest, so a member already present is already the right bytes and is
+// left alone. Publishing only ever happens by rename, so a file visible at its
+// final path is a complete one -- an interrupted run leaves a discarded
+// temporary file rather than a truncated original.
+func installPackageMedia(pkg *journeypackage.Package, mediaRoot string) error {
 	for filename, data := range pkg.Files {
 		if !strings.HasPrefix(filename, "media/") {
 			continue
 		}
-		// Install by content identity, using the same derivation the importer
-		// recorded, so a member name shared with another package cannot
-		// overwrite that package's bytes (ADR-0026).
-		destination, err := publication.SafeJoin(*mediaRoot, importer.MediaObjectKey(filename, importer.MediaDigest(data)))
+		// The same derivation the importer recorded, so a member name shared
+		// with another package cannot overwrite that package's bytes (ADR-0026).
+		destination, err := publication.SafeJoin(mediaRoot, importer.MediaObjectKey(filename, importer.MediaDigest(data)))
 		if err != nil {
 			return err
+		}
+		if _, err := os.Stat(destination); err == nil {
+			continue
 		}
 		if err := os.MkdirAll(filepath.Dir(destination), 0o700); err != nil {
 			return err
 		}
-		if err := os.WriteFile(destination, data, 0o600); err != nil {
-			return err
+		if err := writeOriginalAtomically(destination, data); err != nil {
+			return fmt.Errorf("install %s: %w", filename, err)
 		}
 	}
-	return writeJSON(output, map[string]any{"mode": "apply", "package_id": pkg.Manifest.PackageID, "journeys": report.Journeys, "candidates": report.Candidates, "mementos": report.Mementos, "photos": report.Photos})
+	return nil
+}
+
+func writeOriginalAtomically(destination string, data []byte) error {
+	temp, err := os.CreateTemp(filepath.Dir(destination), ".felicia-*")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.Remove(temp.Name()) }()
+	if _, err := temp.Write(data); err != nil {
+		_ = temp.Close()
+		return err
+	}
+	if err := temp.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(temp.Name(), 0o600); err != nil {
+		return err
+	}
+	return os.Rename(temp.Name(), destination)
 }
 
 func compileCommand(args []string, output io.Writer) error {
