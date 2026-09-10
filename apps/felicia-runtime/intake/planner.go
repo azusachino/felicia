@@ -123,6 +123,21 @@ func BuildPlan(input PlanInput, config PlanConfig) (DraftPlan, error) {
 		var derivedIssues []Issue
 		visits, derivedIssues = deriveVisits(input.Routes, config)
 		plan.Issues = append(plan.Issues, derivedIssues...)
+	} else if derivable, _ := deriveVisits(input.Routes, config); len(derivable) > 0 {
+		// Two sources both describe where this trip stopped, and the precedence
+		// rule silently picks one. ADR-0030 requires the conflict to be
+		// recorded as well as decided: without this the author cannot tell that
+		// the route disagreed, so a supplied source missing a stay they
+		// remember looks like the trip simply had none. Recording it is not a
+		// merge and changes no outcome -- the supplied visits still win.
+		plan.Issues = append(plan.Issues, Issue{
+			Severity: IssueInfo,
+			Code:     "visit_source_conflict",
+			Message: fmt.Sprintf(
+				"%d supplied visits took precedence over %d the route would have derived; route-derived stays were not considered",
+				len(visits), len(derivable),
+			),
+		})
 	}
 	plan.Visits = visits
 	for index, visit := range visits {
