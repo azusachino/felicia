@@ -35,7 +35,9 @@ The normal authoring authority is **SQLite plus original blobs**, with recoverab
 | Publication | Public projection, privacy rules, complete build manifests and release identity | Editing the private journal                 |
 | Application | Commands, API, authoring screens and reader hosts                               | A second implementation of the domain rules |
 
-Use the same application commands from the CLI and GUI. Keep one primary local database engine for a fresh product. PostgreSQL is not intrinsically needed to author locally and publish static files. For a port of existing Felicia, however, inventory PostgreSQL users/data first: either migrate and explicitly retire support or preserve it with the same conformance tests. This is a support decision, not an incidental cleanup.
+Use the same application commands from the CLI and GUI. Keep one primary local database engine for a fresh product. PostgreSQL is not intrinsically needed to author locally and publish static files.
+
+For existing Felicia this is no longer an open question: [ADR-0032](../adr/0032-sqlite-first-v1-postgres-follow-up.md) is accepted, SQLite is the only v1 persistence contract, and PostgreSQL/PostGIS is a frozen non-v1 snapshot deferred to v1.1/v1.2. No inventory is required to decide it. What remains is enforcement, tracked separately, and the reclassification that follows: a provider gap SQLite does not share is deferred-provider work, not a v1 parity blocker, so no phase below carries a dual-provider test burden.
 
 Avoid introducing a workflow engine, event sourcing for every field, a universal plugin system, microservices, remote object storage or a native mobile application without a demonstrated need. Retain adapter seams for actual sources. The existing Go modules can remain during an in-place rebuild; module consolidation is not a prerequisite for correctness.
 
@@ -53,9 +55,31 @@ These are logical responsibilities, not a requirement to introduce every table a
 | Stop proposal/review   | Stable derivation identity, evidence, decision and revision; re-planning retains accepted/ignored choices                      |
 | Memento                | Journey owner, kind, content, anchor, lifecycle and revision; meaningful incomplete drafts are allowed                         |
 | Authored overrides     | Explicit overridden fields, including intentional empty values; source refresh never clears them                               |
-| Blob                   | Verified content digest, size/type and immutable storage key; package filenames are metadata                                   |
+| Blob                   | Verified content digest, size/type and immutable storage key; package filenames are metadata ([ADR-0026](../adr/0026-local-first-media-and-blob-storage.md) already specifies this) |
 | Attachment             | Memento owner, blob reference, caption, order and revision; curation is independent of byte identity                           |
 | Build/release          | Input snapshot identity, privacy policy version, artifact digest, outcome and manifest; deployment acknowledgement is separate |
+
+### Delta against the current schema
+
+The table above reads as a fresh design, which understates how much of it exists. Measured against `apps/felicia-providers/sqlite/schema.sql`, nine of the eleven records are already present and the work is mostly at column level:
+
+| Record                 | Today                                                         | Delta                                                                                           |
+| ---------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Journal                | `tb_journals`, `tb_site_settings`                             | no settings revision                                                                            |
+| Journey                | `tb_journeys` with `authored_fields`                          | **no `revision` column** — this is the ingest race itself                                       |
+| Source instance        | a `source_system` string only                                 | new record, or an explicit decision that the string suffices                                     |
+| Import run and receipt | `tb_import_runs` (ADR-0014)                                   | add input digest and acquisition interval; retry is not currently distinguishable                |
+| Observation            | `tb_source_observations` (ADR-0010)                           | identity is **run-scoped** — `UNIQUE (run_id, source_system, source_external_id)` — not source-scoped |
+| Stop proposal/review   | `tb_stop_candidates`, `tb_stop_candidate_evidence`             | has `revision` and `derivation_version`; PostgreSQL lacks the shared transaction                 |
+| Memento                | `tb_mementos`                                                 | already revision-aware                                                                          |
+| Authored overrides     | `authored_fields` masks (ADR-0033)                            | enforcement, not schema                                                                          |
+| Blob                   | `content_hash` on `tb_memento_photos`                         | **new record**; the hash is recorded but `object_key` is the package path                        |
+| Attachment             | `tb_memento_photos`                                           | no `revision`, so curation has the same race as the journey                                      |
+| Build/release          | —                                                             | **new record**                                                                                   |
+
+So the storage delta is two new records, roughly four columns, three `revision` columns, and one uniqueness change. `revision` exists today on exactly `tb_mementos` and `tb_stop_candidates`.
+
+Two consequences follow. The blob record is not a decision to be made — [ADR-0026](../adr/0026-local-first-media-and-blob-storage.md) is accepted and already specifies `originals/<sha256>/<filename>` with the content hash as the stable contract, so this is a defect against an existing contract rather than new design, and phase 1 inherits a specified target. And build/release identity is the one genuinely new decision in this document, so it is the one that warrants its own ADR.
 
 Keep core ownership fields relational. Kind-specific details may remain validated JSON with versioned schemas; the renderer never gets to invent storage fields. Validate date/time semantics explicitly, preserve source timestamps and timezone uncertainty, and allow manual location correction without changing the original evidence.
 
@@ -114,7 +138,9 @@ The inventory must include real data distributions and unsupported media behavio
 
 These options have different scopes, not different quality bars. A can still deliver a mature product. B is not a permanent dual-system design. C must not be called complete when only one reader or a clean demo dataset works.
 
-Before choosing C, compare one representative vertical slice: import two trips with colliding media names, author and revise memories, re-import, build, withdraw and restore. Identify which current abstractions prevent that slice from being implemented cleanly. The existing review finds broken boundaries, but does not establish that the current codebase is fundamentally incapable of enforcing them.
+The three-way framing overstates the choice, now that the storage delta above is measured. A and B share nearly all of their work: two new records, a few columns, and the enforcement to go with them. What actually separates them is whether the authoring flow is then redesigned around one journal authority, which is a decision that can be taken after the repairs rather than before them. So the real sequence is: do the boundary repairs, which nothing here disputes, and decide on the authoring redesign separately once daily use is trustworthy.
+
+Before choosing C, compare one representative vertical slice: import two trips with colliding media names, author and revise memories, re-import, build, withdraw and restore. Identify which current abstractions prevent that slice from being implemented cleanly. The existing review finds broken boundaries, but does not establish that the current codebase is fundamentally incapable of enforcing them — and the delta above is evidence in the other direction, since nine of eleven records and both revision-aware write paths already exist.
 
 ## Recommended implementation sequence for option B
 
@@ -123,12 +149,26 @@ Before choosing C, compare one representative vertical slice: import two trips w
 | 0     | Repair the destructive preview path; capture current capability/data inventory | Preview cannot delete originals; retained inputs and author state are enumerated                            |
 | 1     | Recovery archive and verified immutable blob mapping                           | Restore a representative multi-trip journal; colliding filenames retain correct bytes                       |
 | 2     | Atomic source intake and revision-aware author commands                        | Late input, retry, concurrency and old-package tests preserve all authored values and review decisions      |
-| 3     | Consistent snapshot compiler and complete release promotion                    | Failed/concurrent builds retain a coherent active release; withdrawn files are absent from the new artifact |
-| 4     | One inbox/editor/publication flow using those commands                         | No routine terminal step between available evidence and local public preview; conflicts retain drafts       |
-| 5     | Port complete reader/deployment/interchange behavior                           | All capability rows pass; old data and consumers have an explicit disposition                               |
+| 3     | Consistent snapshot compiler and complete release promotion                    | Failed/concurrent builds retain a coherent active release; withdrawn files are absent from the new artifact; high-precision input sits on the public grid in **index and detail** JSON alike |
+| 4     | One inbox/editor/publication flow using those commands                         | No routine terminal step between available evidence and local public preview; conflicts retain drafts; an essay-only edit marks the site as changed and a status error reads as unknown |
+| 5     | Verify reader behavior unchanged; port deployment and interchange              | All capability rows pass; old data and consumers have an explicit disposition                               |
 | 6     | Rehearsed cutover and real authoring acceptance                                | Author uses a new trip plus a revision to an old trip, deploys, withdraws, and restores without lost work   |
 
+Phase 5 says *verify* rather than *port* because option B does not rebuild the readers. Under option C that row becomes a port, and it is the largest single line item in the option.
+
 Keep the source-backed review's specific regression cases as the acceptance ledger. Split phases into focused changes when implementation starts. Do not schedule a fixed completion date before measuring archive/restore and one full slice; those establish the real effort better than estimates from file count.
+
+### These phases are mostly an existing backlog
+
+The phases are an ordering and a set of gates, not a new inventory of work. Most of the work already exists in the issue ledger, and saying so keeps the plan from being read as a second, competing plan:
+
+- phase 0 is the P0 preview defect, plus the inventory;
+- phase 1's recovery archive is the standing backup/restore issue, and its blob mapping is the ADR-0026 violation;
+- phase 2 and phase 3 correspond to the filed import, authorship and publication defects;
+- phase 4's inbox and editor work is already filed across the intake and admin-GUI gaps;
+- phase 6 is the standing end-to-end release rehearsal.
+
+The plan's own contribution is the order, the gates, and the rule that no destructive repair happens before the archive exists.
 
 ## Migration and cutover
 
