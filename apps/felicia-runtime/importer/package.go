@@ -47,6 +47,15 @@ type ImportReport struct {
 // ApplyPackage writes a normalized package into the canonical store. Source
 // fields are applied through the ingest boundary; authored fields are never
 // supplied by this operation.
+//
+// The caller must have installed the package's originals before calling this.
+// This operation commits references to media by object key and has no way to
+// check that the bytes exist, so committing first would leave rows claiming
+// files that never landed -- a state nothing detects and no retry repairs.
+// Unreferenced blobs from a failed import are the acceptable direction of that
+// trade: inert, and recoverable. Object keys come from MediaObjectKey, so a
+// composition root can install bytes before this call without guessing where
+// they belong.
 func ApplyPackage(ctx context.Context, document *PackageDocument, store PackageStore) (ImportReport, error) {
 	// Label every memento write this import performs as importer-sourced in the
 	// lifecycle log (docs/contracts/memento-lifecycle.md §8).

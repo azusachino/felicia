@@ -3,6 +3,7 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"image"
@@ -13,9 +14,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"gopkg.in/yaml.v3"
 
 	journeypackage "github.com/azusachino/felicia/apps/felicia-core/journeypackage"
+	"github.com/azusachino/felicia/apps/felicia-providers/sqlite"
 	"github.com/azusachino/felicia/apps/felicia-runtime/importer"
 )
 
@@ -131,5 +134,61 @@ func writeZipFile(t *testing.T, writer *zip.Writer, name string, data []byte) {
 	}
 	if _, err := entry.Write(data); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestImportCommitsNoReferencesWhenMediaCannotBeInstalled is the ordering
+// contract. Originals are installed before the transaction that references
+// them, so a failure to write bytes leaves no committed row claiming they
+// exist. Under the previous order the transaction committed first and the
+// journal was left pointing at media that had never landed, which nothing
+// detects and no retry repairs.
+func TestImportCommitsNoReferencesWhenMediaCannotBeInstalled(t *testing.T) {
+	root := t.TempDir()
+	archive := writeFixturePackage(t, filepath.Join(root, "journey.zip"))
+	database := filepath.Join(root, "felicia.sqlite")
+
+	// A regular file where the media root should be: creating any directory
+	// beneath it fails, so installation cannot succeed.
+	blocked := filepath.Join(root, "not-a-directory")
+	if err := os.WriteFile(blocked, []byte("in the way"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var report strings.Builder
+	err := execute([]string{"import", "--db", database, "--media-root", blocked, "--apply", archive}, &report)
+	if err == nil {
+		t.Fatal("import must fail when its originals cannot be installed")
+	}
+
+	repo, err := sqlite.Open(database)
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	defer func() { _ = repo.Close() }()
+	if _, err := repo.GetJourney(context.Background(), uuid.MustParse("00000000-0000-0000-0000-000000000001")); err == nil {
+		t.Fatal("a journey was committed even though its media never landed")
+	}
+}
+
+// TestImportIsIdempotentAcrossRuns covers the other half of installing first:
+// the path encodes the digest, so a second run finds its originals already
+// present and must succeed rather than fail or rewrite them.
+func TestImportIsIdempotentAcrossRuns(t *testing.T) {
+	root := t.TempDir()
+	archive := writeFixturePackage(t, filepath.Join(root, "journey.zip"))
+	database := filepath.Join(root, "felicia.sqlite")
+	mediaRoot := filepath.Join(root, "media")
+
+	for attempt := 1; attempt <= 2; attempt++ {
+		var report strings.Builder
+		if err := execute([]string{"import", "--db", database, "--media-root", mediaRoot, "--apply", archive}, &report); err != nil {
+			t.Fatalf("import attempt %d: %v", attempt, err)
+		}
+	}
+
+	installed := importer.MediaObjectKey("media/ticket.jpg", importer.MediaDigest(fixtureJPEG(t)))
+	if _, err := os.Stat(filepath.Join(mediaRoot, installed)); err != nil {
+		t.Fatalf("original missing after two imports: %v", err)
 	}
 }
