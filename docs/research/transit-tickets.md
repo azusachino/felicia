@@ -21,7 +21,7 @@ land through the _same_ Memento-creation seam.
 
 Every memento so far is **point**-anchored — one `coords`. A transit ticket is **edge**-anchored:
 
-```
+```text
 point memento:   • (one place)            ticket | stamp | goods
 transit memento: •──────▶• (from → to)    kind: transit
 ```
@@ -39,7 +39,7 @@ trip, the JR + Metro legs draw most of the map on their own.
 
 A `transit` kind (or `ticket` with a `transit` sub-shape — decide at spec time) carries:
 
-```
+```text
 Transit memento
   operator   JR East | Tokyo Metro | …      (MVP: these two)
   line       Tōkaidō Shinkansen | Ginza Line | …   (optional)
@@ -69,7 +69,7 @@ small and offline:
 
 A small authoring surface (admin app; for the MVP a single form is fine):
 
-```
+```text
 operator ▾   line ▾(optional)
 from [⌕ station autocomplete]  →  to [⌕ station autocomplete]
 date [____]   fare [¥____]

@@ -103,7 +103,6 @@ agent decide them alone again.
    Babylon.js both work embedded as a library inside someone else's render loop; between those
    two, "batteries-included" cuts both ways for a from-zero learner — more built-in tooling to
    lean on, but also more to learn before the first triangle renders. Not decided here.
-
 2. **Palette.** Not locked. Whatever the map/cat/chrome share, it needs to be stated once and
    checked everywhere, not picked per-component.
 3. **Character design.** Proportions, pose count (continuous rig vs. discrete sprite frames

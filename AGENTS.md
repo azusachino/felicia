@@ -38,7 +38,7 @@ where you author _essays / photo curation / animation_. The importer is **field-
 
 ### Current layout
 
-```
+```text
 apps/{felicia-core,felicia-runtime,felicia-providers,felicia-publication,
 felicia-server,felicia-cli,felicia-admin,felicia-web,felicia-public-site}/
 packages/{felicia-model,felicia-runtime,felicia-components,felicia-renderers,
@@ -189,7 +189,7 @@ One classification standard for the open ledger. Three competing title schemes
   a workaround · `prio:P3` correctness/polish, nobody blocked.
 - **Work order:** milestone ascending, then priority ascending. Query it, don't guess:
 
-  ```
+  ```text
   gh issue list --state open --milestone "R4 — Ingestion and route enrichment" --label prio:P0
   ```
 

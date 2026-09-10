@@ -31,7 +31,7 @@ zero rewrites.
 
 ## 2. CLI surface
 
-```
+```text
 waypoints <command> [flags]
 
   import   Ingest a trip into Postgres + object storage (idempotent).
@@ -42,7 +42,7 @@ waypoints <command> [flags]
 
 ### `import`
 
-```
+```text
 waypoints import [SOURCE] [flags]
 
 SOURCE (one of):
@@ -59,7 +59,7 @@ flags:
 
 ### `sync`
 
-```
+```text
 waypoints sync --immich-album "Jeju 2026" [--track f.gpx] [--out content/trips/<slug>.yaml]
 ```
 
@@ -68,7 +68,7 @@ review. Never touches the DB. Re-running merges into an existing draft (keeps yo
 
 ### `export`
 
-```
+```text
 waypoints export [--journey <slug>] [--out content/trips/]
 ```
 

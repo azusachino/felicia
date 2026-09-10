@@ -29,7 +29,7 @@ where it goes — the admin app.
 
 `authoring-publish-flow.md` defines the motions; the admin app is where they live:
 
-```
+```text
 INGEST   → candidates auto-proposed (Immich × Dawarich on timestamp)
 CURATE   → confirm / merge / reject   ← "Review Queue" belongs here
 AUTHOR   → pick kind, attach photos, write the essay; Transit Creator lives here

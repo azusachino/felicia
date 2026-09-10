@@ -37,7 +37,7 @@ Notion is the _source_, our importer is the _sink_ — and it's the **same Memen
 seam** as every other source ([mementos-not-tickets](mementos-not-tickets.md)). So a
 `notion` source is just one more interface impl behind that seam:
 
-```
+```text
 Notion API ──▶ notionSource (impl) ──▶ Memento-creation seam ──▶ core ──▶ Postgres + R2
    (pages,        maps page→draft        image + structured        (same as OCR /
     relations,    + re-fetches files     draft + route             Wallet / goods-photo)

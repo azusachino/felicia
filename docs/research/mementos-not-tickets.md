@@ -27,7 +27,7 @@ stub isn't a compromise. It's the design.
 > **Ticket → Memento:** a _collectible that anchors a memory_, tagged with a `kind`. The
 > `kind` selects the rendered stub **form**. Everything else is unchanged.
 
-```
+```text
 Journey → Memento → { essay, photo gallery, open-animation }
           kind: ticket | goods | receipt | souvenir | stamp | …
 ```

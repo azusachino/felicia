@@ -57,6 +57,7 @@ By using **PostgreSQL 18** as our database foundation, we leverage modern, stabl
 1. **SQL/JSON Standard Functions:**
    - Instead of relying on PG-specific legacy JSON operators (`#>`, `->>`), queries on `mementos.kind_data` utilize standard SQL/JSON functions (`JSON_VALUE`, `JSON_QUERY`, `JSON_EXISTS`). This aligns our schema queries with standard SQL and improves query planner optimization.
    - Example query for transit mementos:
+
      ```sql
      SELECT id, JSON_VALUE(kind_data, '$.operator' RETURNING text) AS operator
      FROM mementos
@@ -65,6 +66,7 @@ By using **PostgreSQL 18** as our database foundation, we leverage modern, stabl
 
 2. **Advanced MERGE for Field-Scoped Upserts:**
    - PostgreSQL 18's enhanced `MERGE` statement executes complex conditional upserts (our multi-axis "no-clobber" rule) in a single database transaction:
+
      ```sql
      MERGE INTO mementos AS target
      USING (VALUES ($1, $2, $3, $4, $5)) AS source(journey_id, source_ref, kind, geom, occurred_at)
@@ -75,6 +77,7 @@ By using **PostgreSQL 18** as our database foundation, we leverage modern, stabl
          INSERT (journey_id, source_ref, kind, geom, occurred_at)
          VALUES (source.journey_id, source.source_ref, source.kind, source.geom, source.occurred_at);
      ```
+
    - This guarantees atomic updates and eliminates check-then-write roundtrips in Go application logic.
 
 3. **Sequential UUIDv7 Keys:**
@@ -111,6 +114,7 @@ graph TD
 The v3 Techo landing page renders a map with representative place dots per journey and a card index. To avoid N+1 queries:
 
 - `GET /api/v1/journeys` returns a collection of journeys, where each item includes:
+
   ```json
   {
     "slug": "2026-japan-spring",
@@ -122,6 +126,7 @@ The v3 Techo landing page renders a map with representative place dots per journ
     ]
   }
   ```
+
 - **Selection Heuristic:** The database derives these representative dots at query time by selecting up to 3 mementos per journey, ordered by:
   1. The chronological order (`occurred_at ASC`).
   2. Prioritizing distinct places over adjacent points.
@@ -140,7 +145,7 @@ If a user requests the English (`en`) interface:
 
 The **A+E model** coordinates automated ingestion (**A**) with manual authoring (**E**).
 
-```
+```text
 [Immich API] ──> Fetch Photo ──> Resize & Strip EXIF ──> Hash Derivative ──> Deduplicate R2
                                                                          └─> Seed Memento (DB)
 ```
@@ -189,7 +194,7 @@ If a kind template definition (e.g. `transit.yaml`) changes over time:
 
 To support a single-user publishing model (similar to `yihong0618/running_page`), `felicia` operates as a compiler that reads from our primary **PostgreSQL 18 + PostGIS** database to generate a zero-cost, 100% static public website.
 
-```
+```text
 +------------------+                   +--------------------+                   +----------------------+
 | Local Authoring  |                   |   Primary PG18     |                   |   Static Site Build  |
 | (Go localhost    | ==[Writes to]==>  |   Database         | ==[Compiles to]==> | (Static JSONs +      |

@@ -1,6 +1,12 @@
 [global]
-# Match the workstation Markdown policy: prose is not hard-wrapped.
-disable = ["MD013"]
+# MD013: match the workstation Markdown policy — prose is not hard-wrapped.
+# MD025: ADRs and contracts carry a frontmatter `title:` *and* an H1 heading, which
+# MD025 counts as two top-level headings. Its autofix demotes every H1 to H2 and
+# cascades the whole outline, so the rule is disabled rather than obeyed.
+# MD018: a prose line may legitimately begin with `#` — an issue reference like
+# `#68`, or an anchor like `#decision`. The autofix reads it as a heading and
+# splits the sentence into one. The reference stays; the rule goes.
+disable = ["MD013", "MD025", "MD018"]
 exclude = ["node_modules/**", ".venv/**", ".felicia/**", "site/**", "apps/*/dist/**"]
 
 [per-file-ignores]
@@ -10,3 +16,7 @@ exclude = ["node_modules/**", ".venv/**", ".felicia/**", "site/**", "apps/*/dist
 "README.md" = ["MD033", "MD041"]
 # Archived issue bodies inherit their title from the issue itself.
 "docs/archive/github-issues/*.md" = ["MD041"]
+# The indented body of a mkdocs-material `!!! note` admonition is not an
+# indented code block; MD046's autofix turns it into a fenced one and the
+# callout stops rendering.
+"docs/publish.md" = ["MD046"]
