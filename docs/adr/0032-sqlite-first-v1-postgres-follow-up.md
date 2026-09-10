@@ -1,7 +1,7 @@
 ---
 id: "0032"
 title: "SQLite-First v1, PostgreSQL Follow-up"
-status: "proposed"
+status: "accepted"
 date: "2026-08-10"
 decisions:
   - "SQLite is the only supported and acceptance-tested persistence provider for v1.0."
@@ -48,7 +48,7 @@ The v1 product does not need PostgreSQL to complete its local authoring,
 publication, or Pages workflow. Carrying both schema surfaces as equal v1
 commitments adds maintenance without advancing the v1 acceptance outcome.
 
-## Proposed decision
+## Decision
 
 1. **SQLite is the v1 persistence contract.** The supported v1 API, admin GUI,
    CLI static compiler, workflow tests, and acceptance journey use SQLite.
@@ -157,6 +157,14 @@ keep two active v1 commitments.
 
 ## Status
 
-Proposed pending the decision and follow-up issue breakdown in GitHub issue
-#68. Once accepted, update the roadmap and database-development instructions
-to reflect SQLite-only v1 support.
+Accepted. The scope decision binds from acceptance; the repository work that
+makes it truthful is tracked separately, so this document is the contract and
+not a record of completed work. Until that work lands, two things in the tree
+still contradict it: `apps/felicia-server/cmd/build` is a PostgreSQL-only
+composition root, and CI provisions a PostGIS service for the v1 lane. Both
+need an explicit disposition under item 5 and item 6 above.
+
+The deferral also reclassifies existing PostgreSQL-only defects. A provider gap
+that SQLite does not share — such as the non-transactional stop-candidate
+refresh in `apps/felicia-providers/postgres/stop_candidate.go` — is
+deferred-provider work under item 4, not a v1 parity blocker.

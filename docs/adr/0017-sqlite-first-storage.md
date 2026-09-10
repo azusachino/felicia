@@ -4,7 +4,7 @@ title: "SQLite-First Storage with Optional PostgreSQL"
 status: "accepted"
 date: "2026-07-14"
 decisions: []
-related: []
+related: ["0032"]
 supersedes: []
 ---
 

@@ -22,7 +22,8 @@ journey and its per-stage status live in
 ## Tech Stack & Architecture
 
 - **Backend:** Go 1.27 — API, runtime, provider, and core modules in one `go.work` workspace.
-- **DB:** SQLite is the local-first provider; PostgreSQL remains supported for deployments that need it.
+- **DB:** SQLite is the only v1 persistence contract ([ADR-0032](docs/adr/0032-sqlite-first-v1-postgres-follow-up.md)).
+  The PostgreSQL/PostGIS provider stays in the tree as frozen, explicitly non-v1 work, deferred to v1.1/v1.2.
 - **Object storage:** S3-compatible interface; **R2** backend (MinIO/B2 swappable by config).
 - **Frontend:** Vite + MapLibre GL SPAs — public site, private reader, and admin authoring app (bun workspace).
 - **Locales:** static system UI catalogs support Japanese, English, and Chinese. Authored content
@@ -115,13 +116,17 @@ stops being possible.
    unused — with nothing in the logs to say so. Configuring a DSN for a provider
    you did not select must be a startup error, never a silent default.
 
-2. **A dual-provider schema change ships a parity check.**
+2. **A v1 schema change lands in SQLite only; touching both providers ships a parity check.**
    [ADR-0017](docs/adr/0017-sqlite-first-storage.md) required conformance tests
    "to prevent SQLite and PostgreSQL behavior from drifting", and
    `apps/felicia-providers/contract` delivers that — for _behavior_. Schema shape is
    unguarded, and the two DDLs have already diverged (`tb_journal` in
-   `apps/felicia-server/migrations/`, `tb_journals` in `apps/felicia-providers/sqlite/schema.sql`). Any change
-   touching both providers asserts shape parity in a test, not in review.
+   `apps/felicia-server/migrations/`, `tb_journals` in `apps/felicia-providers/sqlite/schema.sql`).
+   Under [ADR-0032](docs/adr/0032-sqlite-first-v1-postgres-follow-up.md) that drift
+   is now a frozen deferred-provider snapshot, not an active obligation: v1 schema
+   changes are not duplicated into PostgreSQL, and doing so by reflex re-opens the
+   parity surface the deferral closed. A change that does touch both — v1.1 re-entry
+   work — asserts shape parity in a test, not in review.
 
 3. **Every user-facing surface has exactly one documented `make` target.**
    The admin GUI — the primary authoring surface — had no launcher, so the
