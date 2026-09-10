@@ -1,7 +1,7 @@
 ---
 id: "0028"
 title: "CLI Compiler and Shared Publication Boundary"
-status: "proposed"
+status: "accepted"
 date: "2026-07-17"
 decisions:
   - "Use the existing canonical domain model as the source of truth for both server and CLI workflows."
@@ -133,11 +133,25 @@ private source payloads.
 - GPX parsing, local media copying, checksum validation, and arbitrary `kind_data`
   preservation become testable without a running server.
 
-## Open decisions
+## Resolved decisions
 
-- Whether `publication` is a new Go module or a package first moved into
-  `runtime`.
-- Whether package YAML is decoded directly into import DTOs or first normalized
-  into a versioned intermediate representation.
-- Whether static compilation writes media directly to `dist/media/` or delegates
-  to a blob-store adapter that exposes public derivatives.
+The three questions this ADR left open were settled by the implementation and
+by the layout ADRs that followed it:
+
+- `publication` is its own Go module (`apps/felicia-publication/go.mod`), not a
+  package inside `runtime`. ADR-0034 records the resulting ownership map.
+- Package YAML is normalized into a versioned intermediate representation
+  before import. `journeypackage` rejects any manifest whose `schema_version`
+  is not `CurrentSchemaVersion`, and `importer.DecodePackage` produces a
+  `PackageDocument` that the applier consumes; import DTOs are not decoded
+  straight from YAML.
+- Static compilation delegates to the `ArtifactWriter` port
+  (`compiler.go` `output.WriteMedia`) rather than writing a hardcoded
+  `dist/media/` path or routing through a blob-store adapter.
+
+`apps/felicia-server/cmd/build` remains a PostgreSQL-only composition root. It
+uses the shared `publication.StaticCompiler`, so it satisfies this ADR's
+requirement that the provider-specific compiler be retired behind the shared
+boundary, and choosing a provider per composition root is what this ADR
+permits. Whether that root survives at all is ADR-0032's question, not this
+one's.
