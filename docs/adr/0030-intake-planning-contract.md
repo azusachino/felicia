@@ -1,7 +1,7 @@
 ---
 id: "0030"
 title: "Intake Planning Contract and Candidate Review Boundary"
-status: "proposed"
+status: "accepted"
 date: "2026-07-18"
 decisions:
   - "felicia:decision:intake-candidate-boundary"
