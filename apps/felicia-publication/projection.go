@@ -59,13 +59,17 @@ func representativeDots(mementos []*domain.Memento) []RepresentativeDot {
 	return dots
 }
 
+// representativeCoord is a public coordinate and is rounded like every other
+// one. This projection is the landing index, reached before any detail page, so
+// leaving it unrounded published full-precision positions on the first page a
+// reader sees while the detail JSON they click into was already rounded.
 func representativeCoord(geom orb.Geometry) []float64 {
 	switch g := geom.(type) {
 	case orb.Point:
-		return []float64{g.X(), g.Y()}
+		return []float64{roundCoord(g.X()), roundCoord(g.Y())}
 	case orb.LineString:
 		if len(g) > 0 {
-			return []float64{g[0].X(), g[0].Y()}
+			return []float64{roundCoord(g[0].X()), roundCoord(g[0].Y())}
 		}
 	}
 	return nil

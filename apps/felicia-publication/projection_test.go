@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/uuid"
 	"github.com/paulmach/orb"
 
 	"github.com/azusachino/felicia/apps/felicia-core/domain"
@@ -46,5 +47,26 @@ func TestNewJourneyListItemJSONShape(t *testing.T) {
 	want := `{"id":"00000000-0000-0000-0000-000000000000","slug":"japan","title":"日本","memento_count":1,"representative_dots":[{"coord":[139.7,35.6],"label":"東京"}]}`
 	if string(data) != want {
 		t.Errorf("unexpected JSON shape:\n got: %s\nwant: %s", data, want)
+	}
+}
+
+// TestRepresentativeDotsRoundToPublicPrecision closes the index half of the
+// coordinate policy. The detail JSON was already rounded, so a reader clicking
+// into a memento saw ~11m precision while the landing index they arrived on
+// carried whatever the importer had stored — often 7+ digits from a GPS device.
+func TestRepresentativeDotsRoundToPublicPrecision(t *testing.T) {
+	journey := &domain.Journey{ID: uuid.MustParse("00000000-0000-0000-0000-000000000001"), Slug: "kyoto", Title: "Kyoto"}
+	mementos := []*domain.Memento{
+		{ID: uuid.MustParse("00000000-0000-0000-0000-000000000002"), Place: "Shibuya", Geom: orb.Point{fullPrecisionLng, fullPrecisionLat}},
+		{ID: uuid.MustParse("00000000-0000-0000-0000-000000000003"), Place: "Along the route", Geom: orb.LineString{{fullPrecisionLng, fullPrecisionLat}, {139.7, 35.7}}},
+	}
+
+	item := NewJourneyListItem(journey, mementos)
+	if len(item.RepresentativeDots) != 2 {
+		t.Fatalf("expected a dot per place, got %d", len(item.RepresentativeDots))
+	}
+	for _, dot := range item.RepresentativeDots {
+		assertOnPublicPrecisionGrid(t, dot.Label+" lng", dot.Coord[0])
+		assertOnPublicPrecisionGrid(t, dot.Label+" lat", dot.Coord[1])
 	}
 }

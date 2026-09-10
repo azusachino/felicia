@@ -222,12 +222,15 @@ func (StaticCompiler) Compile(ctx context.Context, input Input, read ReadModel, 
 // it is reused rather than picked independently.
 //
 // ADR-0025 requires the static artifact to never contain "unrounded private
-// geometry". Rounding here — the sole place both the route (a journey's
-// passive GPS trace) and every memento Geom (frequently derived from that
-// same trace at a stop's timestamp, see apps/felicia-runtime/importer) are projected to
-// GeoJSON — makes the guarantee hold for every importer that could have
-// populated the stored geometry, not just the one path a defect happened to
-// skip.
+// geometry". Rounding where geometry is projected — the route (a journey's
+// passive GPS trace), every memento Geom (frequently derived from that same
+// trace at a stop's timestamp, see apps/felicia-runtime/importer), and the
+// index's representative dots in projection.go — makes the guarantee hold for
+// every importer that could have populated the stored geometry, not just the
+// one path a defect happened to skip. This comment previously called the
+// function below the sole such place; representativeCoord was not routed
+// through it, and the landing index published full-precision coordinates until
+// that was fixed. Any new projection of stored geometry belongs here too.
 const publicCoordDecimals = 4
 
 // roundCoord rounds a single coordinate ordinate (longitude or latitude) to
