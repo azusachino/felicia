@@ -256,7 +256,12 @@ manifest reconciliation removes it from the artifact.
    Add future journeys by adding the same file set and one entry to
    `publication/journeys/catalog.json`; the publisher discovers them without
    source-code edits.
-6. Verify locally with `make pages-preview` (`http://localhost:8082`).
+6. Verify locally with `make pages-preview` (`http://localhost:8082`). The
+   preview builds into a disposable workspace of its own
+   (`.felicia/pages-preview.sqlite` and `.felicia/pages-preview-media/`), which
+   it empties on every run. It never reads or resets your authoring journal or
+   original media. Pointing `PAGES_DB` or `PAGES_MEDIA_ROOT` elsewhere uses that
+   location as given; the preview only empties a directory it can prove it owns.
 7. Push to `main`; the workflow rebuilds and deploys.
 
 The base path is derived from the repository name, so nothing needs editing for
