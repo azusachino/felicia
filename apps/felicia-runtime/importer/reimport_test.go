@@ -29,6 +29,18 @@ func newLifecycleStore() *lifecycleStore {
 	return &lifecycleStore{states: map[uuid.UUID]domain.MementoState{}}
 }
 
+// GetMemento answers whether the journal already holds this memento, which is
+// how the importer decides between applying a package's authored values and
+// declining to overwrite the author's. A miss must be ErrNotFound rather than a
+// nil memento, or the caller cannot tell "absent" from "empty".
+func (s *lifecycleStore) GetMemento(_ context.Context, id uuid.UUID) (*domain.Memento, error) {
+	state, ok := s.states[id]
+	if !ok {
+		return nil, domain.ErrNotFound
+	}
+	return &domain.Memento{ID: id, State: state}, nil
+}
+
 func (s *lifecycleStore) EnsureJournal(context.Context, *domain.Journal) error    { return nil }
 func (s *lifecycleStore) UpsertPhoto(context.Context, *domain.MementoPhoto) error { return nil }
 func (s *lifecycleStore) WithTransaction(_ context.Context, fn func(domain.Repository) error) error {

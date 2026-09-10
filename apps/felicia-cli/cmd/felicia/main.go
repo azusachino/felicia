@@ -288,7 +288,10 @@ func importCommand(args []string, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	return writeJSON(output, map[string]any{"mode": "apply", "package_id": pkg.Manifest.PackageID, "journeys": report.Journeys, "candidates": report.Candidates, "mementos": report.Mementos, "photos": report.Photos})
+	// Conflicts are the author's to resolve, so they are named in the report
+	// rather than counted. An import that silently "succeeded" while declining
+	// to apply half a package is not a success the author can act on.
+	return writeJSON(output, map[string]any{"mode": "apply", "package_id": pkg.Manifest.PackageID, "journeys": report.Journeys, "candidates": report.Candidates, "mementos": report.Mementos, "photos": report.Photos, "authorship_conflicts": report.Conflicts})
 }
 
 // installPackageMedia writes every media member into the media root under its
