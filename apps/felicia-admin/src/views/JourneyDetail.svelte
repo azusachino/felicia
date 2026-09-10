@@ -212,15 +212,24 @@
   // highlighted rather than failing the whole page.
   let pendingMementoIds = $state<Set<string>>(new Set())
   let pendingCount = $state(0)
+  // Whether the artifact is current, stale, absent, or unreadable. Distinct
+  // from buildState below, which tracks an in-flight build action.
+  let artifactState = $state("")
 
   async function loadBuildStatus(journeyId: string) {
     try {
       const status = await getJourneyBuildStatus(journeyId)
       pendingMementoIds = new Set(status.pending_memento_ids)
       pendingCount = status.pending_count
+      artifactState = status.build_state ?? ""
     } catch {
+      // A status we could not read is unknown, not current. Reporting zero
+      // pending here made a failed request indistinguishable from a site with
+      // nothing to publish, which is the more reassuring of the two and the
+      // wrong one.
       pendingMementoIds = new Set()
       pendingCount = 0
+      artifactState = "unknown"
     }
   }
 
@@ -283,6 +292,24 @@
   function buildButtonLabel(pending: number, status: BuildStatus): string {
     if (status === "pending") return "Building…"
     return pending > 0 ? `Build & preview (${pending})` : "Build & preview"
+  }
+
+  // Says which of the four situations the author is in. "Built" is the only
+  // one that means the artifact matches what a build would now produce, and
+  // none of them claims anything about a remote deployment.
+  function artifactStateLabel(state: string, pending: number): string {
+    switch (state) {
+      case "never_built":
+        return pending > 0 ? `Never built — ${pending} to publish` : "Never built"
+      case "changed":
+        return `Changes since last build (${pending})`
+      case "built":
+        return "Built — matches your published content"
+      case "unknown":
+        return "Build state unknown — could not read it"
+      default:
+        return ""
+    }
   }
 
   function previewUrl(port: string): string {
@@ -476,6 +503,9 @@
       <div class="build-row">
         <span class="build-label">Build &amp; preview</span>
         <button type="button" onclick={triggerJourneyBuild} disabled={buildState.status === "pending"}>{buildButtonLabel(pendingCount, buildState.status)}</button>
+        {#if artifactStateLabel(artifactState, pendingCount)}
+          <p class="hint" class:api-error={artifactState === "unknown"}>{artifactStateLabel(artifactState, pendingCount)}</p>
+        {/if}
         {#if buildState.status === "success"}
           {#if buildState.report}
             <span class="trigger-status trigger-status--success build-report">

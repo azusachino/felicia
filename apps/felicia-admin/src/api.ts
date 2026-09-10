@@ -598,6 +598,9 @@ export async function browseDirectories(path?: string): Promise<AdminBrowseResul
 export interface AdminJourneyBuildStatus {
   pending_memento_ids: string[]
   pending_count: number
+  // never_built | changed | built. Absent from an older server, and an
+  // unreadable status is reported as unknown by the caller rather than clean.
+  build_state?: string
 }
 
 export async function getJourneyBuildStatus(journeyId: string): Promise<AdminJourneyBuildStatus> {
