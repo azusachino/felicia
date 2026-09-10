@@ -24,7 +24,7 @@ Automation belongs in collection, deduplication, candidate generation, derivativ
 
 Use one Go application with a CLI and a local authoring HTTP interface, one SQLite database, a private immutable media directory, and a static publication compiler. Use Svelte for the authoring app and reusable reader compositions. Internal packages separate responsibilities; separate services and one module per concept are unnecessary.
 
-The normal authoring authority is **SQLite plus original blobs**, with recoverable browser drafts for uncommitted edits. Imported packages are interchange inputs; exported recovery archives are backups. Neither silently overrides newer GUI edits. The static site is a sanitized projection, never the backup or primary database.
+The normal authoring authority is **SQLite plus original blobs**, with recoverable browser drafts for uncommitted edits. Imported packages are interchange inputs and never silently override newer GUI edits. Backup is a copy of that directory, taken by whatever already backs up the machine. The static site is a sanitized projection, never the backup or primary database.
 
 | Boundary    | Owns                                                                            | Does not own                                |
 | ----------- | ------------------------------------------------------------------------------- | ------------------------------------------- |
@@ -111,7 +111,9 @@ For local serving, switch a release pointer atomically under a single build/prom
 
 Show “changes since build,” “built,” and “deployed” separately. Content edits, settings changes and removals affect the input digest. A network/status error means unknown, not clean. Unpublishing requires a new release and confirmed deployment; locally changing a flag does not retract previously deployed bytes.
 
-A recovery archive includes a consistent database snapshot, referenced original blobs, configuration needed to interpret it, version metadata and checksums. Restore into an empty location and validate before switching. Keep credentials out of portable publication artifacts; document how an author reconnects sources after recovery.
+Recovery does not need a feature. For a single owner on one machine the journal is one SQLite file and a media directory under `.felicia/`, so a disk-level backup already covers it and recovery is copying the directory back. The precaution a migration genuinely needs is one manual copy taken before it, with the application stopped -- a live WAL-mode database is the only thing a file copy cannot snapshot consistently, and stopping the app removes that. An `archive`/`restore` subsystem duplicating `cp -a` was proposed, examined and declined; what would change that is a second user, a hosted deployment, or a machine whose disk is not otherwise backed up.
+
+If a portable export is ever wanted, it is a different requirement -- portability, not recovery -- and it reuses the existing package format rather than inventing an archive one. Keep credentials out of portable artifacts either way.
 
 ## Complete feature port, not a minimal replacement
 
@@ -147,7 +149,7 @@ Before choosing C, compare one representative vertical slice: import two trips w
 | Phase | Deliverable                                                                    | Exit evidence                                                                                               |
 | ----- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
 | 0     | Repair the destructive preview path; capture current capability/data inventory | Preview cannot delete originals; retained inputs and author state are enumerated                            |
-| 1     | Recovery archive and verified immutable blob mapping                           | Restore a representative multi-trip journal; colliding filenames retain correct bytes                       |
+| 1     | Verified immutable blob mapping, behind one manual pre-migration copy          | Colliding filenames retain correct bytes; the copy is taken with the app stopped before any migration runs  |
 | 2     | Atomic source intake and revision-aware author commands                        | Late input, retry, concurrency and old-package tests preserve all authored values and review decisions      |
 | 3     | Consistent snapshot compiler and complete release promotion                    | Failed/concurrent builds retain a coherent active release; withdrawn files are absent from the new artifact; high-precision input sits on the public grid in **index and detail** JSON alike |
 | 4     | One inbox/editor/publication flow using those commands                         | No routine terminal step between available evidence and local public preview; conflicts retain drafts; an essay-only edit marks the site as changed and a status error reads as unknown |
@@ -156,27 +158,27 @@ Before choosing C, compare one representative vertical slice: import two trips w
 
 Phase 5 says *verify* rather than *port* because option B does not rebuild the readers. Under option C that row becomes a port, and it is the largest single line item in the option.
 
-Keep the source-backed review's specific regression cases as the acceptance ledger. Split phases into focused changes when implementation starts. Do not schedule a fixed completion date before measuring archive/restore and one full slice; those establish the real effort better than estimates from file count.
+Keep the source-backed review's specific regression cases as the acceptance ledger. Split phases into focused changes when implementation starts. Do not schedule a fixed completion date before one full slice is measured; that establishes the real effort better than estimates from file count.
 
 ### These phases are mostly an existing backlog
 
 The phases are an ordering and a set of gates, not a new inventory of work. Most of the work already exists in the issue ledger, and saying so keeps the plan from being read as a second, competing plan:
 
 - phase 0 is the P0 preview defect, plus the inventory;
-- phase 1's recovery archive is the standing backup/restore issue, and its blob mapping is the ADR-0026 violation;
+- phase 1 is the ADR-0026 blob-identity violation; its safety precaution is a manual copy, not a feature;
 - phase 2 and phase 3 correspond to the filed import, authorship and publication defects;
 - phase 4's inbox and editor work is already filed across the intake and admin-GUI gaps;
 - phase 6 is the standing end-to-end release rehearsal.
 
-The plan's own contribution is the order, the gates, and the rule that no destructive repair happens before the archive exists.
+The plan's own contribution is the order, the gates, and the rule that no destructive repair runs before a copy of the journal is taken.
 
 ## Migration and cutover
 
 Inventory database state, originals, authored workspaces, decisions, site settings and external consumers before designing conversion. Stop writers for a consistent export. Preserve old IDs where possible; record explicit mappings otherwise. Verify media byte hashes and authored fields, not just row counts or whether the homepage renders.
 
-Run the replacement against a restored copy, with no permanent dual writes. Compare private-state preservation and intended public output separately; privacy fixes may intentionally change public output. At cutover, take a final checkpoint, import/convert, validate and only then reopen authoring. Keep the previous application/data available for rollback. After new edits begin, rollback must carry those edits and blobs back or preserve them in a recoverable archive; restoring an old database alone is data loss.
+Run the replacement against a restored copy, with no permanent dual writes. Compare private-state preservation and intended public output separately; privacy fixes may intentionally change public output. At cutover, take a final checkpoint, import/convert, validate and only then reopen authoring. Keep the previous application/data available for rollback. After new edits begin, rollback must carry those edits and blobs back or set them aside somewhere recoverable; restoring an old database alone is data loss.
 
-The first two foundation repairs should not wait for a final decision about a successor. Preserve the current originals and archive the journal before experimentation.
+The first two foundation repairs should not wait for a final decision about a successor. Copy the journal and its originals aside before experimenting on them.
 
 ## Decision to carry forward
 
