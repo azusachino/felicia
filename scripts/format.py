@@ -21,17 +21,6 @@ def go_files() -> list[Path]:
     )
 
 
-def markdown_files() -> list[Path]:
-    return sorted(
-        path
-        for path in ROOT.rglob("*.md")
-        if ".git" not in path.parts
-        and "node_modules" not in path.parts
-        and "site" not in path.parts
-        and ".venv" not in path.parts
-    )
-
-
 def run(command: list[str], *, cwd: Path = ROOT) -> subprocess.CompletedProcess[str]:
     return subprocess.run(command, cwd=cwd, check=False, text=True, capture_output=True)
 
@@ -76,41 +65,11 @@ def format_web(check: bool) -> bool:
     return success
 
 
-def format_markdown(check: bool) -> bool:
-    mode = "--check" if check else "--write"
-    files = [str(path) for path in markdown_files()]
-    if not files:
-        return True
-    # Markdown is repository documentation, not a frontend dependency. Keep this
-    # path usable before `make web-install` and avoid loading the Svelte plugin.
-    result = run(
-        [
-            "bun",
-            "run",
-            "--cwd",
-            "apps/felicia-public-site",
-            "prettier",
-            "--no-config",
-            "--parser",
-            "markdown",
-            "--prose-wrap",
-            "preserve",
-            "--print-width",
-            "200",
-            mode,
-            *files,
-        ]
-    )
-    print(result.stdout, end="")
-    print(result.stderr, end="")
-    return result.returncode == 0
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    success = format_go(args.check) and format_web(args.check) and format_markdown(args.check)
+    success = format_go(args.check) and format_web(args.check)
     return 0 if success else 1
 
 

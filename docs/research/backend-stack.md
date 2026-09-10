@@ -2,7 +2,7 @@
 
 > 2026-07-08. A re-audit of the backend against the **memento** model (not the frozen
 > ticket-era [`archive/design.md`](../archive/design.md) / [`archive/spec-gaps.md`](../archive/spec-gaps.md)),
-> the v2 demo shape ([`web/src/data.ts`](../../web/src/data.ts)), and the
+> the v2 demo shape ([`web/src/data.ts`](../../packages/felicia-model/src/data.ts)), and the
 > presentation-agnostic-contract direction. Two halves: **(1)** popular-OSS library
 > selections for the Go backend, and **(2)** rewritten recommended decisions + todos.
 > Research-stage **leanings**, not locks — they graduate to a spec when ratified.
@@ -58,7 +58,7 @@ seams); **heavy geo stays in PostGIS SQL**, Go only does I/O + light geometry.
 > **manual/authored** — the hand-authored transit creator and back-fillable goods — so no
 > ticket to OCR. When it lands it's one source _behind_ the memento-creation seam; nothing in
 > the model changes.
-
+>
 > **Why not Viper?** It's popular and capable, but for our tiny config it's the wrong shape:
 > a large transitive dep tree, a **global singleton** (`viper.Get` from anywhere — hidden
 > coupling, harder to test the pure core), and **case-insensitive key folding** that has
@@ -163,7 +163,7 @@ migration.
 `felicia:decision:memento-template-registry`. A memento **kind is a template declared as
 data** — one entry per kind describing everything the three surfaces need:
 
-```
+```text
 template
   kind         "transit"
   anchor       point | edge          # edge => LineString geom (from→to); point => single coord
@@ -204,7 +204,7 @@ triplet is real triplicated work.
 Replaces the ticket-era `archive/todo.md` M0 "spec freeze." Flow stays research → spec →
 TDD → build; we are finishing **research**.
 
-**R — ratify (finish research)**
+### R — ratify (finish research)
 
 - [x] Ratify D1–D9 (or amend) and the §1 stack picks. _(D9 declarative registry ratified
       2026-07-09; D1–D8 still standing.)_
@@ -231,7 +231,7 @@ source_ref)`.
       union/compose (D2), Dawarich track+visits ingest and visit-snap (place-as-derived-visit).
       (OCR/vision pre-fill deferred — §1 note.)
 
-**T — TDD (first failing tests, memento order)**
+### T — TDD (first failing tests, memento order)
 
 - [ ] **Template registry + `kind_data` validation (D9).** `internal/domain`: load a template,
       validate a `kind_data` blob against it — required-missing, unknown-field, per-`type`

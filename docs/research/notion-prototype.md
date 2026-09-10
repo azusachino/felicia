@@ -31,7 +31,7 @@ Treat Notion as a **throwaway sandbox with a known exit**, never a creeping sour
 
 Three related databases. If it feels right here, the schema is probably right.
 
-**Trips**
+### Trips
 
 | Property              | Notion type | Notes                               |
 | --------------------- | ----------- | ----------------------------------- |
@@ -43,7 +43,7 @@ Three related databases. If it feels right here, the schema is probably right.
 | gpx                   | files       | **out-of-band** — Notion has no geo |
 | map-link              | url         | placeholder for the route           |
 
-**Mementos**
+### Mementos
 
 | Property    | Notion type      | Notes                                               |
 | ----------- | ---------------- | --------------------------------------------------- |

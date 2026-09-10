@@ -5,7 +5,7 @@ Date: 2026-07-13
 Task 7 uses a local YAML document as a realistic third source. It represents
 both a synchronized external-style record (`source_system` plus stable
 `external_id`) and Felicia-owned manual input. The adapter is intentionally
-thin: [`internal/manualyaml`](../../internal/manualyaml) parses the document
+thin: [`internal/manualyaml`](../../apps/felicia-providers/manualyaml) parses the document
 into `domain.Observation` and `domain.MementoCandidate`; it does not write the
 database or invent template behavior.
 
