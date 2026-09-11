@@ -120,17 +120,30 @@
   const mapStyle: StyleSpecification = {
     version: 8,
     sources: {
+      // CARTO's free basemaps began requiring an API key and now answer 200
+      // with "API KEY REQUIRED" stamped into the PNG itself, so the map broke
+      // without a single failed request, console error or red test. Esri's
+      // Canvas basemaps are keyless. Note the template order: Esri serves
+      // {z}/{y}/{x} -- row before column -- the reverse of the XYZ scheme
+      // CARTO and OSM use, so swapping the host alone silently transposes the
+      // world.
       dark: {
         type: "raster",
-        tiles: ["https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"],
+        tiles: [
+          "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+        ],
         tileSize: 256,
-        attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+        maxzoom: 16,
+        attribution: "&copy; OpenStreetMap contributors, Esri, HERE, Garmin",
       },
       light: {
         type: "raster",
-        tiles: ["https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"],
+        tiles: [
+          "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+        ],
         tileSize: 256,
-        attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+        maxzoom: 16,
+        attribution: "&copy; OpenStreetMap contributors, Esri, HERE, Garmin",
       },
     },
     layers: [
