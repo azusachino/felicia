@@ -105,7 +105,7 @@ dev: ## Start the local API with SQLite
 dev-sqlite: ## Start the API locally with the default SQLite provider
 	$(UV_RUN) run python scripts/dev.py --driver sqlite
 
-dev-postgres: ## Start the PostgreSQL-backed local stack, seed data, and serve the web app
+dev-postgres: ## [non-v1, ADR-0032] PostgreSQL-backed local stack -- deferred provider work only
 	$(UV_RUN) run python scripts/dev.py --driver postgres --web
 
 mock-up: ## Start the mock Dawarich+Immich upstream in the background (:8099)
@@ -141,7 +141,7 @@ sqlc: ## Regenerate the postgres query bindings (apps/felicia-providers/postgres
 test-sqlite: ## Run all tests with SQLite as the only enabled provider
 	DATABASE_DSN= FELICIA_TEST_DATABASE_DSN= $(MAKE) test
 
-test-postgres: ## Run PostgreSQL tests against the disposable test database
+test-postgres: ## [non-v1, ADR-0032] PostgreSQL tests -- not a release gate
 	@test -n "$(FELICIA_TEST_DATABASE_DSN)" || (echo "FELICIA_TEST_DATABASE_DSN is required" >&2; exit 1)
 	DATABASE_DSN="$(FELICIA_TEST_DATABASE_DSN)" $(MAKE) migrate
 	DATABASE_DSN= FELICIA_TEST_DATABASE_DSN="$(FELICIA_TEST_DATABASE_DSN)" $(MAKE) test

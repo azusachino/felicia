@@ -14,24 +14,11 @@ jobs:
   backend:
     name: Backend (make check-ci)
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgis/postgis:18-3.6-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: felicia
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d felicia"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    env:
-      # The service database is disposable for this CI job. Destructive tests
-      # use this dedicated test DSN, never the normal runtime DSN.
-      CI_DATABASE_DSN: postgres://postgres:password@localhost:5432/felicia?sslmode=disable
+    # No PostgreSQL service. SQLite is the only v1 persistence contract
+    # (ADR-0032), and the v1 gate must not require a PostgreSQL service, its
+    # migrations, or its behavioural parity. The provider stays in the tree as
+    # frozen non-v1 work; its checks return with the re-entry milestone rather
+    # than running here in a lane that cannot block anything meaningful.
     steps:
       - uses: actions/checkout@v7
 
@@ -41,11 +28,8 @@ jobs:
       - name: Install frontend dependencies
         run: make web-install
 
-      - name: Apply migrations
-        run: DATABASE_DSN="$CI_DATABASE_DSN" make migrate
-
       - name: Check (vet, lint, race tests)
-        run: FELICIA_TEST_DATABASE_DSN="$CI_DATABASE_DSN" make check-ci
+        run: make check-ci
 
       - name: SQLite journey workflow
         run: make test-workflow

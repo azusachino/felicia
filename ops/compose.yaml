@@ -1,5 +1,10 @@
 services:
+  # Not part of the v1 supported deployment shape: PostgreSQL is deferred to
+  # v1.1/v1.2 (ADR-0032) and no v1 service composes against it. Kept behind a
+  # profile so it starts only when asked for by name, for deferred-provider
+  # work, and never as a side effect of `make share` or the dev stack.
   db:
+    profiles: ["postgres-deferred"]
     image: postgis/postgis:18-3.6-alpine
     # The pinned PostGIS image currently publishes amd64 only; Podman on
     # Apple Silicon runs this service through its supported emulation path.
@@ -40,15 +45,22 @@ services:
       dockerfile: ops/Containerfile
     container_name: felicia-api
     environment:
-      DATABASE_DSN: postgres://postgres:password@db:5432/felicia?sslmode=disable
+      # Explicit and SQLite, per ADR-0032. This previously set a PostgreSQL DSN
+      # with no driver, which selected SQLite silently: the API ran on a
+      # throwaway in-container file while PostgreSQL, PostGIS and every
+      # migration sat unused, with nothing in the logs to say so. Configuring a
+      # DSN for an unselected provider is now a startup error, so the ambiguity
+      # cannot come back by omission.
+      DATABASE_DRIVER: sqlite
+      DATABASE_PATH: /data/felicia.sqlite
       CACHE_ADDR: cache:6379
       FELICIA_HOST: "0.0.0.0"
       PORT: "8080"
     ports:
       - "8080:8080"
+    volumes:
+      - apidata:/data
     depends_on:
-      db:
-        condition: service_healthy
       cache:
         condition: service_healthy
 
@@ -85,4 +97,5 @@ services:
       - web
 
 volumes:
+  apidata:
   pgdata:
