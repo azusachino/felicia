@@ -168,3 +168,72 @@ func hasIssue(issues []Issue, code string) bool {
 	}
 	return false
 }
+
+// TestBuildPlanRecordsWhenSuppliedVisitsOverrodeTheRoute is the clause ADR-0030
+// required and the planner did not meet: when a connected source and the route
+// both describe where the trip stopped, precedence decides the outcome and the
+// conflict is recorded rather than left invisible. Without the record, a
+// supplied source that missed a stay the author remembers looks like the trip
+// simply had none.
+func TestBuildPlanRecordsWhenSuppliedVisitsOverrodeTheRoute(t *testing.T) {
+	// A route that would derive a stay of its own: two hours inside the radius.
+	dwellStart := time.Date(2026, 4, 2, 9, 0, 0, 0, time.UTC)
+	dwell := []domain.Route{{Points: []domain.TrackPoint{
+		{Coord: orb.Point{139.7000, 35.6000}, At: dwellStart},
+		{Coord: orb.Point{139.7001, 35.6001}, At: dwellStart.Add(30 * time.Minute)},
+		{Coord: orb.Point{139.7000, 35.6001}, At: dwellStart.Add(90 * time.Minute)},
+	}}}
+	supplied := domain.Visit{
+		Coord: orb.Point{135.5, 34.7}, Label: "Kobe",
+		Arrive:     time.Date(2026, 4, 2, 1, 0, 0, 0, time.UTC),
+		Depart:     time.Date(2026, 4, 2, 3, 0, 0, 0, time.UTC),
+		Confidence: 0.9, SourceRef: "dawarich:visit-1",
+	}
+
+	plan, err := BuildPlan(PlanInput{JourneyID: uuid.New(), Routes: dwell, Visits: []domain.Visit{supplied}}, DefaultConfig())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Precedence is unchanged: the supplied visit still wins.
+	if len(plan.Stops) != 1 || plan.Stops[0].Label != "Kobe" {
+		t.Fatalf("supplied visits must still take precedence, got %#v", plan.Stops)
+	}
+	var recorded *Issue
+	for index, issue := range plan.Issues {
+		if issue.Code == "visit_source_conflict" {
+			recorded = &plan.Issues[index]
+		}
+	}
+	if recorded == nil {
+		t.Fatalf("the disagreement between sources was not recorded: %#v", plan.Issues)
+	}
+	if recorded.Severity != IssueInfo {
+		t.Errorf("severity = %q, want info: precedence resolved it, so nothing needs review", recorded.Severity)
+	}
+}
+
+// TestBuildPlanRecordsNoConflictWhenTheRouteAgreesOnNothing keeps the record
+// meaningful: a route with no derivable stay is not a disagreement, and
+// reporting one would train the author to ignore the list.
+func TestBuildPlanRecordsNoConflictWhenTheRouteAgreesOnNothing(t *testing.T) {
+	passing := []domain.Route{{Points: []domain.TrackPoint{
+		{Coord: orb.Point{139.7, 35.6}, At: time.Date(2026, 4, 2, 9, 0, 0, 0, time.UTC)},
+		{Coord: orb.Point{140.9, 36.9}, At: time.Date(2026, 4, 2, 9, 5, 0, 0, time.UTC)},
+	}}}
+	supplied := domain.Visit{
+		Coord: orb.Point{135.5, 34.7}, Label: "Kobe",
+		Arrive:     time.Date(2026, 4, 2, 1, 0, 0, 0, time.UTC),
+		Depart:     time.Date(2026, 4, 2, 3, 0, 0, 0, time.UTC),
+		Confidence: 0.9, SourceRef: "dawarich:visit-1",
+	}
+	plan, err := BuildPlan(PlanInput{JourneyID: uuid.New(), Routes: passing, Visits: []domain.Visit{supplied}}, DefaultConfig())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, issue := range plan.Issues {
+		if issue.Code == "visit_source_conflict" {
+			t.Errorf("a route with no derivable stay is not a conflict: %q", issue.Message)
+		}
+	}
+}
