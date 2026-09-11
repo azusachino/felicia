@@ -29,6 +29,35 @@ func IngestableFields(mask, authored []string) []string {
 	return allowed
 }
 
+// JourneyAuthoredFields is what an authoring write claims on a journey,
+// whatever the caller sent. Per ADR-0039 the mask is derived from the fields
+// the authoring surface writes, not supplied by the client — a client that
+// omits a mask used to clear it, and the next import then legally overwrote
+// the author's work.
+//
+// gps_route is deliberately absent. The passive GPS trace is re-ingested for
+// the life of the journey, so letting an authoring save claim it would freeze
+// it forever. Keeping it out is also what keeps the model free of
+// un-authoring: every field here is one an author sets deliberately and
+// rarely wants to un-set, so the mask only ever grows.
+var JourneyAuthoredFields = []string{"slug", "title", "place", "country", "region", "date_start", "date_end"}
+
+// ClaimJourneyAuthorship returns the authored mask an authoring write leaves
+// behind, given the mask already stored on the row. It is the authoring
+// counterpart to IngestableFields: every field the authoring surface writes is
+// claimed, and anything the stored row already claimed is kept, so no sequence
+// of authoring writes can shrink the mask.
+func ClaimJourneyAuthorship(stored []string) []string {
+	mask := make([]string, len(JourneyAuthoredFields), len(JourneyAuthoredFields)+len(stored))
+	copy(mask, JourneyAuthoredFields)
+	for _, field := range stored {
+		if !slices.Contains(mask, field) {
+			mask = append(mask, field)
+		}
+	}
+	return mask
+}
+
 // IngestJourneyPatch is an explicit source operation on a journey. It mirrors
 // IngestMementoPatch: its fields are chosen by the importer, and it can never
 // add, remove, or overwrite authored ownership. Journey authoring keeps using
