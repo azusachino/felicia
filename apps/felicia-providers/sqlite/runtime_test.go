@@ -183,3 +183,93 @@ func mustRuntimeUUID(t *testing.T) uuid.UUID {
 	}
 	return id
 }
+
+// TestReimportDoesNotOverwriteAuthoredValues is the defect. A package can carry
+// authored values — an export, or a workspace edited by hand — and applying
+// them wholesale meant re-importing an older one replaced an essay the author
+// had written since. The journal's own authorship wins and the collision is
+// reported rather than resolved, because deciding which essay is better is not
+// an import's call to make.
+func TestReimportDoesNotOverwriteAuthoredValues(t *testing.T) {
+	repo, err := Open(":memory:")
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	defer repo.Close()
+	ctx := context.Background()
+
+	journeyID := mustRuntimeUUID(t)
+	journalID := mustRuntimeUUID(t)
+	mementoID := mustRuntimeUUID(t)
+	document := authoredPackage(t, journeyID, journalID, mementoID, "The package's older essay.")
+
+	// First import: nothing is owned locally, so the package's essay lands.
+	first, err := importer.ApplyPackage(ctx, document, repo)
+	if err != nil {
+		t.Fatalf("first import: %v", err)
+	}
+	if len(first.Conflicts) != 0 {
+		t.Fatalf("first import should not conflict: %v", first.Conflicts)
+	}
+	stored, err := repo.GetMemento(ctx, mementoID)
+	if err != nil {
+		t.Fatalf("read after first import: %v", err)
+	}
+	if stored.Essay == nil || *stored.Essay != "The package's older essay." {
+		t.Fatalf("first import did not apply the only copy of the essay: %v", stored.Essay)
+	}
+
+	// The author rewrites it, and withdraws the memento from publication.
+	authored := *stored
+	authored.Essay = runtimeStringPtr("What I actually remember.")
+	authored.Title = "My title"
+	if err := repo.ApplyManualMementoPatch(ctx, &domain.ManualMementoPatch{
+		Memento: &authored, Fields: []string{"essay", "title"}, State: domain.MementoAuthored,
+	}); err != nil {
+		t.Fatalf("authoring write: %v", err)
+	}
+
+	// Re-importing the same, now stale, package must change none of that.
+	second, err := importer.ApplyPackage(ctx, document, repo)
+	if err != nil {
+		t.Fatalf("re-import: %v", err)
+	}
+	after, err := repo.GetMemento(ctx, mementoID)
+	if err != nil {
+		t.Fatalf("read after re-import: %v", err)
+	}
+	if after.Essay == nil || *after.Essay != "What I actually remember." {
+		t.Errorf("re-import overwrote the author's essay: %v", after.Essay)
+	}
+	if after.Title != "My title" {
+		t.Errorf("re-import overwrote the author's title: %q", after.Title)
+	}
+	if after.State != domain.MementoAuthored {
+		t.Errorf("re-import republished a withdrawn memento: state = %q", after.State)
+	}
+	if len(second.Conflicts) == 0 {
+		t.Error("the declined authored values must be reported, not silently dropped")
+	}
+}
+
+// authoredPackage is a one-memento package that carries authored values and a
+// published state, i.e. the shape an export or a hand-edited workspace has.
+func authoredPackage(t *testing.T, journeyID, journalID, mementoID uuid.UUID, essay string) *importer.PackageDocument {
+	t.Helper()
+	source := domain.SourceIdentity{System: "package:authored", ExternalID: mementoID.String()}
+	day := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
+	return &importer.PackageDocument{
+		Journey: &domain.Journey{ID: journeyID, JournalID: journalID, Slug: "authored", Title: "Authored", Place: "Kyoto", DateStart: day, DateEnd: day},
+		Mementos: []*domain.Memento{{
+			ID: mementoID, JourneyID: journeyID, Kind: "transit", Seq: 1,
+			OccurredAt: day.Add(9 * time.Hour), OccurredTZ: "Asia/Tokyo",
+			Geom:  orb.LineString{{135.7, 35.0}, {135.8, 35.1}},
+			Title: "Package title", Place: "Kyoto",
+			Essay:          runtimeStringPtr(essay),
+			AuthoredFields: []string{"title", "essay"},
+			KindData:       []byte(`{"operator":"JR","from":{"name":"Kyoto","coords":[135.7,35.0]},"to":{"name":"Tokyo","coords":[135.8,35.1]}}`),
+			SourceIdentity: &source,
+			State:          domain.MementoPublished,
+		}},
+	}
+}

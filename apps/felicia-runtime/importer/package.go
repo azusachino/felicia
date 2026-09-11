@@ -6,9 +6,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"math"
 	"path"
+	"slices"
 	"strings"
 	"time"
 
@@ -42,6 +44,11 @@ type ImportReport struct {
 	Candidates int
 	Mementos   int
 	Photos     int
+	// Conflicts names authored values the package carried that the journal
+	// already owns, in "<memento id>.<field>" form. They are reported and left
+	// alone: an import is not entitled to decide that a package's copy of an
+	// essay is better than the one the author has since written.
+	Conflicts []string
 }
 
 // ApplyPackage writes a normalized package into the canonical store. Source
@@ -94,6 +101,7 @@ func ApplyPackage(ctx context.Context, document *PackageDocument, store PackageS
 }
 
 func applyPackage(ctx context.Context, document *PackageDocument, store PackageStore) (ImportReport, error) {
+	var conflicts []string
 	if err := store.EnsureJournal(ctx, &domain.Journal{ID: document.Journey.JournalID}); err != nil {
 		return ImportReport{}, fmt.Errorf("ensure journal: %w", err)
 	}
@@ -114,9 +122,49 @@ func applyPackage(ctx context.Context, document *PackageDocument, store PackageS
 		if err := store.ApplyIngestMementoPatch(ctx, &domain.IngestMementoPatch{Memento: memento, Fields: fields}); err != nil {
 			return ImportReport{}, fmt.Errorf("import memento %s: %w", memento.ID, err)
 		}
+		// A package can carry authored values -- an export, or a workspace the
+		// author edited by hand. Applying them wholesale is what let an old
+		// package overwrite a newer essay, so the journal's own authorship
+		// wins and the collision is reported instead of resolved.
 		if len(memento.AuthoredFields) > 0 || (memento.State != "" && memento.State != domain.MementoCandidateState) {
-			if err := store.ApplyManualMementoPatch(ctx, &domain.ManualMementoPatch{Memento: memento, Fields: memento.AuthoredFields, State: memento.State}); err != nil {
-				return ImportReport{}, fmt.Errorf("apply authored memento %s: %w", memento.ID, err)
+			existing, err := store.GetMemento(ctx, memento.ID)
+			switch {
+			case errors.Is(err, domain.ErrNotFound):
+				existing = nil
+			case err != nil:
+				return ImportReport{}, fmt.Errorf("load memento %s: %w", memento.ID, err)
+			}
+			fields := memento.AuthoredFields
+			state := memento.State
+			if existing != nil {
+				fields = nil
+				for _, field := range memento.AuthoredFields {
+					if slices.Contains(existing.AuthoredFields, field) {
+						conflicts = append(conflicts, memento.ID.String()+"."+field)
+						continue
+					}
+					fields = append(fields, field)
+				}
+				// Lifecycle is a local decision, so an import does not advance
+				// it: re-importing a package that still says "published" must
+				// not republish what the author has since withdrawn. A move the
+				// lifecycle forbids outright is still passed through, because
+				// the store raising InvalidTransitionError is how a package
+				// trying to unpublish content fails loudly instead of quietly
+				// (docs/contracts/memento-lifecycle.md §6, §7) -- declining that
+				// case here would turn a reported error into silence.
+				switch {
+				case state == "" || state == existing.State:
+					state = ""
+				case domain.CanTransitionMementoState(existing.State, state):
+					conflicts = append(conflicts, memento.ID.String()+".state")
+					state = ""
+				}
+			}
+			if len(fields) > 0 || state != "" {
+				if err := store.ApplyManualMementoPatch(ctx, &domain.ManualMementoPatch{Memento: memento, Fields: fields, State: state}); err != nil {
+					return ImportReport{}, fmt.Errorf("apply authored memento %s: %w", memento.ID, err)
+				}
 			}
 		}
 	}
@@ -136,7 +184,7 @@ func applyPackage(ctx context.Context, document *PackageDocument, store PackageS
 			}
 		}
 	}
-	return ImportReport{Journeys: 1, Candidates: len(document.Stops), Mementos: len(document.Mementos), Photos: len(document.Photos)}, nil
+	return ImportReport{Journeys: 1, Candidates: len(document.Stops), Mementos: len(document.Mementos), Photos: len(document.Photos), Conflicts: conflicts}, nil
 }
 
 type journeyFile struct {
