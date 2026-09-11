@@ -1,13 +1,27 @@
 <script lang="ts">
-  export let src: string
-  export let alt: string
-  export let caption = ""
-  export let openLabel = "Open photo"
-  export let closeLabel = "Close"
-  export let imageClass = ""
+  // Runes, not `export let`. Svelte 5 picks a component's mode from its own
+  // syntax: one `export let` puts the whole file in legacy mode, where
+  // `onclick={...}` and `onclose={...}` below are inert DOM attributes rather
+  // than event handlers. This component had exactly that mix -- the only one
+  // in the repo -- so nothing could open it and nothing could close it.
+  let {
+    src,
+    alt,
+    caption = "",
+    openLabel = "Open photo",
+    closeLabel = "Close",
+    imageClass = "",
+  }: {
+    src: string
+    alt: string
+    caption?: string
+    openLabel?: string
+    closeLabel?: string
+    imageClass?: string
+  } = $props()
 
-  let triggerButton: HTMLButtonElement
-  let dialogEl: HTMLDialogElement
+  let triggerButton: HTMLButtonElement | undefined
+  let dialogEl: HTMLDialogElement | undefined
 
   function show() {
     dialogEl?.showModal()
@@ -56,11 +70,18 @@
     cursor: zoom-in;
   }
 
+  /* Only the open state gets a display, because the browser hides a closed
+     <dialog> with `display: none` and any unconditional `display` here
+     overrides it -- which is what painted this lightbox over every theme
+     before anyone clicked a photo. */
+  .photo-lightbox[open] {
+    display: grid;
+  }
+
   .photo-lightbox {
     position: fixed;
     z-index: 100;
     inset: 0;
-    display: grid;
     overflow: auto;
     width: 100%;
     max-width: 100%;
@@ -87,6 +108,15 @@
 
   .lightbox-image {
     display: block;
+    /* The reader's global `.gallery img` rule (felicia-reader/src/public.css)
+       crops every thumbnail to a 4:3 tile. This dialog is markup *inside* that
+       gallery figure, so the rule reached the full-size photo too: the box was
+       forced to 4:3 and `object-fit: contain` then letterboxed a 16:9 photo
+       inside it, with dead bands above and below. The modal shows a photo
+       whole and at its own shape, so it restates both properties rather than
+       relying on every theme to scope its gallery selector. */
+    aspect-ratio: auto;
+    outline: none;
     max-width: 92vw;
     max-height: 84vh;
     width: auto;
