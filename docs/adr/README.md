@@ -36,4 +36,4 @@ This directory stores the immutable records of design and architecture choices m
 | [0037](0037-private-local-development-layout.md)                      | Private Local Development Layout                         | 2026-08-20 | Accepted |
 | [0038](0038-named-frontend-package-boundaries.md)                     | Named Frontend Package Boundaries                        | 2026-08-20 | Accepted |
 | [0036](0036-theme-runtime-and-scene-actions.md)                       | Reader Runtime and Scene Actions                         | 2026-08-20 | Accepted |
-| [0039](0039-journey-authoring-writes-and-mask-ownership.md)           | Journey Authoring Writes and Mask Ownership              | 2026-09-11 | Proposed |
+| [0039](0039-journey-authoring-writes-and-mask-ownership.md)           | Journey Authoring Writes and Mask Ownership              | 2026-09-11 | Accepted |
