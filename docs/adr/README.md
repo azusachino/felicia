@@ -26,13 +26,14 @@ This directory stores the immutable records of design and architecture choices m
 | [0025](0025-static-and-self-hosted-modes.md)                          | Static and Self-Hosted Product Modes                     | 2026-07-17 | Accepted |
 | [0026](0026-local-first-media-and-blob-storage.md)                    | Local-First Media with Pluggable Blob Storage            | 2026-07-17 | Accepted |
 | [0027](0027-provider-matrix-and-application-composition.md)           | Provider Matrix and Application Composition              | 2026-07-17 | Accepted |
-| [0028](0028-cli-compiler-and-shared-publication-boundary.md)          | CLI Compiler and Shared Publication Boundary             | 2026-07-17 | Proposed |
+| [0028](0028-cli-compiler-and-shared-publication-boundary.md)          | CLI Compiler and Shared Publication Boundary             | 2026-07-17 | Accepted |
 | [0029](0029-community-go-workspace-layout.md)                         | Community-Shaped Go Workspace Layout                     | 2026-07-17 | Accepted |
-| [0030](0030-intake-planning-contract.md)                              | Intake Planning Contract and Candidate Review Boundary   | 2026-07-18 | Proposed |
+| [0030](0030-intake-planning-contract.md)                              | Intake Planning Contract and Candidate Review Boundary   | 2026-07-18 | Accepted |
 | [0031](0031-frontend-style-map-first-and-shared-element-open.md)      | Frontend Style: Map-First Layout and Shared-Element Open | 2026-08-04 | Accepted |
-| [0032](0032-sqlite-first-v1-postgres-follow-up.md)                    | SQLite-First v1, PostgreSQL Follow-up                    | 2026-08-10 | Proposed |
+| [0032](0032-sqlite-first-v1-postgres-follow-up.md)                    | SQLite-First v1, PostgreSQL Follow-up                    | 2026-08-10 | Accepted |
 | [0033](0033-authored-field-protection-and-the-journey-ingest-seam.md) | Authored-Field Protection and the Journey Ingest Seam    | 2026-08-16 | Accepted |
 | [0034](0034-application-and-shared-package-layout.md)                 | Application and Shared Package Layout                    | 2026-08-19 | Accepted |
 | [0037](0037-private-local-development-layout.md)                      | Private Local Development Layout                         | 2026-08-20 | Accepted |
 | [0038](0038-named-frontend-package-boundaries.md)                     | Named Frontend Package Boundaries                        | 2026-08-20 | Accepted |
 | [0036](0036-theme-runtime-and-scene-actions.md)                       | Reader Runtime and Scene Actions                         | 2026-08-20 | Accepted |
+| [0039](0039-journey-authoring-writes-and-mask-ownership.md)           | Journey Authoring Writes and Mask Ownership              | 2026-09-11 | Proposed |
