@@ -31,6 +31,7 @@
     photoFormFieldsFromRequest,
     previousLifecycleState,
     priceFormFieldsFromMemento,
+    serverChangedFields,
     unpublishActionLabel,
     FORM_LEVEL_ISSUE_KEY,
     type CommonFormFields,
@@ -143,8 +144,10 @@
   }
 
   // Rehydrates every piece of local form state from a freshly-fetched
-  // memento. Used both on initial load and after a conflict reload (which
-  // must discard whatever the user had typed, per ADMIN-01.5 — no merge UI).
+  // memento. Used on initial load, after a successful save, and when the
+  // author explicitly chooses to discard their draft. A conflict does NOT
+  // call this: ADMIN-01.5 rules out a merge UI, which is a reason not to build
+  // a diff editor, not a reason to delete the only copy of an essay.
   function hydrateForm(fetched: AdminMementoDetail, registry: AdminTemplateRegistry | null) {
     common = {
       title: fetched.title ?? "",
@@ -228,9 +231,24 @@
       saveState = { status: "success", message: "Saved.", fieldErrors: {} }
     } catch (cause) {
       if (isConflict(cause)) {
+        // The draft stays exactly as typed. Fetch the server copy only to
+        // report what moved, so the author can judge whether their text still
+        // applies before retrying.
+        let changed: string[]
+        try {
+          const current = await getMemento(memento.id)
+          changed = serverChangedFields(memento, current)
+        } catch {
+          // Reporting what moved is a courtesy; failing to fetch it must not
+          // turn a recoverable conflict into a lost draft.
+          changed = []
+        }
         saveState = {
           status: "conflict",
-          message: "Someone else changed this memento since it was loaded.",
+          message:
+            changed.length > 0
+              ? `Someone else changed this memento since it was loaded (${changed.join(", ")}). Your edits are still here.`
+              : "Someone else changed this memento since it was loaded. Your edits are still here.",
           fieldErrors: {},
         }
         return
@@ -243,7 +261,24 @@
     }
   }
 
-  async function reloadAfterConflict() {
+  // Keeps the typed draft and refreshes only the revision the next save must
+  // carry, so retrying submits the author's work against current state. This
+  // is not a merge: the draft wins wholesale, which is the author's own most
+  // recent intent.
+  async function retryKeepingDraft() {
+    if (!memento) return
+    saveState = { status: "pending", message: "Rechecking…", fieldErrors: {} }
+    try {
+      memento = await getMemento(memento.id)
+      saveState = { status: "idle", message: "", fieldErrors: {} }
+      await save()
+    } catch (cause) {
+      saveState = { status: "error", message: actionErrorMessage(cause), fieldErrors: {} }
+    }
+  }
+
+  // The old behaviour, now only when asked for by name.
+  async function discardDraftAndReload() {
     await loadAll()
   }
 
@@ -393,7 +428,8 @@
     {#if saveState.status === "conflict"}
       <div class="conflict-banner" role="alert">
         <p>{saveState.message}</p>
-        <button type="button" onclick={reloadAfterConflict}>Reload and reapply</button>
+        <button type="button" onclick={retryKeepingDraft}>Save my version anyway</button>
+        <button type="button" class="secondary" onclick={discardDraftAndReload}>Discard my edits and load theirs</button>
       </div>
     {/if}
 
