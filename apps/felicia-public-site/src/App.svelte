@@ -65,7 +65,13 @@
   }
 </script>
 
-<div class="public-reader-shell" class:theme-light={theme === "light"} class:design-cabinet={active.id === "cabinet"} class:design-cartography={active.id === "cartography"}>
+<div
+  class="public-reader-shell"
+  class:theme-light={theme === "light"}
+  class:design-cabinet={active.id === "cabinet"}
+  class:design-cartography={active.id === "cartography"}
+  class:design-techo={active.id === "techo"}
+>
   <a class="public-brand" href="/" aria-label="Felicia home">
     <img src={markUrl} alt="" aria-hidden="true" />
     <span>felicia</span>
@@ -215,11 +221,33 @@
 
   @media (max-width: 700px) {
     .public-reader-shell.design-cabinet :global(.cabinet-top) {
+      /* Two fixed overlays stack at the top of this breakpoint -- the brand
+         (ends ~3.5rem) and, below it, the near-full-width design switcher
+         (ends ~7.25rem). Dropping the desktop 10rem of *left* clearance
+         without replacing it put the theme's own header under both. There is
+         no room to clear them horizontally at this width, so clear them
+         vertically instead -- the same trade cartography makes just below.
+         Clearing only the brand is not enough; the switcher is the lower of
+         the two and is what the title actually lands on. */
+      padding-top: 8rem;
       padding-left: 1.25rem;
     }
 
     .public-reader-shell.design-cartography :global(.index-rail) {
       padding-top: 7.5rem;
+    }
+
+    /* Techo never had a clearance rule at all, so the switcher landed on its
+       index header -- the eyebrow and journal title sat behind the pill.
+
+       The shell centres the spread vertically, and at this width the spread is
+       taller than the viewport, so centring pushes it *above* the padding box
+       and padding-top moves it by only part of what you ask for. Anchoring to
+       the top first makes the clearance exact; the spread scrolls here anyway,
+       so there is no centring left to lose. */
+    .public-reader-shell.design-techo :global(.techo-shell) {
+      align-items: flex-start;
+      padding-top: 8rem;
     }
 
     .public-brand {
