@@ -1,7 +1,7 @@
 ---
 id: "0039"
 title: "Journey Authoring Writes and Mask Ownership"
-status: "proposed"
+status: "accepted"
 date: "2026-09-11"
 related:
   - "0022"
