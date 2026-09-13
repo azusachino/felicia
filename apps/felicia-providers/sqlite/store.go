@@ -321,6 +321,13 @@ func (r *Repository) GetJourney(ctx context.Context, id uuid.UUID) (*domain.Jour
 	var rawJournalID, slug, title, place, start, end, route, fields, created, updated string
 	var sourceRef, country, region sql.NullString
 	if err := row.Scan(&rawJournalID, &slug, &sourceRef, &title, &place, &country, &region, &start, &end, &route, &fields, &created, &updated); err != nil {
+		// Normalised like every other getter here (GetSoleJournal,
+		// GetStopCandidate): callers above the provider match on
+		// domain.ErrNotFound, and leaking sql.ErrNoRows would put
+		// database/sql in their import list to read one absence.
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, domain.ErrNotFound
+		}
 		return nil, err
 	}
 	journalID, err := parseID(rawJournalID)

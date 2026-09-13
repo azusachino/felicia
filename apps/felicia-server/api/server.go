@@ -592,18 +592,19 @@ func (s *Server) handleGetJourney(w http.ResponseWriter, r *http.Request) {
 }
 
 type upsertJourneyRequest struct {
-	ID             uuid.UUID     `json:"id"`
-	JournalID      uuid.UUID     `json:"journal_id"`
-	Slug           string        `json:"slug"`
-	SourceRef      *string       `json:"source_ref,omitempty"`
-	Title          string        `json:"title"`
-	Place          string        `json:"place"`
-	Country        *string       `json:"country,omitempty"`
-	Region         *string       `json:"region,omitempty"`
-	DateStart      string        `json:"date_start"`
-	DateEnd        string        `json:"date_end"`
-	GPSRoute       [][][]float64 `json:"gps_route,omitempty"`
-	AuthoredFields []string      `json:"authored_fields"`
+	ID        uuid.UUID `json:"id"`
+	JournalID uuid.UUID `json:"journal_id"`
+	Slug      string    `json:"slug"`
+	SourceRef *string   `json:"source_ref,omitempty"`
+	Title     string    `json:"title"`
+	Place     string    `json:"place"`
+	Country   *string   `json:"country,omitempty"`
+	Region    *string   `json:"region,omitempty"`
+	DateStart string    `json:"date_start"`
+	DateEnd   string    `json:"date_end"`
+	// No authored_fields and no gps_route: an authoring write derives its own
+	// mask (ADR-0039) and never touches the trace, so neither is something a
+	// client can express.
 }
 
 func (s *Server) handleUpsertJourney(w http.ResponseWriter, r *http.Request) {
@@ -611,10 +612,6 @@ func (s *Server) handleUpsertJourney(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request JSON")
 		return
-	}
-
-	if req.AuthoredFields == nil {
-		req.AuthoredFields = []string{}
 	}
 
 	start, err := time.Parse("2006-01-02", req.DateStart)
@@ -628,17 +625,20 @@ func (s *Server) handleUpsertJourney(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var gpsRoute orb.MultiLineString
-	if len(req.GPSRoute) > 0 {
-		for _, segment := range req.GPSRoute {
-			var ls orb.LineString
-			for _, coord := range segment {
-				if len(coord) >= 2 {
-					ls = append(ls, orb.Point{coord[0], coord[1]})
-				}
-			}
-			gpsRoute = append(gpsRoute, ls)
-		}
+	// The stored row supplies what an authoring write does not own: the GPS
+	// trace, which ingest keeps refreshing, and whatever the mask already
+	// claims. Absent means unchanged -- a save that carried no route used to
+	// write gps_route = 'null' and blank the trace outright.
+	var storedRoute orb.MultiLineString
+	var storedMask []string
+	switch stored, err := s.repo.GetJourney(r.Context(), req.ID); {
+	case errors.Is(err, domain.ErrNotFound):
+		// A new journey owns no trace yet; ingest seeds it.
+	case err != nil:
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	default:
+		storedRoute, storedMask = stored.GPSRoute, stored.AuthoredFields
 	}
 
 	journey := &domain.Journey{
@@ -652,8 +652,8 @@ func (s *Server) handleUpsertJourney(w http.ResponseWriter, r *http.Request) {
 		Region:         req.Region,
 		DateStart:      start,
 		DateEnd:        end,
-		GPSRoute:       gpsRoute,
-		AuthoredFields: req.AuthoredFields,
+		GPSRoute:       storedRoute,
+		AuthoredFields: domain.ClaimJourneyAuthorship(storedMask),
 	}
 
 	if err := s.journeyWriter.Save(r.Context(), journey); err != nil {
