@@ -3,6 +3,7 @@
   import {
     browseDirectories,
     compileSite,
+    describeLoadFailure,
     getSiteInfo,
     getSiteSettings,
     updateSiteOutDir,
@@ -93,7 +94,7 @@
     try {
       await Promise.all([loadInfo(), loadSettings()])
     } catch (cause) {
-      error = actionErrorMessage(cause)
+      error = describeLoadFailure(cause, "site info")
     } finally {
       loading = false
     }
@@ -163,6 +164,10 @@
 
   function closePicker() {
     picker = { open: false, status: "idle", message: "", browse: null }
+    // Otherwise closing (Escape, Close, or a successful selection) drops
+    // keyboard focus back to the document body, forcing the author to tab
+    // in from the top of the page again.
+    pickerTrigger?.focus()
   }
 
   async function selectCurrentFolder() {
@@ -182,6 +187,17 @@
     if (event.key === "Escape") closePicker()
   }
 
+  // role="dialog"/aria-modal implies both of these, and neither happened
+  // without it: keyboard focus stayed on the "Change location…" trigger
+  // when the panel opened, so Escape (bound to the panel's own keydown) did
+  // nothing until the author had already tabbed or clicked into the panel —
+  // and a screen reader user got no cue the dialog existed at all.
+  let pickerPanel = $state<HTMLDivElement | undefined>(undefined)
+  let pickerTrigger = $state<HTMLButtonElement | undefined>(undefined)
+  $effect(() => {
+    if (picker.open) pickerPanel?.focus()
+  })
+
   onMount(load)
 </script>
 
@@ -200,13 +216,13 @@
   {#if loading}
     <p class="hint">Loading site info…</p>
   {:else if error}
-    <p class="api-error" role="alert">{error}. Start the local API to load site info.</p>
+    <p class="api-error" role="alert">{error}</p>
   {:else if info}
     <section class="site-info" aria-label="Build output">
       <div class="info-row">
         <span class="info-label">Output directory</span>
         <code class="info-value">{info.out_dir}</code>
-        <button type="button" class="secondary" onclick={openPicker}>Change location…</button>
+        <button bind:this={pickerTrigger} type="button" class="secondary" onclick={openPicker}>Change location…</button>
       </div>
 
       {#if info.artifact_ready}
@@ -229,7 +245,7 @@
           lock). role="dialog" + aria-modal + the Escape handler keep it
           keyboard-accessible without those tradeoffs.
         -->
-        <div class="picker-panel" role="dialog" aria-modal="true" aria-label="Choose output location" onkeydown={pickerKeydown} tabindex="-1">
+        <div bind:this={pickerPanel} class="picker-panel" role="dialog" aria-modal="true" aria-label="Choose output location" onkeydown={pickerKeydown} tabindex="-1">
           <div class="picker-head">
             <h3>Choose output location</h3>
             <button type="button" class="secondary" onclick={closePicker} aria-label="Close">Close</button>
@@ -543,7 +559,9 @@
   }
   .design-card-label {
     font-size: 12px;
-    color: #766956;
+    /* #766956 measured 4.43:1 against the selected card's tinted background
+       — just under the 4.5:1 AA floor (axe color-contrast, serious). */
+    color: #5c5142;
   }
   .identity-fields {
     display: grid;
@@ -646,8 +664,10 @@
     margin: 10px 0 0;
     font-size: 13px;
   }
+  /* #3f7a52 measured 4.45:1 on this background — just under the 4.5:1 AA
+     floor (axe color-contrast, serious). */
   .trigger-status--success {
-    color: #3f7a52;
+    color: #2f5e40;
   }
   .trigger-status--error {
     color: #a84a34;
