@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Lang, Memento } from "@felicia/model"
   import { templateFor } from "./stubs"
-  import TicketStub from "@felicia/components/TicketStub.svelte"
+  import TicketStub from "../../components/TicketStub.svelte"
 
   let {
     memento,
@@ -221,7 +221,9 @@
     top: 0.8rem;
     right: 0.8rem;
     padding: 0.25rem 0.45rem;
-    border-radius: 999px;
+    /* A text badge, not a circular marker or icon control -- the shape scale
+       reserves full rounding for those (reader-ui-ux-contract.md). */
+    border-radius: 0.5rem;
     background: #191817;
     color: #efe9d9;
     font-size: 0.65rem;

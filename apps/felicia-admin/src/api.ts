@@ -280,6 +280,28 @@ export function isConflict(cause: unknown): cause is ApiError {
   return cause instanceof ApiError && cause.status === 409
 }
 
+// Every top-level view load (journeys, a journey, a memento, site info) used
+// to append ". Start the local API to load ..." to whatever error it caught,
+// unconditionally. That's only true when the request never reached a server
+// at all (a plain fetch failure, e.g. `TypeError: Failed to fetch`) — an
+// ApiError means a server answered, so the failure is something else (a
+// missing record, a bad request) and telling the author to start a server
+// that's already running sends them chasing the wrong problem.
+export function describeLoadFailure(cause: unknown, subject: string): string {
+  const message = cause instanceof Error ? cause.message : `Unable to load ${subject}`
+  if (cause instanceof ApiError) return message
+  return `${message}. Start the local API to load ${subject}.`
+}
+
+// journey.date_start/date_end are documented as plain YYYY-MM-DD dates, but
+// at least one creation path (local-journey import, which derives dates from
+// GPS timestamps) writes a full instant instead — a journey card or header
+// would otherwise show a raw "2026-03-20T00:00:00Z". Display defensively so
+// the date reads cleanly regardless of which path wrote the record.
+export function formatJourneyDate(value: string): string {
+  return value.split("T")[0] ?? value
+}
+
 async function apiErrorDetail(response: Response): Promise<{ message: string; issues?: AdminIssue[] }> {
   try {
     const body = (await response.clone().json()) as { error?: string; issues?: AdminIssue[] }

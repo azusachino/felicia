@@ -5,6 +5,11 @@
   color: #342a1e;
   background: #f4efe5;
   font-synthesis: none;
+  /* This app has no dark palette — it renders the same cream/brown theme
+     regardless of OS preference, so tell the browser not to darken native
+     form controls (selects, date pickers, scrollbars) under prefers-color-scheme:
+     dark, which would otherwise mismatch every custom-styled control around them. */
+  color-scheme: light;
 }
 
 * {
@@ -50,13 +55,18 @@ button {
 }
 .eyebrow {
   margin: 0;
-  color: #a69a89;
+  /* #a69a89 measured 2.4:1 on this cream background — well under the 4.5:1
+     WCAG AA floor for normal-size text (axe color-contrast, serious). */
+  color: #766956;
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 .sidebar .eyebrow {
   margin: 48px 12px 12px;
+  /* The darker default above is tuned for the cream background; against the
+     sidebar's dark background the original lighter tone is what passes AA. */
+  color: #a69a89;
 }
 nav {
   display: grid;
@@ -121,6 +131,9 @@ h2 {
   line-height: 1.08;
 }
 .profile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 40px;
   height: 40px;
   border: 1px solid #d8cdbb;
@@ -150,12 +163,15 @@ h2 {
   text-transform: uppercase;
   white-space: nowrap;
 }
+/* The badge foreground colors below are darkened from their original tones
+   (axe color-contrast, serious): the original values landed 3.77-4.27:1
+   against these translucent tinted backgrounds, under the 4.5:1 AA floor. */
 .badge--candidate {
-  color: #766956;
+  color: #5c5142;
   background: rgb(166 154 137 / 20%);
 }
 .badge--draft {
-  color: #9f522d;
+  color: #8a431f;
   background: rgb(231 162 96 / 24%);
 }
 .badge--authored {
@@ -163,11 +179,11 @@ h2 {
   background: rgb(107 138 159 / 22%);
 }
 .badge--published {
-  color: #3f7a52;
+  color: #2f5e40;
   background: rgb(120 184 135 / 24%);
 }
 .badge--archived {
-  color: #766956;
+  color: #5c5142;
   background: rgb(200 188 169 / 32%);
 }
 

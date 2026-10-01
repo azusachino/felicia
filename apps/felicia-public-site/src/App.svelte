@@ -1,44 +1,18 @@
 <script lang="ts">
-  import { onMount } from "svelte"
-  import { designLanguageFromHash, designLanguageFromId, designLanguages, message, resolveLocale, themeFromId, type ApiSiteSettings, type Lang, type Theme } from "@felicia/reader"
+  import { Reader, resolveLocale, themeFromId, type ApiSiteSettings, type Lang, type Theme } from "@felicia/reader"
   import { loadJourneys, loadSiteSettings } from "./api/source"
 
   let settings = $state<ApiSiteSettings | null>(null)
-  let routeHash = $state(typeof window === "undefined" ? "" : window.location.hash)
-
-  onMount(() => {
-    const syncHash = () => (routeHash = window.location.hash)
-    window.addEventListener("hashchange", syncHash)
-    window.addEventListener("popstate", syncHash)
-    return () => {
-      window.removeEventListener("hashchange", syncHash)
-      window.removeEventListener("popstate", syncHash)
-    }
-  })
+  const markUrl = `${import.meta.env.BASE_URL}felicia-mark.svg`
 
   $effect(() => {
     loadSiteSettings()
       .then((s) => (settings = s))
       .catch(() => {
-        // Absent/unreachable settings = current demo behavior: fall back to
-        // the default design and the existing lang/theme defaults below.
+        // Fall back to defaults if settings unavailable
       })
   })
 
-  // The saved site design is the canonical default. A hash is an explicit,
-  // shareable preview override, so authors can compare every registered design
-  // without changing the published setting.
-  const configured = $derived(designLanguageFromId(settings?.design))
-  const active = $derived(routeHash ? designLanguageFromHash(routeHash) : configured)
-  const Active = $derived(active.component)
-  const markUrl = `${import.meta.env.BASE_URL}felicia-mark.svg`
-
-  // lang/theme are shared across the mounted design so switching keeps your
-  // reading state. lang keeps its existing localStorage override precedence
-  // (captured before the persist effect below can write a fallback value
-  // into storage); theme has no persistence, so it simply switches its
-  // default source from a literal to the resolved site settings once they
-  // load.
   const storedLocale = localStorage.getItem("felicia.locale")
   let lang: Lang = $state(resolveLocale(storedLocale ?? navigator.language))
   let theme: Theme = $state("dark")
@@ -56,55 +30,19 @@
       document.documentElement.style.setProperty("--accent", settings.accent)
     }
   })
-
-  function selectDesign(id: string) {
-    const design = designLanguageFromId(id)
-    const url = design.hash ? design.hash : window.location.pathname + window.location.search
-    window.history.pushState({}, "", url)
-    routeHash = design.hash
-  }
 </script>
 
-<div
-  class="public-reader-shell"
-  class:theme-light={theme === "light"}
-  class:design-cabinet={active.id === "cabinet"}
-  class:design-cartography={active.id === "cartography"}
-  class:design-techo={active.id === "techo"}
->
+<div class="public-reader-shell" class:theme-light={theme === "light"}>
   <a class="public-brand" href="/" aria-label="Felicia home">
     <img src={markUrl} alt="" aria-hidden="true" />
     <span>felicia</span>
   </a>
 
-  <nav class="public-design-switcher" aria-label={message(lang, "system.design")}>
-    {#each designLanguages as design (design.id)}
-      <button
-        type="button"
-        class:active={active.id === design.id}
-        aria-current={active.id === design.id ? "page" : undefined}
-        aria-pressed={active.id === design.id}
-        onclick={() => selectDesign(design.id)}
-      >
-        {message(lang, design.labelKey)}
-      </button>
-    {/each}
-  </nav>
-
-  {#key active.id}
-    <Active bind:lang bind:theme {loadJourneys} />
-  {/key}
+  <Reader bind:lang bind:theme {loadJourneys} />
 </div>
 
 <style>
   .public-reader-shell {
-    --switcher-bg: rgba(9, 25, 37, 0.72);
-    --switcher-border: rgba(184, 232, 221, 0.2);
-    --switcher-text: #c8d9dc;
-    --switcher-active: #ff9b72;
-    --switcher-active-text: #17202a;
-    --glass-highlight: rgba(255, 255, 255, 0.2);
-    --glass-shadow: rgba(1, 9, 17, 0.3);
     position: relative;
     width: 100%;
     height: 100%;
@@ -112,162 +50,50 @@
   }
 
   .public-reader-shell.theme-light {
-    --switcher-bg: rgba(241, 248, 246, 0.78);
-    --switcher-border: rgba(13, 41, 55, 0.16);
-    --switcher-text: #41606a;
-    --switcher-active: #f08f69;
-    --switcher-active-text: #17202a;
-    --glass-highlight: rgba(255, 255, 255, 0.78);
-    --glass-shadow: rgba(34, 73, 82, 0.16);
     color-scheme: light;
   }
 
   .public-brand {
-    position: fixed;
-    z-index: 60;
+    position: absolute;
     top: 1rem;
     left: 1rem;
+    z-index: 10;
     display: inline-flex;
-    min-height: 3.25rem;
     align-items: center;
-    gap: 0.6rem;
-    padding: 0.35rem 0.85rem 0.35rem 0.35rem;
-    border: 1px solid var(--switcher-border);
-    border-radius: 999px;
-    color: var(--switcher-text);
-    background: var(--switcher-bg);
-    box-shadow:
-      inset 0 1px 0 var(--glass-highlight),
-      0 1rem 3rem var(--glass-shadow);
-    backdrop-filter: blur(20px) saturate(140%);
-    -webkit-backdrop-filter: blur(20px) saturate(140%);
-    font-size: 0.8rem;
-    font-weight: 800;
-    letter-spacing: 0.08em;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 9999px;
+    background: rgba(9, 25, 37, 0.72);
+    border: 1px solid rgba(184, 232, 221, 0.2);
+    backdrop-filter: blur(8px);
+    color: #c8d9dc;
     text-decoration: none;
-    text-transform: lowercase;
-  }
-
-  .public-brand img {
-    width: 2.45rem;
-    height: 2.45rem;
-    border-radius: 0.72rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    transition:
+      color 0.15s ease,
+      border-color 0.15s ease;
   }
 
   .public-brand:hover {
-    border-color: color-mix(in srgb, var(--switcher-active) 58%, transparent);
+    color: #fff;
+    border-color: rgba(184, 232, 221, 0.4);
   }
 
-  .public-reader-shell.design-cabinet :global(.cabinet-top) {
-    padding-left: 10rem;
+  .public-brand img {
+    width: 1rem;
+    height: 1rem;
   }
 
-  .public-reader-shell.design-cartography :global(.index-rail) {
-    padding-top: 6rem;
+  .public-reader-shell.theme-light .public-brand {
+    background: rgba(241, 248, 246, 0.85);
+    border-color: rgba(13, 41, 55, 0.16);
+    color: #41606a;
   }
 
-  .public-design-switcher {
-    position: fixed;
-    z-index: 60;
-    top: 1rem;
-    left: 50%;
-    display: flex;
-    gap: 0.2rem;
-    max-width: calc(100vw - 2rem);
-    overflow-x: auto;
-    min-height: 3.25rem;
-    padding: 0.35rem;
-    border: 1px solid var(--switcher-border);
-    border-radius: 999px;
-    background: var(--switcher-bg);
-    box-shadow:
-      inset 0 1px 0 var(--glass-highlight),
-      0 1rem 3rem var(--glass-shadow);
-    backdrop-filter: blur(20px) saturate(140%);
-    -webkit-backdrop-filter: blur(20px) saturate(140%);
-    transform: translateX(-50%);
-  }
-
-  .public-design-switcher button {
-    border: 0;
-    border-radius: 999px;
-    padding: 0.38rem 0.65rem;
-    color: var(--switcher-text);
-    background: transparent;
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    white-space: nowrap;
-    transition:
-      color 180ms ease,
-      background 180ms ease,
-      transform 180ms ease;
-  }
-
-  .public-design-switcher button:hover,
-  .public-design-switcher button.active {
-    color: var(--switcher-active-text);
-    background: var(--switcher-active);
-  }
-
-  .public-design-switcher button:active {
-    transform: scale(0.97);
-  }
-
-  .public-design-switcher button:focus-visible {
-    outline-color: var(--switcher-active);
-    outline-offset: -2px;
-  }
-
-  @media (max-width: 700px) {
-    .public-reader-shell.design-cabinet :global(.cabinet-top) {
-      /* Two fixed overlays stack at the top of this breakpoint -- the brand
-         (ends ~3.5rem) and, below it, the near-full-width design switcher
-         (ends ~7.25rem). Dropping the desktop 10rem of *left* clearance
-         without replacing it put the theme's own header under both. There is
-         no room to clear them horizontally at this width, so clear them
-         vertically instead -- the same trade cartography makes just below.
-         Clearing only the brand is not enough; the switcher is the lower of
-         the two and is what the title actually lands on. */
-      padding-top: 8rem;
-      padding-left: 1.25rem;
-    }
-
-    .public-reader-shell.design-cartography :global(.index-rail) {
-      padding-top: 7.5rem;
-    }
-
-    /* Techo never had a clearance rule at all, so the switcher landed on its
-       index header -- the eyebrow and journal title sat behind the pill.
-
-       The shell centres the spread vertically, and at this width the spread is
-       taller than the viewport, so centring pushes it *above* the padding box
-       and padding-top moves it by only part of what you ask for. Anchoring to
-       the top first makes the clearance exact; the spread scrolls here anyway,
-       so there is no centring left to lose. */
-    .public-reader-shell.design-techo :global(.techo-shell) {
-      align-items: flex-start;
-      padding-top: 8rem;
-    }
-
-    .public-brand {
-      top: 0.65rem;
-      left: 0.65rem;
-      min-height: 2.75rem;
-      padding-right: 0.65rem;
-    }
-
-    .public-brand img {
-      width: 2rem;
-      height: 2rem;
-    }
-
-    .public-design-switcher {
-      top: 4rem;
-      right: 0.65rem;
-      left: 0.65rem;
-      justify-content: center;
-      transform: none;
-    }
+  .public-reader-shell.theme-light .public-brand:hover {
+    color: #17202a;
+    border-color: rgba(13, 41, 55, 0.32);
   }
 </style>

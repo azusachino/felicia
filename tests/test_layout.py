@@ -6,9 +6,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 READER = ROOT / "packages" / "felicia-reader"
 MODEL = ROOT / "packages" / "felicia-model"
-RUNTIME = ROOT / "packages" / "felicia-runtime"
-COMPONENTS = ROOT / "packages" / "felicia-components"
-RENDERERS = ROOT / "packages" / "felicia-renderers"
 GO_IMPORT = re.compile(r"github\.com/azusachino/felicia/apps/felicia-([a-z-]+)")
 
 
@@ -22,14 +19,10 @@ class LayoutBoundaryTests(unittest.TestCase):
             ROOT / "apps" / "felicia-server",
             ROOT / "apps" / "felicia-cli",
             ROOT / "apps" / "felicia-admin",
-            ROOT / "apps" / "felicia-web",
             ROOT / "apps" / "felicia-public-site",
             READER,
-            READER / "src" / "theme-ui" / "registry.ts",
+            READER / "src" / "theme-ui" / "atlas" / "Atlas.svelte",
             MODEL / "src" / "themes.ts",
-            RUNTIME / "src" / "scene.ts",
-            COMPONENTS / "src" / "contracts.ts",
-            RENDERERS / "src" / "renderer.ts",
             ROOT / "ops",
             ROOT / "contracts" / "canonical" / "v1" / "schema.json",
             ROOT / "publication" / "journeys" / "catalog.json",
@@ -46,10 +39,18 @@ class LayoutBoundaryTests(unittest.TestCase):
             "deploy",
             "apps/web-admin",
             "apps/web-public",
+            "apps/felicia-web",
+            "apps/felicia-providers/postgres",
+            "packages/felicia-components",
+            "packages/felicia-renderers",
+            "packages/felicia-runtime",
             "packages/felicia-reader/src/v1",
             "packages/felicia-reader/src/v2",
             "packages/felicia-reader/src/v3",
             "packages/felicia-reader/src/v4",
+            "packages/felicia-reader/src/theme-ui/cabinet",
+            "packages/felicia-reader/src/theme-ui/techo",
+            "packages/felicia-reader/src/theme-ui/cartography",
         )
         for path in legacy_paths:
             self.assertFalse((ROOT / path).exists(), path)
@@ -57,12 +58,11 @@ class LayoutBoundaryTests(unittest.TestCase):
     def test_frontend_packages_have_no_host_or_transport_dependency(self):
         source = "\n".join(
             path.read_text(encoding="utf-8")
-            for package in (READER, MODEL, RUNTIME, COMPONENTS, RENDERERS)
+            for package in (READER, MODEL)
             for path in package.rglob("*")
             if path.is_file()
         )
         forbidden_imports = (
-            "apps/felicia-web",
             "apps/felicia-public-site",
             "import.meta.env",
             "api/source",
@@ -70,9 +70,8 @@ class LayoutBoundaryTests(unittest.TestCase):
         for forbidden in forbidden_imports:
             self.assertNotIn(forbidden, source, forbidden)
 
-        registry = (READER / "src" / "theme-ui" / "registry.ts").read_text(encoding="utf-8")
-        for old_id in ("v1", "v2", "v3", "v4"):
-            self.assertNotIn(f'id: "{old_id}"', registry, old_id)
+        index_src = (READER / "src" / "index.ts").read_text(encoding="utf-8")
+        self.assertIn("Reader", index_src)
 
         package = json.loads((READER / "package.json").read_text(encoding="utf-8"))
         self.assertIn(".", package["exports"])

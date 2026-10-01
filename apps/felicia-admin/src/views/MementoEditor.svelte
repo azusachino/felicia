@@ -1,6 +1,7 @@
 <script lang="ts">
   import {
     deleteMemento,
+    describeLoadFailure,
     getMemento,
     getTemplates,
     isConflict,
@@ -181,7 +182,7 @@
       hydrateForm(fetchedMemento, registry)
       photoRows = photos.map(photoRowFromExisting)
     } catch (cause) {
-      loadError = actionErrorMessage(cause)
+      loadError = describeLoadFailure(cause, "this memento")
     } finally {
       loading = false
     }
@@ -417,7 +418,7 @@
   {#if loading}
     <p class="hint">Loading memento…</p>
   {:else if loadError}
-    <p class="api-error" role="alert">{loadError}. Start the local API to load authoring data.</p>
+    <p class="api-error" role="alert">{loadError}</p>
   {:else if memento}
     <header class="editor-header">
       <p class="eyebrow">{memento.kind}</p>
@@ -751,10 +752,24 @@
     text-transform: none;
     letter-spacing: normal;
   }
+  /* min-width: 0 on the flex container itself, not just its children, is
+     required here: it also sits as a grid item of .field below, and a grid
+     item's automatic minimum size is content-based unless overridden — so
+     without this the row refuses to shrink below its children's natural
+     width no matter what the children's own flex/min-width say. */
   .money-inputs,
   .place-inputs {
     display: flex;
     gap: 8px;
+    min-width: 0;
+  }
+  /* Without this, each sub-input keeps its browser-default intrinsic width
+     (~180px) and the row overflows the ~200px field-grid column — two or
+     three of them spill visibly into the next field over. */
+  .money-inputs input,
+  .place-inputs input {
+    flex: 1;
+    min-width: 0;
   }
   .point-grid {
     display: grid;
@@ -839,8 +854,10 @@
   .trigger-status {
     font-size: 13px;
   }
+  /* #3f7a52 measured 4.45:1 on this background — just under the 4.5:1 AA
+     floor (axe color-contrast, serious). */
   .trigger-status--success {
-    color: #3f7a52;
+    color: #2f5e40;
   }
   .trigger-status--error {
     color: #a84a34;
@@ -873,6 +890,13 @@
     font-size: 16px;
     font-weight: 600;
   }
+  /* .trigger-note's shared #766956 measures 4.3:1 against this section's
+     reddish tint — just under the 4.5:1 AA floor (axe color-contrast,
+     serious). Plain cream backgrounds elsewhere are light enough that the
+     shared color already passes there. */
+  .danger-zone > .trigger-note {
+    color: #5c4f3d;
+  }
   .confirm-strip {
     display: flex;
     flex-wrap: wrap;
@@ -899,21 +923,24 @@
     opacity: 0.6;
     cursor: default;
   }
+  /* Darkened from the original tones (axe color-contrast, serious): those
+     landed 4.15-4.27:1 against these translucent tinted backgrounds, under
+     the 4.5:1 AA floor. */
   .badge--draft {
-    color: #9f522d;
+    color: #8a431f;
     background: rgb(231 162 96 / 24%);
   }
   .badge--authored {
-    color: #7a6a1f;
+    color: #5f5116;
     background: rgb(214 188 84 / 24%);
   }
   .badge--published {
-    color: #3f7a52;
+    color: #2f5e40;
     background: rgb(120 184 135 / 24%);
   }
   .badge--candidate,
   .badge--archived {
-    color: #766956;
+    color: #5c5142;
     background: rgb(166 154 137 / 20%);
   }
 </style>

@@ -2,6 +2,8 @@
   import { onMount } from "svelte"
   import {
     compileSite,
+    describeLoadFailure,
+    formatJourneyDate,
     getBuildStatus,
     importLocalJourney,
     loadJourneySummaries,
@@ -33,7 +35,7 @@
     try {
       summaries = await loadJourneySummaries()
     } catch (cause) {
-      error = cause instanceof Error ? cause.message : "Unable to load journeys"
+      error = describeLoadFailure(cause, "journeys")
     } finally {
       loading = false
     }
@@ -150,14 +152,14 @@
       <div class="new-journey-actions">
         <button class="secondary" type="button" onclick={scanWorkspace} disabled={!workspace || scanState === "scanning"}>{scanState === "scanning" ? "Scanning…" : "Scan and preview"}</button>
         {#if scanned}
-          <button type="button" onclick={importWorkspace} disabled={!slug || !title || scanState === "importing"}>{scanState === "importing" ? "Importing…" : "Confirm import"}</button>
+          <button class="primary" type="button" onclick={importWorkspace} disabled={!slug || !title || scanState === "importing"}>{scanState === "importing" ? "Importing…" : "Confirm import"}</button>
         {/if}
       </div>
       {#if scanError}<p class="api-error" role="alert">{scanError}</p>{/if}
       {#if scanned}
         <div class="scan-result">
           <strong>Dry-run result</strong>
-          <span>{scanned.plan.date_start ?? "?"} – {scanned.plan.date_end ?? "?"}</span>
+          <span>{scanned.plan.date_start ? formatJourneyDate(scanned.plan.date_start) : "?"} – {scanned.plan.date_end ? formatJourneyDate(scanned.plan.date_end) : "?"}</span>
           <span>{scanned.plan.routes.length} routes · {scanned.plan.stops.length} stop candidates · {scanned.plan.mementos.length} memento candidates</span>
           {#if scanned.plan.issues.length > 0}<span class="scan-warning">{scanned.plan.issues.length} review notes</span>{/if}
         </div>
@@ -168,7 +170,7 @@
   {#if loading}
     <p class="hint">Loading journeys…</p>
   {:else if error}
-    <p class="api-error" role="alert">{error}. Start the local API to load authoring data.</p>
+    <p class="api-error" role="alert">{error}</p>
   {:else if summaries.length === 0}
     <p class="hint">No journeys yet.</p>
   {:else}
@@ -179,7 +181,7 @@
             <div class="journey-card-main">
               <p class="eyebrow">{summary.journey.slug}</p>
               <h2>{summary.journey.title}</h2>
-              <p class="journey-card-dates">{summary.journey.date_start} – {summary.journey.date_end}</p>
+              <p class="journey-card-dates">{formatJourneyDate(summary.journey.date_start)} – {formatJourneyDate(summary.journey.date_end)}</p>
               {#if pendingByJourney[summary.journey.id] > 0}
                 <span class="pending-dot">{pendingByJourney[summary.journey.id]} pending build</span>
               {/if}
@@ -289,6 +291,21 @@
     background: #fffaf2;
   }
   .secondary:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+  /* "Confirm import" is this form's primary action and previously had no
+     class at all — an unstyled <button> next to a bordered .secondary one,
+     so it rendered as plain text with no button affordance. Matches the
+     app's other primary-action buttons (e.g. .build-row button). */
+  .primary {
+    border: 0;
+    border-radius: 7px;
+    padding: 9px 14px;
+    color: #fffaf2;
+    background: #9f522d;
+  }
+  .primary:disabled {
     opacity: 0.6;
     cursor: default;
   }
@@ -433,8 +450,10 @@
     margin: 10px 0 0;
     font-size: 13px;
   }
+  /* #3f7a52 measured 4.45:1 on this background — just under the 4.5:1 AA
+     floor (axe color-contrast, serious). */
   .trigger-status--success {
-    color: #3f7a52;
+    color: #2f5e40;
   }
   .trigger-status--error {
     color: #a84a34;

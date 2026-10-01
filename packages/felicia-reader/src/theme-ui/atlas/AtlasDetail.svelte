@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Lang, Memento } from "@felicia/model"
   import AtlasStub from "./AtlasStub.svelte"
-  import PhotoLightbox from "@felicia/components/PhotoLightbox.svelte"
+  import PhotoLightbox from "../../components/PhotoLightbox.svelte"
   import { message } from "@felicia/model"
 
   let {

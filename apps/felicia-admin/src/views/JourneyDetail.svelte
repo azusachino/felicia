@@ -1,6 +1,8 @@
 <script lang="ts">
   import {
     compileSite,
+    describeLoadFailure,
+    formatJourneyDate,
     getJourney,
     getJourneyBuildStatus,
     getSiteInfo,
@@ -190,7 +192,7 @@
       journey = journeyResult
       mementos = sortMementosBySeq(mementoResult)
     } catch (cause) {
-      error = cause instanceof Error ? cause.message : "Unable to load this journey"
+      error = describeLoadFailure(cause, "this journey")
     } finally {
       loading = false
     }
@@ -323,12 +325,12 @@
   {#if loading}
     <p class="hint">Loading journey…</p>
   {:else if error}
-    <p class="api-error" role="alert">{error}. Start the local API to load authoring data.</p>
+    <p class="api-error" role="alert">{error}</p>
   {:else if journey}
     <header class="detail-header">
       <p class="eyebrow">{journey.slug}</p>
       <h1>{journey.title}</h1>
-      <p class="detail-meta">{journey.place} · {journey.date_start} – {journey.date_end}</p>
+      <p class="detail-meta">{journey.place} · {formatJourneyDate(journey.date_start)} – {formatJourneyDate(journey.date_end)}</p>
     </header>
 
     <section class="triggers" aria-label="Import and preview triggers">
@@ -673,8 +675,10 @@
     margin: 10px 0 0;
     font-size: 13px;
   }
+  /* #3f7a52 measured 4.45:1 on this background — just under the 4.5:1 AA
+     floor (axe color-contrast, serious). */
   .trigger-status--success {
-    color: #3f7a52;
+    color: #2f5e40;
   }
   .trigger-status--error {
     color: #a84a34;
@@ -751,7 +755,9 @@
     text-decoration: none;
   }
   .memento-seq {
-    color: #a69a89;
+    /* #a69a89 measured 2.54:1 on the memento row's card background — well
+       under the 4.5:1 AA floor (axe color-contrast, serious). */
+    color: #766956;
     font-size: 12px;
     min-width: 28px;
   }
@@ -835,17 +841,20 @@
     opacity: 0.6;
     cursor: default;
   }
+  /* Darkened from the original tones (axe color-contrast, serious): those
+     landed 3.77-4.27:1 against these translucent tinted backgrounds, under
+     the 4.5:1 AA floor — same fix as the shared badges in app.css. */
   .badge--proposed {
-    color: #9f522d;
+    color: #8a431f;
     background: rgb(231 162 96 / 24%);
   }
   .badge--kept {
-    color: #3f7a52;
+    color: #2f5e40;
     background: rgb(120 184 135 / 24%);
   }
   .badge--ignored,
   .badge--merged {
-    color: #766956;
+    color: #5c5142;
     background: rgb(166 154 137 / 20%);
   }
 </style>

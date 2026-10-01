@@ -23,8 +23,8 @@
     </div>
     <p class="eyebrow">Authoring workspace</p>
     <nav aria-label="Admin navigation">
-      <a class:active={route.name !== "site"} href={listHash}>Journeys</a>
-      <a class:active={route.name === "site"} href={siteHash}>Site &amp; Deploy</a>
+      <a class:active={route.name !== "site"} aria-current={route.name !== "site" ? "page" : undefined} href={listHash}>Journeys</a>
+      <a class:active={route.name === "site"} aria-current={route.name === "site" ? "page" : undefined} href={siteHash}>Site &amp; Deploy</a>
     </nav>
     <div class="sidebar-footer">
       <span class="status-dot"></span>
@@ -37,7 +37,16 @@
       <div>
         <p class="eyebrow">Felicia</p>
       </div>
-      <button class="profile" type="button" aria-label="Open profile menu">YP</button>
+      <!--
+        Not a button: felicia is single-user and local-only (no accounts, no
+        auth — see docs/roadmap/admin-gui-v2-epic.md's "no credentials inside
+        felicia" constraint), so there is no profile menu for this to open.
+        It previously rendered as an interactive-looking `aria-label="Open
+        profile menu"` button with no click handler — a control that promised
+        a menu and did nothing, including for screen-reader users who heard
+        the label. This is the honest version: a plain identity mark.
+      -->
+      <span class="profile" aria-hidden="true">YP</span>
     </header>
 
     {#if route.name === "detail"}
