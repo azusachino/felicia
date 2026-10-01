@@ -198,6 +198,7 @@ type Repository interface {
 	// supplied journey and takes the supplied authored mask at face value.
 	// Source imports must not use it — see ApplyIngestJourneyPatch.
 	UpsertJourney(ctx context.Context, journey *Journey) error
+	DeleteJourney(ctx context.Context, id uuid.UUID) error
 	// ApplyIngestJourneyPatch is the source write: masked fields are applied
 	// only where the stored row has not claimed authorship, and the stored
 	// authored mask is preserved verbatim.

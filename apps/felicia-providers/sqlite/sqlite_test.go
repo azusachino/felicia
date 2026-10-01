@@ -261,6 +261,18 @@ func TestRepositoryJourneyRevisionAndConflict(t *testing.T) {
 	if afterStale.Title != "Third title" || afterStale.Revision != 3 {
 		t.Fatalf("stale write mutated journey: %#v", afterStale)
 	}
+
+	// DeleteJourney deletes the journey
+	if err := repo.DeleteJourney(ctx, journey.ID); err != nil {
+		t.Fatalf("delete journey: %v", err)
+	}
+	if _, err := repo.GetJourney(ctx, journey.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("get deleted journey error = %v, want domain.ErrNotFound", err)
+	}
+	// Deleting again returns ErrNotFound
+	if err := repo.DeleteJourney(ctx, journey.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("second delete error = %v, want domain.ErrNotFound", err)
+	}
 }
 
 func mustUUID(t *testing.T) uuid.UUID {

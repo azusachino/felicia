@@ -23,6 +23,10 @@ func (s *fakeStore) UpsertJourney(_ context.Context, value *domain.Journey) erro
 	s.saved = value
 	return nil
 }
+func (s *fakeStore) DeleteJourney(_ context.Context, _ uuid.UUID) error {
+	s.saved = nil
+	return nil
+}
 
 func TestSaveGeneratesIDAndRejectsIncompleteJourney(t *testing.T) {
 	store := &fakeStore{}
@@ -36,5 +40,12 @@ func TestSaveGeneratesIDAndRejectsIncompleteJourney(t *testing.T) {
 	}
 	if err := service.Save(context.Background(), &domain.Journey{}); err == nil {
 		t.Fatal("expected incomplete journey to fail")
+	}
+
+	if err := service.Delete(context.Background(), uuid.Nil); err == nil {
+		t.Fatal("expected delete with nil ID to fail")
+	}
+	if err := service.Delete(context.Background(), value.ID); err != nil {
+		t.Fatalf("delete: %v", err)
 	}
 }

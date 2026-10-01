@@ -5,6 +5,7 @@ import {
   compileSite,
   countMementosByState,
   countPendingStopCandidates,
+  deleteJourney,
   deleteMemento,
   getBuildStatus,
   getJourney,
@@ -526,6 +527,34 @@ describe("memento editor (ADMIN-01.4 / ADMIN-01.5)", () => {
     expect(caught).toBeInstanceOf(ApiError)
     expect((caught as ApiError).status).toBe(404)
     expect((caught as ApiError).message).toBe("memento not found")
+  })
+
+  test("deleteJourney DELETEs and returns the deleted status", async () => {
+    let capturedUrl: string | undefined
+    let capturedMethod: string | undefined
+    globalThis.fetch = ((url: string | URL, init?: RequestInit) => {
+      capturedUrl = url.toString()
+      capturedMethod = init?.method
+      return Promise.resolve(Response.json({ status: "deleted" }))
+    }) as unknown as typeof fetch
+
+    const result = await deleteJourney("journey-1")
+    expect(capturedUrl).toBe("http://localhost:8080/api/admin/journeys/journey-1")
+    expect(capturedMethod).toBe("DELETE")
+    expect(result).toEqual({ status: "deleted" })
+  })
+
+  test("deleteJourney surfaces a 404 as an ApiError", async () => {
+    mockFetchOnce(404, { error: "journey not found" })
+    let caught: unknown
+    try {
+      await deleteJourney("missing")
+    } catch (cause) {
+      caught = cause
+    }
+    expect(caught).toBeInstanceOf(ApiError)
+    expect((caught as ApiError).status).toBe(404)
+    expect((caught as ApiError).message).toBe("journey not found")
   })
 
   test("list endpoints coerce a null JSON body (Go nil slice) to an empty array", async () => {

@@ -55,7 +55,7 @@ func execute(args []string, output io.Writer) error {
 
 func journeyCommand(args []string, output io.Writer) error {
 	if len(args) == 0 {
-		return errors.New("usage: felicia-cli journey plan|apply|review")
+		return errors.New("usage: felicia-cli journey plan|apply|review|delete")
 	}
 	switch args[0] {
 	case "plan":
@@ -64,6 +64,8 @@ func journeyCommand(args []string, output io.Writer) error {
 		return journeyApplyCommand(args[1:], output)
 	case "review":
 		return journeyReviewCommand(args[1:], output)
+	case "delete":
+		return journeyDeleteCommand(args[1:], output)
 	default:
 		return fmt.Errorf("unknown journey command %q", args[0])
 	}
@@ -185,6 +187,33 @@ func journeyReviewCommand(args []string, output io.Writer) error {
 		return err
 	}
 	return writeJSON(output, candidate)
+}
+
+func journeyDeleteCommand(args []string, output io.Writer) error {
+	flags := flag.NewFlagSet("journey delete", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	database := flags.String("db", "", "SQLite database path")
+	journeyID := flags.String("journey", "", "journey UUID")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if *database == "" || *journeyID == "" {
+		return errors.New("usage: felicia-cli journey delete --db <path> --journey <uuid>")
+	}
+	id, err := uuid.Parse(*journeyID)
+	if err != nil {
+		return fmt.Errorf("invalid journey UUID %q: %w", *journeyID, err)
+	}
+	repo, err := sqlite.Open(*database)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = repo.Close() }()
+	if err := repo.DeleteJourney(context.Background(), id); err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(output, "deleted journey %s\n", id)
+	return err
 }
 
 func parseOptionalTime(value string) (time.Time, error) {

@@ -173,3 +173,27 @@ func TestUpsertJourneyRejectsStaleExpectedRevision(t *testing.T) {
 		t.Errorf("stale write changed revision: got %d, want 2", repo.journeys[id].Revision)
 	}
 }
+
+func TestDeleteJourneyRemovesJourney(t *testing.T) {
+	handler, repo := authoringHandler(t)
+	id := uuid.New()
+	repo.journeys[id] = &domain.Journey{ID: id, Slug: "tokyo", Title: "Tokyo"}
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodDelete, "/api/admin/journeys/"+id.String(), nil)
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", w.Code, w.Body)
+	}
+
+	if repo.journeys[id] != nil {
+		t.Fatal("journey was not deleted from repository")
+	}
+
+	w2 := httptest.NewRecorder()
+	req2 := httptest.NewRequest(http.MethodDelete, "/api/admin/journeys/"+id.String(), nil)
+	handler.ServeHTTP(w2, req2)
+	if w2.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 on second delete, got %d (%s)", w2.Code, w2.Body)
+	}
+}

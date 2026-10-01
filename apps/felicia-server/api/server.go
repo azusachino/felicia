@@ -228,6 +228,7 @@ func (s *Server) Handler() http.Handler {
 		r.Post("/local-journeys/import", s.handleImportLocalJourney)
 		r.Get("/journeys/{id}", s.handleGetJourney)
 		r.Post("/journeys", s.handleUpsertJourney)
+		r.Delete("/journeys/{id}", s.handleDeleteJourney)
 		r.Post("/journeys/{id}/legs", s.handleCreateTransitLeg)
 		r.Post("/journeys/{id}/snap", s.handleSnapToRoute)
 		r.Get("/journeys/{id}/mementos", s.handleListMementos)
@@ -669,6 +670,26 @@ func (s *Server) handleUpsertJourney(w http.ResponseWriter, r *http.Request) {
 
 	s.cache.InvalidateAll(r.Context())
 	respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (s *Server) handleDeleteJourney(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid journey UUID")
+		return
+	}
+
+	if err := s.journeyWriter.Delete(r.Context(), id); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			respondError(w, http.StatusNotFound, "journey not found")
+			return
+		}
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	s.cache.InvalidateAll(r.Context())
+	respondJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 
 // Stop-candidate handlers are admin-only by route placement and are never

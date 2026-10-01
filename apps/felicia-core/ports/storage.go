@@ -37,6 +37,7 @@ type JourneyStore interface {
 	GetJourneyBySlug(ctx context.Context, slug string) (*domain.Journey, error)
 	ListJourneys(ctx context.Context) ([]*domain.Journey, error)
 	UpsertJourney(ctx context.Context, journey *domain.Journey) error
+	DeleteJourney(ctx context.Context, id uuid.UUID) error
 }
 
 // JourneySyncStore is the smaller seam used by source synchronization. It
