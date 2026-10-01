@@ -59,11 +59,13 @@ Although Phase 0–3 foundation repairs successfully resolved content-addressed 
 ## Consequences
 
 ### Positive
+
 - Removes ~10,000 lines of unearned code and redundant maintenance surface.
 - Eliminates 33+ duplicate UI audit issues across secondary themes.
 - Reader bundle and build times are substantially reduced.
 - Eliminates external database dependencies, Goose tooling, and dual-provider test burdens.
 
 ### Negative / Trade-offs
+
 - Cabinet's "greatest hits" shelf and Cartography's full-map index are no longer switchable in the public reader (preserved in Git history).
 - Multi-user remote PostgreSQL deployments are not supported in v1; Felicia is strictly a single-user local studio producing a static publication.

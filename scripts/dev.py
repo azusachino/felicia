@@ -50,8 +50,8 @@ def wait_ready(url: str) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--driver", choices=("sqlite", "postgres"), required=True)
-    parser.add_argument("--web", action="store_true", help="seed PostgreSQL and start the web app")
+    parser.add_argument("--driver", choices=("sqlite",), default="sqlite")
+    parser.add_argument("--web", action="store_true", help="start the public site alongside the API")
     return parser.parse_args()
 
 
@@ -69,53 +69,10 @@ def run_sqlite() -> None:
     os.execvpe("go", ["go", "run", "./apps/felicia-server/cmd/api"], environment)
 
 
-def run_postgres(start_web: bool) -> None:
-    environment = os.environ.copy()
-    dsn = environment.get("DATABASE_DSN", "")
-    if not dsn:
-        raise RuntimeError("DATABASE_DSN is required for the PostgreSQL development workflow")
-
-    run(["make", "db-up"])
-    run(["make", "migrate"], env=environment)
-    run(["go", "build", "-o", str(API_BINARY), "./apps/felicia-server/cmd/api"])
-
-    api_environment = environment | {
-        "DATABASE_DRIVER": "postgres",
-        "DATABASE_DSN": dsn,
-        "CACHE_ADDR": environment.get("CACHE_ADDR", "localhost:6379"),
-    }
-    api = subprocess.Popen([str(API_BINARY)], cwd=ROOT, env=api_environment)
-    try:
-        port = environment.get("PORT", "8080")
-        base_url = f"http://localhost:{port}"
-        wait_ready(base_url)
-        if not start_web:
-            api.wait()
-            return
-
-        seed_environment = environment | {"SEED_API_BASE": base_url}
-        run([sys.executable, "scripts/seed.py"], env=seed_environment)
-        web_dir = ROOT / "apps" / "felicia-public-site"
-        if not (web_dir / "node_modules").exists():
-            run(["bun", "install"], cwd=web_dir)
-        run(["bun", "run", "dev"], cwd=web_dir)
-    finally:
-        api.terminate()
-        try:
-            api.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            api.kill()
-            api.wait()
-        API_BINARY.unlink(missing_ok=True)
-
-
 def main() -> int:
-    arguments = parse_args()
+    parse_args()
     try:
-        if arguments.driver == "sqlite":
-            run_sqlite()
-        else:
-            run_postgres(arguments.web)
+        run_sqlite()
     except (OSError, RuntimeError, subprocess.CalledProcessError) as exc:
         print(f"dev workflow failed: {exc}", file=sys.stderr)
         return 1
