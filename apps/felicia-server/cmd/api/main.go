@@ -2,20 +2,16 @@
 package main
 
 import (
-	"context"
 	"io/fs"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	core "github.com/azusachino/felicia/apps/felicia-core"
 	"github.com/azusachino/felicia/apps/felicia-core/domain"
 	"github.com/azusachino/felicia/apps/felicia-providers/dawarich"
 	"github.com/azusachino/felicia/apps/felicia-providers/immich"
-	"github.com/azusachino/felicia/apps/felicia-providers/postgres"
 	"github.com/azusachino/felicia/apps/felicia-providers/sqlite"
 	"github.com/azusachino/felicia/apps/felicia-runtime/importer"
 	"github.com/azusachino/felicia/apps/felicia-server/api"
@@ -51,26 +47,13 @@ func run(logger *slog.Logger) error {
 
 	cacheManager := api.NewCacheManager(cfg.CacheAddr, logger)
 
-	ctx := context.Background()
-
-	// 2. Initialize the configured provider. SQLite is the local default;
-	// PostgreSQL remains available for deployments that need PostGIS.
-	var repo domain.Repository
-	var closeRepository func()
-	if cfg.DatabaseDriver == "sqlite" {
-		store, err := sqlite.Open(cfg.DatabasePath)
-		if err != nil {
-			return err
-		}
-		repo, closeRepository = store, func() { _ = store.Close() }
-	} else {
-		pool, err := pgxpool.New(ctx, cfg.DatabaseDSN)
-		if err != nil {
-			return err
-		}
-		repo, closeRepository = postgres.NewRepository(pool), pool.Close
+	// 2. Initialize the SQLite repository (ADR-0032, ADR-0040).
+	store, err := sqlite.Open(cfg.DatabasePath)
+	if err != nil {
+		return err
 	}
-	defer closeRepository()
+	defer func() { _ = store.Close() }()
+	repo := store
 
 	// 3. Create repository and server
 

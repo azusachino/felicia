@@ -1,29 +1,4 @@
 services:
-  # Not part of the v1 supported deployment shape: PostgreSQL is deferred to
-  # v1.1/v1.2 (ADR-0032) and no v1 service composes against it. Kept behind a
-  # profile so it starts only when asked for by name, for deferred-provider
-  # work, and never as a side effect of `make share` or the dev stack.
-  db:
-    profiles: ["postgres-deferred"]
-    image: postgis/postgis:18-3.6-alpine
-    # The pinned PostGIS image currently publishes amd64 only; Podman on
-    # Apple Silicon runs this service through its supported emulation path.
-    platform: linux/amd64
-    container_name: felicia-db
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: felicia
-    volumes:
-      - pgdata:/var/lib/postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d felicia"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   cache:
     image: valkey/valkey:9-alpine
     container_name: felicia-cache
@@ -98,4 +73,3 @@ services:
 
 volumes:
   apidata:
-  pgdata:

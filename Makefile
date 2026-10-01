@@ -5,12 +5,9 @@ MISE_RUN := mise exec --
 UV_RUN  := $(MISE_RUN) uv
 GO      ?= $(MISE_RUN) go
 BUN     ?= $(MISE_RUN) bun
-GOOSE   := $(MISE_RUN) goose
-SQLC    := $(MISE_RUN) sqlc
 # Markdown formatting is local-only; rumdl is supplied by Nix on PATH.
 RUMDL   ?= rumdl
 
-DATABASE_DSN ?= postgres://postgres:password@localhost:5432/felicia?sslmode=disable
 PORT ?= 8080
 CACHE_ADDR ?= localhost:6379
 
@@ -19,7 +16,7 @@ COMPOSE ?= $(shell \
 	elif command -v docker >/dev/null 2>&1; then echo docker compose; \
 	else echo ''; fi)
 
-.PHONY: help fmt fmt-check fmt-docs fmt-docs-check vet lint test test-api test-features layout-check test-sqlite test-postgres check check-ci build cli-build experiment-intake journey-local validate deps-check tidy db-up db-down migrate seed admin dev dev-sqlite dev-postgres test-workflow test-workflow-postgres test-admin-e2e sqlc mock-up mock-down browser-mock web-install web-check web-build admin-check admin-build web-private-check web-private-build site-build site-verify pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
+.PHONY: help fmt fmt-check fmt-docs fmt-docs-check vet lint test test-api test-features layout-check test-sqlite check check-ci build cli-build experiment-intake journey-local validate deps-check tidy db-up db-down seed admin dev dev-sqlite test-workflow test-admin-e2e mock-up mock-down browser-mock web-install web-check web-build admin-check admin-build site-build site-verify pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -71,9 +68,8 @@ journey-local: cli-build ## Preprocess raw local sources into an editable journe
 		$(if $(JOURNAL),--journal "$(JOURNAL)",) \
 		$(if $(WORKSPACE),--workspace "$(WORKSPACE)",)
 
-# Pre-PR gate. Database migration smoke remains separate because it needs a
-# disposable service; deterministic frontend checks belong in this gate.
-validate: check build web-check admin-check web-private-check ## Pre-PR gate
+# Pre-PR gate. Deterministic frontend checks belong in this gate.
+validate: check build web-check admin-check ## Pre-PR gate
 
 deps-check: ## Check lockfile consistency and report available frontend upgrades
 	$(UV_RUN) lock --check
@@ -90,23 +86,11 @@ db-down: ## Stop the local dev containers (keeps the pgdata volume)
 	@test -n "$(COMPOSE)" || (echo "No container compose command found (install podman-compose or Docker Compose)" >&2; exit 1)
 	$(COMPOSE) -f ops/compose.yaml down
 
-migrate: ## Apply DB migrations (goose, from mise) — needs DATABASE_DSN
-	$(GOOSE) -dir apps/felicia-server/migrations postgres "$(DATABASE_DSN)" up
-
-seed: ## Seed the database with sample data (uv run, psycopg) — needs DATABASE_DSN
-	$(UV_RUN) run --group dev python scripts/seed.py
-
-admin: ## Start the local admin GUI (authoring API + felicia-admin on 127.0.0.1)
-	$(UV_RUN) run python scripts/admin.py
-
 dev: ## Start the local API with SQLite
 	$(MAKE) dev-sqlite
 
 dev-sqlite: ## Start the API locally with the default SQLite provider
 	$(UV_RUN) run python scripts/dev.py --driver sqlite
-
-dev-postgres: ## [non-v1, ADR-0032] PostgreSQL-backed local stack -- deferred provider work only
-	$(UV_RUN) run python scripts/dev.py --driver postgres --web
 
 mock-up: ## Start the mock Dawarich+Immich upstream in the background (:8099)
 	nohup $(UV_RUN) run python scripts/mock_upstream.py > /tmp/felicia-mock.log 2>&1 & echo "mock up on :8099 (log: /tmp/felicia-mock.log)"
@@ -123,28 +107,11 @@ test-api: ## Run Python-based E2E API integration tests (requires running server
 test-workflow: ## Run full journey workflow against disposable SQLite
 	$(UV_RUN) run python scripts/test_journey_workflow.py --start-server
 
-test-workflow-postgres: ## Run full journey workflow against disposable PostgreSQL
-	@test -n "$(FELICIA_TEST_DATABASE_DSN)$(FELICIA_TEST_POSTGRES_ADMIN_DSN)" || (echo "FELICIA_TEST_DATABASE_DSN or FELICIA_TEST_POSTGRES_ADMIN_DSN is required" >&2; exit 1)
-	@if test -n "$(FELICIA_TEST_POSTGRES_ADMIN_DSN)"; then \
-		FELICIA_TEST_POSTGRES_ADMIN_DSN="$(FELICIA_TEST_POSTGRES_ADMIN_DSN)" $(UV_RUN) run python scripts/test_journey_workflow.py --start-server --database-driver postgres; \
-	else \
-		DATABASE_DSN="$(FELICIA_TEST_DATABASE_DSN)" $(MAKE) migrate; \
-		FELICIA_TEST_DATABASE_DSN="$(FELICIA_TEST_DATABASE_DSN)" $(UV_RUN) run python scripts/test_journey_workflow.py --start-server --database-driver postgres; \
-	fi
-
 test-admin-e2e: ## Run the admin GUI closed-loop E2E pass (disposable server + bun run dev + Playwright/chromium) — ADMIN-01.8, local-only (not part of validate)
 	$(UV_RUN) run python scripts/e2e_admin_gui.py
 
-sqlc: ## Regenerate the postgres query bindings (apps/felicia-providers/postgres/db) from sqlc.yaml
-	$(SQLC) generate
-
 test-sqlite: ## Run all tests with SQLite as the only enabled provider
-	DATABASE_DSN= FELICIA_TEST_DATABASE_DSN= $(MAKE) test
-
-test-postgres: ## [non-v1, ADR-0032] PostgreSQL tests -- not a release gate
-	@test -n "$(FELICIA_TEST_DATABASE_DSN)" || (echo "FELICIA_TEST_DATABASE_DSN is required" >&2; exit 1)
-	DATABASE_DSN="$(FELICIA_TEST_DATABASE_DSN)" $(MAKE) migrate
-	DATABASE_DSN= FELICIA_TEST_DATABASE_DSN="$(FELICIA_TEST_DATABASE_DSN)" $(MAKE) test
+	$(MAKE) test
 
 test-features: ## Run offline Python feature-contract tests
 	$(UV_RUN) run --group dev ruff check --config pyproject.toml scripts tests
@@ -200,12 +167,6 @@ web-check: ## Frontend typecheck + lint + format check
 
 admin-check: ## Admin frontend typecheck + lint + format check
 	$(BUN) run web:admin:check
-
-web-private-build: ## Build private reader frontend for production
-	$(BUN) run web:private:build
-
-web-private-check: ## Private reader typecheck + lint + format check
-	$(BUN) run web:private:check
 
 # Docs preview (uv-managed env, isolated from Go/bun). Binds 0.0.0.0 so it is
 # reachable over SSH — forward with `ssh -L 8000:localhost:8000 <host>`.
