@@ -385,8 +385,9 @@
 
   .cabinet-shelf-pause {
     display: flex;
-    height: 2rem;
-    width: 2rem;
+    /* 44px touch minimum (reader-ui-ux-contract.md); was 2rem/32px. */
+    height: 2.75rem;
+    width: 2.75rem;
     align-items: center;
     justify-content: center;
     border-radius: 999px;

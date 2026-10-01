@@ -337,7 +337,9 @@
     gap: 0.5rem;
     padding: 0.65rem 0.9rem;
     border: 1px solid color-mix(in srgb, var(--route) 38%, transparent);
-    border-radius: 999px;
+    /* A labelled toggle, not a circular marker or icon control -- the shape
+       scale reserves full rounding for those (reader-ui-ux-contract.md). */
+    border-radius: 0.5rem;
     color: var(--ink);
     background: color-mix(in srgb, var(--waypoints-bg) 68%, transparent);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 0.75rem 2rem rgba(0, 7, 14, 0.32);
@@ -373,7 +375,10 @@
     overflow-y: auto;
     padding: 1.15rem;
     border: 1px solid color-mix(in srgb, var(--route) 30%, transparent);
-    border-radius: 1rem;
+    /* Quiet content surface, not the main detail surface -- the 16px tier is
+       reserved for that (AtlasDetail uses the 2px paper tier instead, per its
+       own material system). reader-ui-ux-contract.md shape scale. */
+    border-radius: 0.5rem;
     color: var(--ink);
     background: color-mix(in srgb, var(--waypoints-bg) 66%, transparent);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 1.5rem 4rem rgba(0, 7, 14, 0.38);

@@ -280,6 +280,17 @@
     document.querySelector<HTMLButtonElement>(".timeline-item.active")?.focus()
   }
 
+  // Verification bar #3 (reader-ui-ux-contract.md): a keyboard-only pass
+  // must be able to close the open detail via Escape, matching Atlas and
+  // Techo. Cartography's detail panel is always-visible/non-modal, so
+  // "close" is the same neutral-state return the × button already does.
+  function handleKeydown(event: KeyboardEvent) {
+    if (event.key === "Escape") {
+      event.preventDefault()
+      void closeDetail()
+    }
+  }
+
   function focusMap(memento: Memento) {
     if (!map) return
     if (memento.transit) {
@@ -401,6 +412,8 @@
     }
   })
 </script>
+
+<svelte:window on:keydown={handleKeydown} />
 
 <main class="app-shell" class:theme-light={theme === "light"}>
   <div class="sr-only" role="status" aria-live="polite">{liveMessage}</div>

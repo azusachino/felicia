@@ -22,6 +22,12 @@
   let loaded = $state(false)
   let resizeObserver: ResizeObserver | undefined
   let prefersReducedMotion = false
+  // Real DOM marker buttons for each place, so every map marker has an
+  // accessible name and a keyboard path (shared interaction grammar,
+  // reader-ui-ux-contract.md) -- the canvas circle layer this replaced had
+  // neither.
+  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- imperative maplibre marker cache, not reactive UI state
+  const markers = new Map<string, maplibregl.Marker>()
 
   const style = "https://tiles.openfreemap.org/styles/liberty"
 
@@ -64,7 +70,44 @@
     if (!map) return
     ;(map.getSource("journeys") as maplibregl.GeoJSONSource | undefined)?.setData(routeData())
     ;(map.getSource("places") as maplibregl.GeoJSONSource | undefined)?.setData(placeData())
+    rebuildMarkers()
     fitWorld()
+  }
+
+  function placeMarkerElement(journey: Journey, label: string) {
+    const button = document.createElement("button")
+    button.type = "button"
+    button.className = "techo-index-place"
+    button.setAttribute("aria-label", `${label} — ${journey.title[lang] || journey.title.en}`)
+    button.addEventListener("click", (event) => {
+      event.stopPropagation()
+      onSelect(journey.id)
+    })
+    return button
+  }
+
+  function rebuildMarkers() {
+    if (!map) return
+    markers.forEach((marker) => marker.remove())
+    markers.clear()
+    journeys.forEach((journey) => {
+      journey.visits.forEach((visit) => {
+        const marker = new maplibregl.Marker({
+          element: placeMarkerElement(journey, visit.label[lang] || visit.label.en),
+          anchor: "center",
+        })
+          .setLngLat(visit.coords)
+          .addTo(map!)
+        markers.set(`${journey.id}:${visit.id}`, marker)
+      })
+    })
+    syncActiveMarkers()
+  }
+
+  function syncActiveMarkers() {
+    markers.forEach((marker, key) => {
+      marker.getElement().classList.toggle("is-active", key.startsWith(`${selectedJourneyId}:`))
+    })
   }
 
   onMount(() => {
@@ -81,18 +124,16 @@
       attributionControl: {},
     })
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right")
+    // Routes stay a mouse-only bonus click target (a line has no natural DOM
+    // marker equivalent); places are real DOM marker buttons below, so they
+    // are the keyboard- and screen-reader-reachable path to selecting a
+    // journey.
     map.on("click", "journey-routes", (event) => {
-      const id = event.features?.[0]?.properties?.id
-      if (typeof id === "string") onSelect(id)
-    })
-    map.on("click", "journey-places", (event) => {
       const id = event.features?.[0]?.properties?.id
       if (typeof id === "string") onSelect(id)
     })
     map.on("mouseenter", "journey-routes", () => map?.getCanvas().classList.add("is-clickable"))
     map.on("mouseleave", "journey-routes", () => map?.getCanvas().classList.remove("is-clickable"))
-    map.on("mouseenter", "journey-places", () => map?.getCanvas().classList.add("is-clickable"))
-    map.on("mouseleave", "journey-places", () => map?.getCanvas().classList.remove("is-clickable"))
 
     resizeObserver = new ResizeObserver(() => map?.resize())
     resizeObserver.observe(container)
@@ -120,17 +161,10 @@
         },
       })
       map.addSource("places", { type: "geojson", data: placeData() })
-      map.addLayer({
-        id: "journey-places",
-        type: "circle",
-        source: "places",
-        paint: {
-          "circle-color": terracotta,
-          "circle-radius": 5,
-          "circle-stroke-color": "#fff8ed",
-          "circle-stroke-width": 2,
-        },
-      })
+      // The circle used to be a canvas paint layer here -- unreachable by
+      // keyboard and unnamed to a screen reader. rebuildMarkers() below
+      // draws the actual clickable dot as a real DOM marker button instead;
+      // this layer stays for the always-visible place labels only.
       map.addLayer({
         id: "journey-place-labels",
         type: "symbol",
@@ -147,6 +181,7 @@
           "text-halo-width": 1.5,
         },
       })
+      rebuildMarkers()
       map.resize()
       fitWorld()
       loaded = true
@@ -156,6 +191,8 @@
       resizeObserver?.disconnect()
       resizeObserver = undefined
       motionQuery.removeEventListener("change", onMotionChange)
+      markers.forEach((marker) => marker.remove())
+      markers.clear()
       map?.remove()
       map = undefined
     }
@@ -185,5 +222,36 @@
 
   :global(.is-clickable) {
     cursor: pointer;
+  }
+
+  /* The place dot itself stays visually small (matches the former canvas
+     circle-radius: 5). The hit area grows via ::after, but this is a
+     world-zoom index of every journey's visits, where two points can sit a
+     handful of CSS pixels apart -- the project's usual 44px touch-target
+     extension (AtlasMap's recipe) would overlap at that density, so this
+     uses the WCAG 2.5.8 AA 24px floor instead. Neighboring visits within one
+     journey share a handler (selecting either opens the same journey), so an
+     overlap there is harmless; real marker clustering would be needed to
+     fully remove the residual risk between two *different* journeys' visits
+     landing this close together, which is out of scope for this pass. */
+  :global(.techo-index-place) {
+    position: relative;
+    width: 0.625rem;
+    height: 0.625rem;
+    border: 2px solid #fff8ed;
+    border-radius: 50%;
+    background: #7aa8a6;
+    padding: 0;
+  }
+
+  :global(.techo-index-place)::after {
+    content: "";
+    position: absolute;
+    inset: calc((0.625rem - 1.5rem) / 2);
+  }
+
+  :global(.techo-index-place.is-active) {
+    z-index: 1;
+    background: var(--terracotta, #d9674c);
   }
 </style>
