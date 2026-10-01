@@ -157,6 +157,14 @@ func (m *mockRepository) ListJourneys(_ context.Context) ([]*domain.Journey, err
 }
 
 func (m *mockRepository) UpsertJourney(_ context.Context, journey *domain.Journey) error {
+	if existing, ok := m.journeys[journey.ID]; ok {
+		if journey.ExpectedRevision != nil && existing.Revision != *journey.ExpectedRevision {
+			return domain.ErrWriteConflict
+		}
+		journey.Revision = existing.Revision + 1
+	} else if journey.Revision == 0 {
+		journey.Revision = 1
+	}
 	m.journeys[journey.ID] = journey
 	return nil
 }

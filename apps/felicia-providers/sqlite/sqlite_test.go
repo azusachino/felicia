@@ -188,6 +188,81 @@ func TestListStopCandidatesWithEvidenceDoesNotDeadlock(t *testing.T) {
 	}
 }
 
+func TestRepositoryJourneyRevisionAndConflict(t *testing.T) {
+	repo, err := sqlite.Open(":memory:")
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	defer repo.Close()
+	ctx := context.Background()
+
+	journal := &domain.Journal{ID: mustUUID(t), CreatedAt: time.Now().UTC()}
+	if err := repo.CreateJournal(ctx, journal); err != nil {
+		t.Fatalf("create journal: %v", err)
+	}
+	journey := &domain.Journey{
+		ID: mustUUID(t), JournalID: journal.ID, Slug: "revision-journey",
+		Title: "Initial title", Place: "Tokyo",
+		DateStart: time.Date(2026, 3, 20, 0, 0, 0, 0, time.UTC),
+		DateEnd:   time.Date(2026, 3, 22, 0, 0, 0, 0, time.UTC),
+	}
+	if err := repo.UpsertJourney(ctx, journey); err != nil {
+		t.Fatalf("initial upsert: %v", err)
+	}
+
+	fetched, err := repo.GetJourney(ctx, journey.ID)
+	if err != nil {
+		t.Fatalf("get journey: %v", err)
+	}
+	if fetched.Revision != 1 {
+		t.Fatalf("expected initial revision 1, got %d", fetched.Revision)
+	}
+
+	// Update without expected revision -> increments to 2
+	fetched.Title = "Updated title"
+	if err := repo.UpsertJourney(ctx, fetched); err != nil {
+		t.Fatalf("second upsert: %v", err)
+	}
+	fetched2, err := repo.GetJourney(ctx, journey.ID)
+	if err != nil {
+		t.Fatalf("get journey 2: %v", err)
+	}
+	if fetched2.Revision != 2 {
+		t.Fatalf("expected revision 2 after update, got %d", fetched2.Revision)
+	}
+
+	// Update with matching expected revision (2) -> increments to 3
+	fetched2.Title = "Third title"
+	fetched2.ExpectedRevision = int64Ptr(2)
+	if err := repo.UpsertJourney(ctx, fetched2); err != nil {
+		t.Fatalf("expected revision 2 upsert: %v", err)
+	}
+	fetched3, err := repo.GetJourney(ctx, journey.ID)
+	if err != nil {
+		t.Fatalf("get journey 3: %v", err)
+	}
+	if fetched3.Revision != 3 {
+		t.Fatalf("expected revision 3, got %d", fetched3.Revision)
+	}
+
+	// Update with stale expected revision (2, when current is 3) -> fails with ErrWriteConflict
+	staleUpdate := *fetched3
+	staleUpdate.Title = "Stale write"
+	staleUpdate.ExpectedRevision = int64Ptr(2)
+	if err := repo.UpsertJourney(ctx, &staleUpdate); !errors.Is(err, domain.ErrWriteConflict) {
+		t.Fatalf("stale expected revision error = %v, want domain.ErrWriteConflict", err)
+	}
+
+	// Verify unchanged
+	afterStale, err := repo.GetJourney(ctx, journey.ID)
+	if err != nil {
+		t.Fatalf("get journey after stale: %v", err)
+	}
+	if afterStale.Title != "Third title" || afterStale.Revision != 3 {
+		t.Fatalf("stale write mutated journey: %#v", afterStale)
+	}
+}
+
 func mustUUID(t *testing.T) uuid.UUID {
 	t.Helper()
 	id, err := uuid.NewV7()

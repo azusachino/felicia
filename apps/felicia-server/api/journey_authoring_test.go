@@ -140,3 +140,36 @@ func TestIngestCannotOverwriteWhatAuthoringJustClaimed(t *testing.T) {
 		t.Errorf("import overwrote an authored title: got %q", got)
 	}
 }
+
+func TestUpsertJourneyRejectsStaleExpectedRevision(t *testing.T) {
+	handler, repo := authoringHandler(t)
+	id := uuid.New()
+	repo.journeys[id] = &domain.Journey{
+		ID:             id,
+		Slug:           "izu",
+		Title:          "First title",
+		Place:          "Izu Peninsula",
+		DateStart:      time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC),
+		DateEnd:        time.Date(2026, 8, 2, 0, 0, 0, 0, time.UTC),
+		Revision:       2,
+		AuthoredFields: []string{"title"},
+	}
+
+	// Attempt save with stale expected_revision = 1 (current is 2)
+	w := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/api/admin/journeys", bytes.NewBufferString(`{"id":"`+id.String()+`","journal_id":"`+uuid.NewString()+`","slug":"izu","title":"Stale write","place":"Izu Peninsula","date_start":"2026-08-01","date_end":"2026-08-02","expected_revision":1}`))
+	request.Header.Set("Content-Type", "application/json")
+	handler.ServeHTTP(w, request)
+
+	if w.Code != http.StatusConflict {
+		t.Fatalf("expected 409 Conflict, got %d (%s)", w.Code, w.Body)
+	}
+
+	// Invariant 3: changes nothing
+	if repo.journeys[id].Title != "First title" {
+		t.Errorf("stale write mutated journey title: got %q, want %q", repo.journeys[id].Title, "First title")
+	}
+	if repo.journeys[id].Revision != 2 {
+		t.Errorf("stale write changed revision: got %d, want 2", repo.journeys[id].Revision)
+	}
+}
