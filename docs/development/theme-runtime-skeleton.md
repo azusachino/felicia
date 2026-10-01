@@ -1,6 +1,6 @@
 # Theme runtime skeleton
 
-This document is the working implementation specification for [ADR-0036](../adr/0036-theme-runtime-and-scene-actions.md).
+This document is the historical implementation specification for [ADR-0036](../archive/adr/0036-theme-runtime-and-scene-actions.md).
 The ADR is the decision record; this page describes the first file boundary and
 the order in which it should become real behavior.
 

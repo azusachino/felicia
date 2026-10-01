@@ -37,7 +37,7 @@ The normal authoring authority is **SQLite plus original blobs**, with recoverab
 
 Use the same application commands from the CLI and GUI. Keep one primary local database engine for a fresh product. PostgreSQL is not intrinsically needed to author locally and publish static files.
 
-For existing Felicia this is no longer an open question: [ADR-0032](../adr/0032-sqlite-first-v1-postgres-follow-up.md) is accepted, SQLite is the only v1 persistence contract, and PostgreSQL/PostGIS is a frozen non-v1 snapshot deferred to v1.1/v1.2. No inventory is required to decide it. What remains is enforcement, tracked separately, and the reclassification that follows: a provider gap SQLite does not share is deferred-provider work, not a v1 parity blocker, so no phase below carries a dual-provider test burden.
+For existing Felicia this is no longer an open question: [ADR 0005](../adr/0005-sqlite-storage-and-content-addressed-media.md) is accepted, SQLite is the only v1 persistence contract. No inventory is required to decide it.
 
 Avoid introducing a workflow engine, event sourcing for every field, a universal plugin system, microservices, remote object storage or a native mobile application without a demonstrated need. Retain adapter seams for actual sources. The existing Go modules can remain during an in-place rebuild; module consolidation is not a prerequisite for correctness.
 
@@ -55,7 +55,7 @@ These are logical responsibilities, not a requirement to introduce every table a
 | Stop proposal/review   | Stable derivation identity, evidence, decision and revision; re-planning retains accepted/ignored choices                      |
 | Memento                | Journey owner, kind, content, anchor, lifecycle and revision; meaningful incomplete drafts are allowed                         |
 | Authored overrides     | Explicit overridden fields, including intentional empty values; source refresh never clears them                               |
-| Blob                   | Verified content digest, size/type and immutable storage key; package filenames are metadata ([ADR-0026](../adr/0026-local-first-media-and-blob-storage.md) already specifies this) |
+| Blob                   | Verified content digest, size/type and immutable storage key; package filenames are metadata ([ADR 0005](../adr/0005-sqlite-storage-and-content-addressed-media.md) already specifies this) |
 | Attachment             | Memento owner, blob reference, caption, order and revision; curation is independent of byte identity                           |
 | Build/release          | Input snapshot identity, privacy policy version, artifact digest, outcome and manifest; deployment acknowledgement is separate |
 
@@ -79,7 +79,7 @@ The table above reads as a fresh design, which understates how much of it exists
 
 So the storage delta is two new records, roughly four columns, three `revision` columns, and one uniqueness change. `revision` exists today on exactly `tb_mementos` and `tb_stop_candidates`.
 
-Two consequences follow. The blob record is not a decision to be made — [ADR-0026](../adr/0026-local-first-media-and-blob-storage.md) is accepted and already specifies `originals/<sha256>/<filename>` with the content hash as the stable contract, so this is a defect against an existing contract rather than new design, and phase 1 inherits a specified target. And build/release identity is the one genuinely new decision in this document, so it is the one that warrants its own ADR.
+Two consequences follow. The blob record is not a decision to be made — [ADR 0005](../adr/0005-sqlite-storage-and-content-addressed-media.md) is accepted and already specifies `originals/<sha256>/<filename>` with the content hash as the stable contract, so this is a defect against an existing contract rather than new design, and phase 1 inherits a specified target. And build/release identity is the one genuinely new decision in this document, so it is the one that warrants its own ADR.
 
 Keep core ownership fields relational. Kind-specific details may remain validated JSON with versioned schemas; the renderer never gets to invent storage fields. Validate date/time semantics explicitly, preserve source timestamps and timezone uncertainty, and allow manual location correction without changing the original evidence.
 

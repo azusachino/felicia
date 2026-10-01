@@ -1,19 +1,9 @@
 # Database development
 
 SQLite is the **only v1 persistence provider**
-([ADR-0032](../adr/0032-sqlite-first-v1-postgres-follow-up.md)). It backs local
+([ADR 0005](../adr/0005-sqlite-storage-and-content-addressed-media.md)). It backs local
 development, single-user operation, the API, the admin GUI, the CLI compiler and
-every release gate.
-
-PostgreSQL/PostGIS remains in the tree behind the same repository contract, as
-frozen work deferred to a v1.1/v1.2 milestone. It is not a supported v1
-deployment target, it is not covered by any v1 gate, and a supported executable
-**refuses to start** when PostgreSQL is selected rather than running an
-unsupported provider. New v1 schema changes are not duplicated into it.
-
-Configuring a DSN for a provider you did not select is also a startup error, not
-a silent default -- the hole that once let `ops/compose.yaml` run on a throwaway
-in-container SQLite file while PostgreSQL and every migration sat unused.
+every release gate. The legacy PostgreSQL provider has been retired.
 
 ## Configuration precedence
 
@@ -56,19 +46,17 @@ missing required configuration.
 make admin               # authoring GUI, same database as make dev
 make dev                 # API with SQLite at .felicia/felicia.sqlite
 make dev-sqlite          # explicit SQLite API
-make dev-postgres        # [non-v1] PostgreSQL/PostGIS stack -- deferred, see ADR-0032
-make migrate             # PostgreSQL migrations only
 ```
 
 `make dev` and `make admin` share `.felicia/felicia.sqlite` on purpose: authoring
 in the GUI and then serving the public reader should read one journal, not two.
 `.felicia/` is gitignored, which the repo-root default it replaced was not — the
 authored journal is the one artifact
-[ADR-0025](../adr/0025-static-and-self-hosted-modes.md) keeps on the machine, so
+[ADR 0001](../adr/0001-personal-now-product-ready.md) keeps on the machine, so
 it must not sit on a committable path.
 
 As when the default filename last changed
-([ADR-0021](../adr/0021-runtime-configuration-and-database-modes.md)), user data
+([ADR 0005](../adr/0005-sqlite-storage-and-content-addressed-media.md)), user data
 is not renamed or copied automatically. An existing repo-root `felicia.db` is
 still opened by setting `DATABASE_PATH=felicia.db`, or move it once:
 

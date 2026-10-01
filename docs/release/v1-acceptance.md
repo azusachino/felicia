@@ -31,7 +31,7 @@ a concrete pass/fail check against the selected real journey, once chosen.
 2. From the index, the visitor opens the selected journey, sees its route on a dark
    MapLibre map with visit/memento markers, and the layout is usable on both desktop
    and mobile viewports.
-3. Clicking a memento animates it open (per [ADR-0031](../adr/0031-frontend-style-map-first-and-shared-element-open.md),
+3. Clicking a memento animates it open (per [ADR 0003](../adr/0003-single-flagship-reader-atlas.md),
    the committed shared-element morph once implemented) into its essay and photo
    gallery, and the visitor can return to the map/index afterward.
 4. The reader is verified in Japanese, English, and Chinese system UI; authored
@@ -51,7 +51,7 @@ a concrete pass/fail check against the selected real journey, once chosen.
    (enforced by the shared `publication` boundary and covered by the live/static
    parity check in `scripts/test_journey_workflow.py`).
 9. Re-running an import after authoring never overwrites already-authored fields
-   (field-scoped importer, [ADR-0022](../adr/0022-unified-intake-and-draft-pipeline.md)) —
+   (field-scoped importer, [ADR 0004](../adr/0004-authorship-protection-and-intake-seam.md)) —
    editing a field by hand and then re-importing the same source leaves the authored
    value intact.
 10. A stale-write (editing the same memento from two contexts) surfaces a revision
@@ -75,8 +75,8 @@ a concrete pass/fail check against the selected real journey, once chosen.
 ## Privacy invariants
 
 These are enforced properties, not aspirations — each one names where it's actually
-checked in code/tests, per [ADR-0025](../adr/0025-static-and-self-hosted-modes.md) and
-[ADR-0026](../adr/0026-local-first-media-and-blob-storage.md).
+checked in code/tests, per [ADR 0001](../adr/0001-personal-now-product-ready.md) and
+[ADR 0005](../adr/0005-sqlite-storage-and-content-addressed-media.md).
 
 1. **Drafts and originals never leave the machine.** The compiled static artifact
    contains only `published` content, EXIF-stripped public media derivatives, and

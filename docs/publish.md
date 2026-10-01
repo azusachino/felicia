@@ -9,8 +9,8 @@
 Only the compiled `dist/` — published mementos, EXIF-stripped public image
 derivatives, and rounded geometry. Your SQLite journal, drafts, and original
 photos stay local and are gitignored
-([ADR-0025](adr/0025-static-and-self-hosted-modes.md),
-[ADR-0026](adr/0026-local-first-media-and-blob-storage.md)).
+([ADR 0001](adr/0001-personal-now-product-ready.md),
+[ADR 0005](adr/0005-sqlite-storage-and-content-addressed-media.md)).
 
 There is **no hosted admin**. The authoring GUI runs from your own machine and
 is never deployed; `make admin` binds the local stack to `0.0.0.0` for access
@@ -68,7 +68,7 @@ make journey-local GPX=~/my-trip/route.gpx PHOTOS=~/my-trip/photos \
   SIDECAR=~/my-trip/photos.jsonl SLUG=my-trip TITLE="My trip"
 ```
 
-See [ADR-0035](adr/0035-local-journey-workspace-and-preview.md) for the
+See [ADR 0005](adr/0005-sqlite-storage-and-content-addressed-media.md) for the
 dry-run, provenance, draft-preview, and named-design boundaries.
 
 ### 1. Get the code and a site repo
