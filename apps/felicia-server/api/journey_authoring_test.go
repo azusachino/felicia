@@ -3,8 +3,11 @@ package api_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"slices"
 	"testing"
 	"time"
@@ -195,5 +198,73 @@ func TestDeleteJourneyRemovesJourney(t *testing.T) {
 	handler.ServeHTTP(w2, req2)
 	if w2.Code != http.StatusNotFound {
 		t.Fatalf("expected 404 on second delete, got %d (%s)", w2.Code, w2.Body)
+	}
+}
+
+func TestLocalJourneyImportClaimsAuthoredFieldsAndPreservesCustomRoute(t *testing.T) {
+	workspace := t.TempDir()
+	gpxContent := `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk><trkseg>
+    <trkpt lat="35.6000" lon="139.7000"><time>2026-08-01T08:00:00Z</time></trkpt>
+    <trkpt lat="35.6100" lon="139.7100"><time>2026-08-01T08:30:00Z</time></trkpt>
+  </trkseg></trk>
+</gpx>`
+	if err := os.WriteFile(filepath.Join(workspace, "route.gpx"), []byte(gpxContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(workspace, "photos"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(workspace, "photos.jsonl"), []byte("[]"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	repo := newMockRepository()
+	reg := loadKinds(t)
+	server := api.NewServer(repo, reg, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{SiteBrowseRoot: workspace})
+	handler := server.Handler()
+
+	id := uuid.New()
+	customRoute := orb.MultiLineString{{{130.0, 30.0}, {131.0, 31.0}}}
+	repo.journeys[id] = &domain.Journey{
+		ID:             id,
+		Slug:           "custom-trip",
+		Title:          "Custom Trip",
+		Place:          "Custom Place",
+		DateStart:      time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC),
+		DateEnd:        time.Date(2026, 8, 2, 0, 0, 0, 0, time.UTC),
+		GPSRoute:       customRoute,
+		AuthoredFields: []string{"gps_route"},
+	}
+
+	body := fmt.Sprintf(`{"workspace":%q,"journey_id":%q,"slug":"custom-trip","title":"Imported Title","place":"Imported Place"}`, workspace, id.String())
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/local-journeys/import", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", w.Code, w.Body)
+	}
+
+	stored := repo.journeys[id]
+	if stored == nil {
+		t.Fatal("journey not found")
+	}
+
+	// 1. Authored fields must be claimed and preserved (mask must not be reset to empty)
+	if !slices.Contains(stored.AuthoredFields, "gps_route") {
+		t.Errorf("authored mask dropped gps_route: %v", stored.AuthoredFields)
+	}
+	for _, field := range domain.JourneyAuthoredFields {
+		if !slices.Contains(stored.AuthoredFields, field) {
+			t.Errorf("authored mask missing %q: %v", field, stored.AuthoredFields)
+		}
+	}
+
+	// 2. Custom route must NOT have been overwritten by GPX import because gps_route was authored
+	if len(stored.GPSRoute) != len(customRoute) || stored.GPSRoute[0][0][0] != customRoute[0][0][0] {
+		t.Errorf("custom route was overwritten: got %v, want %v", stored.GPSRoute, customRoute)
 	}
 }
