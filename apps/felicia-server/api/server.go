@@ -627,6 +627,21 @@ func (s *Server) handleUpsertJourney(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.ID == uuid.Nil {
+		req.ID = uuid.Must(uuid.NewV7())
+	}
+	if req.JournalID == uuid.Nil {
+		sole, err := s.repo.GetSoleJournal(r.Context())
+		if err == nil && sole != nil {
+			req.JournalID = sole.ID
+		} else {
+			newJournal := &domain.Journal{ID: uuid.Must(uuid.NewV7()), CreatedAt: time.Now().UTC()}
+			if err := s.repo.CreateJournal(r.Context(), newJournal); err == nil {
+				req.JournalID = newJournal.ID
+			}
+		}
+	}
+
 	// The stored row supplies what an authoring write does not own: the GPS
 	// trace, which ingest keeps refreshing, and whatever the mask already
 	// claims. Absent means unchanged -- a save that carried no route used to
@@ -669,7 +684,7 @@ func (s *Server) handleUpsertJourney(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.cache.InvalidateAll(r.Context())
-	respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	respondJSON(w, http.StatusOK, map[string]string{"status": "ok", "id": journey.ID.String()})
 }
 
 func (s *Server) handleDeleteJourney(w http.ResponseWriter, r *http.Request) {

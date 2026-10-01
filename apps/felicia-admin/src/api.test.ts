@@ -5,6 +5,7 @@ import {
   compileSite,
   countMementosByState,
   countPendingStopCandidates,
+  createJourney,
   deleteJourney,
   deleteMemento,
   getBuildStatus,
@@ -148,6 +149,28 @@ describe("listJourneys / getJourney / listMementos / listStopCandidates", () => 
   test("getJourney falls back to a generic message when the body isn't JSON", async () => {
     globalThis.fetch = (() => Promise.resolve(new Response("boom", { status: 500 }))) as unknown as typeof fetch
     await expect(getJourney("j1")).rejects.toThrow("Felicia API returned 500")
+  })
+
+  test("createJourney POSTs and returns status and id", async () => {
+    let capturedUrl: string | undefined
+    let capturedBody: unknown
+    globalThis.fetch = ((url: string | URL, init?: RequestInit) => {
+      capturedUrl = url.toString()
+      capturedBody = JSON.parse(init?.body as string)
+      return Promise.resolve(Response.json({ status: "ok", id: "new-journey-id" }))
+    }) as unknown as typeof fetch
+
+    const payload = {
+      slug: "new-trip",
+      title: "New Trip",
+      place: "Hakone",
+      date_start: "2026-04-01",
+      date_end: "2026-04-03",
+    }
+    const result = await createJourney(payload)
+    expect(capturedUrl).toBe("http://localhost:8080/api/admin/journeys")
+    expect(capturedBody).toEqual(payload)
+    expect(result).toEqual({ status: "ok", id: "new-journey-id" })
   })
 
   test("listMementos maps a successful response", async () => {

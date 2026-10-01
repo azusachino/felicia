@@ -2,6 +2,7 @@
   import { onMount } from "svelte"
   import {
     compileSite,
+    createJourney,
     describeLoadFailure,
     formatJourneyDate,
     getBuildStatus,
@@ -21,6 +22,53 @@
   let loading = $state(true)
   let error = $state("")
   let showNewJourney = $state(false)
+  let creationMode = $state<"create" | "scan">("create")
+
+  // Create form state
+  let createTitle = $state("")
+  let createPlace = $state("")
+  let createSlug = $state("")
+  let createDateStart = $state("")
+  let createDateEnd = $state("")
+  let createCountry = $state("")
+  let createRegion = $state("")
+  let createState = $state<"idle" | "pending" | "error">("idle")
+  let createError = $state("")
+  let slugManuallyEdited = $state(false)
+
+  function onTitleInput() {
+    if (!slugManuallyEdited) {
+      createSlug = createTitle
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s-]/g, "")
+        .replace(/[\s_-]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+    }
+  }
+
+  async function submitCreateJourney() {
+    createState = "pending"
+    createError = ""
+    try {
+      const res = await createJourney({
+        title: createTitle.trim(),
+        place: createPlace.trim(),
+        slug: createSlug.trim(),
+        date_start: createDateStart,
+        date_end: createDateEnd,
+        country: createCountry.trim() || undefined,
+        region: createRegion.trim() || undefined,
+      })
+      showNewJourney = false
+      window.location.hash = journeyDetailHash(res.id)
+    } catch (cause) {
+      createError = actionErrorMessage(cause)
+      createState = "error"
+    }
+  }
+
+  // Scan form state
   let workspace = $state("")
   let slug = $state("")
   let title = $state("")
@@ -140,29 +188,60 @@
 
   {#if showNewJourney}
     <section class="new-journey" aria-labelledby="new-journey-title">
-      <p class="eyebrow">Local source intake</p>
-      <h2 id="new-journey-title">Scan a trip folder</h2>
-      <p class="hint">Choose a folder containing <code>route.gpx</code>, <code>photos/</code>, and optional <code>photos.jsonl</code>. Scan is read-only; import creates reviewable candidates only.</p>
-      <div class="new-journey-form">
-        <label>Folder path<input bind:value={workspace} placeholder="/Users/you/trips/izu-trip-2026-08-01" /></label>
-        <label>Slug<input bind:value={slug} placeholder="izu-trip-2026-08-01" /></label>
-        <label>Title<input bind:value={title} placeholder="Izu, 2026-08-01 to 2026-08-02" /></label>
-        <label>Place<input bind:value={place} placeholder="Izu" /></label>
+      <div class="new-journey-tabs">
+        <button type="button" class:active={creationMode === "create"} onclick={() => (creationMode = "create")}>Create blank trip</button>
+        <button type="button" class:active={creationMode === "scan"} onclick={() => (creationMode = "scan")}>Scan trip folder</button>
       </div>
-      <div class="new-journey-actions">
-        <button class="secondary" type="button" onclick={scanWorkspace} disabled={!workspace || scanState === "scanning"}>{scanState === "scanning" ? "Scanning…" : "Scan and preview"}</button>
-        {#if scanned}
-          <button class="primary" type="button" onclick={importWorkspace} disabled={!slug || !title || scanState === "importing"}>{scanState === "importing" ? "Importing…" : "Confirm import"}</button>
-        {/if}
-      </div>
-      {#if scanError}<p class="api-error" role="alert">{scanError}</p>{/if}
-      {#if scanned}
-        <div class="scan-result">
-          <strong>Dry-run result</strong>
-          <span>{scanned.plan.date_start ? formatJourneyDate(scanned.plan.date_start) : "?"} – {scanned.plan.date_end ? formatJourneyDate(scanned.plan.date_end) : "?"}</span>
-          <span>{scanned.plan.routes.length} routes · {scanned.plan.stops.length} stop candidates · {scanned.plan.mementos.length} memento candidates</span>
-          {#if scanned.plan.issues.length > 0}<span class="scan-warning">{scanned.plan.issues.length} review notes</span>{/if}
+
+      {#if creationMode === "create"}
+        <p class="eyebrow">Direct authoring</p>
+        <h2 id="new-journey-title">Create a new journey</h2>
+        <p class="hint">Start a fresh journey from scratch. You can author mementos, add photos, and attach GPS tracks later in the editor.</p>
+        <div class="new-journey-form">
+          <label>Title<input bind:value={createTitle} oninput={onTitleInput} placeholder="e.g. Hakone Weekend Walk" /></label>
+          <label>Place<input bind:value={createPlace} placeholder="e.g. Hakone, Kanagawa" /></label>
+          <label>Slug<input bind:value={createSlug} oninput={() => (slugManuallyEdited = true)} placeholder="e.g. hakone-weekend-walk-2026" /></label>
+          <label>Start date<input type="date" bind:value={createDateStart} /></label>
+          <label>End date<input type="date" bind:value={createDateEnd} /></label>
+          <label>Country (optional)<input bind:value={createCountry} placeholder="e.g. Japan" /></label>
+          <label>Region (optional)<input bind:value={createRegion} placeholder="e.g. Kanto" /></label>
         </div>
+        <div class="new-journey-actions">
+          <button class="primary" type="button" onclick={submitCreateJourney} disabled={!createTitle || !createPlace || !createSlug || !createDateStart || !createDateEnd || createState === "pending"}>
+            {createState === "pending" ? "Creating…" : "Create journey"}
+          </button>
+          <button class="secondary" type="button" onclick={() => (showNewJourney = false)}>Cancel</button>
+        </div>
+        {#if createError}<p class="api-error" role="alert">{createError}</p>{/if}
+      {:else}
+        <p class="eyebrow">Local source intake</p>
+        <h2 id="new-journey-title">Scan a trip folder</h2>
+        <p class="hint">
+          Choose a folder containing <code>route.gpx</code>, <code>photos/</code>, and optional <code>photos.jsonl</code>. Scan is read-only; import creates reviewable candidates only.
+        </p>
+        <div class="new-journey-form">
+          <label>Folder path<input bind:value={workspace} placeholder="/Users/you/trips/izu-trip-2026-08-01" /></label>
+          <label>Slug<input bind:value={slug} placeholder="izu-trip-2026-08-01" /></label>
+          <label>Title<input bind:value={title} placeholder="Izu, 2026-08-01 to 2026-08-02" /></label>
+          <label>Place<input bind:value={place} placeholder="Izu" /></label>
+        </div>
+        <div class="new-journey-actions">
+          <button class="secondary" type="button" onclick={scanWorkspace} disabled={!workspace || scanState === "scanning"}>{scanState === "scanning" ? "Scanning…" : "Scan and preview"}</button>
+          {#if scanned}
+            <button class="primary" type="button" onclick={importWorkspace} disabled={!slug || !title || scanState === "importing"}
+              >{scanState === "importing" ? "Importing…" : "Confirm import"}</button
+            >
+          {/if}
+        </div>
+        {#if scanError}<p class="api-error" role="alert">{scanError}</p>{/if}
+        {#if scanned}
+          <div class="scan-result">
+            <strong>Dry-run result</strong>
+            <span>{scanned.plan.date_start ? formatJourneyDate(scanned.plan.date_start) : "?"} – {scanned.plan.date_end ? formatJourneyDate(scanned.plan.date_end) : "?"}</span>
+            <span>{scanned.plan.routes.length} routes · {scanned.plan.stops.length} stop candidates · {scanned.plan.mementos.length} memento candidates</span>
+            {#if scanned.plan.issues.length > 0}<span class="scan-warning">{scanned.plan.issues.length} review notes</span>{/if}
+          </div>
+        {/if}
       {/if}
     </section>
   {/if}
@@ -245,6 +324,29 @@
     border: 1px solid #dfd4c1;
     border-radius: 12px;
     background: rgb(255 250 242 / 70%);
+  }
+  .new-journey-tabs {
+    display: inline-flex;
+    gap: 4px;
+    padding: 3px;
+    background: #ede6d8;
+    border-radius: 8px;
+    margin-bottom: 16px;
+  }
+  .new-journey-tabs button {
+    border: 0;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 13px;
+    color: #6b5137;
+    background: transparent;
+    cursor: pointer;
+  }
+  .new-journey-tabs button.active {
+    background: #fffaf2;
+    color: #342a1e;
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   }
   .new-journey h2 {
     margin: 2px 0 0;

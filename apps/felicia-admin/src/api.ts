@@ -389,6 +389,20 @@ export async function getJourney(journeyId: string): Promise<AdminJourney> {
   return getJSON<AdminJourney>(`/api/admin/journeys/${journeyId}`)
 }
 
+export interface CreateJourneyPayload {
+  slug: string
+  title: string
+  place: string
+  country?: string
+  region?: string
+  date_start: string
+  date_end: string
+}
+
+export async function createJourney(payload: CreateJourneyPayload): Promise<{ status: string; id: string }> {
+  return postJSON<{ status: string; id: string }>("/api/admin/journeys", payload)
+}
+
 export async function listMementos(journeyId: string): Promise<AdminMemento[]> {
   return asArray(await getJSON<AdminMemento[] | null>(`/api/admin/journeys/${journeyId}/mementos`))
 }
