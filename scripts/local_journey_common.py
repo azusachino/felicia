@@ -6,6 +6,8 @@ import hashlib
 import json
 import subprocess
 import uuid
+import xml.etree.ElementTree as ET
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -56,18 +58,37 @@ def candidate_key(stop: dict[str, Any]) -> str:
 
 
 def derive_journey_identity(gpx: Path) -> tuple[str, str]:
-    """Derive a journey id and slug from the GPX track's own bytes.
+    """Derive the default identity from normalized track points, not GPX bytes.
 
-    A trip that is re-run (same GPX) lands on the same id and slug every
-    time -- idempotent, no duplicate journey. A different trip (different
-    GPX content) lands on a different id and slug -- collision-free without
-    the author having to invent an identifier (see issue #72: the workspace,
-    journey id, journal-scoped slug, and every derived memento id used to be
-    hard-coded to one fixed UUID, so a second trip silently overwrote the
-    first). This is only the *default*; --journey/--slug/--workspace still
-    let an author name a trip explicitly.
+    Exporter metadata and XML formatting do not affect identity. Track
+    coordinates are quantized to ~11m and timestamps to minutes, so small
+    export noise is ignored while route shape and timing keep trips distinct.
     """
-    digest = hashlib.sha256(gpx.read_bytes()).hexdigest()
+    root = ET.parse(gpx).getroot()
+    segments: list[list[tuple[int, int, str]]] = []
+    for element in root.iter():
+        if element.tag.rsplit("}", 1)[-1] != "trkseg":
+            continue
+        segment = []
+        for point in element:
+            if point.tag.rsplit("}", 1)[-1] != "trkpt":
+                continue
+            lat, lon = float(point.attrib["lat"]), float(point.attrib["lon"])
+            timestamp = next(
+                (child.text for child in point if child.tag.rsplit("}", 1)[-1] == "time"),
+                "",
+            )
+            if timestamp:
+                parsed = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+                timestamp = parsed.astimezone(timezone.utc).replace(second=0, microsecond=0).isoformat()
+            segment.append((round(lat * 10_000), round(lon * 10_000), timestamp))
+        if segment:
+            segments.append(segment)
+    if not segments:
+        raise ValueError(f"{gpx} contains no GPX track points")
+
+    canonical = json.dumps(segments, separators=(",", ":"), ensure_ascii=True)
+    digest = hashlib.sha256(canonical.encode()).hexdigest()
     journey_id = str(uuid.uuid5(NAMESPACE, f"journey:{digest}"))
     slug = f"journey-{digest[:12]}"
     return journey_id, slug

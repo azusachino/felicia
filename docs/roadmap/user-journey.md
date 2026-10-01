@@ -87,6 +87,15 @@ projection:
 
 ## Status log
 
+- **2026-10-02 (local GPX re-export identity)** — `make journey-local` now derives
+  its default journey id and slug from canonicalized GPX track points rather
+  than the entire file bytes. Exporter metadata is ignored; coordinates are
+  quantized to 4 decimals and timestamps to UTC minute buckets, so re-exports
+  with the same normalized point sequence resolve to the same identity.
+  Distinct route shapes and timings remain distinct (#91). This deterministic
+  signature is not a global fuzzy database search: materially resampled tracks
+  may still need reconciliation. Stage status unchanged.
+
 - **2026-08-16 (four P0 data-integrity defects closed)** — Auditing the
   publish flow found that four of the invariants this document asserts were
   documented but never implemented, so every one of them was silently false

@@ -350,26 +350,59 @@ class LocalJourneyWorkflowTest(unittest.TestCase):
 
 
 class LocalJourneyIdentityTest(unittest.TestCase):
-    """Issue #72: identity must be derived, stable, collision-free, and any
-    real collision must fail loudly instead of silently overwriting."""
+    """Issue #91: normalized route identity recognizes GPX re-exports."""
+
+    @staticmethod
+    def write_gpx(path: Path, creator: str, points: str) -> None:
+        path.write_text(
+            f'<gpx creator="{creator}" xmlns="http://www.topografix.com/GPX/1/1">'
+            f"<trk><trkseg>{points}</trkseg></trk></gpx>"
+        )
 
     def test_derive_journey_identity_is_stable_for_the_same_bytes(self):
+        points = (
+            '<trkpt lat="35.60001" lon="139.70001"><time>2026-08-01T08:00:12Z</time></trkpt>'
+            '<trkpt lat="35.61001" lon="139.71001"><time>2026-08-01T08:30:45Z</time></trkpt>'
+        )
         with tempfile.TemporaryDirectory() as directory:
             gpx = Path(directory) / "route.gpx"
-            gpx.write_text("<gpx>same</gpx>")
+            self.write_gpx(gpx, "phone", points)
             first = derive_journey_identity(gpx)
             second = derive_journey_identity(gpx)
-            self.assertEqual(first, second, "re-hashing the same bytes must yield the same identity")
+            self.assertEqual(first, second, "same normalized track must yield the same identity")
+
+    def test_derive_journey_identity_ignores_exporter_metadata_and_small_noise(self):
+        points_a = (
+            '<trkpt lat="35.60001" lon="139.70001"><time>2026-08-01T08:00:12Z</time></trkpt>'
+            '<trkpt lat="35.61001" lon="139.71001"><time>2026-08-01T08:30:45Z</time></trkpt>'
+        )
+        points_b = (
+            '<trkpt lat="35.60002" lon="139.70002"><time>2026-08-01T09:00:48+01:00</time></trkpt>'
+            '<trkpt lat="35.61002" lon="139.71002"><time>2026-08-01T09:30:02+01:00</time></trkpt>'
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            gpx_a, gpx_b = Path(directory) / "a.gpx", Path(directory) / "b.gpx"
+            self.write_gpx(gpx_a, "Dawarich 1", points_a)
+            self.write_gpx(gpx_b, "phone exporter", points_b)
+            self.assertEqual(derive_journey_identity(gpx_a), derive_journey_identity(gpx_b))
 
     def test_default_workspace_uses_the_private_workspaces_root(self):
         self.assertEqual(Path(__file__).resolve().parents[1] / ".felicia" / "workspaces", DEFAULT_WORKSPACE_ROOT)
 
-    def test_derive_journey_identity_differs_for_different_bytes(self):
+    def test_derive_journey_identity_differs_for_distinct_trips(self):
+        points_a = (
+            '<trkpt lat="35.6000" lon="139.7000"><time>2026-08-01T08:00:00Z</time></trkpt>'
+            '<trkpt lat="35.6100" lon="139.7100"><time>2026-08-01T08:30:00Z</time></trkpt>'
+        )
+        points_b = (
+            '<trkpt lat="35.6030" lon="139.7040"><time>2026-08-01T08:00:00Z</time></trkpt>'
+            '<trkpt lat="35.6130" lon="139.7140"><time>2026-08-01T08:30:00Z</time></trkpt>'
+        )
         with tempfile.TemporaryDirectory() as directory:
             gpx_a = Path(directory) / "a.gpx"
             gpx_b = Path(directory) / "b.gpx"
-            gpx_a.write_text("<gpx>a</gpx>")
-            gpx_b.write_text("<gpx>b</gpx>")
+            self.write_gpx(gpx_a, "a", points_a)
+            self.write_gpx(gpx_b, "b", points_b)
             journey_a, slug_a = derive_journey_identity(gpx_a)
             journey_b, slug_b = derive_journey_identity(gpx_b)
             self.assertNotEqual(journey_a, journey_b)
@@ -380,7 +413,7 @@ class LocalJourneyIdentityTest(unittest.TestCase):
     def test_resolve_identity_fills_in_defaults_from_gpx_when_unset(self):
         with tempfile.TemporaryDirectory() as directory:
             gpx = Path(directory) / "kyoto.gpx"
-            gpx.write_text("<gpx>kyoto</gpx>")
+            self.write_gpx(gpx, "test", '<trkpt lat="35.6" lon="139.7"><time>2026-08-01T08:00:00Z</time></trkpt>')
             args = Namespace(gpx=gpx, journey=None, slug=None, title=None, workspace=None)
             resolve_identity(args)
             expected_journey, expected_slug = derive_journey_identity(gpx)
@@ -392,7 +425,7 @@ class LocalJourneyIdentityTest(unittest.TestCase):
     def test_resolve_identity_respects_explicit_overrides(self):
         with tempfile.TemporaryDirectory() as directory:
             gpx = Path(directory) / "kyoto.gpx"
-            gpx.write_text("<gpx>kyoto</gpx>")
+            self.write_gpx(gpx, "test", '<trkpt lat="35.6" lon="139.7"><time>2026-08-01T08:00:00Z</time></trkpt>')
             workspace = Path(directory) / "my-workspace"
             args = Namespace(
                 gpx=gpx,
