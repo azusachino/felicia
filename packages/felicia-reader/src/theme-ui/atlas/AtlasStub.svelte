@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Lang, Memento } from "@felicia/model"
   import { templateFor } from "./stubs"
-  import TicketStub from "@felicia/components/TicketStub.svelte"
+  import TicketStub from "../../components/TicketStub.svelte"
 
   let {
     memento,
