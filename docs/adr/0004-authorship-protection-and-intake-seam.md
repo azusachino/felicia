@@ -29,6 +29,10 @@ Early importer implementations risked clobbering manual edits whenever a trip wa
 3. **Atomic Concurrency & Revisions:**
    - Mementos and stop candidates use revision numbers (`expected_revision`) to prevent write conflicts.
    - Journey ingest is atomic, preventing race conditions between concurrent imports and manual edits.
+4. **Local journey import has mixed, explicit intent (Issue #134):**
+   - The import creates or authors the journey identity and user-entered metadata (`slug`, `title`, and `place`) through the authoring write, which claims the standard journey authoring fields and preserves the stored authored mask.
+   - The GPX-derived `source_ref` and `gps_route` are source data, not authoring fields. They are applied afterward through `ApplyIngestJourneyPatch`, so an existing authored route remains protected by the normal ingest rule.
+   - Keeping the existing route in the authoring save avoids clearing it before the ingest patch can enforce that rule.
 
 ## Consequences
 

@@ -92,9 +92,43 @@ func (s *Server) handleImportLocalJourney(w http.ResponseWriter, r *http.Request
 			route = append(route, source.Line)
 		}
 	}
+
+	var storedRoute orb.MultiLineString
+	var storedMask []string
+	switch stored, err := s.repo.GetJourney(r.Context(), request.JourneyID); {
+	case errors.Is(err, domain.ErrNotFound):
+		// A new journey owns no trace yet; GPX seeds it.
+	case err != nil:
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	default:
+		storedRoute, storedMask = stored.GPSRoute, stored.AuthoredFields
+	}
+
+	// The authoring write creates/updates only author-entered metadata. Keep the
+	// stored trace intact until the source-shaped GPX patch passes through the
+	// ingest port below.
 	sourceRef := "route.gpx"
-	journey := &domain.Journey{ID: request.JourneyID, JournalID: journalID, Slug: request.Slug, SourceRef: &sourceRef, Title: request.Title, Place: request.Place, DateStart: start, DateEnd: end, GPSRoute: route}
+	journey := &domain.Journey{
+		ID:             request.JourneyID,
+		JournalID:      journalID,
+		Slug:           request.Slug,
+		SourceRef:      &sourceRef,
+		Title:          request.Title,
+		Place:          request.Place,
+		DateStart:      start,
+		DateEnd:        end,
+		GPSRoute:       storedRoute,
+		AuthoredFields: domain.ClaimJourneyAuthorship(storedMask),
+	}
 	if err := s.journeyWriter.Save(r.Context(), journey); err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if err := s.repo.ApplyIngestJourneyPatch(r.Context(), &domain.IngestJourneyPatch{
+		Journey: &domain.Journey{ID: request.JourneyID, SourceRef: &sourceRef, GPSRoute: route},
+		Fields:  []string{"source_ref", "gps_route"},
+	}); err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
