@@ -203,7 +203,7 @@
         <div class="atlas-index-head">
           <div>
             <p class="index-kicker">FELICIA / ATLAS</p>
-            <h2 lang={lang}>{label.journeys}</h2>
+            <h2 {lang}>{label.journeys}</h2>
           </div>
           <span class="index-total">{orderedJourneys.length}</span>
         </div>
@@ -235,7 +235,7 @@
 
     <header class="hero">
       <p class="brand">F E L I C I A / ATLAS</p>
-      <h1 lang={lang}>{label.title}</h1>
+      <h1 {lang}>{label.title}</h1>
       <p>{label.subtitle}</p>
       <nav class="social" aria-label={label.links}>
         <a href="https://github.com" aria-label="GitHub">◉</a>
@@ -290,9 +290,7 @@
     height: 100%;
     overflow-y: auto;
     overscroll-behavior-y: contain;
-    background:
-      radial-gradient(circle at 72% 8%, rgba(127, 216, 203, 0.12), transparent 28%),
-      #07131f;
+    background: radial-gradient(circle at 72% 8%, rgba(127, 216, 203, 0.12), transparent 28%), #07131f;
     color: var(--ink);
     font-family: Outfit, ui-sans-serif, system-ui, sans-serif;
   }
@@ -303,9 +301,7 @@
     --orange: var(--accent, #d9674c);
     --route: #2c9e9a;
     --waypoints-bg: #eaf3f1;
-    background:
-      radial-gradient(circle at 72% 8%, rgba(44, 158, 154, 0.14), transparent 28%),
-      #eaf3f1;
+    background: radial-gradient(circle at 72% 8%, rgba(44, 158, 154, 0.14), transparent 28%), #eaf3f1;
   }
 
   .map-surface {
@@ -342,7 +338,9 @@
     border-radius: 0.5rem;
     color: var(--ink);
     background: color-mix(in srgb, var(--waypoints-bg) 68%, transparent);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 0.75rem 2rem rgba(0, 7, 14, 0.32);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      0 0.75rem 2rem rgba(0, 7, 14, 0.32);
     backdrop-filter: blur(20px) saturate(140%);
     -webkit-backdrop-filter: blur(20px) saturate(140%);
     font-size: 0.72rem;
@@ -381,7 +379,9 @@
     border-radius: 0.5rem;
     color: var(--ink);
     background: color-mix(in srgb, var(--waypoints-bg) 66%, transparent);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 1.5rem 4rem rgba(0, 7, 14, 0.38);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      0 1.5rem 4rem rgba(0, 7, 14, 0.38);
     backdrop-filter: blur(24px) saturate(145%);
     -webkit-backdrop-filter: blur(24px) saturate(145%);
   }
@@ -552,7 +552,9 @@
     border: 1px solid color-mix(in srgb, var(--route) 32%, transparent);
     border-radius: 0.7rem;
     background: color-mix(in srgb, var(--waypoints-bg) 64%, transparent);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 0.75rem 2rem rgba(0, 7, 14, 0.22);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      0 0.75rem 2rem rgba(0, 7, 14, 0.22);
     backdrop-filter: blur(16px) saturate(130%);
     -webkit-backdrop-filter: blur(16px) saturate(130%);
   }

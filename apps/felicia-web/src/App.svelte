@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { designLanguageFromId, resolveLocale, themeFromId, type ApiSiteSettings, type Lang, type Theme } from "@felicia/reader"
+  import { Reader, resolveLocale, themeFromId, type ApiSiteSettings, type Lang, type Theme } from "@felicia/reader"
   import { loadJourneys, loadSiteSettings } from "./api/source"
 
   let settings = $state<ApiSiteSettings | null>(null)
@@ -12,8 +12,6 @@
       })
   })
 
-  const active = $derived(designLanguageFromId(settings?.design))
-  const Active = $derived(active.component)
   const storedLocale = localStorage.getItem("felicia.locale")
   let lang: Lang = $state(resolveLocale(storedLocale ?? navigator.language))
   let theme: Theme = $state("dark")
@@ -30,6 +28,4 @@
   })
 </script>
 
-{#key active.id}
-  <Active bind:lang bind:theme {loadJourneys} />
-{/key}
+<Reader bind:lang bind:theme {loadJourneys} />
