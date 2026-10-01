@@ -89,7 +89,7 @@ them. Detail in [`archive/design.md`](archive/design.md).
   stub is the bonus), per mementos-not-tickets. Still open: _which_ `kind` forms ship first
   and how much design each earns.
 - **Ticket-open animation** — _resolved_ to **shared-element morph** (2026-08-04), per
-  [ADR-0031](adr/0031-frontend-style-map-first-and-shared-element-open.md), alongside
+  [ADR 0003](adr/0003-single-flagship-reader-atlas.md), alongside
   the map-first/fixed-entry layout decision. Still open: the frontend style spec
   (per-kind stub anatomy, motion timing) and building a reader that matches it.
 - **I18n shape** — how much of the first demo/spec is translated vs. just architected for

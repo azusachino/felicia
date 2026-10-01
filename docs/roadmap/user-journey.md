@@ -7,7 +7,7 @@
 
 ## The journey (hybrid: local GUI authoring + static Pages publication)
 
-Per [ADR-0025](../adr/0025-static-and-self-hosted-modes.md), the primary
+Per [ADR 0001](../adr/0001-personal-now-product-ready.md), the primary
 release workflow is server-mode authoring compiled into a static artifact.
 The selected shape:
 
@@ -23,10 +23,10 @@ Invariants that must hold at every step:
 
 - **Drafts and originals never leave the machine.** The static artifact contains
   only `published` content, EXIF-stripped public derivatives, and rounded
-  geometry ([ADR-0025](../adr/0025-static-and-self-hosted-modes.md),
-  [ADR-0026](../adr/0026-local-first-media-and-blob-storage.md)).
+  geometry ([ADR 0001](../adr/0001-personal-now-product-ready.md),
+  [ADR 0005](../adr/0005-sqlite-storage-and-content-addressed-media.md)).
 - **Re-import never overwrites authored fields** (field-scoped importer,
-  [ADR-0022](../adr/0022-unified-intake-and-draft-pipeline.md)).
+  [ADR 0004](../adr/0004-authorship-protection-and-intake-seam.md)).
 - **Only the public media boundary ships**: `public` visibility + JPEG/PNG/WebP
   in the v1 package; anything else fails packaging instead of leaking.
 - **Contract-first**: fields come from
@@ -44,10 +44,10 @@ Invariants that must hold at every step:
 | 5   | **Deployment**      | ✅ Done                 | Pages workflow builds and deploys the real compiled artifact (artifact-based `upload-pages-artifact` → `deploy-pages`, nothing committed); first remote run succeeded on `main` after PR #55 merged — epic [FELICIA-PAGES-01](pages-v1-epic.md)                                                                                                               |
 
 Deliberately deferred (not gaps): AI enrichment
-([ADR-0024](../adr/0024-optional-ai-enrichment.md)), R2/S3 object storage
-([ADR-0026](../adr/0026-local-first-media-and-blob-storage.md)), the
+([ADR 0001](../adr/0001-personal-now-product-ready.md)), R2/S3 object storage
+([ADR 0005](../adr/0005-sqlite-storage-and-content-addressed-media.md)), the
 self-hosted always-on server mode as a release target
-([ADR-0025](../adr/0025-static-and-self-hosted-modes.md)), multi-user/auth,
+([ADR 0001](../adr/0001-personal-now-product-ready.md)), multi-user/auth,
 and a translation sidecar.
 
 ## Delivery phases
@@ -102,7 +102,7 @@ projection:
   (#75). All four are now enforced rather than asserted: journeys gained the
   ingest/authoring split port the memento layer already had, so an import
   cannot reach the authoring write at compile time
-  ([ADR-0033](../adr/0033-authored-field-protection-and-the-journey-ingest-seam.md));
+  ([ADR 0004](../adr/0004-authorship-protection-and-intake-seam.md));
   the authored-field rule lives in one shared `apps/felicia-core/domain` helper and is
   asserted for both providers in `apps/felicia-providers/contract`, per the second
   development-flow constraint in `AGENTS.md`; coordinates round to 4 decimals

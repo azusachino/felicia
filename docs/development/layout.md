@@ -1,7 +1,7 @@
 # Repository layout
 
-This is the canonical current-tree guide. The decision record for the one-time
-cut-over is [ADR-0034](../adr/0034-application-and-shared-package-layout.md).
+This is the canonical current-tree guide. The decision record for the
+architecture is [ADR 0007](../adr/0007-application-and-package-layout.md).
 
 ```text
 apps/
@@ -9,17 +9,13 @@ apps/
   felicia-runtime/       # application use cases
   felicia-providers/     # persistence/source/blob adapters
   felicia-publication/   # public projections and static compiler
-  felicia-server/        # HTTP composition and migrations
+  felicia-server/        # HTTP composition and admin API
   felicia-cli/           # CLI and compiler composition
-  felicia-admin/         # private authoring/admin host
-  felicia-web/           # private reader host
+  felicia-admin/         # private authoring/admin studio
   felicia-public-site/   # public reader host
 packages/
   felicia-model/         # reader data, public contracts, locale/theme settings
-  felicia-runtime/       # renderer-neutral scene and action runtime
-  felicia-components/    # reusable reader components and component contracts
-  felicia-renderers/     # renderer ports and adapters
-  felicia-reader/        # reader facade, registry, concrete compositions, styles
+  felicia-reader/        # reader facade, Atlas theme, memento components, styles
 contracts/               # canonical cross-language contract source
 publication/journeys/    # sanitized production journey catalog
 ops/                     # deployment-owned files

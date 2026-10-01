@@ -22,8 +22,8 @@ journey and its per-stage status live in
 ## Tech Stack & Architecture
 
 - **Backend:** Go 1.27 — API, runtime, provider, and core modules in one `go.work` workspace.
-- **DB:** SQLite is the only v1 persistence contract ([ADR-0032](docs/adr/0032-sqlite-first-v1-postgres-follow-up.md)).
-  The PostgreSQL/PostGIS provider stays in the tree as frozen, explicitly non-v1 work, deferred to v1.1/v1.2.
+- **DB:** SQLite is the only v1 persistence contract ([ADR 0005](docs/adr/0005-sqlite-storage-and-content-addressed-media.md)).
+  The PostgreSQL/PostGIS provider has been retired.
 - **Object storage:** S3-compatible interface; **R2** backend (MinIO/B2 swappable by config).
 - **Frontend:** Vite + MapLibre GL SPAs — public site, private reader, and admin authoring app (bun workspace).
 - **Locales:** static system UI catalogs support Japanese, English, and Chinese. Authored content
@@ -41,22 +41,19 @@ where you author _essays / photo curation / animation_. The importer is **field-
 
 ```text
 apps/{felicia-core,felicia-runtime,felicia-providers,felicia-publication,
-felicia-server,felicia-cli,felicia-admin,felicia-web,felicia-public-site}/
-packages/{felicia-model,felicia-runtime,felicia-components,felicia-renderers,
-felicia-reader}/  contracts/  ops/  scripts/  docs/
+felicia-server,felicia-cli,felicia-admin,felicia-public-site}/
+packages/{felicia-model,felicia-reader}/  contracts/  ops/  scripts/  docs/
 ```
 
 The ownership map and dependency direction are defined in
 [`docs/development/layout.md`](docs/development/layout.md) and
-[ADR-0034](docs/adr/0034-application-and-shared-package-layout.md).
+[ADR 0007](docs/adr/0007-application-and-package-layout.md).
 `felicia-core` is the pure domain and port layer (no I/O). `felicia-runtime`
 owns use cases, `felicia-providers` owns persistence implementations,
 `felicia-publication` owns the public contract, and apps/felicia-server/CLI adapters compose
 runtime and publication ports. `felicia-reader` owns the public reader facade,
-named design registry, and concrete compositions. `felicia-model` owns reader
-data/public contracts; `felicia-runtime`, `felicia-components`, and
-`felicia-renderers` are reusable package boundaries. The admin, private reader,
-and public site remain separate hosts.
+Atlas theme, and memento components. `felicia-model` owns reader
+data/public contracts and i18n catalogs. The admin studio and public site remain separate hosts.
 The root Go module has been retired; all Go code is built through `go.work`.
 
 ## Build, Run & Test
@@ -108,25 +105,12 @@ Each one names the failure it prevents, so it can be retired if the failure
 stops being possible.
 
 1. **Provider intent is explicit, and mis-selection fails loudly.**
-   [ADR-0021](docs/adr/0021-runtime-configuration-and-database-modes.md) already
-   forbids implicit provider changes, but the config contract has a hole: a
-   PostgreSQL DSN with no `DATABASE_DRIVER` silently starts SQLite.
-   `ops/compose.yaml` does exactly this, so its API ran on a throwaway
-   in-container SQLite file while Postgres, PostGIS, and every migration sat
-   unused — with nothing in the logs to say so. Configuring a DSN for a provider
-   you did not select must be a startup error, never a silent default.
+   [ADR 0005](docs/adr/0005-sqlite-storage-and-content-addressed-media.md) defines
+   SQLite as the sole v1 engine; any unselected or misconfigured DSN fails loudly at startup.
 
-2. **A v1 schema change lands in SQLite only; touching both providers ships a parity check.**
-   [ADR-0017](docs/adr/0017-sqlite-first-storage.md) required conformance tests
-   "to prevent SQLite and PostgreSQL behavior from drifting", and
-   `apps/felicia-providers/contract` delivers that — for _behavior_. Schema shape is
-   unguarded, and the two DDLs have already diverged (`tb_journal` in
-   `apps/felicia-server/migrations/`, `tb_journals` in `apps/felicia-providers/sqlite/schema.sql`).
-   Under [ADR-0032](docs/adr/0032-sqlite-first-v1-postgres-follow-up.md) that drift
-   is now a frozen deferred-provider snapshot, not an active obligation: v1 schema
-   changes are not duplicated into PostgreSQL, and doing so by reflex re-opens the
-   parity surface the deferral closed. A change that does touch both — v1.1 re-entry
-   work — asserts shape parity in a test, not in review.
+2. **A v1 schema change lands in SQLite only (`schema.sql`).**
+   [ADR 0005](docs/adr/0005-sqlite-storage-and-content-addressed-media.md) establishes
+   SQLite as the single persistence engine; breaking changes are acceptable while unreleased.
 
 3. **Every user-facing surface has exactly one documented `make` target.**
    The admin GUI — the primary authoring surface — had no launcher, so the
@@ -141,14 +125,10 @@ stops being possible.
    packaging never publishes the admin port.
 
 5. **Superseding an ADR answers the costs the superseded one enumerated.**
-   [ADR-0008](docs/adr/0008-single-user-local-first-ssg.md) rejected a second
-   database engine and named the three costs it was avoiding: duplicate DDL
-   migrations, repository translation layers, and custom Go-memory spatial
-   logic. [ADR-0017](docs/adr/0017-sqlite-first-storage.md) reversed it five days
-   later on local-setup ergonomics without disputing those costs — and all three
-   arrived (a second DDL that has drifted, ~1.3k lines of second provider,
-   `SnapToRoute`/`GetDisplayRoute` reimplemented in Go). A superseding ADR states
-   how each named cost will be contained, or records that it is accepted.
+   [ADR 0001](docs/adr/0001-personal-now-product-ready.md) and
+   [ADR 0005](docs/adr/0005-sqlite-storage-and-content-addressed-media.md)
+   consolidated the architecture onto a single SQLite engine. Historical ADRs
+   are preserved in `docs/archive/adr/`.
 
 6. **Private authoring data never sits on a committable path.**
    The original journal is the artifact ADR-0025 says must not leave the

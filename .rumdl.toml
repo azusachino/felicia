@@ -7,7 +7,7 @@
 # `#68`, or an anchor like `#decision`. The autofix reads it as a heading and
 # splits the sentence into one. The reference stays; the rule goes.
 disable = ["MD013", "MD025", "MD018"]
-exclude = ["node_modules/**", ".venv/**", ".felicia/**", "site/**", "apps/*/dist/**"]
+exclude = ["node_modules/**", ".venv/**", ".felicia/**", "site/**", "apps/*/dist/**", "docs/archive/**"]
 
 [per-file-ignores]
 # The agent entry point is an include directive, not a prose document.

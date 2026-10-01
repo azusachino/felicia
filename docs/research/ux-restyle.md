@@ -79,7 +79,7 @@ fork below).
 ## Open forks — settled
 
 > **2026-08-04: both forks settled.** See
-> [ADR-0031](../adr/0031-frontend-style-map-first-and-shared-element-open.md) —
+> [ADR 0003](../adr/0003-single-flagship-reader-atlas.md) —
 > **map-first, fixed entry** + **shared-element morph**. Kept here for the rejected
 > alternatives' rationale; do not reopen this debate in implementation.
 

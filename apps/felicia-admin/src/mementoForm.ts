@@ -72,6 +72,7 @@ export interface LatLngInput {
 }
 
 export function parseLatLng(input: LatLngInput): [number, number] | null {
+  if (input.lat.trim() === "" || input.lng.trim() === "") return null
   const lat = Number(input.lat)
   const lng = Number(input.lng)
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
