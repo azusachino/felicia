@@ -1,6 +1,7 @@
 package intake
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -40,6 +41,32 @@ func TestBuildPlanDerivesStopAndMementoFromTimestampedRouteAndMedia(t *testing.T
 	if plan.Stops[0].Evidence[0].Kind != domain.EvidenceRoute {
 		t.Fatalf("derived evidence kind = %q, want route", plan.Stops[0].Evidence[0].Kind)
 	}
+}
+
+func TestBuildPlanReportsMediaThatMatchesNoStop(t *testing.T) {
+	at := time.Date(2026, 4, 2, 1, 0, 0, 0, time.UTC)
+	plan, err := BuildPlan(PlanInput{
+		JourneyID: uuid.New(),
+		Visits: []domain.Visit{{
+			Coord: orb.Point{135.5, 34.7}, Arrive: at, Depart: at.Add(time.Hour),
+		}},
+		Media: []domain.MediaAsset{
+			{ID: "attached", URI: "photos/attached.jpg", At: at.Add(10 * time.Minute), Coord: sourcePoint(135.5, 34.7)},
+			{ID: "unmatched", URI: "photos/moving.jpg", At: at.Add(2 * time.Hour), Coord: sourcePoint(135.6, 34.8)},
+		},
+	}, DefaultConfig())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, issue := range plan.Issues {
+		if issue.Code == "unmatched_media" {
+			if !strings.Contains(issue.Message, "1 media item") || !strings.Contains(issue.Message, "moving.jpg") {
+				t.Fatalf("unmatched media issue = %q", issue.Message)
+			}
+			return
+		}
+	}
+	t.Fatalf("issues = %#v, want unmatched_media", plan.Issues)
 }
 
 func TestBuildPlanUsesSuppliedVisitsAndDoesNotRequireTrackPoints(t *testing.T) {
