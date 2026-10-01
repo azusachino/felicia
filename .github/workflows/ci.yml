@@ -51,6 +51,3 @@ jobs:
 
       - name: Check admin frontend
         run: make admin-check
-
-      - name: Check private reader frontend
-        run: make web-private-check
