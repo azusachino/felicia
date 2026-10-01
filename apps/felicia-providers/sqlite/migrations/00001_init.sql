@@ -1,9 +1,11 @@
+-- Felicia SQLite Schema Migration 00001: v1 Baseline
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS tb_journals (
   id TEXT PRIMARY KEY,
   created_at TEXT NOT NULL
 );
+
 CREATE TABLE IF NOT EXISTS tb_journeys (
   id TEXT PRIMARY KEY,
   journal_id TEXT NOT NULL REFERENCES tb_journals(id) ON DELETE CASCADE,
@@ -20,6 +22,7 @@ CREATE TABLE IF NOT EXISTS tb_journeys (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+
 CREATE TABLE IF NOT EXISTS tb_mementos (
   id TEXT PRIMARY KEY,
   journey_id TEXT NOT NULL REFERENCES tb_journeys(id) ON DELETE CASCADE,
@@ -46,6 +49,7 @@ CREATE TABLE IF NOT EXISTS tb_mementos (
   updated_at TEXT NOT NULL,
   UNIQUE (source_system, source_external_id)
 );
+
 CREATE TABLE IF NOT EXISTS tb_memento_photos (
   id TEXT PRIMARY KEY,
   memento_id TEXT NOT NULL REFERENCES tb_mementos(id) ON DELETE CASCADE,
@@ -58,6 +62,7 @@ CREATE TABLE IF NOT EXISTS tb_memento_photos (
   created_at TEXT NOT NULL,
   UNIQUE (memento_id, content_hash)
 );
+
 CREATE TABLE IF NOT EXISTS tb_transit_legs (
   id TEXT PRIMARY KEY,
   journey_id TEXT NOT NULL REFERENCES tb_journeys(id) ON DELETE CASCADE,
@@ -67,6 +72,7 @@ CREATE TABLE IF NOT EXISTS tb_transit_legs (
   geom TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
+
 CREATE TABLE IF NOT EXISTS tb_import_runs (
   id TEXT PRIMARY KEY,
   source_system TEXT NOT NULL,
@@ -75,6 +81,7 @@ CREATE TABLE IF NOT EXISTS tb_import_runs (
   status TEXT NOT NULL,
   error_message TEXT
 );
+
 CREATE TABLE IF NOT EXISTS tb_source_observations (
   id TEXT PRIMARY KEY,
   run_id TEXT NOT NULL REFERENCES tb_import_runs(id) ON DELETE CASCADE,
@@ -89,6 +96,7 @@ CREATE TABLE IF NOT EXISTS tb_source_observations (
   created_at TEXT NOT NULL,
   UNIQUE (run_id, source_system, source_external_id)
 );
+
 CREATE INDEX IF NOT EXISTS source_observations_identity_idx
   ON tb_source_observations(source_system, source_external_id, observed_at DESC);
 
@@ -111,6 +119,7 @@ CREATE TABLE IF NOT EXISTS tb_stop_candidates (
   updated_at TEXT NOT NULL,
   UNIQUE (journey_id, derivation_version, candidate_key)
 );
+
 CREATE TABLE IF NOT EXISTS tb_stop_candidate_evidence (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   candidate_id TEXT NOT NULL REFERENCES tb_stop_candidates(id) ON DELETE CASCADE,
@@ -120,6 +129,7 @@ CREATE TABLE IF NOT EXISTS tb_stop_candidate_evidence (
   locator TEXT NOT NULL,
   UNIQUE (candidate_id, kind, source_system, source_external_id, locator)
 );
+
 CREATE INDEX IF NOT EXISTS stop_candidates_journey_idx
   ON tb_stop_candidates(journey_id, arrive);
 CREATE INDEX IF NOT EXISTS stop_candidate_evidence_candidate_idx
