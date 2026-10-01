@@ -392,12 +392,14 @@ func compileCommand(args []string, output io.Writer) error {
 	writer := &publication.FileArtifactWriter{Root: *out}
 	report, err := (publication.StaticCompiler{}).Compile(context.Background(), publication.Input{}, repo, publication.FileMediaSource{Root: *mediaRoot}, writer)
 	if err != nil {
+		_ = writer.Abort()
 		return err
 	}
 	// Reconcile a reused output directory: unpublished or deleted content
 	// from a previous compile must not stay publicly reachable.
 	removed, err := writer.Finalize()
 	if err != nil {
+		_ = writer.Abort()
 		return err
 	}
 	report.Removed = len(removed)

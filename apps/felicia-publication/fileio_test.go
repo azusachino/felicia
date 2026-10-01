@@ -116,3 +116,25 @@ func TestSafeJoinRejectsUnsafePaths(t *testing.T) {
 		t.Errorf("SafeJoin valid path = (%q, %v)", joined, err)
 	}
 }
+
+func TestAbortRemovesWrittenFilesOnFailure(t *testing.T) {
+	root := t.TempDir()
+	first := writeArtifacts(t, root, []string{"api/v1/journeys.json"}, []string{"media/old.jpg"})
+	if _, err := first.Finalize(); err != nil {
+		t.Fatalf("first finalize: %v", err)
+	}
+
+	failed := writeArtifacts(t, root, []string{"api/v1/journeys/new.json"}, []string{"media/new.jpg"})
+	mustExist(t, root, "api/v1/journeys/new.json")
+	mustExist(t, root, "media/new.jpg")
+
+	if err := failed.Abort(); err != nil {
+		t.Fatalf("abort: %v", err)
+	}
+
+	mustNotExist(t, root, "api/v1/journeys/new.json")
+	mustNotExist(t, root, "media/new.jpg")
+	mustExist(t, root, "api/v1/journeys.json")
+	mustExist(t, root, "media/old.jpg")
+	mustExist(t, root, ManifestPath)
+}

@@ -3,6 +3,7 @@ package publication
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -152,6 +153,29 @@ func (writer *FileArtifactWriter) Finalize() ([]string, error) {
 		return removed, fmt.Errorf("write manifest: %w", err)
 	}
 	return removed, nil
+}
+
+// Abort rolls back all files written during this compilation session.
+// Callers invoke Abort when Compile or Finalize returns an error, ensuring
+// that an interrupted or failed compile does not leave unindexed orphan files
+// in the output directory (Issue #85).
+func (writer *FileArtifactWriter) Abort() error {
+	var errs []error
+	for _, name := range writer.written {
+		destination, err := SafeJoin(writer.Root, name)
+		if err != nil {
+			continue
+		}
+		if err := os.Remove(destination); err != nil && !os.IsNotExist(err) {
+			errs = append(errs, err)
+		}
+		writer.pruneEmptyParents(destination)
+	}
+	writer.written = nil
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+	return nil
 }
 
 func (writer *FileArtifactWriter) readPreviousManifest() []string {

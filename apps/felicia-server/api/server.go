@@ -1297,6 +1297,7 @@ func (s *Server) handleCompile(w http.ResponseWriter, r *http.Request) {
 	media := publication.FileMediaSource{Root: s.mediaRoot}
 	report, err := (publication.StaticCompiler{}).Compile(r.Context(), publication.Input{}, s.repo, media, writer)
 	if err != nil {
+		_ = writer.Abort()
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -1305,6 +1306,7 @@ func (s *Server) handleCompile(w http.ResponseWriter, r *http.Request) {
 	// cleanup the CLI's `static compile` performs).
 	removed, err := writer.Finalize()
 	if err != nil {
+		_ = writer.Abort()
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
