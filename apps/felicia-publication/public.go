@@ -57,7 +57,7 @@ func NewStaticJourney(journey *domain.Journey) StaticJourney {
 		Region:         journey.Region,
 		DateStart:      journey.DateStart.Format("2006-01-02"),
 		DateEnd:        journey.DateEnd.Format("2006-01-02"),
-		GPSRoute:       geometry(journey.GPSRoute),
+		GPSRoute:       publicRouteGeometry(journey.GPSRoute),
 		AuthoredFields: journey.AuthoredFields,
 	}
 }

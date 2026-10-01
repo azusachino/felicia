@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/paulmach/orb"
+	"github.com/paulmach/orb/geo"
 
 	"github.com/azusachino/felicia/apps/felicia-core/domain"
 )
@@ -215,23 +216,18 @@ func (StaticCompiler) Compile(ctx context.Context, input Input, read ReadModel, 
 // static compiler's JSON tree and the live /api/v1 handlers (which project
 // through the same NewStaticJourney/NewStaticMemento — see
 // apps/felicia-server/api/server.go). 4 decimal places is ~11m of ground distance at the
-// equator. This is not a value chosen here: it is the precision already
-// documented for this exact purpose in docs/archive/spec-gaps.md ("D2.
-// Public coordinate rounding") and cross-referenced in
-// docs/research/backend-stack.md and docs/research/liuaaron-teardown.md, so
-// it is reused rather than picked independently.
-//
-// ADR-0025 requires the static artifact to never contain "unrounded private
-// geometry". Rounding where geometry is projected — the route (a journey's
-// passive GPS trace), every memento Geom (frequently derived from that same
-// trace at a stop's timestamp, see apps/felicia-runtime/importer), and the
-// index's representative dots in projection.go — makes the guarantee hold for
-// every importer that could have populated the stored geometry, not just the
-// one path a defect happened to skip. This comment previously called the
-// function below the sole such place; representativeCoord was not routed
-// through it, and the landing index published full-precision coordinates until
-// that was fixed. Any new projection of stored geometry belongs here too.
+// equator.
 const publicCoordDecimals = 4
+
+// routeTrimMeters is the ground distance trimmed from the beginning and end
+// of a passive GPS route before publication, so a track starting or stopping
+// at home does not publish the author's residence on the public map (Issue #90).
+const routeTrimMeters = 200.0
+
+// routeMinPoints is the minimum point count required before endpoint trimming
+// takes effect. Shorter lines (e.g. synthetic test fixtures or short walks)
+// are left untrimmed so they are not erased.
+const routeMinPoints = 5
 
 // roundCoord rounds a single coordinate ordinate (longitude or latitude) to
 // publicCoordDecimals, so no full-precision value survives the round trip
@@ -240,6 +236,66 @@ const publicCoordDecimals = 4
 func roundCoord(v float64) float64 {
 	const scale = 1e4 // 10^publicCoordDecimals
 	return math.Round(v*scale) / scale
+}
+
+// trimRouteLine trims routeTrimMeters (200m) from each end of a passive GPS
+// trace based on cumulative ground distance.
+func trimRouteLine(line orb.LineString) orb.LineString {
+	if len(line) < routeMinPoints {
+		return line
+	}
+	cumulative := make([]float64, len(line))
+	for i := 1; i < len(line); i++ {
+		cumulative[i] = cumulative[i-1] + geo.Distance(line[i-1], line[i])
+	}
+	total := cumulative[len(line)-1]
+	if total <= 2*routeTrimMeters {
+		return line
+	}
+
+	startIdx := 0
+	for i := 1; i < len(line); i++ {
+		if cumulative[i] >= routeTrimMeters {
+			startIdx = i
+			break
+		}
+	}
+
+	endIdx := len(line) - 1
+	for i := len(line) - 2; i >= 0; i-- {
+		if total-cumulative[i] >= routeTrimMeters {
+			endIdx = i
+			break
+		}
+	}
+
+	if startIdx >= endIdx {
+		return line
+	}
+
+	return line[startIdx : endIdx+1]
+}
+
+func publicRouteGeometry(value orb.MultiLineString) *GeoJSONGeometry {
+	if len(value) == 0 {
+		return nil
+	}
+	coordinates := make([][][]float64, 0, len(value))
+	for _, line := range value {
+		trimmed := trimRouteLine(line)
+		if len(trimmed) == 0 {
+			continue
+		}
+		points := make([][]float64, 0, len(trimmed))
+		for _, point := range trimmed {
+			points = append(points, []float64{roundCoord(point.X()), roundCoord(point.Y())})
+		}
+		coordinates = append(coordinates, points)
+	}
+	if len(coordinates) == 0 {
+		return nil
+	}
+	return &GeoJSONGeometry{Type: "MultiLineString", Coordinates: coordinates}
 }
 
 func geometry(value orb.Geometry) *GeoJSONGeometry {

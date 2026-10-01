@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/paulmach/orb"
+	"github.com/paulmach/orb/geo"
 
 	"github.com/azusachino/felicia/apps/felicia-core/domain"
 )
@@ -214,4 +215,61 @@ func bytesContainsFloat(raw []byte, f float64) bool {
 		return false
 	}
 	return strings.Contains(string(raw), string(full))
+}
+
+func TestPublicRoutePrivacyTrimming(t *testing.T) {
+	// Construct a route line of 11 points spanning ~1 km (each step ~100m).
+	// Starting at home point (139.7000, 35.6000) and ending at (139.7000, 35.6090).
+	var line orb.LineString
+	startLat := 35.6000
+	lng := 139.7000
+	for i := 0; i <= 10; i++ {
+		lat := startLat + float64(i)*0.0009
+		line = append(line, orb.Point{lng, lat})
+	}
+	totalDist := geo.Distance(line[0], line[len(line)-1])
+	if totalDist < 800 {
+		t.Fatalf("total distance too short: %f", totalDist)
+	}
+
+	journey := &domain.Journey{
+		ID:        uuid.New(),
+		JournalID: uuid.New(),
+		Slug:      "privacy-trip",
+		Title:     "Privacy Trip",
+		Place:     "Tokyo",
+		DateStart: time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC),
+		DateEnd:   time.Date(2026, 8, 2, 0, 0, 0, 0, time.UTC),
+		GPSRoute:  orb.MultiLineString{line},
+	}
+
+	projected := NewStaticJourney(journey)
+	if projected.GPSRoute == nil {
+		t.Fatal("GPSRoute = nil")
+	}
+	coords := projected.GPSRoute.Coordinates.([][][]float64)
+	if len(coords) != 1 {
+		t.Fatalf("expected 1 line, got %d", len(coords))
+	}
+
+	trimmedLine := coords[0]
+	// The first and last points must NOT be the original endpoints!
+	if trimmedLine[0][1] == roundCoord(startLat) {
+		t.Errorf("start point was not trimmed away from home: %f", trimmedLine[0][1])
+	}
+	endLat := line[len(line)-1].Y()
+	if trimmedLine[len(trimmedLine)-1][1] == roundCoord(endLat) {
+		t.Errorf("end point was not trimmed away from destination: %f", trimmedLine[len(trimmedLine)-1][1])
+	}
+
+	// Verify the trimmed start point is at least ~200m away from the original start
+	distFromOriginalStart := geo.Distance(line[0], orb.Point{trimmedLine[0][0], trimmedLine[0][1]})
+	if distFromOriginalStart < 180.0 {
+		t.Errorf("start point only trimmed %fm, want >= 200m", distFromOriginalStart)
+	}
+
+	distFromOriginalEnd := geo.Distance(line[len(line)-1], orb.Point{trimmedLine[len(trimmedLine)-1][0], trimmedLine[len(trimmedLine)-1][1]})
+	if distFromOriginalEnd < 180.0 {
+		t.Errorf("end point only trimmed %fm, want >= 200m", distFromOriginalEnd)
+	}
 }
