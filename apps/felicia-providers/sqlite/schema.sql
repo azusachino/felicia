@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS tb_journeys (
   date_end TEXT NOT NULL,
   gps_route TEXT NOT NULL DEFAULT '[]',
   authored_fields TEXT NOT NULL DEFAULT '[]',
+  revision INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

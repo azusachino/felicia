@@ -47,20 +47,22 @@ func DefaultSiteSettings(journalID uuid.UUID) SiteSettings {
 
 // Journey represents a travel trip.
 type Journey struct {
-	ID             uuid.UUID           `json:"id"`
-	JournalID      uuid.UUID           `json:"journal_id"`
-	Slug           string              `json:"slug"`
-	SourceRef      *string             `json:"source_ref,omitempty"`
-	Title          string              `json:"title"` // Canonical Japanese (ja)
-	Place          string              `json:"place"`
-	Country        *string             `json:"country,omitempty"`
-	Region         *string             `json:"region,omitempty"`
-	DateStart      time.Time           `json:"date_start"`
-	DateEnd        time.Time           `json:"date_end"`
-	GPSRoute       orb.MultiLineString `json:"gps_route,omitempty"`
-	AuthoredFields []string            `json:"authored_fields"`
-	CreatedAt      time.Time           `json:"created_at"`
-	UpdatedAt      time.Time           `json:"updated_at"`
+	ID               uuid.UUID           `json:"id"`
+	JournalID        uuid.UUID           `json:"journal_id"`
+	Slug             string              `json:"slug"`
+	SourceRef        *string             `json:"source_ref,omitempty"`
+	Title            string              `json:"title"` // Canonical Japanese (ja)
+	Place            string              `json:"place"`
+	Country          *string             `json:"country,omitempty"`
+	Region           *string             `json:"region,omitempty"`
+	DateStart        time.Time           `json:"date_start"`
+	DateEnd          time.Time           `json:"date_end"`
+	GPSRoute         orb.MultiLineString `json:"gps_route,omitempty"`
+	AuthoredFields   []string            `json:"authored_fields"`
+	Revision         int64               `json:"revision"`
+	ExpectedRevision *int64              `json:"expected_revision,omitempty"`
+	CreatedAt        time.Time           `json:"created_at"`
+	UpdatedAt        time.Time           `json:"updated_at"`
 }
 
 // Memento represents an object that anchors a memory.

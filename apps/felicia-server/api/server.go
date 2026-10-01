@@ -592,16 +592,17 @@ func (s *Server) handleGetJourney(w http.ResponseWriter, r *http.Request) {
 }
 
 type upsertJourneyRequest struct {
-	ID        uuid.UUID `json:"id"`
-	JournalID uuid.UUID `json:"journal_id"`
-	Slug      string    `json:"slug"`
-	SourceRef *string   `json:"source_ref,omitempty"`
-	Title     string    `json:"title"`
-	Place     string    `json:"place"`
-	Country   *string   `json:"country,omitempty"`
-	Region    *string   `json:"region,omitempty"`
-	DateStart string    `json:"date_start"`
-	DateEnd   string    `json:"date_end"`
+	ID               uuid.UUID `json:"id"`
+	JournalID        uuid.UUID `json:"journal_id"`
+	Slug             string    `json:"slug"`
+	SourceRef        *string   `json:"source_ref,omitempty"`
+	Title            string    `json:"title"`
+	Place            string    `json:"place"`
+	Country          *string   `json:"country,omitempty"`
+	Region           *string   `json:"region,omitempty"`
+	DateStart        string    `json:"date_start"`
+	DateEnd          string    `json:"date_end"`
+	ExpectedRevision *int64    `json:"expected_revision,omitempty"`
 	// No authored_fields and no gps_route: an authoring write derives its own
 	// mask (ADR-0039) and never touches the trace, so neither is something a
 	// client can express.
@@ -642,21 +643,26 @@ func (s *Server) handleUpsertJourney(w http.ResponseWriter, r *http.Request) {
 	}
 
 	journey := &domain.Journey{
-		ID:             req.ID,
-		JournalID:      req.JournalID,
-		Slug:           req.Slug,
-		SourceRef:      req.SourceRef,
-		Title:          req.Title,
-		Place:          req.Place,
-		Country:        req.Country,
-		Region:         req.Region,
-		DateStart:      start,
-		DateEnd:        end,
-		GPSRoute:       storedRoute,
-		AuthoredFields: domain.ClaimJourneyAuthorship(storedMask),
+		ID:               req.ID,
+		JournalID:        req.JournalID,
+		Slug:             req.Slug,
+		SourceRef:        req.SourceRef,
+		Title:            req.Title,
+		Place:            req.Place,
+		Country:          req.Country,
+		Region:           req.Region,
+		DateStart:        start,
+		DateEnd:          end,
+		GPSRoute:         storedRoute,
+		AuthoredFields:   domain.ClaimJourneyAuthorship(storedMask),
+		ExpectedRevision: req.ExpectedRevision,
 	}
 
 	if err := s.journeyWriter.Save(r.Context(), journey); err != nil {
+		if errors.Is(err, domain.ErrWriteConflict) {
+			respondError(w, http.StatusConflict, "journey was modified; reload before saving")
+			return
+		}
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
