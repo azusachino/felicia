@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 import sqlite3
 import tempfile
 import unittest
@@ -64,14 +65,20 @@ class MultiTripImportTest(unittest.TestCase):
         """One trip's track: only the fixture's *first* 20+ minute dwell (the
         fixture has two), so exactly one stop/memento is derived -- keeping
         this test's expectations independent of the fixture's own dwell
-        count. Each label produces different bytes (different track name),
-        so two labels hash to two different identities.
+        count. The second label offsets the route so distinct trips have
+        distinct track content, rather than differing only in GPX metadata.
         """
         original = (FIXTURE / "route.gpx").read_text(encoding="utf-8")
         marker = '<trkpt lat="35.025000" lon="135.788000"><time>2026-04-18T00:40:00Z</time></trkpt>'
         cutoff = original.index(marker) + len(marker)
         trimmed = original[:cutoff] + "\n    </trkseg>\n  </trk>\n</gpx>"
         trimmed = trimmed.replace("two-dwell walk", f"single-dwell walk ({label})")
+        if label == "b":
+            trimmed = re.sub(
+                r'(lat|lon)="([0-9]+\.[0-9]+)"',
+                lambda match: f'{match.group(1)}="{float(match.group(2)) + 0.1:.6f}"',
+                trimmed,
+            )
         path = self.root / f"route-{label}.gpx"
         path.write_text(trimmed, encoding="utf-8")
         return path

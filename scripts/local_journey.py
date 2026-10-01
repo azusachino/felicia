@@ -72,7 +72,7 @@ def workspace_media_path(photo_root: Path, asset: dict) -> str:
 
 def resolve_identity(args: argparse.Namespace) -> None:
     """Fill in journey/slug/title/workspace from the GPX when the author
-    didn't name the trip explicitly (issue #72). Mutates `args` in place so
+    didn't name the trip explicitly (issues #72 and #91). Mutates `args` in place so
     every later use of these fields -- including `interactive_author` and
     `preview` in the `run` command -- sees the same resolved values.
     """
@@ -239,11 +239,11 @@ def parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--journey",
         default=None,
-        help="defaults to a uuid5 derived from the GPX track's own bytes -- "
-        "stable across re-runs of the same trip, distinct across trips (issue #72)",
+        help="defaults to a uuid5 derived from normalized GPX track points -- "
+        "stable across GPX re-exports (issue #91)",
     )
     parser.add_argument("--journal", default="0190cbde-f300-7000-8000-000000000000")
-    parser.add_argument("--slug", default=None, help="defaults to a slug derived from the GPX content")
+    parser.add_argument("--slug", default=None, help="defaults to a slug derived from normalized GPX track points")
     parser.add_argument("--title", default=None, help="defaults to a title derived from the GPX filename")
     parser.add_argument("--gpx", type=Path)
     parser.add_argument("--photos", type=Path)
