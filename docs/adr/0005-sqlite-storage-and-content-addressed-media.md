@@ -21,7 +21,7 @@ This created persistent schema drift, required external database containers, and
 
 1. **Pure SQLite Persistence:**
    - SQLite is the only database engine for Felicia v1. The PostgreSQL provider, Goose tooling, and dual-provider compose setups are retired.
-   - Schema migrations are embedded directly into the Go binary and tracked via SQLite's built-in `PRAGMA user_version`.
+   - Felicia is an unreleased, single-author studio; breaking changes during active development are acceptable without migration framework overhead. The database initializes its clean v1 relational schema directly from embedded `schema.sql`.
    - WAL mode and foreign key enforcement are enabled by default.
 2. **Content-Addressed Media Storage:**
    - Original media files are stored under `.felicia/media/originals/<sha256>/<filename>`, uniquely identified by the SHA-256 hash of their bytes.

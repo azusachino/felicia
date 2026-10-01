@@ -1,4 +1,4 @@
--- Felicia SQLite Schema Migration 00001: v1 Baseline
+-- Felicia SQLite Schema (ADR 0005)
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS tb_journals (

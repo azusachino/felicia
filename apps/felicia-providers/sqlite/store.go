@@ -8,11 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
-	"path"
-	"sort"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -23,8 +18,8 @@ import (
 	"github.com/azusachino/felicia/apps/felicia-core/ports"
 )
 
-//go:embed migrations/*.sql
-var migrationsFS embed.FS
+//go:embed schema.sql
+var schemaFS embed.FS
 
 var _ domain.Repository = (*Repository)(nil)
 var _ domain.ObservationStore = (*Repository)(nil)
@@ -72,25 +67,20 @@ func Open(path string) (*Repository, error) {
 			return nil, fmt.Errorf("enable sqlite WAL: %w", err)
 		}
 	}
-	if err := applyMigrations(context.Background(), db); err != nil {
+	schema, err := schemaFS.ReadFile("schema.sql")
+	if err != nil {
 		_ = db.Close()
-		return nil, err
+		return nil, fmt.Errorf("read sqlite schema: %w", err)
+	}
+	if _, err := db.ExecContext(context.Background(), string(schema)); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("apply sqlite schema: %w", err)
 	}
 	return r, nil
 }
 
 // Close releases the database handle.
 func (r *Repository) Close() error { return r.conn.Close() }
-
-// UserVersion returns the current SQLite schema migration version.
-func (r *Repository) UserVersion(ctx context.Context) (int, error) {
-	var version int
-	row := r.db.QueryRowContext(ctx, "PRAGMA user_version")
-	if err := row.Scan(&version); err != nil {
-		return 0, err
-	}
-	return version, nil
-}
 
 // WithTransaction applies one callback against a transaction-scoped
 // repository. Package import uses this seam so a failed child write cannot
@@ -485,51 +475,4 @@ func makeJourney(id, journalID uuid.UUID, slug string, sourceRef sql.NullString,
 	createdAt, _ := time.Parse(time.RFC3339Nano, created)
 	updatedAt, _ := time.Parse(time.RFC3339Nano, updated)
 	return &domain.Journey{ID: id, JournalID: journalID, Slug: slug, SourceRef: readString(sourceRef), Title: title, Place: place, Country: readString(country), Region: readString(region), DateStart: dateStart, DateEnd: dateEnd, GPSRoute: gps, AuthoredFields: authored, CreatedAt: createdAt, UpdatedAt: updatedAt}, nil
-}
-
-func applyMigrations(ctx context.Context, db *sql.DB) error {
-	var currentVersion int
-	row := db.QueryRowContext(ctx, "PRAGMA user_version")
-	if err := row.Scan(&currentVersion); err != nil {
-		return fmt.Errorf("read sqlite user_version: %w", err)
-	}
-
-	entries, err := fs.ReadDir(migrationsFS, "migrations")
-	if err != nil {
-		return fmt.Errorf("read migrations directory: %w", err)
-	}
-
-	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].Name() < entries[j].Name()
-	})
-
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
-			continue
-		}
-		parts := strings.SplitN(entry.Name(), "_", 2)
-		if len(parts) < 2 {
-			continue
-		}
-		version, err := strconv.Atoi(parts[0])
-		if err != nil {
-			continue
-		}
-
-		if version > currentVersion {
-			content, err := fs.ReadFile(migrationsFS, path.Join("migrations", entry.Name()))
-			if err != nil {
-				return fmt.Errorf("read migration %s: %w", entry.Name(), err)
-			}
-
-			if _, err := db.ExecContext(ctx, string(content)); err != nil {
-				return fmt.Errorf("apply migration %s: %w", entry.Name(), err)
-			}
-
-			if _, err := db.ExecContext(ctx, fmt.Sprintf("PRAGMA user_version = %d", version)); err != nil {
-				return fmt.Errorf("update user_version to %d: %w", version, err)
-			}
-		}
-	}
-	return nil
 }

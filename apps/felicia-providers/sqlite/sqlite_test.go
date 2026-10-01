@@ -188,22 +188,6 @@ func TestListStopCandidatesWithEvidenceDoesNotDeadlock(t *testing.T) {
 	}
 }
 
-func TestRepositoryMigrationUserVersion(t *testing.T) {
-	repo, err := sqlite.Open(":memory:")
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
-	defer repo.Close()
-
-	version, err := repo.UserVersion(context.Background())
-	if err != nil {
-		t.Fatalf("get user_version: %v", err)
-	}
-	if version != 1 {
-		t.Fatalf("expected migration version 1, got %d", version)
-	}
-}
-
 func mustUUID(t *testing.T) uuid.UUID {
 	t.Helper()
 	id, err := uuid.NewV7()

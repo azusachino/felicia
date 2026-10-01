@@ -108,9 +108,9 @@ stops being possible.
    [ADR 0005](docs/adr/0005-sqlite-storage-and-content-addressed-media.md) defines
    SQLite as the sole v1 engine; any unselected or misconfigured DSN fails loudly at startup.
 
-2. **A v1 schema change lands in SQLite only, tracked via migrations.**
+2. **A v1 schema change lands in SQLite only (`schema.sql`).**
    [ADR 0005](docs/adr/0005-sqlite-storage-and-content-addressed-media.md) establishes
-   SQLite as the single persistence engine with embedded migrations and `PRAGMA user_version`.
+   SQLite as the single persistence engine; breaking changes are acceptable while unreleased.
 
 3. **Every user-facing surface has exactly one documented `make` target.**
    The admin GUI — the primary authoring surface — had no launcher, so the
