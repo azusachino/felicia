@@ -527,6 +527,10 @@ export async function deleteMemento(id: string): Promise<{ status: string }> {
   return deleteJSON<{ status: string }>(`/api/admin/mementos/${id}`)
 }
 
+export async function deleteJourney(id: string): Promise<{ status: string }> {
+  return deleteJSON<{ status: string }>(`/api/admin/journeys/${id}`)
+}
+
 // Site build & preview (ADMIN-02 M0).
 
 export interface AdminSiteInfo {

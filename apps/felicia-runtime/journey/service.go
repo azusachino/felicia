@@ -42,3 +42,11 @@ func (s *Service) Save(ctx context.Context, journey *domain.Journey) error {
 	}
 	return s.store.UpsertJourney(ctx, journey)
 }
+
+// Delete removes a journey by ID.
+func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
+	if id == uuid.Nil {
+		return errors.New("journey ID is required")
+	}
+	return s.store.DeleteJourney(ctx, id)
+}

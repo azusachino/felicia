@@ -169,6 +169,14 @@ func (m *mockRepository) UpsertJourney(_ context.Context, journey *domain.Journe
 	return nil
 }
 
+func (m *mockRepository) DeleteJourney(_ context.Context, id uuid.UUID) error {
+	if _, ok := m.journeys[id]; !ok {
+		return domain.ErrNotFound
+	}
+	delete(m.journeys, id)
+	return nil
+}
+
 func (m *mockRepository) ApplyIngestJourneyPatch(_ context.Context, patch *domain.IngestJourneyPatch) error {
 	current, ok := m.journeys[patch.Journey.ID]
 	if !ok {

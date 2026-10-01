@@ -476,6 +476,18 @@ func (r *Repository) UpsertJourney(ctx context.Context, journey *domain.Journey)
 	return err
 }
 
+// DeleteJourney removes a journey and all cascading child records (mementos, photos, legs, candidates).
+func (r *Repository) DeleteJourney(ctx context.Context, id uuid.UUID) error {
+	result, err := r.db.ExecContext(ctx, `DELETE FROM tb_journeys WHERE id = ?`, idString(id))
+	if err != nil {
+		return err
+	}
+	if affected, _ := result.RowsAffected(); affected == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
 type scanner interface{ Scan(...any) error }
 
 func makeJourney(id, journalID uuid.UUID, slug string, sourceRef sql.NullString, title, place string, country, region sql.NullString, start, end, route, fields string, revision int64, created, updated string) (*domain.Journey, error) {

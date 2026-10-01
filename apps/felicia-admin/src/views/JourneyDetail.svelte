@@ -1,6 +1,7 @@
 <script lang="ts">
   import {
     compileSite,
+    deleteJourney,
     describeLoadFailure,
     formatJourneyDate,
     getJourney,
@@ -195,6 +196,27 @@
       error = describeLoadFailure(cause, "this journey")
     } finally {
       loading = false
+    }
+  }
+
+  let deleteState = $state<{ status: "idle" | "confirming" | "pending" | "error"; message?: string }>({ status: "idle" })
+
+  function startDeleteJourney() {
+    deleteState = { status: "confirming" }
+  }
+
+  function cancelDeleteJourney() {
+    deleteState = { status: "idle" }
+  }
+
+  async function confirmDeleteJourney() {
+    if (!journey) return
+    deleteState = { status: "pending" }
+    try {
+      await deleteJourney(journey.id)
+      window.location.hash = listHash
+    } catch (cause) {
+      deleteState = { status: "error", message: cause instanceof Error ? cause.message : "Failed to delete journey" }
     }
   }
 
@@ -522,6 +544,27 @@
         {/if}
       </div>
       <p class="trigger-note">Compiles all published journeys and mementos — the same build the Site &amp; Deploy page runs, without leaving this page.</p>
+    </section>
+
+    <section class="danger-zone" aria-label="Delete journey">
+      <h2>Delete this journey</h2>
+      <p class="trigger-note">Permanent — this cannot be undone. The journey, its route, all mementos, photos, and stop candidates will be permanently removed.</p>
+      {#if deleteState.status === "confirming" || deleteState.status === "pending"}
+        <div class="confirm-strip" role="alert">
+          <p>Delete "{journey.title}" permanently? All memories and photos in this journey are removed too.</p>
+          <div class="confirm-actions">
+            <button type="button" class="danger" onclick={confirmDeleteJourney} disabled={deleteState.status === "pending"}>
+              {deleteState.status === "pending" ? "Deleting…" : "Yes, delete journey"}
+            </button>
+            <button type="button" class="secondary" onclick={cancelDeleteJourney} disabled={deleteState.status === "pending"}>Cancel</button>
+          </div>
+        </div>
+      {:else}
+        <button type="button" class="danger" onclick={startDeleteJourney}>Delete journey</button>
+      {/if}
+      {#if deleteState.status === "error"}
+        <p class="api-error" role="alert">{deleteState.message}</p>
+      {/if}
     </section>
   {/if}
 </section>
@@ -856,5 +899,61 @@
   .badge--merged {
     color: #5c5142;
     background: rgb(166 154 137 / 20%);
+  }
+  .danger-zone {
+    margin: 36px 0 8px;
+    padding: 18px 20px;
+    border: 1px solid rgb(168 74 52 / 35%);
+    border-radius: 10px;
+    background: rgb(168 74 52 / 6%);
+  }
+  .danger-zone h2 {
+    margin: 0 0 8px;
+    color: #a84a34;
+    font-family: Georgia, serif;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .danger-zone > .trigger-note {
+    color: #5c4f3d;
+  }
+  .danger-zone button {
+    border: 0;
+    border-radius: 7px;
+    padding: 9px 14px;
+    color: #fffaf2;
+    background: #9f522d;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .danger-zone button.secondary {
+    color: #6b5137;
+    background: transparent;
+    border: 1px solid #d8cdbb;
+  }
+  .danger-zone button.danger {
+    color: #fffaf2;
+    background: #a84a34;
+  }
+  .confirm-strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 12px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: #fffaf2;
+    border: 1px solid #dfd4c1;
+  }
+  .confirm-strip p {
+    margin: 0;
+    font-size: 13px;
+    color: #6b5137;
+  }
+  .confirm-actions {
+    display: flex;
+    gap: 8px;
   }
 </style>
