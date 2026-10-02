@@ -8,6 +8,7 @@ from pathlib import Path
 
 from scripts.local_journey import build_package, guard_workspace_identity, resolve_identity
 from scripts.local_journey_common import DEFAULT_WORKSPACE_ROOT, derive_journey_identity
+from scripts.local_journey_package import validate_public_image
 from scripts.validate_local_authoring import validate_document, validate_workspace, validate_workspace_root
 
 
@@ -222,6 +223,13 @@ class LocalJourneyWorkflowTest(unittest.TestCase):
                 self.assertEqual(f"media/{expected_digest}.jpg", photo_path)
                 self.assertEqual(b"ticket", archive.read(photo_path))
                 self.assertIn(b"sha256:", archive.read("manifest.yaml"))
+
+    def test_heic_package_error_includes_conversion_guidance(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "IMG_1234.HEIC"
+            source.write_bytes(b"heic placeholder")
+            with self.assertRaisesRegex(SystemExit, "HEIC/HEIF photos are not supported yet; convert IMG_1234.HEIC to JPEG"):
+                validate_public_image({"visibility": "public", "kind": "image"}, source)
 
     def test_package_rejects_private_and_unsupported_media(self):
         with tempfile.TemporaryDirectory() as directory:

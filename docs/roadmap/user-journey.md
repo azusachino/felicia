@@ -87,6 +87,11 @@ projection:
 
 ## Status log
 
+- **2026-10-02 (HEIC conversion guidance)** — HEIC/HEIF input now fails early
+  with a format-specific message and a macOS `sips` conversion command in the
+  local packager; publication reports the same actionable limitation if it
+  receives one directly (#80). Automatic decoding is not added yet.
+
 - **2026-10-02 (unmatched intake media surfaced)** — The intake plan now emits an
   `unmatched_media` warning with the count and filenames for media that matched
   no stop, and `make journey-local` prints that warning while retaining it in
