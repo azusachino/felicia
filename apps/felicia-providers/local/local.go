@@ -328,10 +328,13 @@ func routeFromPoints(points gpxSegment, sourceRef string) domain.Route {
 }
 
 func overlaps(routeFrom, routeTo, from, to time.Time) bool {
-	if routeFrom.IsZero() || routeTo.IsZero() || from.IsZero() || to.IsZero() {
-		return true
+	if !from.IsZero() && !routeTo.IsZero() && routeTo.Before(from) {
+		return false
 	}
-	return !routeTo.Before(from) && !routeFrom.After(to)
+	if !to.IsZero() && !routeFrom.IsZero() && routeFrom.After(to) {
+		return false
+	}
+	return true
 }
 
 func fileSHA256(file *os.File) (string, error) {

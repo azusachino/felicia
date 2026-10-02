@@ -6,191 +6,80 @@
 
 _A map-based travel journal. The map is the index; the mementos are the stories._
 
-Each **journey** is drawn on a world map as an orange route line. Along it sit **mementos** —
-the little things that anchor a memory (a train ticket, a temple stamp, a plush, a receipt) —
-each a collectible **stub** that animates open into an essay and a photo gallery.
-
-Modeled on [liuaaron.com](https://liuaaron.com/) · _"Aaron's Waypoints."_
-
-<br/>
-
-![status](https://img.shields.io/badge/status-implementation%20stage-e8a33d)
-![web](https://img.shields.io/badge/web-Svelte%205%20%C2%B7%20Vite%20%C2%B7%20MapLibre-ff3e00)
-![backend](<https://img.shields.io/badge/backend-Go%20%C2%B7%20SQLite%20(local)%20%7C%20Postgres-00add8>)
-![i18n](https://img.shields.io/badge/i18n-日本語%20%C2%B7%20EN%20%C2%B7%20中文-6b8e23)
+[![status](https://img.shields.io/badge/status-implementation%20stage-e8a33d)](docs/roadmap.md)
+[![backend](https://img.shields.io/badge/backend-Go%20%C2%B7%20SQLite-00add8)](docs/development/layout.md)
+[![web](https://img.shields.io/badge/web-Svelte%205%20%C2%B7%20Vite-ff3e00)](packages/felicia-reader/)
 [![license](https://img.shields.io/badge/license-AGPL--3.0-3da639)](LICENSE)
 
 </div>
 
 ---
 
-## ✨ The idea
+## What it is
 
-- 🗺️ **The map is the index.** One glance says _everywhere I've been_ and _which trip to revisit_. You navigate spatially, not through a feed.
-- 🎫 **Mementos, not tickets.** Physical stubs are dying, so a memento is `kind`-tagged (`goods · live · transit · stamp · receipt · souvenir`) and rendered from **data**, template-first — not scanned.
-- 📍 **A place is a _visit_.** Following how [Dawarich](https://github.com/Freika/dawarich) and Google Timeline model location (`points → tracks → visits @ places → trips`), a _place_ is a dwell-time **visit** derived from your track. Several memories can stack at one place.
-- ✍️ **Auto-ingest, then author.** A pipeline seeds _ingested_ fields (track, photos, stubs); you author the _essay, curation, and animation_. Re-import is field-scoped and **never clobbers** what you wrote.
-- 🌏 **Japanese-first**, with English and Chinese alongside.
+Felicia is a personal travel journal. Journeys appear on a map; visits give places to memories; mementos open into essays and photo galleries. Import creates private, reviewable data. You author and explicitly publish what belongs on the public site.
 
-## 🚪 Four front doors, one contract
+- **Local-first:** SQLite, originals, drafts, and authoring data stay on your machine.
+- **Authorship-safe:** re-import updates source-owned fields without overwriting authored fields.
+- **Private by default:** only published content and safe media derivatives enter a static site.
 
-The public reader renders the same `{ journey, visit, memento }` contract four ways. The
-production catalog under `publication/journeys/` is the publication source, and the
-on-screen switcher is deep-linkable.
+## Current shape
 
-|     | Front door                 | Route          | What it is                                                                                                                                               |
-| --- | -------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 🗺️  | **Atlas**                  | `/`            | map-and-story reader: journey rail → route map → memento detail. _The default._                                                                          |
-| 🗄️  | **Cabinet**                | `#cabinet`     | Memento-first shelf; a "greatest-hits" browse across every trip.                                                                                         |
-| 📓  | **Techo (手帳)**           | `#techo`       | Warm paper notebook: a journal-index spread, then the trip on a real map with mementos clustered by **place/visit** — open a place to read its memories. |
-| 🌐  | **Cartography (世界地図)** | `#cartography` | Full-map atlas index across every journey; mementos render as `kind`-designed collectible stubs (one stub design per registry kind).                     |
-
-> The production catalog contains sanitized, published journey inputs; the same shape is served by the working backend.
-
-## 🏗️ Architecture
-
-```mermaid
-flowchart LR
-  subgraph S["Sources (self-hosted)"]
-    daw["Dawarich\ntrack + visits"]
-    imm["Immich\nphotos"]
-  end
-  daw & imm --> imp["waypoints importer\n(Go)"]
-  imp --> db[("SQLite local / Postgres\njourneys · mementos")]
-  imp --> r2[["R2 / S3\nEXIF-stripped photos"]]
-  db --> api["HTTP API (Go, chi)\n/api/v1 · GeoJSON"]
-  r2 --> api
-  api --> web["Reader hosts\nCartography · Cabinet · Techo · Atlas (MapLibre)"]
+```text
+Dawarich / Google Timeline / GPX ─┐
+Immich / local photos ────────────┴─> intake plan -> review in felicia-admin
+                                           -> author -> publish -> static site
 ```
 
-- **Ingest** — `waypoints` pulls the **track + visits** from Dawarich and **photos** from Immich, joins on timestamp, EXIF-strips + resizes to R2, and seeds stub mementos. Raw GPS never lands in a public file.
-- **Serve** — the API layer depends on runtime ports; SQLite is the default local provider and PostgreSQL remains available for deployments that need it.
-- **Read** — any number of frontends project the same contract. Adding a design is one registry entry, not a schema change.
+Go modules under `apps/` own the domain, runtime, providers, server, CLI, and publication compiler. `packages/felicia-model` holds frontend contracts; `packages/felicia-reader` is the Atlas reader. The two web hosts are `apps/felicia-admin` and `apps/felicia-public-site`. SQLite is the only persistence implementation for v1.
 
-## 🧱 Built with
+Google Timeline imports named place visits from local `Timeline.json` and Takeout monthly JSON exports. It does not turn activity segments into invented route lines: supply GPX or Dawarich when route geometry is needed. Import is a local, read-only planning step until you explicitly apply/review it.
 
-Standing on a lot of excellent open source. 🙏
+## Quick start
 
-**🖥️ Web**
-[Svelte 5](https://github.com/sveltejs/svelte) ·
-[TypeScript](https://github.com/microsoft/TypeScript) ·
-[Vite](https://github.com/vitejs/vite) ·
-[MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js) ·
-[Tailwind CSS](https://github.com/tailwindlabs/tailwindcss) ·
-[Bun](https://github.com/oven-sh/bun) ·
-basemaps by [CARTO](https://carto.com/basemaps/) + [OpenStreetMap](https://www.openstreetmap.org/)
+Install the checked-in toolchain with `mise install`, then use the Make targets:
 
-**⚙️ Backend**
-[Go](https://go.dev) ·
-[chi](https://github.com/go-chi/chi) ·
-[pgx](https://github.com/jackc/pgx) ·
-[sqlc](https://github.com/sqlc-dev/sqlc) ·
-[orb](https://github.com/paulmach/orb) ·
-[goose](https://github.com/pressly/goose) ·
-[minio-go](https://github.com/minio/minio-go) ·
-[imaging](https://github.com/disintegration/imaging) ·
-[gpxgo](https://github.com/tkrajina/gpxgo) ·
-[tzf](https://github.com/ringsaturn/tzf) ·
-[koanf](https://github.com/knadh/koanf) ·
-[go-toml](https://github.com/pelletier/go-toml) ·
-[anthropic-sdk-go](https://github.com/anthropics/anthropic-sdk-go)
-
-**🗃️ Data & storage**
-[PostgreSQL](https://www.postgresql.org/) ·
-[PostGIS](https://github.com/postgis/postgis) ·
-Cloudflare [R2](https://developers.cloudflare.com/r2/) (S3-compatible; MinIO/B2 swappable)
-
-**📥 Ingestion sources (self-hosted)**
-[Dawarich](https://github.com/Freika/dawarich) (GPS track + visits) ·
-[Immich](https://github.com/immich-app/immich) (photos)
-
-**🧰 Tooling**
-[mise](https://mise.jdx.dev/) ·
-[golangci-lint](https://github.com/golangci/golangci-lint) ·
-[Docker Compose](https://docs.docker.com/compose/) ·
-[Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) ·
-[MkDocs Material](https://github.com/squidfunk/mkdocs-material) ·
-[uv](https://github.com/astral-sh/uv)
-
-## 🚀 Quick start
-
-The public reader runs on the production catalog — no database or keys are needed for a local reader preview.
-
-```bash
-make web-dev          # Vite dev server → http://localhost:5173
+```sh
+make help
+make admin       # authoring stack; see network-binding note below
+make web-dev     # public reader
+make check
+make validate
 ```
 
-Then use the switcher at the bottom (`地図 / コレクション / 手帳 / 世界地図`), or jump straight in:
-`/` (Atlas) · `#cabinet` · `#techo` · `#cartography`. Toggle language (日本語 / EN / 中文) and light/dark in each design's header.
+Plan intake from a Google Timeline export without a GPX track:
 
-```bash
-make web-check        # svelte-check + eslint
-make check            # Go workspace checks + uv feature-contract tests
+```sh
+make cli-build
+./bin/felicia-cli journey plan \
+  --journey <journey-uuid> \
+  --timeline /path/to/Timeline.json \
+  --format json > plan.json
 ```
 
-> The complete toolchain comes from **mise** (`mise install`). Everything routes through `make <target>`.
+Add `--gpx /path/to/route.gpx` for route geometry and `--photos /path/to/photos` (optionally `--sidecar`) for local media. Use an existing journey UUID. Planning only reads the export; it does not write to the database. Apply the reviewed plan to that journey with `./bin/felicia-cli journey apply --db .felicia/felicia.sqlite plan.json`, then review candidates in the admin studio. The local journey workflow explains the surrounding authoring steps.
 
-## 🌍 Publish your own site
+`make admin` binds the authoring stack to `0.0.0.0` for tailnet access; the admin API has no authentication. Use only on a trusted host/network, or set `FELICIA_HOST=127.0.0.1` for host-only access.
 
-Your journal is authored locally and only the compiled site is published — there is no hosted
-admin, and drafts, originals, and the SQLite journal never leave your machine.
+## Build and publish
 
-```bash
-make admin                              # authoring GUI on 127.0.0.1 — import, curate, write, publish
-BASE_PATH=/my-travels/ make site-build  # deployable site → apps/felicia-public-site/dist
+The admin studio runs locally. The public site is compiled from published records; deploying that static output is separate from authoring:
+
+```sh
+make admin
+make site-build
 ```
 
-Then push that directory to the repository serving your GitHub Pages site. Full walkthrough —
-both the local-authoring route and the CI route, base-path table, and troubleshooting:
-**[`docs/publish.md`](docs/publish.md)**.
+Follow [docs/publish.md](docs/publish.md) for the full local and CI publication flow and privacy boundary.
 
-## 🧭 Data model in one breath
+## Status and documentation
 
-`journal → journeys → mementos`, with a derived **visit/place** layer and canonical media:
+Felicia is in the implementation stage. The selected end-to-end flow and current stage status are in [the user journey](docs/roadmap/user-journey.md); milestones and remaining work are in [the roadmap](docs/roadmap.md). Read [the project instructions](AGENTS.md) before contributing. Architecture records live in [`docs/adr/`](docs/adr/), and the broader design/research trail in [`docs/research/`](docs/research/).
 
-- **`memento`** — one uniform table, `kind`-tagged, kind-specifics in a `kind_data` jsonb. New kinds = a new enum value, not a new table.
-- **`place = visit`** — a derived dwell-time cluster (consumed from Dawarich, or clustered from a GPX fallback); mementos anchor to the nearest visit.
-- **Provenance is load-bearing** — every field is `INGESTED / OVERRIDABLE / AUTHORED`; the importer is field-scoped and re-import is always safe.
-- **Media** — images, videos, audio, documents, links, and provider-approved embeds are canonical asset kinds attached to memories.
-- **Locales** — system-owned UI labels use static `ja`/`en`/`zh` catalogs; user content is rendered exactly as authored.
+## Acknowledgements
 
-Full detail: [`docs/research/data-model.md`](docs/research/data-model.md) · [`docs/research/backend-stack.md`](docs/research/backend-stack.md).
+[liuaaron.com](https://liuaaron.com/) inspired the project. Felicia can connect to [Dawarich](https://github.com/Freika/dawarich) and [Immich](https://github.com/immich-app/immich); map rendering uses [MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js) and [OpenStreetMap](https://www.openstreetmap.org/).
 
-## 🛣️ Status & roadmap
+## License
 
-**Implementation stage** (research trail continues). The backend pipeline,
-live API, CLI, and static compiler are built and tested; GitHub Pages
-publication runs the real SQLite pipeline end to end (PR #55); the admin
-authoring GUI MVP is complete (epic
-[FELICIA-ADMIN-01](docs/roadmap/admin-gui-v1-epic.md)), including content-addressed
-photo upload, caption/order curation, private previews, and EXIF-safe public
-derivatives. Auditing that flow against a real trip found four P0 data-integrity
-defects — a second trip overwrote the first, re-import destroyed authored
-fields, the artifact shipped an unrounded GPS trace, and media keys collided on
-basename — all now fixed and covered by tests. Remaining gaps: deferred AI
-enrichment, remote R2/S3 storage, and the dynamic form engine.
-
-Single source of truth for delivery status:
-[`docs/roadmap.md`](docs/roadmap.md); target end-to-end journey:
-[`docs/roadmap/user-journey.md`](docs/roadmap/user-journey.md).
-
-## 📚 Docs
-
-- 🧭 North star — [`docs/direction.md`](docs/direction.md)
-- 🔬 Research trail — [`docs/research/`](docs/research/)
-- 🗄️ Parked drafts — [`docs/archive/`](docs/archive/)
-
-Preview locally: `make docs` (uv-backed MkDocs Material).
-
-## 🙏 Acknowledgements
-
-- [liuaaron.com](https://liuaaron.com/) — the "Aaron's Waypoints" reference that started it all.
-- [Dawarich](https://github.com/Freika/dawarich) & [Immich](https://github.com/immich-app/immich) — the self-hosted sources felicia is built to sit on.
-- [CARTO](https://carto.com/) & [OpenStreetMap](https://www.openstreetmap.org/) contributors — the basemaps.
-
-## 📄 License
-
-[GNU AGPL-3.0](LICENSE) — network copyleft, matching the self-hosted sources felicia builds on
-([Dawarich](https://github.com/Freika/dawarich) and [Immich](https://github.com/immich-app/immich)
-are both AGPL-3.0). If you run a modified felicia as a network service, you must offer your users
-its source.
+[GNU AGPL-3.0](LICENSE).

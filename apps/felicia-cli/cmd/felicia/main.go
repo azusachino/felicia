@@ -76,6 +76,7 @@ func journeyPlanCommand(args []string, output io.Writer) error {
 	flags.SetOutput(io.Discard)
 	journeyID := flags.String("journey", "", "journey UUID")
 	gpxPath := flags.String("gpx", "", "local GPX path")
+	timelinePath := flags.String("timeline", "", "Google Timeline JSON export")
 	photosPath := flags.String("photos", "", "local media directory")
 	sidecarPath := flags.String("sidecar", "", "local photo JSONL sidecar")
 	from := flags.String("from", "", "RFC3339 range start")
@@ -88,8 +89,8 @@ func journeyPlanCommand(args []string, output io.Writer) error {
 	if err != nil {
 		return errors.New("--journey must be a valid UUID")
 	}
-	if *gpxPath == "" {
-		return errors.New("--gpx is required")
+	if *gpxPath == "" && *timelinePath == "" {
+		return errors.New("--gpx or --timeline is required")
 	}
 	start, err := parseOptionalTime(*from)
 	if err != nil {
@@ -103,11 +104,19 @@ func journeyPlanCommand(args []string, output io.Writer) error {
 	if *photosPath != "" {
 		media = local.NewPhotoSourceWithSidecar(*photosPath, *sidecarPath)
 	}
-	fingerprint, err := fileFingerprint(*gpxPath)
+	var routes domain.RouteSource
+	if *gpxPath != "" {
+		routes = local.NewGPXSource(*gpxPath)
+	}
+	var visits domain.VisitSource
+	if *timelinePath != "" {
+		visits = local.NewTimelineSource(*timelinePath)
+	}
+	fingerprint, err := sourceFingerprint(*gpxPath, *timelinePath)
 	if err != nil {
 		return err
 	}
-	plan, err := intake.NewService(nil, nil).Plan(context.Background(), intake.PlanRequest{JourneyID: id, From: start, To: end, SourceFingerprint: fingerprint, Sources: intake.SourceSet{Routes: local.NewGPXSource(*gpxPath), Media: media}})
+	plan, err := intake.NewService(nil, nil).Plan(context.Background(), intake.PlanRequest{JourneyID: id, From: start, To: end, SourceFingerprint: fingerprint, Sources: intake.SourceSet{Routes: routes, Visits: visits, Media: media}})
 	if err != nil {
 		return err
 	}
@@ -223,15 +232,27 @@ func parseOptionalTime(value string) (time.Time, error) {
 	return time.Parse(time.RFC3339, value)
 }
 
-func fileFingerprint(filename string) (string, error) {
-	file, err := os.Open(filename)
-	if err != nil {
-		return "", fmt.Errorf("open source: %w", err)
-	}
-	defer func() { _ = file.Close() }()
+func sourceFingerprint(filenames ...string) (string, error) {
 	hash := sha256.New()
-	if _, err := io.Copy(hash, file); err != nil {
-		return "", err
+	for _, filename := range filenames {
+		if filename == "" {
+			continue
+		}
+		file, err := os.Open(filename)
+		if err != nil {
+			return "", fmt.Errorf("open source %s: %w", filename, err)
+		}
+		if _, err := io.WriteString(hash, filename+"\x00"); err != nil {
+			_ = file.Close()
+			return "", err
+		}
+		if _, err := io.Copy(hash, file); err != nil {
+			_ = file.Close()
+			return "", err
+		}
+		if err := file.Close(); err != nil {
+			return "", err
+		}
 	}
 	return "sha256:" + fmt.Sprintf("%x", hash.Sum(nil)), nil
 }

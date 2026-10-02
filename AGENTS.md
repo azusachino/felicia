@@ -30,9 +30,10 @@ journey and its per-stage status live in
 - **Locales:** static system UI catalogs support Japanese, English, and Chinese. Authored content
   has no translation sidecar and is rendered exactly as entered.
 - **Host:** self-hosted container deployment; Cloudflare Tunnel is an optional ingress.
-- **Ingestion sources (self-hosted):** Immich (photos/ticket stubs, via API) + Dawarich
-  (passive iPhone GPS track, via API); joined on timestamp. Local GPX/photo intake creates
-  reviewable candidates; automatic vision-based metadata extraction is not implemented.
+- **Ingestion sources:** Immich photos and Dawarich routes/visits via API; local GPX/photo intake;
+  and Google Timeline exports as named local visit input. The current Timeline adapter does not
+  import activity geometry. Inputs create reviewable candidates; automatic vision-based metadata extraction
+  is not implemented.
 
 **Authoring model (A+E):** an auto-ingest pipeline seeds _ingested_ fields; an admin UI is
 where you author _essays / photo curation / animation_. The importer is **field-scoped** and
