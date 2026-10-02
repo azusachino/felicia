@@ -24,14 +24,15 @@ journey and its per-stage status live in
 - **Backend:** Go 1.27 — API, runtime, provider, and core modules in one `go.work` workspace.
 - **DB:** SQLite is the only v1 persistence contract ([ADR 0005](docs/adr/0005-sqlite-storage-and-content-addressed-media.md)).
   The PostgreSQL/PostGIS provider has been retired.
-- **Object storage:** S3-compatible interface; **R2** backend (MinIO/B2 swappable by config).
-- **Frontend:** Vite + MapLibre GL SPAs — public site, private reader, and admin authoring app (bun workspace).
+- **Media storage:** provider-neutral `BlobStore` with private, content-addressed local originals;
+  publication emits resized, metadata-stripped derivatives ([ADR 0005](docs/adr/0005-sqlite-storage-and-content-addressed-media.md)).
+- **Frontend:** Vite + Svelte apps for the Atlas public reader and Admin authoring (Bun workspace).
 - **Locales:** static system UI catalogs support Japanese, English, and Chinese. Authored content
   has no translation sidecar and is rendered exactly as entered.
 - **Host:** self-hosted container deployment; Cloudflare Tunnel is an optional ingress.
 - **Ingestion sources (self-hosted):** Immich (photos/ticket stubs, via API) + Dawarich
-  (passive iPhone GPS track, via API); joined on timestamp. Vision-LLM (Claude) pre-fills
-  ticket metadata for confirmation.
+  (passive iPhone GPS track, via API); joined on timestamp. Local GPX/photo intake creates
+  reviewable candidates; automatic vision-based metadata extraction is not implemented.
 
 **Authoring model (A+E):** an auto-ingest pipeline seeds _ingested_ fields; an admin UI is
 where you author _essays / photo curation / animation_. The importer is **field-scoped** and
@@ -58,20 +59,19 @@ The root Go module has been retired; all Go code is built through `go.work`.
 
 ## Build, Run & Test
 
-All daily operations go through `make <target>`. **Tools:** Go, Bun, uv, Prettier,
-golangci-lint, goose, and sqlc come from the checked-in **mise** configuration. PostgreSQL
-18 + PostGIS remain disposable container infrastructure.
+All daily operations go through `make <target>`; use `make help` for the current target list.
+Go, Bun, uv, Prettier, and golangci-lint are managed through the checked-in tooling configuration.
+SQLite uses a single `apps/felicia-providers/sqlite/schema.sql`, without a migration framework.
 
 | Target          | Does                                                                             |
 | --------------- | -------------------------------------------------------------------------------- |
-| `make fmt`      | format Go                                                                        |
+| `make fmt`      | format Go, frontend code, and Markdown                                            |
 | `make vet`      | `go vet ./...`                                                                   |
 | `make lint`     | `golangci-lint run` (mise)                                                       |
 | `make test`     | `go test -race -cover ./...`                                                     |
-| `make check`    | fmt + vet + lint + test + feature contracts — **before commit**                  |
+| `make check`    | formatting checks + vet + lint + tests + feature contracts — **before commit**  |
 | `make build`    | build all binaries                                                               |
-| `make validate` | check + build + public/admin/private frontend checks — **before PR**             |
-| `make migrate`  | `goose up` (needs `DATABASE_DSN`)                                                |
+| `make validate` | check + build + public/Admin frontend checks — **before PR**                     |
 | `make admin`    | local admin GUI: authoring API + felicia-admin on `0.0.0.0` for Tailscale access |
 
 ## Coding Conventions

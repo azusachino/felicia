@@ -7,6 +7,7 @@ import json
 import os
 from html.parser import HTMLParser
 from pathlib import Path
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -19,7 +20,7 @@ class AssetParser(HTMLParser):
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         values = dict(attrs)
         url = values.get("src") if tag == "script" else values.get("href") if tag == "link" else None
-        if url and (tag == "script" or values.get("rel") in {"stylesheet", "modulepreload"}):
+        if url and not urlsplit(url).netloc and (tag == "script" or values.get("rel") in {"stylesheet", "modulepreload"}):
             self.assets.append(url)
 
 
