@@ -1032,6 +1032,9 @@ func TestServerPromoteStopCandidate(t *testing.T) {
 	if memento.Kind != "goods" || memento.State != domain.MementoDraft || memento.JourneyID != jid {
 		t.Errorf("unexpected memento: %+v", memento)
 	}
+	if memento.OccurredTZ != "Asia/Tokyo" {
+		t.Errorf("promoted timezone = %q, want Asia/Tokyo", memento.OccurredTZ)
+	}
 	if memento.Geom != (orb.Point{139.701, 35.661}) {
 		t.Errorf("memento geom = %v, want the candidate coordinate", memento.Geom)
 	}

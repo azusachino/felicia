@@ -14,6 +14,7 @@ import (
 	"github.com/paulmach/orb/geo"
 
 	"github.com/azusachino/felicia/apps/felicia-core/domain"
+	"github.com/azusachino/felicia/apps/felicia-runtime/timezone"
 )
 
 const (
@@ -140,8 +141,13 @@ func BuildPlan(input PlanInput, config PlanConfig) (DraftPlan, error) {
 			),
 		})
 	}
-	plan.Visits = visits
-	for index, visit := range visits {
+	fallback := journeyTimezone(input)
+	plan.Visits = append([]domain.Visit(nil), visits...)
+	for index, visit := range plan.Visits {
+		zone := timezone.Default("", visit.Coord, fallback)
+		visit.Arrive = timezone.Local(visit.Arrive, zone)
+		visit.Depart = timezone.Local(visit.Depart, zone)
+		plan.Visits[index] = visit
 		stop := stopFromVisit(input.JourneyID, visit, index, config.DerivationVersion)
 		stop.Evidence = append(stop.Evidence, visitEvidence(visit, index))
 		matched, mediaEvidence := mediaForStop(visit, input.Media, config.MediaMatchWindow, config.MaximumStopRadiusM)
@@ -152,7 +158,14 @@ func BuildPlan(input PlanInput, config PlanConfig) (DraftPlan, error) {
 		stop.Confidence = stopConfidence(visit.Confidence, visit.Arrive, visit.Depart, len(matched), config)
 		plan.Stops = append(plan.Stops, stop)
 		if len(matched) > 0 {
-			plan.Mementos = append(plan.Mementos, mementoFromStop(stop, matched))
+			for i := range matched {
+				var geom orb.Geometry
+				if matched[i].Coord != nil {
+					geom = *matched[i].Coord
+				}
+				matched[i].At = timezone.Local(matched[i].At, timezone.Default("", geom, fallback))
+			}
+			plan.Mementos = append(plan.Mementos, mementoFromStop(stop, matched, zone))
 		}
 	}
 	attachedMedia := make(map[string]struct{})
@@ -187,17 +200,22 @@ func BuildPlan(input PlanInput, config PlanConfig) (DraftPlan, error) {
 // times — so a journey can default its dates to the trip it actually
 // contains instead of making the author type them in.
 //
-// Each bound is truncated in its *own* timestamp's location, so a photo taken
-// at 08:00 in Tokyo counts as that Tokyo day rather than the previous UTC one.
-// That is the best available answer until coordinates can be resolved to a
-// timezone (issue #58); sources that hand us a bare UTC timestamp are still
-// interpreted as UTC.
+// Each bound uses its coordinates' local calendar day. Missing coordinates
+// use the journey-derived zone, or retain the source offset if none is known.
 func dateBoundsFrom(input PlanInput) (start, end time.Time) {
-	observe := func(at time.Time) {
+	fallback := journeyTimezone(input)
+	observe := func(at time.Time, point orb.Point) {
+		zone := timezone.Lookup(point)
+		if zone == "" {
+			zone = fallback
+		}
+		at = timezone.Local(at, zone)
 		if at.IsZero() {
 			return
 		}
-		day := time.Date(at.Year(), at.Month(), at.Day(), 0, 0, 0, 0, at.Location())
+		// Journey bounds are calendar dates, not instants. Normalize the local
+		// day label to UTC so comparisons and persistence cannot shift it.
+		day := time.Date(at.Year(), at.Month(), at.Day(), 0, 0, 0, 0, time.UTC)
 		if start.IsZero() || day.Before(start) {
 			start = day
 		}
@@ -206,20 +224,55 @@ func dateBoundsFrom(input PlanInput) (start, end time.Time) {
 		}
 	}
 	for _, route := range input.Routes {
-		observe(route.From)
-		observe(route.To)
+		var first, last orb.Point
+		if len(route.Line) > 0 {
+			first, last = route.Line[0], route.Line[len(route.Line)-1]
+		}
+		observe(route.From, first)
+		observe(route.To, last)
 		for _, point := range route.Points {
-			observe(point.At)
+			observe(point.At, point.Coord)
 		}
 	}
 	for _, visit := range input.Visits {
-		observe(visit.Arrive)
-		observe(visit.Depart)
+		observe(visit.Arrive, visit.Coord)
+		observe(visit.Depart, visit.Coord)
 	}
 	for _, asset := range input.Media {
-		observe(asset.At)
+		var point orb.Point
+		if asset.Coord != nil {
+			point = *asset.Coord
+		}
+		observe(asset.At, point)
 	}
 	return start, end
+}
+
+// journeyTimezone uses stable source order: route, then visits, then media.
+func journeyTimezone(input PlanInput) string {
+	for _, route := range input.Routes {
+		if zone := timezone.Journey(orb.MultiLineString{route.Line}); zone != "" {
+			return zone
+		}
+		for _, point := range route.Points {
+			if zone := timezone.Lookup(point.Coord); zone != "" {
+				return zone
+			}
+		}
+	}
+	for _, visit := range input.Visits {
+		if zone := timezone.Lookup(visit.Coord); zone != "" {
+			return zone
+		}
+	}
+	for _, asset := range input.Media {
+		if asset.Coord != nil {
+			if zone := timezone.Lookup(*asset.Coord); zone != "" {
+				return zone
+			}
+		}
+	}
+	return ""
 }
 
 func withDefaults(config PlanConfig) PlanConfig {
@@ -369,7 +422,7 @@ func stopConfidence(sourceConfidence float64, arrive, depart time.Time, mediaCou
 	return dwell
 }
 
-func mementoFromStop(stop domain.StopCandidate, media []domain.MediaAsset) domain.MementoCandidate {
+func mementoFromStop(stop domain.StopCandidate, media []domain.MediaAsset, zone string) domain.MementoCandidate {
 	source := domain.SourceIdentity{System: "derived-stop", ExternalID: stop.Identity.Key}
 	// Kind and its kind_data stay unset until the author promotes the
 	// candidate, but the containers are still emitted empty rather than nil:
@@ -379,6 +432,7 @@ func mementoFromStop(stop domain.StopCandidate, media []domain.MediaAsset) domai
 		Source:      source,
 		StopKey:     stop.Identity.Key,
 		OccurredAt:  stop.Arrive,
+		OccurredTZ:  zone,
 		Geom:        stop.Coord,
 		Title:       stop.Label,
 		Place:       stop.Label,

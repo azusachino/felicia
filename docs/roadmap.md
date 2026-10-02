@@ -122,7 +122,7 @@ Deliverables:
 - Snap point mementos to visits using temporal checks before spatial fallback.
 - Compose authored transit legs and passive tracks into the display route.
 - Automatically derive default journey date bounds (`date_start`/`date_end`) from media and track timestamp bounds.
-- Resolve default memento timezones (`occurred_tz`) from GPS coordinates via offline timezone lookup.
+- Resolve default memento timezones (`occurred_tz`) from GPS coordinates via offline timezone lookup — implemented for intake, promotion, admin writes, and package import (#58); no-GPS media uses the journey-derived/default zone and explicit zones are preserved.
 
 Exit check: re-running an import produces no duplicates, does not overwrite authored fields, and leaves an auditable result when source data is incomplete.
 

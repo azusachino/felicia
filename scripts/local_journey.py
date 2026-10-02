@@ -157,19 +157,24 @@ def preprocess(args: argparse.Namespace) -> None:
         )
     write_json(workspace / "stops.json", {"schema": "felicia.stops.v1", "stops": stops})
 
+    previous_path = workspace / "mementos.json"
+    previous = {
+        item["id"]: item
+        for item in (read_json(previous_path).get("mementos", []) if previous_path.is_file() else [])
+    }
     mementos = []
     for index, source in enumerate(plan.get("mementos", []), start=1):
+        memento_id = str(uuid.uuid5(NAMESPACE, f"{args.journey}:memento:{index}"))
+        existing = previous.get(memento_id, {})
         mementos.append(
             {
-                "id": str(uuid.uuid5(NAMESPACE, f"{args.journey}:memento:{index}")),
+                "id": memento_id,
                 "stop_key": source.get("stop_key", ""),
                 "seq": index,
                 "kind": source.get("kind") or "goods",
                 "occurred_at": source.get("occurred_at", ""),
-                # The planner leaves the zone empty until offline resolution
-                # lands, and the key is always present -- so default on the
-                # value, not on the key, or packaging rejects the workspace.
-                "occurred_tz": source.get("occurred_tz") or "UTC",
+                "occurred_tz": existing.get("occurred_tz") or source.get("occurred_tz") or "UTC",
+                **({"authored_fields": ["occurred_tz"]} if existing.get("occurred_tz") else {}),
                 "title": source.get("title", ""),
                 "place": source.get("place", ""),
                 "geom": as_coord(source.get("geom")),

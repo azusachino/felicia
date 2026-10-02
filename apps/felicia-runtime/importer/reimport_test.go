@@ -163,6 +163,8 @@ func (s *authorshipStore) ApplyIngestMementoPatch(_ context.Context, patch *doma
 	}
 	for _, field := range domain.IngestableFields(patch.Fields, current.AuthoredFields) {
 		switch field {
+		case "occurred_tz":
+			current.OccurredTZ = patch.Memento.OccurredTZ
 		case "title":
 			current.Title = patch.Memento.Title
 		case "place":
@@ -182,6 +184,8 @@ func (s *authorshipStore) ApplyManualMementoPatch(_ context.Context, patch *doma
 	}
 	for _, field := range patch.Fields {
 		switch field {
+		case "occurred_tz":
+			current.OccurredTZ = patch.Memento.OccurredTZ
 		case "title":
 			current.Title = patch.Memento.Title
 		case "place":
@@ -238,8 +242,8 @@ func TestApplyPackageDoesNotClobberAuthoredJourneyFields(t *testing.T) {
 	}
 	// Author the memento title, then re-import the same package.
 	if err := store.ApplyManualMementoPatch(ctx, &domain.ManualMementoPatch{
-		Memento: &domain.Memento{ID: mementoID, JourneyID: journeyID, Title: "Human memento"},
-		Fields:  []string{"title"},
+		Memento: &domain.Memento{ID: mementoID, JourneyID: journeyID, Title: "Human memento", OccurredTZ: "Europe/London"},
+		Fields:  []string{"title", "occurred_tz"},
 	}); err != nil {
 		t.Fatalf("author memento: %v", err)
 	}
@@ -261,6 +265,9 @@ func TestApplyPackageDoesNotClobberAuthoredJourneyFields(t *testing.T) {
 	}
 	if store.journey.Place != "Package place" {
 		t.Fatalf("re-import failed to update the unauthored journey place: %q", store.journey.Place)
+	}
+	if got := store.mementos[mementoID].OccurredTZ; got != "Europe/London" {
+		t.Fatalf("re-import overwrote authored timezone: %q", got)
 	}
 	if got := store.mementos[mementoID].Title; got != "Human memento" {
 		t.Fatalf("re-import overwrote the authored memento title: %q", got)

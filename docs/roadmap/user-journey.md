@@ -87,6 +87,14 @@ projection:
 
 ## Status log
 
+- **Offline timezone defaults (#58)** — Intake candidates, promoted mementos,
+  admin writes, and package imports now default missing display zones from GPS
+  using an embedded offline lookup. Photos without GPS use the journey-derived
+  zone; packages may supply a manifest fallback. Explicit author zones remain
+  unchanged. Border uncertainty and fallback order are documented in
+  [the canonical contract](../contracts/canonical-v1.md#offline-timezone-defaults).
+  Stage status unchanged.
+
 - **2026-10-02 (admin photo upload and curation)** — The memento editor now uploads JPEG, PNG, and WebP originals through the `BlobStore` port, previews private originals, and supports caption edits and ordering. Local originals are content-addressed and owner-only; static compilation still emits resized, re-encoded derivatives without EXIF metadata. HEIC/HEIF remains a guided conversion step (#24).
 
 - **2026-10-02 (HEIC conversion guidance)** — HEIC/HEIF input now fails early
