@@ -72,6 +72,8 @@ result or the product owner explicitly chooses a direction without experimentati
 
 Current evidence:
 
+- [2026-10-02 macOS desktop feasibility](2026-10-02-desktop-feasibility.md) —
+  disposable Wails host, existing Go/Svelte studio, native map/files and packaging
 - [2026-07-17 provider baseline](2026-07-17-provider-baseline.md)
 - [2026-07-17 public read contract](2026-07-17-public-read-contract.md)
 - [2026-08-16 real-trip CLI walkthrough](2026-08-16-real-trip-cli-walkthrough.md) —
