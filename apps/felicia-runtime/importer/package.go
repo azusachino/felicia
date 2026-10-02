@@ -21,6 +21,7 @@ import (
 	"github.com/azusachino/felicia/apps/felicia-core/domain"
 	journeypackage "github.com/azusachino/felicia/apps/felicia-core/journeypackage"
 	"github.com/azusachino/felicia/apps/felicia-core/ports"
+	"github.com/azusachino/felicia/apps/felicia-runtime/timezone"
 )
 
 // PackageDocument is the normalized, database-independent import document.
@@ -282,16 +283,38 @@ func DecodePackage(pkg *journeypackage.Package) (*PackageDocument, error) {
 		if err := decodeYAML(pkg, "stops.yaml", &rawStops); err != nil {
 			return nil, err
 		}
-		for index, raw := range rawStops {
-			candidate, err := normalizeStop(pkg, journey.ID, raw)
+	}
+	fallback := pkg.Manifest.Timezone
+	if fallback != "" && len(domain.ValidateOccurredTimezone(fallback)) > 0 {
+		return nil, fmt.Errorf("manifest timezone is invalid")
+	}
+	if fallback == "" {
+		fallback = timezone.Journey(journey.GPSRoute)
+	}
+	for index, raw := range rawStops {
+		candidate, err := normalizeStop(pkg, journey.ID, raw)
+		if err != nil {
+			return nil, fmt.Errorf("stop %d: %w", index+1, err)
+		}
+		if fallback == "" {
+			fallback = timezone.Lookup(candidate.Coord)
+		}
+		document.Stops = append(document.Stops, candidate)
+	}
+	if fallback == "" {
+		for _, raw := range rawMementos {
+			geom, err := normalizeGeometry(raw.Geom)
 			if err != nil {
-				return nil, fmt.Errorf("stop %d: %w", index+1, err)
+				return nil, err
 			}
-			document.Stops = append(document.Stops, candidate)
+			if zone := timezone.Default("", geom, ""); zone != "UTC" {
+				fallback = zone
+				break
+			}
 		}
 	}
 	for index, raw := range rawMementos {
-		memento, photos, err := normalizeMemento(pkg, journey.ID, raw)
+		memento, photos, err := normalizeMemento(pkg, journey.ID, raw, fallback)
 		if err != nil {
 			return nil, fmt.Errorf("memento %d: %w", index+1, err)
 		}
@@ -330,7 +353,9 @@ func normalizeStop(pkg *journeypackage.Package, journeyID uuid.UUID, raw stopFil
 	return &domain.StopCandidate{
 		ID: id, JourneyID: journeyID,
 		Identity: domain.CandidateIdentity{DerivationVersion: raw.DerivationVersion, Key: raw.Key},
-		Label:    raw.Label, Coord: orb.Point{raw.Coord[0], raw.Coord[1]}, Arrive: arrive, Depart: depart,
+		Label:    raw.Label, Coord: orb.Point{raw.Coord[0], raw.Coord[1]},
+		Arrive:     timezone.Local(arrive, timezone.Lookup(orb.Point{raw.Coord[0], raw.Coord[1]})),
+		Depart:     timezone.Local(depart, timezone.Lookup(orb.Point{raw.Coord[0], raw.Coord[1]})),
 		Confidence: raw.Confidence, State: domain.CandidateProposed,
 		Evidence:   []domain.EvidenceRef{{Kind: domain.EvidenceRoute, Source: source, Locator: raw.Key}},
 		Provenance: []domain.Provenance{{Source: source, ObservedAt: arrive, Confidence: raw.Confidence}},
@@ -360,7 +385,7 @@ func normalizeJourney(raw journeyFile) (*domain.Journey, error) {
 	return &domain.Journey{ID: id, JournalID: journalID, Slug: raw.Slug, SourceRef: optional(raw.SourceRef), Title: raw.Title, Place: raw.Place, Country: optional(raw.Country), Region: optional(raw.Region), DateStart: start, DateEnd: end, GPSRoute: orb.MultiLineString{}}, nil
 }
 
-func normalizeMemento(pkg *journeypackage.Package, journeyID uuid.UUID, raw mementoFile) (*domain.Memento, []*domain.MementoPhoto, error) {
+func normalizeMemento(pkg *journeypackage.Package, journeyID uuid.UUID, raw mementoFile, fallback string) (*domain.Memento, []*domain.MementoPhoto, error) {
 	id, err := uuid.Parse(raw.ID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("id: %w", err)
@@ -385,7 +410,7 @@ func normalizeMemento(pkg *journeypackage.Package, journeyID uuid.UUID, raw meme
 	if state == "" {
 		state = domain.MementoCandidateState
 	}
-	memento := &domain.Memento{ID: id, JourneyID: journeyID, Kind: raw.Kind, Seq: raw.Seq, OccurredAt: occurredAt, OccurredTZ: raw.OccurredTZ, Geom: geom, Title: raw.Title, Place: raw.Place, Vendor: optional(raw.Vendor), Essay: optional(raw.Essay), PriceAmount: raw.PriceAmount, PriceCurrency: optional(raw.PriceCurrency), AuthoredFields: raw.AuthoredFields, KindData: kindData, SourceIdentity: &source, State: state}
+	memento := &domain.Memento{ID: id, JourneyID: journeyID, Kind: raw.Kind, Seq: raw.Seq, OccurredAt: occurredAt, OccurredTZ: timezone.Default(raw.OccurredTZ, geom, fallback), Geom: geom, Title: raw.Title, Place: raw.Place, Vendor: optional(raw.Vendor), Essay: optional(raw.Essay), PriceAmount: raw.PriceAmount, PriceCurrency: optional(raw.PriceCurrency), AuthoredFields: raw.AuthoredFields, KindData: kindData, SourceIdentity: &source, State: state}
 	photos := make([]*domain.MementoPhoto, 0, len(raw.Photos))
 	for index, rawPhoto := range raw.Photos {
 		photoID, err := uuid.Parse(rawPhoto.ID)

@@ -105,15 +105,16 @@ func (store *memoryBlobStore) Open(_ context.Context, key string) (io.ReadCloser
 var mockJournalID = uuid.MustParse("00000000-0000-0000-0000-000000000001")
 
 type mockRepository struct {
-	journeys       map[uuid.UUID]*domain.Journey
-	mementos       map[uuid.UUID]*domain.Memento
-	photos         map[uuid.UUID]*domain.MementoPhoto
-	transitLegs    []*domain.TransitLeg
-	createdLeg     *domain.TransitLegInput
-	displayRoute   orb.MultiLineString
-	snappedPoint   *orb.Point
-	stopCandidates map[uuid.UUID]*domain.StopCandidate
-	siteSettings   map[uuid.UUID]*domain.SiteSettings
+	journeys          map[uuid.UUID]*domain.Journey
+	missingMementoErr error
+	mementos          map[uuid.UUID]*domain.Memento
+	photos            map[uuid.UUID]*domain.MementoPhoto
+	transitLegs       []*domain.TransitLeg
+	createdLeg        *domain.TransitLegInput
+	displayRoute      orb.MultiLineString
+	snappedPoint      *orb.Point
+	stopCandidates    map[uuid.UUID]*domain.StopCandidate
+	siteSettings      map[uuid.UUID]*domain.SiteSettings
 }
 
 func newMockRepository() *mockRepository {
@@ -210,6 +211,9 @@ func (m *mockRepository) ApplyIngestJourneyPatch(_ context.Context, patch *domai
 func (m *mockRepository) GetMemento(_ context.Context, id uuid.UUID) (*domain.Memento, error) {
 	mem, ok := m.mementos[id]
 	if !ok {
+		if m.missingMementoErr != nil {
+			return nil, m.missingMementoErr
+		}
 		return nil, domain.ErrNotFound
 	}
 	return mem, nil
@@ -1031,6 +1035,9 @@ func TestServerPromoteStopCandidate(t *testing.T) {
 	}
 	if memento.Kind != "goods" || memento.State != domain.MementoDraft || memento.JourneyID != jid {
 		t.Errorf("unexpected memento: %+v", memento)
+	}
+	if memento.OccurredTZ != "Asia/Tokyo" {
+		t.Errorf("promoted timezone = %q, want Asia/Tokyo", memento.OccurredTZ)
 	}
 	if memento.Geom != (orb.Point{139.701, 35.661}) {
 		t.Errorf("memento geom = %v, want the candidate coordinate", memento.Geom)

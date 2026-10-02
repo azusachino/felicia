@@ -34,6 +34,7 @@ import (
 	"github.com/azusachino/felicia/apps/felicia-runtime/intake"
 	journeyruntime "github.com/azusachino/felicia/apps/felicia-runtime/journey"
 	mementoruntime "github.com/azusachino/felicia/apps/felicia-runtime/memento"
+	"github.com/azusachino/felicia/apps/felicia-runtime/timezone"
 )
 
 // Server represents the API server.
@@ -946,7 +947,7 @@ func (s *Server) handlePromoteStopCandidate(w http.ResponseWriter, r *http.Reque
 	// geometry comes from an authored transit leg instead, so geom stays nil
 	// here (permitted for a draft).
 	var geom orb.Geometry
-	fields := []string{"journey_id", "kind", "seq", "occurred_at", "title", "place", "kind_data", "source_ref"}
+	fields := []string{"journey_id", "kind", "seq", "occurred_at", "occurred_tz", "title", "place", "kind_data", "source_ref"}
 	if tpl.Anchor == domain.AnchorPoint {
 		geom = candidate.Coord
 		fields = append(fields, "geom")
@@ -959,6 +960,7 @@ func (s *Server) handlePromoteStopCandidate(w http.ResponseWriter, r *http.Reque
 		Kind:       req.Kind,
 		Seq:        seq,
 		OccurredAt: candidate.Arrive,
+		OccurredTZ: timezone.Default("", candidate.Coord, ""),
 		Geom:       geom,
 		Title:      candidate.Label,
 		Place:      candidate.Label,
@@ -1164,12 +1166,6 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
-	} else if state != domain.MementoDraft {
-		respondJSON(w, http.StatusBadRequest, map[string]any{
-			"error":  "validation failed",
-			"issues": []domain.Issue{{Field: "occurred_tz", Code: domain.CodeInvalidTimezone}},
-		})
-		return
 	}
 
 	var orphaned *time.Time
@@ -1215,6 +1211,30 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 			"issues": geometryIssues,
 		})
 		return
+	}
+
+	if req.OccurredTZ == "" {
+		// An omitted zone on an edit is not permission to replace an authored
+		// display zone, even when the submitted geometry has changed.
+		existing, err := s.repo.GetMemento(r.Context(), req.ID)
+		if err == nil {
+			req.OccurredTZ = existing.OccurredTZ
+		} else if !errors.Is(err, domain.ErrNotFound) && !errors.Is(err, sql.ErrNoRows) {
+			respondError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if req.OccurredTZ == "" {
+			journey, err := s.repo.GetJourney(r.Context(), req.JourneyID)
+			if err != nil && !errors.Is(err, domain.ErrNotFound) {
+				respondError(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			var fallback string
+			if journey != nil {
+				fallback = timezone.Journey(journey.GPSRoute)
+			}
+			req.OccurredTZ = timezone.Default("", geom, fallback)
+		}
 	}
 
 	kindDataRaw, err := json.Marshal(req.KindData)

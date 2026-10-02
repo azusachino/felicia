@@ -28,6 +28,38 @@ Memento writes use optimistic revisions. A stale write is a conflict, not an
 implicit merge. Ingest and authoring writes use different ownership rules:
 ingest may update source-owned fields, while authoring explicitly claims fields.
 
+## Offline timezone defaults
+
+Intake and package import resolve missing `occurred_tz` values offline from
+`[longitude, latitude]`. Point memories use their point; transit lines use their
+departure point. An explicit value, including `UTC`, wins over inference. An
+admin edit that omits the zone retains the existing value. Re-import still
+respects the journal's authored-field mask.
+
+The intake journey fallback is the first usable coordinate in source order:
+route, supplied visits, then media. Photos without GPS use that journey zone,
+not the zone of whichever stop happens to match them. Coordinate-based local
+calendar days also inform journey date bounds; conversion never changes an
+instant or mutates source input. When no journey zone can be derived, UTC is
+the display default and date bounds retain any meaningful source offset.
+
+Packages may specify an IANA `manifest.yaml` `timezone` as the no-coordinate
+fallback. Otherwise they derive it from the route, stops, then memento geometry,
+finally UTC. Invalid supplied zones still fail validation. Coordinates continue
+to be validated at write boundaries; `(0,0)` is treated as missing GPS for lookup.
+No timezone field or migration is added to journey persistence.
+
+The runtime pins [tzf v2.1.2](https://github.com/ringsaturn/tzf/tree/v2.1.2),
+using one concurrent-safe `NewEmbeddedFinder` and embedded IANA `time/tzdata`.
+This keeps lookup independent of network access and host zoneinfo installation.
+The simplified boundary dataset has approximately 111 m uncertainty near borders;
+these are editable defaults, not a claim of exact border precision. The full
+finder's roughly 147 MiB retained heap is avoided for the local CLI/server flow.
+Code is MIT-licensed; embedded boundary data comes from
+[tzf-dist](https://github.com/ringsaturn/tzf-dist) and
+[timezone-boundary-builder](https://github.com/evansiroky/timezone-boundary-builder)
+under ODbL. Updates require an explicit dependency/data bump and regression run.
+
 ## Media capability boundary
 
 Canonical media kinds are `image`, `video`, `audio`, `document`, `link`, and

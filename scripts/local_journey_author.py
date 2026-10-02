@@ -83,11 +83,18 @@ def interactive_author(args: Namespace) -> None:
         print(f"\nEdit memento {memento.get('id')}")
         memento["title"] = ask("  title", memento.get("title", ""))
         memento["kind"] = ask("  kind", memento.get("kind", "goods"))
+        zone = ask("  timezone (blank = resolve from GPS on import)", memento.get("occurred_tz", ""))
+        if zone:
+            memento["occurred_tz"] = zone
+        else:
+            memento.pop("occurred_tz", None)
         memento["vendor"] = ask("  vendor", memento.get("vendor", ""))
         memento["essay"] = ask("  essay", memento.get("essay", ""))
         memento["price_amount"] = parse_price(ask("  price amount", str(memento.get("price_amount", "") or "")))
         memento["price_currency"] = ask("  price currency", memento.get("price_currency", "JPY"))
         memento["authored_fields"] = ["title", "kind", "vendor", "essay", "price_amount", "price_currency"]
+        if zone:
+            memento["authored_fields"].append("occurred_tz")
         memento["state"] = ask("  state (draft/published)", "published")
         media_default = ",".join(item.get("path", "") for item in memento.get("media", []))
         media_paths = ask("  media paths (comma-separated)", media_default)
@@ -103,7 +110,10 @@ def interactive_author(args: Namespace) -> None:
                     "seq": index,
                     "kind": ask("  kind", "goods"),
                     "occurred_at": ask("  occurred_at RFC3339", stop.get("arrive", "")),
-                    "occurred_tz": ask("  timezone", "UTC"),
+                    "occurred_tz": ask(
+                        "  timezone (blank = resolve from GPS on import)",
+                        next((m.get("occurred_tz", "") for m in mementos if m.get("stop_key") == stop["candidate_key"]), ""),
+                    ),
                     "title": ask("  title"),
                     "place": stop["label"],
                     "geom": stop.get("coord"),
@@ -121,6 +131,11 @@ def interactive_author(args: Namespace) -> None:
                     ],
                 }
             )
+            added = mementos[-1]
+            if added.get("occurred_tz"):
+                added["authored_fields"].append("occurred_tz")
+            else:
+                added.pop("occurred_tz", None)
     write_json(workspace / "journey.json", journey)
     write_json(workspace / "stops.json", stop_data)
     write_json(workspace / "mementos.json", {"schema": "felicia.mementos.v1", "mementos": mementos})
