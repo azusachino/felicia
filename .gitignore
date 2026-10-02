@@ -59,4 +59,5 @@ apps/felicia-desktop/assets/reader/*.svg
 # Asobi project-local database
 /.asobi/
 /apps/felicia-cli/felicia
+/apps/felicia-desktop/felicia-desktop
 /scripts/_admin_preview.py
