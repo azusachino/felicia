@@ -87,6 +87,12 @@ projection:
 
 ## Status log
 
+- **2026-10-02 (unmatched intake media surfaced)** — The intake plan now emits an
+  `unmatched_media` warning with the count and filenames for media that matched
+  no stop, and `make journey-local` prints that warning while retaining it in
+  `plan.json` (#83). No files are silently auto-attached; the author can see
+  which items need a deliberate decision. Stage status unchanged.
+
 - **2026-10-02 (local GPX re-export identity)** — `make journey-local` now derives
   its default journey id and slug from canonicalized GPX track points rather
   than the entire file bytes. Exporter metadata is ignored; coordinates are

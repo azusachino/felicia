@@ -136,6 +136,9 @@ def preprocess(args: argparse.Namespace) -> None:
     result = subprocess.run(command, cwd=ROOT, check=True, capture_output=True, text=True)
     plan = json.loads(result.stdout)
     write_json(workspace / "plan.json", plan)
+    for issue in plan.get("issues", []):
+        if issue.get("code") == "unmatched_media":
+            print(f"warning: {issue['message']}")
 
     stops = []
     for index, source in enumerate(plan.get("stops", []), start=1):

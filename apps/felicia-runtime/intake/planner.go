@@ -4,6 +4,7 @@ package intake
 import (
 	"fmt"
 	"math"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -154,6 +155,29 @@ func BuildPlan(input PlanInput, config PlanConfig) (DraftPlan, error) {
 			plan.Mementos = append(plan.Mementos, mementoFromStop(stop, matched))
 		}
 	}
+	attachedMedia := make(map[string]struct{})
+	for _, memento := range plan.Mementos {
+		for _, asset := range memento.Media {
+			attachedMedia[mediaIdentity(asset)] = struct{}{}
+		}
+	}
+	var unmatched []string
+	for _, asset := range input.Media {
+		if _, ok := attachedMedia[mediaIdentity(asset)]; !ok {
+			name := filepath.Base(asset.URI)
+			if name == "." || name == "" {
+				name = asset.ID
+			}
+			unmatched = append(unmatched, name)
+		}
+	}
+	if len(unmatched) > 0 {
+		plan.Issues = append(plan.Issues, Issue{
+			Severity: IssueWarning,
+			Code:     "unmatched_media",
+			Message:  fmt.Sprintf("%d media item(s) did not match a stop: %s", len(unmatched), strings.Join(unmatched, ", ")),
+		})
+	}
 	plan.DateStart, plan.DateEnd = dateBoundsFrom(input)
 	return plan, nil
 }
@@ -299,6 +323,13 @@ func visitEvidence(visit domain.Visit, index int) domain.EvidenceRef {
 		source = domain.SourceIdentity{System: "visit", ExternalID: visit.SourceRef}
 	}
 	return domain.EvidenceRef{Kind: domain.EvidenceVisit, Source: source, Locator: source.ExternalID}
+}
+
+func mediaIdentity(asset domain.MediaAsset) string {
+	if asset.ID != "" {
+		return asset.ID
+	}
+	return asset.URI
 }
 
 func mediaForStop(visit domain.Visit, media []domain.MediaAsset, window time.Duration, radiusM float64) ([]domain.MediaAsset, []domain.EvidenceRef) {
