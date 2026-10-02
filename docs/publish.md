@@ -234,8 +234,16 @@ once the first deployment finishes.
 
 ### 7. Update
 
-Repeat steps 2 to 4, then re-run the `rsync` + commit + push from step 5. The
-Pages settings never need to change.
+For an already-imported journey, make changes in the local SQLite journal through
+Admin, then repeat **step 4** to rebuild and step 5 to sync, commit, and push the
+artifact. The Pages settings never need to change.
+
+Do not re-import the original package to update an existing journey. A package
+represents initial draft content; the journal owns memento lifecycle state, and
+re-importing a draft package over a published memento is rejected rather than
+silently unpublishing it. The import is transactional, so a rejected re-import
+leaves the journal unchanged. Use step 2 only to bring a trip into the journal
+for the first time.
 
 Unpublishing works the same way: step a memento back to `authored`, rebuild, and
 manifest reconciliation removes it from the artifact.
