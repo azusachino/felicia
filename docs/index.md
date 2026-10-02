@@ -26,7 +26,8 @@ The exploration trail, roughly in order:
 - [Transit tickets](research/transit-tickets.md)
 - [Authoring & publish flow](research/authoring-publish-flow.md)
 - [Architecture experiments](experiments/README.md) ·
-  [Real-trip CLI walkthrough](experiments/2026-08-16-real-trip-cli-walkthrough.md)
+  [Real-trip CLI walkthrough](experiments/2026-08-16-real-trip-cli-walkthrough.md) ·
+  [Desktop feasibility spike](experiments/2026-10-02-desktop-feasibility.md)
 - [Izu journey publication](release/github-pages-v0.1.md)
 - [Local workflow boundaries](research/local-workflow-boundaries.md) · [Media support matrix](research/media-support-matrix.md)
 - [Contract-first overview](contracts/README.md) · [Canonical contract v1](contracts/canonical-v1.md)
@@ -36,6 +37,8 @@ The exploration trail, roughly in order:
 - [GitHub Pages v0.1 release](release/github-pages-v0.1.md)
 - [SQLite-backed Pages epic](roadmap/pages-v1-epic.md)
 - [UX & style rethink](research/ux-restyle.md)
+- [Desktop studio](research/desktop-studio.md) — Magpie study, desktop/CLI boundaries,
+  macOS-first distribution, and static export/direct publishing options.
 
 ## Archive
 
