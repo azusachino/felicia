@@ -43,7 +43,7 @@ where you author _essays / photo curation / animation_. The importer is **field-
 
 ```text
 apps/{felicia-core,felicia-runtime,felicia-providers,felicia-publication,
-felicia-server,felicia-cli,felicia-admin,felicia-public-site}/
+felicia-server,felicia-cli,felicia-desktop,felicia-admin,felicia-public-site}/
 packages/{felicia-model,felicia-reader}/  contracts/  ops/  scripts/  docs/
 ```
 
@@ -74,6 +74,7 @@ SQLite uses a single `apps/felicia-providers/sqlite/schema.sql`, without a migra
 | `make build`    | build all binaries                                                               |
 | `make validate` | check + build + public/Admin frontend checks — **before PR**                     |
 | `make admin`    | local admin GUI: authoring API + felicia-admin on `0.0.0.0` for Tailscale access |
+| `make desktop`  | native desktop studio: package and run local macOS app (`FeliciaStudio.app`)     |
 
 ## Coding Conventions
 
