@@ -239,11 +239,13 @@ Admin, then repeat **step 4** to rebuild and step 5 to sync, commit, and push th
 artifact. The Pages settings never need to change.
 
 Do not re-import the original package to update an existing journey. A package
-represents initial draft content; the journal owns memento lifecycle state, and
-re-importing a draft package over a published memento is rejected rather than
-silently unpublishing it. The import is transactional, so a rejected re-import
-leaves the journal unchanged. Use step 2 only to bring a trip into the journal
-for the first time.
+can seed a new memento in its declared lifecycle state (normally a draft); the
+journal owns that state after creation. A package may seed a published memento,
+but import does not build or deploy the site. Re-importing content with a
+conflicting lifecycle state is rejected rather than silently publishing or
+unpublishing it. The import is transactional, so a rejected re-import leaves the
+journal unchanged. Use step 2 only to bring a trip into the journal for the first
+time. See the [memento lifecycle contract](contracts/memento-lifecycle.md#3-transition-table).
 
 Unpublishing works the same way: step a memento back to `authored`, rebuild, and
 manifest reconciliation removes it from the artifact.

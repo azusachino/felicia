@@ -17,6 +17,7 @@
 //     no json tags, same as AdminTemplateField in api.ts.
 
 import type { AdminIssue, AdminMementoDetail, AdminTemplateField, MementoGeom, UpsertMementoGeom, UpsertMementoRequest, UpsertPhotoRequest } from "./api"
+import { message, type AdminMessageKey, type Locale } from "./i18n"
 
 // --- Date/time -------------------------------------------------------------
 
@@ -252,22 +253,23 @@ export function buildUpsertPayload(params: {
 
 // --- Server validation issues -----------------------------------------------
 
-const issueMessages: Record<string, string> = {
-  required_missing: "This field is required.",
-  unknown_field: "This field isn't part of the kind template.",
-  type_mismatch: "This value doesn't match the expected type.",
-  anchor_mismatch: "The location doesn't match this kind's shape (a single point vs. a from/to route).",
-  bad_currency: "Currency must be a 3-letter code, e.g. JPY.",
-  invalid_state: "That state transition isn't valid.",
-  invalid_timezone: "Enter a recognized IANA timezone, e.g. Asia/Tokyo.",
-  invalid_geometry: "A location is required before saving.",
-  invalid_coordinate: "Coordinates must be valid longitude/latitude values.",
-  invalid_transition: "That state change isn't allowed — publish and unpublish move one step at a time.",
-  delete_requires_unpublish: "Unpublish this memento before deleting it.",
+const issueMessageKeys: Record<string, AdminMessageKey> = {
+  required_missing: "admin.validation.required_missing",
+  unknown_field: "admin.validation.unknown_field",
+  type_mismatch: "admin.validation.type_mismatch",
+  anchor_mismatch: "admin.validation.anchor_mismatch",
+  bad_currency: "admin.validation.bad_currency",
+  invalid_state: "admin.validation.invalid_state",
+  invalid_timezone: "admin.validation.invalid_timezone",
+  invalid_geometry: "admin.validation.invalid_geometry",
+  invalid_coordinate: "admin.validation.invalid_coordinate",
+  invalid_transition: "admin.validation.invalid_transition",
+  delete_requires_unpublish: "admin.validation.delete_requires_unpublish",
 }
 
-export function issueMessage(issue: AdminIssue): string {
-  return issueMessages[issue.Code] ?? issue.Code
+export function issueMessage(issue: AdminIssue, locale: Locale = "en"): string {
+  const key = issueMessageKeys[issue.Code]
+  return key ? message(locale, key) : issue.Code
 }
 
 // Groups issues by field name so the editor can render them next to the
@@ -276,11 +278,11 @@ export function issueMessage(issue: AdminIssue): string {
 // bucket for a form-level banner instead.
 export const FORM_LEVEL_ISSUE_KEY = "__form__"
 
-export function groupIssuesByField(issues: AdminIssue[]): Record<string, string[]> {
+export function groupIssuesByField(issues: AdminIssue[], locale: Locale = "en"): Record<string, string[]> {
   const grouped: Record<string, string[]> = {}
   for (const issue of issues) {
     const key = issue.Field || FORM_LEVEL_ISSUE_KEY
-    grouped[key] = [...(grouped[key] ?? []), issueMessage(issue)]
+    grouped[key] = [...(grouped[key] ?? []), issueMessage(issue, locale)]
   }
   return grouped
 }

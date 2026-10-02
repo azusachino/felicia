@@ -19,7 +19,6 @@ export interface ApiJourney {
   id: string
   journal_id: string
   slug: string
-  source_ref?: string
   title: string
   place: string
   country?: string
@@ -38,7 +37,6 @@ export interface ApiMementoPhoto {
   caption?: string
   seq: number
   taken_at?: string
-  source_ref?: string
 }
 
 export interface ApiMemento {
@@ -56,7 +54,6 @@ export interface ApiMemento {
   price_amount?: number
   price_currency?: string
   kind_data?: Record<string, unknown>
-  source_ref?: string
   photos?: ApiMementoPhoto[]
 }
 

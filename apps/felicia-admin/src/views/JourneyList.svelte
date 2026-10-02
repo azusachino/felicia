@@ -1,5 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte"
+  import { message, statusMessage, type Locale } from "../i18n"
+
+  let { locale }: { locale: Locale } = $props()
   import {
     compileSite,
     createJourney,
@@ -117,14 +120,14 @@
   let buildState = $state<BuildState>({ status: "idle", message: "" })
 
   function actionErrorMessage(cause: unknown): string {
-    return cause instanceof Error ? cause.message : "Request failed"
+    return cause instanceof Error ? cause.message : message(locale, "admin.common.request_failed")
   }
 
   async function triggerBuild() {
-    buildState = { status: "pending", message: "Building…" }
+    buildState = { status: "pending", message: message(locale, "admin.build.building") }
     try {
       const report = await compileSite()
-      buildState = { status: "success", message: "Build complete.", report }
+      buildState = { status: "success", message: message(locale, "admin.build.complete"), report }
       // One compile builds every journey, so this clears every pending
       // count/highlight, not just the ones visible on this page.
       await loadBuildStatus()
@@ -134,8 +137,8 @@
   }
 
   function buildButtonLabel(pending: number, status: BuildStatus): string {
-    if (status === "pending") return "Building…"
-    return pending > 0 ? `Build & preview (${pending})` : "Build & preview"
+    if (status === "pending") return message(locale, "admin.build.building")
+    return pending > 0 ? message(locale, "admin.build.label_pending", { count: pending }) : message(locale, "admin.build.label")
   }
 
   async function scanWorkspace() {
@@ -177,69 +180,73 @@
 <section class="journeys">
   <header class="journeys-header">
     <div>
-      <p class="eyebrow">Felicia / Journeys</p>
-      <h1>Journeys</h1>
+      <p class="eyebrow">{message(locale, "admin.journeys.breadcrumb")}</p>
+      <h1>{message(locale, "admin.journeys.title")}</h1>
     </div>
     <div class="header-actions">
-      <button class="secondary" type="button" onclick={() => (showNewJourney = !showNewJourney)}>{showNewJourney ? "Close" : "New journey"}</button>
-      <button class="secondary" type="button" onclick={load} disabled={loading}>{loading ? "Loading…" : "Refresh"}</button>
+      <button class="secondary" type="button" onclick={() => (showNewJourney = !showNewJourney)}
+        >{showNewJourney ? message(locale, "admin.common.close") : message(locale, "admin.journeys.new_action")}</button
+      >
+      <button class="secondary" type="button" onclick={load} disabled={loading}>{loading ? message(locale, "admin.common.loading") : message(locale, "admin.common.refresh")}</button>
     </div>
   </header>
 
   {#if showNewJourney}
     <section class="new-journey" aria-labelledby="new-journey-title">
       <div class="new-journey-tabs">
-        <button type="button" class:active={creationMode === "create"} onclick={() => (creationMode = "create")}>Create blank trip</button>
-        <button type="button" class:active={creationMode === "scan"} onclick={() => (creationMode = "scan")}>Scan trip folder</button>
+        <button type="button" class:active={creationMode === "create"} onclick={() => (creationMode = "create")}>{message(locale, "admin.journeys.create_blank")}</button>
+        <button type="button" class:active={creationMode === "scan"} onclick={() => (creationMode = "scan")}>{message(locale, "admin.connectors.scan_trip_folder")}</button>
       </div>
 
       {#if creationMode === "create"}
-        <p class="eyebrow">Direct authoring</p>
-        <h2 id="new-journey-title">Create a new journey</h2>
-        <p class="hint">Start a fresh journey from scratch. You can author mementos, add photos, and attach GPS tracks later in the editor.</p>
+        <p class="eyebrow">{message(locale, "admin.journeys.direct_authoring")}</p>
+        <h2 id="new-journey-title">{message(locale, "admin.journeys.create_heading")}</h2>
+        <p class="hint">{message(locale, "admin.journeys.create_note")}</p>
         <div class="new-journey-form">
-          <label>Title<input bind:value={createTitle} oninput={onTitleInput} placeholder="e.g. Hakone Weekend Walk" /></label>
-          <label>Place<input bind:value={createPlace} placeholder="e.g. Hakone, Kanagawa" /></label>
-          <label>Slug<input bind:value={createSlug} oninput={() => (slugManuallyEdited = true)} placeholder="e.g. hakone-weekend-walk-2026" /></label>
-          <label>Start date<input type="date" bind:value={createDateStart} /></label>
-          <label>End date<input type="date" bind:value={createDateEnd} /></label>
-          <label>Country (optional)<input bind:value={createCountry} placeholder="e.g. Japan" /></label>
-          <label>Region (optional)<input bind:value={createRegion} placeholder="e.g. Kanto" /></label>
+          <label>{message(locale, "admin.common.title")}<input bind:value={createTitle} oninput={onTitleInput} /></label>
+          <label>{message(locale, "admin.common.place")}<input bind:value={createPlace} /></label>
+          <label>{message(locale, "admin.journeys.slug")}<input bind:value={createSlug} oninput={() => (slugManuallyEdited = true)} placeholder="hakone-weekend-walk-2026" /></label>
+          <label>{message(locale, "admin.journeys.start_date")}<input type="date" bind:value={createDateStart} /></label>
+          <label>{message(locale, "admin.journeys.end_date")}<input type="date" bind:value={createDateEnd} /></label>
+          <label>{message(locale, "admin.journeys.country_optional")}<input bind:value={createCountry} /></label>
+          <label>{message(locale, "admin.journeys.region_optional")}<input bind:value={createRegion} /></label>
         </div>
         <div class="new-journey-actions">
           <button class="primary" type="button" onclick={submitCreateJourney} disabled={!createTitle || !createPlace || !createSlug || !createDateStart || !createDateEnd || createState === "pending"}>
-            {createState === "pending" ? "Creating…" : "Create journey"}
+            {createState === "pending" ? message(locale, "admin.journeys.creating") : message(locale, "admin.journeys.create_action")}
           </button>
-          <button class="secondary" type="button" onclick={() => (showNewJourney = false)}>Cancel</button>
+          <button class="secondary" type="button" onclick={() => (showNewJourney = false)}>{message(locale, "admin.common.cancel")}</button>
         </div>
         {#if createError}<p class="api-error" role="alert">{createError}</p>{/if}
       {:else}
-        <p class="eyebrow">Local source intake</p>
-        <h2 id="new-journey-title">Scan a trip folder</h2>
+        <p class="eyebrow">{message(locale, "admin.connectors.local_source_intake")}</p>
+        <h2 id="new-journey-title">{message(locale, "admin.connectors.scan_heading")}</h2>
         <p class="hint">
-          Choose a folder containing <code>route.gpx</code>, <code>photos/</code>, and optional <code>photos.jsonl</code>. Scan is read-only; import creates reviewable candidates only.
+          {message(locale, "admin.connectors.scan_note")}
         </p>
         <div class="new-journey-form">
-          <label>Folder path<input bind:value={workspace} placeholder="/Users/you/trips/izu-trip-2026-08-01" /></label>
-          <label>Slug<input bind:value={slug} placeholder="izu-trip-2026-08-01" /></label>
-          <label>Title<input bind:value={title} placeholder="Izu, 2026-08-01 to 2026-08-02" /></label>
-          <label>Place<input bind:value={place} placeholder="Izu" /></label>
+          <label>{message(locale, "admin.connectors.folder_path")}<input bind:value={workspace} placeholder="/Users/you/trips/izu-trip-2026-08-01" /></label>
+          <label>{message(locale, "admin.journeys.slug")}<input bind:value={slug} placeholder="izu-trip-2026-08-01" /></label>
+          <label>{message(locale, "admin.common.title")}<input bind:value={title} placeholder="Izu · 2026-08-01 – 2026-08-02" /></label>
+          <label>{message(locale, "admin.common.place")}<input bind:value={place} placeholder="Izu" /></label>
         </div>
         <div class="new-journey-actions">
-          <button class="secondary" type="button" onclick={scanWorkspace} disabled={!workspace || scanState === "scanning"}>{scanState === "scanning" ? "Scanning…" : "Scan and preview"}</button>
+          <button class="secondary" type="button" onclick={scanWorkspace} disabled={!workspace || scanState === "scanning"}
+            >{scanState === "scanning" ? message(locale, "admin.connectors.scanning") : message(locale, "admin.connectors.scan_preview")}</button
+          >
           {#if scanned}
             <button class="primary" type="button" onclick={importWorkspace} disabled={!slug || !title || scanState === "importing"}
-              >{scanState === "importing" ? "Importing…" : "Confirm import"}</button
+              >{scanState === "importing" ? message(locale, "admin.connectors.importing") : message(locale, "admin.connectors.confirm_import")}</button
             >
           {/if}
         </div>
         {#if scanError}<p class="api-error" role="alert">{scanError}</p>{/if}
         {#if scanned}
           <div class="scan-result">
-            <strong>Dry-run result</strong>
+            <strong>{message(locale, "admin.connectors.dry_run_result")}</strong>
             <span>{scanned.plan.date_start ? formatJourneyDate(scanned.plan.date_start) : "?"} – {scanned.plan.date_end ? formatJourneyDate(scanned.plan.date_end) : "?"}</span>
-            <span>{scanned.plan.routes.length} routes · {scanned.plan.stops.length} stop candidates · {scanned.plan.mementos.length} memento candidates</span>
-            {#if scanned.plan.issues.length > 0}<span class="scan-warning">{scanned.plan.issues.length} review notes</span>{/if}
+            <span>{message(locale, "admin.connectors.scan_counts", { routes: scanned.plan.routes.length, stops: scanned.plan.stops.length, mementos: scanned.plan.mementos.length })}</span>
+            {#if scanned.plan.issues.length > 0}<span class="scan-warning">{message(locale, "admin.connectors.review_notes", { count: scanned.plan.issues.length })}</span>{/if}
           </div>
         {/if}
       {/if}
@@ -247,11 +254,11 @@
   {/if}
 
   {#if loading}
-    <p class="hint">Loading journeys…</p>
+    <p class="hint">{message(locale, "admin.journeys.loading")}</p>
   {:else if error}
     <p class="api-error" role="alert">{error}</p>
   {:else if summaries.length === 0}
-    <p class="hint">No journeys yet.</p>
+    <p class="hint">{message(locale, "admin.journeys.empty")}</p>
   {:else}
     <ul class="journey-cards">
       {#each summaries as summary (summary.journey.id)}
@@ -262,22 +269,22 @@
               <h2>{summary.journey.title}</h2>
               <p class="journey-card-dates">{formatJourneyDate(summary.journey.date_start)} – {formatJourneyDate(summary.journey.date_end)}</p>
               {#if pendingByJourney[summary.journey.id] > 0}
-                <span class="pending-dot">{pendingByJourney[summary.journey.id]} pending build</span>
+                <span class="pending-dot">{pendingByJourney[summary.journey.id]} {message(locale, "admin.journeys.pending_build")}</span>
               {/if}
             </div>
             <div class="journey-card-meta">
               <span class="stat">
                 <strong>{summary.mementoCount}</strong>
-                <span class="card-note">mementos</span>
+                <span class="card-note">{message(locale, "admin.stats.mementos")}</span>
               </span>
               <span class="stat">
                 <strong>{summary.stopCandidateCount ?? "—"}</strong>
-                <span class="card-note">stop candidates</span>
+                <span class="card-note">{message(locale, "admin.stats.stop_candidates")}</span>
               </span>
               <div class="badge-row">
                 {#each stateOrder as state (state)}
                   {#if summary.stateCounts[state]}
-                    <span class={`badge badge--${state}`}>{state} · {summary.stateCounts[state]}</span>
+                    <span class={`badge badge--${state}`}>{statusMessage(locale, state)} · {summary.stateCounts[state]}</span>
                   {/if}
                 {/each}
               </div>
@@ -287,21 +294,26 @@
       {/each}
     </ul>
 
-    <section class="build-shortcut" aria-label="Build and preview">
+    <section class="build-shortcut" aria-label={message(locale, "admin.build.preview_label")}>
       <div class="build-row">
-        <span class="build-label">Build &amp; preview</span>
+        <span class="build-label">{message(locale, "admin.build.label")}</span>
         <button type="button" onclick={triggerBuild} disabled={buildState.status === "pending"}>{buildButtonLabel(pendingJourneyCount(), buildState.status)}</button>
         {#if buildState.status === "success"}
           {#if buildState.report}
             <span class="trigger-status trigger-status--success build-report">
-              {buildState.report.Journeys} journeys · {buildState.report.Mementos} mementos · {buildState.report.Media} media · {buildState.report.Removed} removed
+              {message(locale, "admin.build.report_summary", {
+                journeys: buildState.report.Journeys,
+                mementos: buildState.report.Mementos,
+                media: buildState.report.Media,
+                removed: buildState.report.Removed,
+              })}
             </span>
           {/if}
         {:else if buildState.status === "error"}
           <span class="trigger-status trigger-status--error">{buildState.message}</span>
         {/if}
       </div>
-      <p class="trigger-note">Compiles all published journeys and mementos in one pass — resolves every pending journey above.</p>
+      <p class="trigger-note">{message(locale, "admin.build.list_note")}</p>
     </section>
   {/if}
 </section>

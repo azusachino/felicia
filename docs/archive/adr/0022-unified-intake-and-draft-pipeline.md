@@ -10,6 +10,14 @@ supersedes: []
 
 # ADR 0022: Unified Intake and Draft Pipeline
 
+> **Supersession note (2026-10-02):** The package-import lifecycle in Rules 1 and 4
+> is superseded by the accepted [memento lifecycle contract](../../contracts/memento-lifecycle.md#3-transition-table).
+> A portable package may seed a new memento in any non-reserved state, including
+> `published`; importing it does not build or deploy the public artifact. This
+> exception applies to package imports, not connected-source intake, which still
+> creates reviewable candidates and does not publish directly. The remaining
+> rules in this archived ADR are historical context, not a separate policy source.
+
 ## Context
 
 Felicia needs two practical ways to bring a journey into the product:

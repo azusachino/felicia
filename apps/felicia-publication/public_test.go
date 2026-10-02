@@ -37,6 +37,48 @@ func TestPublishedMementosFiltersAndSorts(t *testing.T) {
 	}
 }
 
+func TestCompileRedactsPrivateSourceReferences(t *testing.T) {
+	journalID := uuid.New()
+	journeyID := uuid.New()
+	journey := &domain.Journey{
+		ID: journeyID, JournalID: journalID, Slug: "private-source", Title: "Trip", Place: "Tokyo",
+		SourceRef: stringPtr("package:local-private-journey"),
+		DateStart: time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC),
+		DateEnd:   time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC),
+	}
+	mementoID := uuid.New()
+	memento := &domain.Memento{
+		ID: mementoID, JourneyID: journeyID, Kind: "goods", Seq: 1,
+		OccurredAt: time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC), OccurredTZ: "Asia/Tokyo",
+		Title: "Private source test", Place: "Tokyo", State: domain.MementoPublished,
+		SourceRef: stringPtr("immich:private-memento-source"),
+	}
+	photo := &domain.MementoPhoto{
+		ID: uuid.New(), MementoID: mementoID, ObjectKey: "media/photo.jpg", ContentHash: "sha256:test", Seq: 1,
+		SourceRef: stringPtr("immich:private-photo-source"),
+	}
+	read := &fakeReadModel{
+		journeys: []*domain.Journey{journey},
+		mementos: map[uuid.UUID][]*domain.Memento{journeyID: {memento}},
+		photos:   map[uuid.UUID][]*domain.MementoPhoto{mementoID: {photo}},
+		journal:  &domain.Journal{ID: journalID},
+	}
+	writer := &memoryArtifactWriter{}
+	if _, err := (StaticCompiler{}).Compile(context.Background(), Input{}, read, fakeMediaSource{}, writer); err != nil {
+		t.Fatalf("compile: %v", err)
+	}
+	for name, raw := range writer.json {
+		if strings.Contains(string(raw), "source_ref") {
+			t.Errorf("%s publishes the private source_ref field: %s", name, raw)
+		}
+		for _, privateValue := range []string{"package:local-private-journey", "immich:private-memento-source", "immich:private-photo-source"} {
+			if strings.Contains(string(raw), privateValue) {
+				t.Errorf("%s publishes private source reference %q: %s", name, privateValue, raw)
+			}
+		}
+	}
+}
+
 func TestNewStaticMementoCarriesAuthoredFields(t *testing.T) {
 	takenAt := time.Date(2026, 7, 2, 9, 30, 0, 0, time.UTC)
 	photo := &domain.MementoPhoto{ID: uuid.New(), MementoID: uuid.New(), ObjectKey: "media/a.jpg", ContentHash: "abc", Seq: 1, TakenAt: &takenAt}

@@ -21,8 +21,8 @@ An earlier draft considered automated machine translation for authored stories, 
 **Support Japanese, English, and Chinese for system chrome, while rendering authored content exactly as written.**
 
 1. **System Locale Catalogs:**
-   - Chrome elements (buttons, navigation landmarks, dates, kind labels, accessible descriptions) are translated via typed static catalogs for Japanese (`ja`, default), English (`en`), and Simplified Chinese (`zh`).
-   - Browser preferences (`navigator.language`) set the default locale, persisted in `localStorage`.
+   - Chrome elements (buttons, navigation landmarks, dates, kind labels, accessible descriptions) are translated via typed static catalogs for Japanese (`ja`, default), English (`en`), and Simplified Chinese (`zh`). The public reader and Admin own separate catalogs because their system messages differ (`packages/felicia-model/src/i18n/catalog.ts` and `apps/felicia-admin/src/i18n/locales/{ja,en,zh}.json`). Admin message IDs are stable, namespaced keys declared in `apps/felicia-admin/src/i18n/keys.ts`; connector controls use the `admin.connectors.*` namespace.
+   - Locale resolution uses an explicit saved preference first, then `navigator.language`, then Japanese. The selected locale is persisted in `localStorage`.
 2. **Transparent Authored Content:**
    - Essays, captions, notes, and titles carry no translation sidecars and are never run through automatic machine translation.
    - The journal presents the author's exact words in whatever language they were authored.

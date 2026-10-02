@@ -50,7 +50,6 @@ func NewStaticJourney(journey *domain.Journey) StaticJourney {
 		ID:             journey.ID.String(),
 		JournalID:      journey.JournalID.String(),
 		Slug:           journey.Slug,
-		SourceRef:      journey.SourceRef,
 		Title:          journey.Title,
 		Place:          journey.Place,
 		Country:        journey.Country,
@@ -81,7 +80,6 @@ func NewStaticMemento(memento *domain.Memento, photos []StaticPhoto) StaticMemen
 		PriceAmount:   memento.PriceAmount,
 		PriceCurrency: memento.PriceCurrency,
 		KindData:      memento.KindData,
-		SourceRef:     memento.SourceRef,
 		Photos:        photos,
 	}
 }
@@ -101,7 +99,6 @@ func NewStaticPhoto(photo *domain.MementoPhoto) StaticPhoto {
 		Caption:     photo.Caption,
 		Seq:         photo.Seq,
 		TakenAt:     takenAt,
-		SourceRef:   photo.SourceRef,
 	}
 }
 
