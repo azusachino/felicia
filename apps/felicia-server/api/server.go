@@ -1219,7 +1219,7 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 		existing, err := s.repo.GetMemento(r.Context(), req.ID)
 		if err == nil {
 			req.OccurredTZ = existing.OccurredTZ
-		} else if !errors.Is(err, domain.ErrNotFound) {
+		} else if !errors.Is(err, domain.ErrNotFound) && !errors.Is(err, sql.ErrNoRows) {
 			respondError(w, http.StatusInternalServerError, err.Error())
 			return
 		}

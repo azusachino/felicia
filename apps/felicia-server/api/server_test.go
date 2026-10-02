@@ -105,15 +105,16 @@ func (store *memoryBlobStore) Open(_ context.Context, key string) (io.ReadCloser
 var mockJournalID = uuid.MustParse("00000000-0000-0000-0000-000000000001")
 
 type mockRepository struct {
-	journeys       map[uuid.UUID]*domain.Journey
-	mementos       map[uuid.UUID]*domain.Memento
-	photos         map[uuid.UUID]*domain.MementoPhoto
-	transitLegs    []*domain.TransitLeg
-	createdLeg     *domain.TransitLegInput
-	displayRoute   orb.MultiLineString
-	snappedPoint   *orb.Point
-	stopCandidates map[uuid.UUID]*domain.StopCandidate
-	siteSettings   map[uuid.UUID]*domain.SiteSettings
+	journeys          map[uuid.UUID]*domain.Journey
+	missingMementoErr error
+	mementos          map[uuid.UUID]*domain.Memento
+	photos            map[uuid.UUID]*domain.MementoPhoto
+	transitLegs       []*domain.TransitLeg
+	createdLeg        *domain.TransitLegInput
+	displayRoute      orb.MultiLineString
+	snappedPoint      *orb.Point
+	stopCandidates    map[uuid.UUID]*domain.StopCandidate
+	siteSettings      map[uuid.UUID]*domain.SiteSettings
 }
 
 func newMockRepository() *mockRepository {
@@ -210,6 +211,9 @@ func (m *mockRepository) ApplyIngestJourneyPatch(_ context.Context, patch *domai
 func (m *mockRepository) GetMemento(_ context.Context, id uuid.UUID) (*domain.Memento, error) {
 	mem, ok := m.mementos[id]
 	if !ok {
+		if m.missingMementoErr != nil {
+			return nil, m.missingMementoErr
+		}
 		return nil, domain.ErrNotFound
 	}
 	return mem, nil

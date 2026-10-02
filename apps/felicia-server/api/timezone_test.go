@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -18,14 +19,18 @@ func TestAdminTimezoneDefaultsAndExplicitValues(t *testing.T) {
 	for _, test := range []struct {
 		name, explicit, existing, want string
 		geom                           any
+		missingNoRows                  bool
 	}{
-		{"GPS", "", "", "America/New_York", map[string]any{"type": "Point", "coordinates": []float64{-74.006, 40.7128}}},
-		{"journey fallback", "", "", "Asia/Tokyo", nil},
-		{"explicit UTC", "UTC", "", "UTC", map[string]any{"type": "Point", "coordinates": []float64{139.6917, 35.6895}}},
-		{"omitted edit preserves zone", "", "Europe/London", "Europe/London", map[string]any{"type": "Point", "coordinates": []float64{139.6917, 35.6895}}},
+		{"GPS", "", "", "America/New_York", map[string]any{"type": "Point", "coordinates": []float64{-74.006, 40.7128}}, false},
+		{"journey fallback", "", "", "Asia/Tokyo", nil, true},
+		{"explicit UTC", "UTC", "", "UTC", map[string]any{"type": "Point", "coordinates": []float64{139.6917, 35.6895}}, false},
+		{"omitted edit preserves zone", "", "Europe/London", "Europe/London", map[string]any{"type": "Point", "coordinates": []float64{139.6917, 35.6895}}, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			repo := newMockRepository()
+			if test.missingNoRows {
+				repo.missingMementoErr = sql.ErrNoRows
+			}
 			jid, mid := uuid.New(), uuid.New()
 			repo.journeys[jid] = &domain.Journey{ID: jid, GPSRoute: orb.MultiLineString{{{139.6917, 35.6895}, {139.7, 35.7}}}}
 			if test.existing != "" {
