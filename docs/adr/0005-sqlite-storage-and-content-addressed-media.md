@@ -24,8 +24,10 @@ This created persistent schema drift, required external database containers, and
    - Felicia is an unreleased, single-author studio; breaking changes during active development are acceptable without migration framework overhead. The database initializes its clean v1 relational schema directly from embedded `schema.sql`.
    - WAL mode and foreign key enforcement are enabled by default.
 2. **Content-Addressed Media Storage:**
-   - Original media files are stored under `.felicia/media/originals/<sha256>/<filename>`, uniquely identified by the SHA-256 hash of their bytes.
-   - Database references link to content hashes, eliminating filename collisions across trips.
+   - Original media bytes live behind the core `BlobStore` port. The local filesystem provider stores keys beneath the configured private media root with owner-only file permissions.
+   - Uploads derive their key from the SHA-256 digest (`media/<sha256>/original.<ext>`); the client filename never controls a filesystem path. Database references retain the content hash, eliminating filename collisions across trips.
+   - The admin upload accepts JPEG, PNG, and WebP images up to 20 MiB. HEIC/HEIF remains an explicit conversion step.
+   - Public compilation reads the private original and emits a resized, re-encoded derivative with image metadata stripped. Original bytes are never copied into the public artifact.
 3. **Recovery by Copy:**
    - In a single-file SQLite database with immutable blob storage, backup and recovery is simply copying the `.felicia/` directory.
 
@@ -36,6 +38,8 @@ This created persistent schema drift, required external database containers, and
 - Subtracted 3,341 lines of PostgreSQL code and all external Goose migration dependencies.
 - Zero external database services needed to run the studio or run tests.
 - Two trips with identical photo names never collide or overwrite each other.
+- The same upload and preview path works against a provider-neutral blob port; the local provider remains the v1 implementation.
+- Public compilation continues to enforce the privacy boundary even when originals are uploaded directly from the admin UI.
 
 ### Negative / Trade-offs
 

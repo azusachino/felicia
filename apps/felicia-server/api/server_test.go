@@ -9,10 +9,12 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -77,7 +79,25 @@ var testLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
 var (
 	_ domain.Repository        = (*mockRepository)(nil)
 	_ ports.StopCandidateStore = (*mockRepository)(nil)
+	_ ports.BlobStore          = (*memoryBlobStore)(nil)
 )
+
+type memoryBlobStore struct {
+	objects map[string][]byte
+}
+
+func (store *memoryBlobStore) Put(_ context.Context, key string, data []byte) error {
+	store.objects[key] = append([]byte(nil), data...)
+	return nil
+}
+
+func (store *memoryBlobStore) Open(_ context.Context, key string) (io.ReadCloser, error) {
+	data, ok := store.objects[key]
+	if !ok {
+		return nil, os.ErrNotExist
+	}
+	return io.NopCloser(bytes.NewReader(data)), nil
+}
 
 // mockJournalID is the fixed "sole journal" ID GetSoleJournal returns —
 // this single-tenant mock never tracks journal bootstrap state, mirroring
@@ -1162,6 +1182,80 @@ func TestServerCompile(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(outDir, "img", "1.jpg")); err != nil {
 		t.Errorf("expected media file to be written: %v", err)
+	}
+}
+
+func TestServerUploadPhotoAndServePrivateOriginal(t *testing.T) {
+	repo := newMockRepository()
+	mementoID := uuid.New()
+	repo.mementos[mementoID] = &domain.Memento{ID: mementoID, JourneyID: uuid.New(), Kind: "goods"}
+	blobs := &memoryBlobStore{objects: make(map[string][]byte)}
+	handler := api.NewServer(repo, nil, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{BlobStore: blobs}).Handler()
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	part, err := writer.CreateFormFile("file", "trip.jpg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := encodeTestJPEG(t)
+	if _, err := part.Write(original); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/mementos/"+mementoID.String()+"/photos/upload", &body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, req)
+	if response.Code != http.StatusCreated {
+		t.Fatalf("upload status = %d, want 201 (%s)", response.Code, response.Body)
+	}
+	var photo domain.MementoPhoto
+	if err := json.NewDecoder(response.Body).Decode(&photo); err != nil {
+		t.Fatal(err)
+	}
+	if photo.ContentHash != "sha256:"+importer.MediaDigest(original) {
+		t.Errorf("content hash = %q", photo.ContentHash)
+	}
+	if got := blobs.objects[photo.ObjectKey]; !bytes.Equal(got, original) {
+		t.Fatal("uploaded bytes were not stored unchanged as the private original")
+	}
+
+	response = httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/api/admin/photos/"+photo.ID.String()+"/content", nil))
+	if response.Code != http.StatusOK || !bytes.Equal(response.Body.Bytes(), original) {
+		t.Fatalf("content response = %d, bytes match = %v", response.Code, bytes.Equal(response.Body.Bytes(), original))
+	}
+	if response.Header().Get("Cache-Control") != "private, no-store" {
+		t.Errorf("Cache-Control = %q", response.Header().Get("Cache-Control"))
+	}
+}
+
+func TestServerPhotoUploadRejectsHEIC(t *testing.T) {
+	repo := newMockRepository()
+	mementoID := uuid.New()
+	repo.mementos[mementoID] = &domain.Memento{ID: mementoID, JourneyID: uuid.New(), Kind: "goods"}
+	blobs := &memoryBlobStore{objects: make(map[string][]byte)}
+	handler := api.NewServer(repo, nil, api.NewCacheManager("", testLogger), testLogger, nil, api.RouteConfig{BlobStore: blobs}).Handler()
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	part, err := writer.CreateFormFile("file", "trip.heic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = part.Write([]byte("\x00\x00\x00\x18ftypheic"))
+	_ = writer.Close()
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/mementos/"+mementoID.String()+"/photos/upload", &body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, req)
+	if response.Code != http.StatusUnsupportedMediaType || !strings.Contains(response.Body.String(), "convert to JPEG") {
+		t.Fatalf("HEIC response = %d (%s)", response.Code, response.Body)
+	}
+	if len(blobs.objects) != 0 {
+		t.Fatal("unsupported image bytes were stored")
 	}
 }
 

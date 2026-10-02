@@ -21,6 +21,7 @@ import {
   listStopCandidates,
   loadJourneySummaries,
   photoTray,
+  photoContentURL,
   planIntake,
   promoteStopCandidate,
   reviewStopCandidate,
@@ -30,6 +31,7 @@ import {
   syncRoute,
   syncVisits,
   updateSiteOutDir,
+  uploadPhoto,
   upsertMemento,
   upsertPhoto,
   type AdminJourney,
@@ -495,6 +497,41 @@ describe("memento editor (ADMIN-01.4 / ADMIN-01.5)", () => {
     const result = await upsertPhoto(payload)
     expect(capturedBody).toEqual(payload)
     expect(result).toEqual({ status: "ok" })
+  })
+
+  test("uploadPhoto sends multipart bytes without setting a JSON content type", async () => {
+    let capturedUrl = ""
+    let capturedHeaders: HeadersInit | undefined
+    let capturedBody: BodyInit | null | undefined
+    globalThis.fetch = ((url: string | URL, init?: RequestInit) => {
+      capturedUrl = String(url)
+      capturedHeaders = init?.headers
+      capturedBody = init?.body
+      return Promise.resolve(
+        Response.json({
+          id: "photo-1",
+          memento_id: "memento-1",
+          object_key: "media/hash/original.jpg",
+          content_hash: "sha256:hash",
+          seq: 0,
+          created_at: "2026-05-01T09:30:00Z",
+        }),
+      )
+    }) as unknown as typeof fetch
+
+    const file = new File(["image bytes"], "trip.jpg", { type: "image/jpeg" })
+    const photo = await uploadPhoto("memento-1", file)
+    expect(capturedUrl).toBe("http://localhost:8080/api/admin/mementos/memento-1/photos/upload")
+    expect(capturedHeaders).toEqual({ Accept: "application/json" })
+    expect(capturedBody).toBeInstanceOf(FormData)
+    const formFile = (capturedBody as FormData).get("file") as File
+    expect(formFile.name).toBe(file.name)
+    expect(await formFile.text()).toBe("image bytes")
+    expect(photo.object_key).toBe("media/hash/original.jpg")
+  })
+
+  test("photoContentURL builds the private preview endpoint", () => {
+    expect(photoContentURL("photo/1")).toBe("http://localhost:8080/api/admin/photos/photo%2F1/content")
   })
 
   test("listMementoPhotos GETs the memento's photo list", async () => {

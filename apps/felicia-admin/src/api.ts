@@ -530,6 +530,25 @@ export async function upsertPhoto(payload: UpsertPhotoRequest): Promise<{ status
   return postJSON<{ status: string }>("/api/admin/photos", payload)
 }
 
+export async function uploadPhoto(mementoId: string, file: File): Promise<AdminMementoPhoto> {
+  const form = new FormData()
+  form.append("file", file)
+  const response = await fetch(apiURL(`/api/admin/mementos/${mementoId}/photos/upload`), {
+    method: "POST",
+    headers: { Accept: "application/json" },
+    body: form,
+  })
+  if (!response.ok) {
+    const { message, issues } = await apiErrorDetail(response)
+    throw new ApiError(message, response.status, issues)
+  }
+  return (await response.json()) as AdminMementoPhoto
+}
+
+export function photoContentURL(photoId: string): string {
+  return apiURL(`/api/admin/photos/${encodeURIComponent(photoId)}/content`)
+}
+
 export async function listMementoPhotos(mementoId: string): Promise<AdminMementoPhoto[]> {
   return asArray(await getJSON<AdminMementoPhoto[] | null>(`/api/admin/mementos/${mementoId}/photos`))
 }

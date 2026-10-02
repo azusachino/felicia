@@ -2,14 +2,21 @@
 package api
 
 import (
+	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
+	_ "image/jpeg" // Register JPEG decoding for upload validation.
+	_ "image/png"  // Register PNG decoding for upload validation.
+	"io"
 	"log/slog"
 	"math"
 	"net"
 	"net/http"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -18,6 +25,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 	"github.com/paulmach/orb"
+	_ "golang.org/x/image/webp" // Register WebP decoding for upload validation.
 
 	"github.com/azusachino/felicia/apps/felicia-core/domain"
 	"github.com/azusachino/felicia/apps/felicia-core/ports"
@@ -44,6 +52,7 @@ type Server struct {
 	allowedOrigin         string
 	rateLimiter           *clientRateLimiter
 	mediaRoot             string
+	blobStore             ports.BlobStore
 	// siteOutDir is mutable: the GUI's Site & Deploy page can repoint the
 	// static output location at runtime, so reads go through SiteOutDir()
 	// under siteMu and the preview server reads the same getter.
@@ -73,6 +82,7 @@ const defaultTransitSegmentLengthM = 100000
 const (
 	defaultRequestTimeout = 30 * time.Second
 	defaultMaxBodyBytes   = 2 << 20
+	maxPhotoUploadBytes   = 20 << 20
 	defaultRatePerSecond  = 1
 	defaultRateBurst      = 20
 	defaultMediaRoot      = ".felicia/media"
@@ -95,7 +105,9 @@ type RouteConfig struct {
 	// overlaying the pre-built public SPA at SiteSpaDist.
 	SiteOutDir      string
 	SitePreviewPort string
-	SiteSpaDist     string
+	// BlobStore holds private original bytes uploaded through the admin API.
+	BlobStore   ports.BlobStore
+	SiteSpaDist string
 	// SiteBrowseRoot bounds the Site & Deploy directory picker; the browse
 	// endpoint refuses to leave this root. Defaults to the user's home.
 	SiteBrowseRoot string
@@ -150,6 +162,7 @@ func NewServer(repo domain.Repository, registry *domain.Registry, cache *CacheMa
 		allowedOrigin:         routeConfig.AllowedOrigin,
 		rateLimiter:           newClientRateLimiter(routeConfig.RatePerSecond, routeConfig.RateBurst),
 		mediaRoot:             routeConfig.MediaRoot,
+		blobStore:             routeConfig.BlobStore,
 		siteOutDir:            routeConfig.SiteOutDir,
 		siteBrowseRoot:        routeConfig.SiteBrowseRoot,
 		sitePreviewPort:       routeConfig.SitePreviewPort,
@@ -192,7 +205,17 @@ func (s *Server) Handler() http.Handler {
 	r.Use(s.bodyLimit)
 	r.Use(s.cors)
 	r.Use(s.rateLimit)
-	r.Use(middleware.AllowContentType("application/json"))
+	r.Use(func(next http.Handler) http.Handler {
+		jsonOnly := middleware.AllowContentType("application/json")(next)
+		multipartOnly := middleware.AllowContentType("multipart/form-data")(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if isPhotoUploadRequest(r) {
+				multipartOnly.ServeHTTP(w, r)
+				return
+			}
+			jsonOnly.ServeHTTP(w, r)
+		})
+	})
 	r.Get("/healthz", s.handleHealth)
 	r.Get("/readyz", s.handleReady)
 
@@ -236,9 +259,11 @@ func (s *Server) Handler() http.Handler {
 		r.Post("/journeys/{id}/intake/plan", s.handlePlanIntake)
 		r.Get("/mementos/{id}", s.handleGetMemento)
 		r.Get("/mementos/{id}/photos", s.handleListMementoPhotos)
+		r.Post("/mementos/{id}/photos/upload", s.handleUploadPhoto)
 		r.Post("/mementos", s.handleUpsertMemento)
 		r.Delete("/mementos/{id}", s.handleDeleteMemento)
 		r.Post("/photos", s.handleUpsertPhoto)
+		r.Get("/photos/{id}/content", s.handlePhotoContent)
 		r.Post("/stop-candidates/{id}/review", s.handleReviewStopCandidate)
 		r.Post("/stop-candidates/{id}/promote", s.handlePromoteStopCandidate)
 		r.Get("/site", s.handleSiteInfo)
@@ -272,7 +297,7 @@ func responseRequestID(next http.Handler) http.Handler {
 
 func (s *Server) bodyLimit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if s.maxBodyBytes > 0 && r.Body != nil {
+		if s.maxBodyBytes > 0 && r.Body != nil && !isPhotoUploadRequest(r) {
 			r.Body = http.MaxBytesReader(w, r.Body, s.maxBodyBytes)
 		}
 		next.ServeHTTP(w, r)
@@ -1248,6 +1273,18 @@ func (s *Server) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 
 // Photo handler (Admin)
 
+func isPhotoUploadRequest(r *http.Request) bool {
+	if r.Method != http.MethodPost {
+		return false
+	}
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) != 7 || parts[1] != "api" || parts[2] != "admin" || parts[3] != "mementos" || parts[5] != "photos" || parts[6] != "upload" {
+		return false
+	}
+	_, err := uuid.Parse(parts[4])
+	return err == nil
+}
+
 type upsertPhotoRequest struct {
 	ID          uuid.UUID  `json:"id"`
 	MementoID   uuid.UUID  `json:"memento_id"`
@@ -1257,6 +1294,164 @@ type upsertPhotoRequest struct {
 	Seq         int        `json:"seq"`
 	TakenAt     *time.Time `json:"taken_at,omitempty"`
 	SourceRef   *string    `json:"source_ref,omitempty"`
+}
+
+func (s *Server) handleUploadPhoto(w http.ResponseWriter, r *http.Request) {
+	if s.blobStore == nil {
+		respondError(w, http.StatusServiceUnavailable, "media storage is not configured")
+		return
+	}
+	mementoID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid memento id")
+		return
+	}
+	if _, err := s.repo.GetMemento(r.Context(), mementoID); err != nil {
+		if errors.Is(err, domain.ErrNotFound) || errors.Is(err, sql.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "memento not found")
+		} else {
+			respondError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxPhotoUploadBytes+(1<<20))
+	if err := r.ParseMultipartForm(1 << 20); err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			respondError(w, http.StatusRequestEntityTooLarge, "photo upload is too large (maximum 20 MiB)")
+		} else {
+			respondError(w, http.StatusBadRequest, "expected multipart form with a file field")
+		}
+		return
+	}
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "photo file is required")
+		return
+	}
+	defer func() {
+		if err := file.Close(); err != nil {
+			s.logger.Warn("close uploaded photo", "err", err)
+		}
+	}()
+	data, err := io.ReadAll(io.LimitReader(file, maxPhotoUploadBytes+1))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "could not read uploaded photo")
+		return
+	}
+	if len(data) > maxPhotoUploadBytes {
+		respondError(w, http.StatusRequestEntityTooLarge, "photo upload is too large (maximum 20 MiB)")
+		return
+	}
+	format, err := uploadedImageFormat(data)
+	if err != nil {
+		respondError(w, http.StatusUnsupportedMediaType, err.Error())
+		return
+	}
+
+	extension := map[string]string{"jpeg": ".jpg", "png": ".png", "webp": ".webp"}[format]
+	digest := importer.MediaDigest(data)
+	objectKey := importer.MediaObjectKey("original"+extension, digest)
+	if err := s.blobStore.Put(r.Context(), objectKey, data); err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	photos, err := s.repo.ListPhotosByMemento(r.Context(), mementoID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	seq := 0
+	for _, photo := range photos {
+		if photo.Seq >= seq {
+			seq = photo.Seq + 1
+		}
+	}
+	photo := &domain.MementoPhoto{
+		ID:          uuid.Must(uuid.NewV7()),
+		MementoID:   mementoID,
+		ObjectKey:   objectKey,
+		ContentHash: "sha256:" + digest,
+		Seq:         seq,
+		CreatedAt:   time.Now().UTC(),
+	}
+	if err := s.repo.UpsertPhoto(r.Context(), photo); err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	s.cache.InvalidateAll(r.Context())
+	respondJSON(w, http.StatusCreated, photo)
+}
+
+func uploadedImageFormat(data []byte) (string, error) {
+	if isHEIC(data) {
+		return "", fmt.Errorf("HEIC/HEIF photos are not supported yet; convert to JPEG before uploading")
+	}
+	config, format, err := image.DecodeConfig(bytes.NewReader(data))
+	if err != nil {
+		return "", fmt.Errorf("uploaded file is not a supported JPEG, PNG, or WebP image")
+	}
+	if format != "jpeg" && format != "png" && format != "webp" {
+		return "", fmt.Errorf("unsupported image format %q; use JPEG, PNG, or WebP", format)
+	}
+	if config.Width <= 0 || config.Height <= 0 || config.Width > 50_000 || config.Height > 50_000 || int64(config.Width)*int64(config.Height) > 50_000_000 {
+		return "", fmt.Errorf("image dimensions are too large")
+	}
+	return format, nil
+}
+
+func isHEIC(data []byte) bool {
+	if len(data) < 12 || string(data[4:8]) != "ftyp" {
+		return false
+	}
+	brand := string(data[8:12])
+	return brand == "heic" || brand == "heix" || brand == "hevc" || brand == "hevx" || brand == "mif1" || brand == "msf1"
+}
+
+func (s *Server) handlePhotoContent(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "invalid photo id")
+		return
+	}
+	photo, err := s.repo.GetPhoto(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) || errors.Is(err, sql.ErrNoRows) {
+			respondError(w, http.StatusNotFound, "photo not found")
+		} else {
+			respondError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+	if s.blobStore == nil {
+		respondError(w, http.StatusServiceUnavailable, "media storage is not configured")
+		return
+	}
+	reader, err := s.blobStore.Open(r.Context(), photo.ObjectKey)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "photo bytes are unavailable")
+		return
+	}
+	defer func() {
+		if err := reader.Close(); err != nil {
+			s.logger.Warn("close photo preview", "photo_id", id, "err", err)
+		}
+	}()
+	contentType := map[string]string{
+		".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp",
+	}[strings.ToLower(path.Ext(photo.ObjectKey))]
+	if contentType == "" {
+		respondError(w, http.StatusUnsupportedMediaType, "photo preview supports JPEG, PNG, and WebP")
+		return
+	}
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Disposition", "inline")
+	w.Header().Set("Cache-Control", "private, no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	if _, err := io.Copy(w, reader); err != nil {
+		s.logger.Error("stream photo content", "photo_id", id, "err", err)
+	}
 }
 
 func (s *Server) handleUpsertPhoto(w http.ResponseWriter, r *http.Request) {
