@@ -8,7 +8,7 @@ import json
 import shutil
 import subprocess
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 try:
@@ -189,7 +189,7 @@ def preprocess(args: argparse.Namespace) -> None:
     # media timestamps; today's date is only the fallback for a plan that could
     # not derive them. Writing `now` unconditionally publishes a trip dated the
     # day it was imported.
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = datetime.now(UTC).date().isoformat()
     date_start = plan_date(plan.get("date_start"), today)
     date_end = plan_date(plan.get("date_end"), date_start)
     write_json(
@@ -212,7 +212,12 @@ def preprocess(args: argparse.Namespace) -> None:
     print(f"preprocess ready: {workspace}")
     print(f"journey={args.journey} slug={args.slug!r} title={args.title!r}")
     print(f"pass --workspace {workspace} to `package`/`preview` for this trip")
-    print("edit journey.json, stops.json, and mementos.json, then run `package` or `preview`")
+    print(f"stops={len(stops)} mementos={len(mementos)}")
+    if not stops:
+        print("No stops detected: the track has no dwell of at least 20 minutes within 250 m.")
+        print("Review the route and add stops or mementos manually before packaging.")
+    else:
+        print("edit journey.json, stops.json, and mementos.json, then run `package` or `preview`")
 
 
 def preview(args: argparse.Namespace) -> None:
