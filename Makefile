@@ -61,12 +61,13 @@ desktop-assets: admin-build web-build ## Prepare built admin and reader assets f
 
 desktop-build: desktop-assets ## Build native desktop binary into bin/felicia-desktop
 	@mkdir -p bin
-	$(GO) build -o bin/felicia-desktop ./apps/felicia-desktop
+	$(GO) build -tags production -o bin/felicia-desktop ./apps/felicia-desktop
 
-desktop-package: desktop-build ## Package into macOS .app bundle
-	mkdir -p bin/FeliciaStudio.app/Contents/MacOS
+desktop-package: desktop-build ## Package into macOS .app bundle (Liquid Glass, app icon)
+	mkdir -p bin/FeliciaStudio.app/Contents/MacOS bin/FeliciaStudio.app/Contents/Resources
 	cp bin/felicia-desktop bin/FeliciaStudio.app/Contents/MacOS/felicia-desktop
 	cp apps/felicia-desktop/Info.plist bin/FeliciaStudio.app/Contents/Info.plist
+	cp apps/felicia-desktop/build/felicia.icns bin/FeliciaStudio.app/Contents/Resources/felicia.icns
 	codesign --force --sign - bin/FeliciaStudio.app
 	codesign --verify --deep --strict bin/FeliciaStudio.app
 

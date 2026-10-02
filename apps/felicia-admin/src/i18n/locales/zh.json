@@ -30,6 +30,7 @@
   "admin.connectors.local_source_intake": "导入本地来源",
   "admin.connectors.scan_trip_folder": "扫描旅程文件夹",
   "admin.connectors.scan_heading": "扫描旅程文件夹",
+  "admin.connectors.browse": "浏览…",
   "admin.connectors.folder_path": "文件夹路径",
   "admin.connectors.scan_preview": "扫描并预览",
   "admin.connectors.scan_note": "选择包含 route.gpx、photos/ 和可选 photos.jsonl 的文件夹。扫描为只读操作；导入只会创建可审核的候选项。",

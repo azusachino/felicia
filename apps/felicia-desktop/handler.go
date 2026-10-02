@@ -21,7 +21,9 @@ import (
 
 	core "github.com/azusachino/felicia/apps/felicia-core"
 	"github.com/azusachino/felicia/apps/felicia-core/domain"
+	"github.com/azusachino/felicia/apps/felicia-core/ports"
 	publication "github.com/azusachino/felicia/apps/felicia-publication"
+	"github.com/azusachino/felicia/apps/felicia-runtime/intake"
 	journeyruntime "github.com/azusachino/felicia/apps/felicia-runtime/journey"
 	mementoruntime "github.com/azusachino/felicia/apps/felicia-runtime/memento"
 )
@@ -37,16 +39,18 @@ type HandlerConfig struct {
 	MediaRoot     string
 	PublicDir     string
 	Mode          string // "admin" or "reader"
-	Token         string
+	Token         string // optional; tests only. The packaged app runs tokenless on the webview-only scheme.
 	PreviewPort   string
 	PreviewPortFn func() string
-	OnPickFolder  func() (string, error)
+	OnPickFolder  func(title string) (string, error)
+	OnPickFile    func(title string) (string, error)
 }
 
 type DesktopHandler struct {
 	cfg           HandlerConfig
 	journeyWriter *journeyruntime.Service
 	mementoWriter *mementoruntime.Service
+	intake        *intake.Service
 	adminFS       fs.FS
 	readerFS      fs.FS
 	mu            sync.RWMutex
@@ -73,11 +77,19 @@ func NewHandler(cfg HandlerConfig) (*DesktopHandler, error) {
 		cfg:           cfg,
 		journeyWriter: journeyruntime.New(cfg.Repo),
 		mementoWriter: mementoruntime.New(cfg.Repo),
+		intake:        intake.NewService(candidateStore(cfg.Repo), cfg.Repo),
 		adminFS:       adminSub,
 		readerFS:      readerSub,
 		publicDir:     cfg.PublicDir,
 	}
 	return h, nil
+}
+
+func candidateStore(repo domain.Repository) ports.StopCandidateStore {
+	if store, ok := repo.(ports.StopCandidateStore); ok {
+		return store
+	}
+	return nil
 }
 
 func (h *DesktopHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -106,13 +118,28 @@ func (h *DesktopHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if !h.authorizedMutation(w, r) {
 			return
 		}
-		h.handlePickFolder(w, r)
+		h.handlePick(w, r, true)
+		return
+	}
+	if cleanPath == "/api/desktop/pick-file" {
+		if !h.authorizedMutation(w, r) {
+			return
+		}
+		h.handlePick(w, r, false)
 		return
 	}
 
 	// Admin API routing
 	if strings.HasPrefix(cleanPath, "/api/admin/") {
 		if !h.authorizedMutation(w, r) {
+			return
+		}
+		if cleanPath == "/api/admin/local-journeys/scan" {
+			h.handleScanLocalJourney(w, r)
+			return
+		}
+		if cleanPath == "/api/admin/local-journeys/import" {
+			h.handleImportLocalJourney(w, r)
 			return
 		}
 		h.routeAdmin(w, r, cleanPath)
@@ -156,16 +183,30 @@ func (h *DesktopHandler) handleBoot(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write(append(append([]byte("window.bootPrefs = "), b...), ";\n"...))
 }
 
-func (h *DesktopHandler) handlePickFolder(w http.ResponseWriter, r *http.Request) {
+func (h *DesktopHandler) handlePick(w http.ResponseWriter, r *http.Request, directories bool) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if h.cfg.OnPickFolder == nil {
+	var body struct {
+		Title string `json:"title"`
+	}
+	_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<10)).Decode(&body)
+	if body.Title == "" {
+		body.Title = "Choose a folder"
+		if !directories {
+			body.Title = "Choose a file"
+		}
+	}
+	pick := h.cfg.OnPickFolder
+	if !directories {
+		pick = h.cfg.OnPickFile
+	}
+	if pick == nil {
 		respondJSON(w, http.StatusOK, map[string]any{"selected": false, "path": "", "basename": ""})
 		return
 	}
-	chosen, err := h.cfg.OnPickFolder()
+	chosen, err := pick(body.Title)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return

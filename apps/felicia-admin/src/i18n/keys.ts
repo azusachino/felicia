@@ -33,6 +33,7 @@ export const MESSAGE_KEYS = [
   "admin.connectors.scan_trip_folder",
   "admin.connectors.scan_heading",
   "admin.connectors.folder_path",
+  "admin.connectors.browse",
   "admin.connectors.scan_preview",
   "admin.connectors.scan_note",
   "admin.connectors.scan_counts",

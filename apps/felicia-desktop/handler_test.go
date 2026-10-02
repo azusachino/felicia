@@ -40,7 +40,7 @@ func setupTestHandler(t *testing.T, mode string, token string) (*DesktopHandler,
 		PublicDir: publicDir,
 		Mode:      mode,
 		Token:     token,
-		OnPickFolder: func() (string, error) {
+		OnPickFolder: func(_ string) (string, error) {
 			return "/test/path/to/folder", nil
 		},
 	})
@@ -152,7 +152,7 @@ func TestHandlerPickFolder(t *testing.T) {
 	}
 
 	// 3. Valid token returns 200 OK
-	req = httptest.NewRequest(http.MethodPost, "/api/desktop/pick-folder", nil)
+	req = httptest.NewRequest(http.MethodPost, "/api/desktop/pick-folder", strings.NewReader(`{"title":"Pick workspace"}`))
 	req.Header.Set("X-Desktop-Token", "secure-token")
 	rec = httptest.NewRecorder()
 	h.ServeHTTP(rec, req)

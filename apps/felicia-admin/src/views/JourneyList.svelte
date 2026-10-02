@@ -6,6 +6,7 @@
   import {
     compileSite,
     createJourney,
+    pickDesktopFolder,
     describeLoadFailure,
     formatJourneyDate,
     getBuildStatus,
@@ -73,12 +74,27 @@
 
   // Scan form state
   let workspace = $state("")
+  let browseState = $state<"idle" | "pending">("idle")
   let slug = $state("")
   let title = $state("")
   let place = $state("")
   let scanState = $state<"idle" | "scanning" | "ready" | "importing" | "error">("idle")
   let scanError = $state("")
   let scanned = $state<LocalJourneyPlan | null>(null)
+
+  // Desktop only: ask the native shell for a folder and fill the input.
+  // The web admin has no /api/desktop bridge; the typed-path input stays.
+  async function browseWorkspace() {
+    browseState = "pending"
+    try {
+      const res = await pickDesktopFolder(message(locale, "admin.connectors.folder_path"))
+      if (res.selected && res.path) workspace = res.path
+    } catch {
+      // Not running in the desktop app; ignore.
+    } finally {
+      browseState = "idle"
+    }
+  }
 
   async function load() {
     loading = true
@@ -225,7 +241,10 @@
           {message(locale, "admin.connectors.scan_note")}
         </p>
         <div class="new-journey-form">
-          <label>{message(locale, "admin.connectors.folder_path")}<input bind:value={workspace} placeholder="/Users/you/trips/izu-trip-2026-08-01" /></label>
+          <label
+            >{message(locale, "admin.connectors.folder_path")}<input bind:value={workspace} placeholder="/Users/you/trips/izu-trip-2026-08-01" />
+            <button class="secondary" type="button" onclick={browseWorkspace} disabled={browseState === "pending"}>{message(locale, "admin.connectors.browse")}</button></label
+          >
           <label>{message(locale, "admin.journeys.slug")}<input bind:value={slug} placeholder="izu-trip-2026-08-01" /></label>
           <label>{message(locale, "admin.common.title")}<input bind:value={title} placeholder="Izu · 2026-08-01 – 2026-08-02" /></label>
           <label>{message(locale, "admin.common.place")}<input bind:value={place} placeholder="Izu" /></label>
