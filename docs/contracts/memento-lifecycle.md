@@ -1,21 +1,22 @@
 ---
 title: "Contract: Memento lifecycle and event view"
-status: "proposed"
+status: "accepted"
 date: "2026-07-19"
 ---
 
 # Contract: Memento lifecycle and event view
 
-This is a **binding engineering contract**. It is the single source of truth for the
-memento lifecycle state machine and its **event view**: every event that changes a
+This is an **accepted, binding engineering contract** and the single source of truth for
+the memento lifecycle state machine and its **event view**: every event that changes a
 memento's lifecycle state, the guard that MUST gate it, the resulting state, the side
-effects (including automatic site rebuild), and the structured debug log that MUST
-accompany it. Implementation — a transition table in `apps/felicia-core/domain`, provider- and
-API-level guards, structured logs, and GUI auto-rebuild — will be written to satisfy
-this document. Where the current code diverges from a rule below, the code MUST change;
-this document wins. `status: proposed` because it is pending human confirmation before
-the implementing code lands. Normative keywords (**MUST**, **MUST NOT**, **MAY**) carry
-their RFC 2119 meaning.
+effects (including site rebuild), and the structured debug log that MUST accompany it.
+The implementation is in place across the domain, providers, API, and Admin GUI. Where
+code diverges from a rule below, the code MUST change; this document wins. Package
+imports may create a memento in any non-reserved state, including `published`; the
+import does not build or deploy the public artifact. Connected-source intake still
+creates reviewable candidates and does not publish directly. This package-import rule
+supersedes ADR-0022's broader intake rule; see the supersession note in that archived
+record. Normative keywords (**MUST**, **MUST NOT**, **MAY**) carry their RFC 2119 meaning.
 
 ## 1. State inventory
 
@@ -28,7 +29,7 @@ produces them:
 | `candidate` | Source-derived, awaiting authoring; not publicly visible. | Importer creation (ingested rows).                                                    |
 | `draft`     | Editable, incomplete allowed; not publicly visible.       | Promote a stop-candidate; API create; `candidate→draft`.                              |
 | `authored`  | Complete and review-ready; not publicly visible.          | GUI "Mark authored" (`draft→authored`); GUI "Unpublish" (`published→authored`).       |
-| `published` | Exposed to the public/static site.                        | GUI "Publish" (`authored→published`); importer fixtures created directly `published`. |
+| `published` | Exposed by the next explicit site build.                   | GUI "Publish" (`authored→published`); package import may create it directly.           |
 | `archived`  | **Reserved.** No writer in v1; defined-but-dead.          | Nothing (see §3, §10).                                                                |
 
 ## 2. State diagram
@@ -37,8 +38,8 @@ produces them:
 stateDiagram-v2
     [*] --> candidate: creation (importer)
     [*] --> draft: creation (promote / API create)
-    [*] --> authored: creation (import fixture)
-    [*] --> published: creation (import fixture)
+    [*] --> authored: creation (package import)
+    [*] --> published: creation (package import)
 
     candidate --> draft
     draft --> authored: Mark authored
@@ -120,8 +121,8 @@ There is exactly one normative rule for a missing `state`:
 
 The SQLite/PostgreSQL column default (`published`) is legacy and irrelevant: every
 write path sets `state` explicitly, so the column default is never the effective value.
-The current `handleUpsertMemento` behaviour (unconditionally defaulting missing state to
-`MementoDraft`) MUST be replaced by the rule above.
+`handleUpsertMemento` implements this rule: a missing state preserves an existing
+memento's state and defaults a new memento to `MementoDraft`.
 
 ## 6. Staged rebuild (pending-build tracking)
 

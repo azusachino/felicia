@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { message, statusMessage, type Locale } from "../i18n"
   import {
     deleteMemento,
     describeLoadFailure,
@@ -44,7 +45,7 @@
   } from "../mementoForm"
   import { journeyDetailHash } from "../router"
 
-  let { journeyId, id }: { journeyId: string; id: string } = $props()
+  let { journeyId, id, locale }: { journeyId: string; id: string; locale: Locale } = $props()
 
   // Only these two kinds get a hardcoded, registry-aligned form (ADMIN-01.4).
   // Every other kind falls back to a read-only pretty-printed kind_data view.
@@ -125,7 +126,7 @@
   }
 
   function actionErrorMessage(cause: unknown): string {
-    return cause instanceof Error ? cause.message : "Request failed"
+    return cause instanceof Error ? cause.message : message(locale, "admin.common.request_failed")
   }
 
   // Wraps the lifecycle save so the template's onclick closure never touches
@@ -224,14 +225,14 @@
       expectedRevision: memento.revision,
     })
 
-    saveState = { status: "pending", message: "Saving…", fieldErrors: {} }
+    saveState = { status: "pending", message: message(locale, "admin.common.saving"), fieldErrors: {} }
     try {
       await upsertMemento(payload)
       // Re-fetch so the next save carries the fresh revision (ADMIN-01.5).
       const refreshed = await getMemento(memento.id)
       memento = refreshed
       hydrateForm(refreshed, templates)
-      saveState = { status: "success", message: "Saved.", fieldErrors: {} }
+      saveState = { status: "success", message: message(locale, "admin.common.saved"), fieldErrors: {} }
     } catch (cause) {
       if (isConflict(cause)) {
         // The draft stays exactly as typed. Fetch the server copy only to
@@ -248,16 +249,13 @@
         }
         saveState = {
           status: "conflict",
-          message:
-            changed.length > 0
-              ? `Someone else changed this memento since it was loaded (${changed.join(", ")}). Your edits are still here.`
-              : "Someone else changed this memento since it was loaded. Your edits are still here.",
+          message: changed.length > 0 ? message(locale, "admin.mementos.conflict.changed", { fields: changed.join(", ") }) : message(locale, "admin.mementos.conflict.unknown"),
           fieldErrors: {},
         }
         return
       }
       if (cause instanceof ApiError && cause.issues && cause.issues.length > 0) {
-        saveState = { status: "error", message: cause.message, fieldErrors: groupIssuesByField(cause.issues) }
+        saveState = { status: "error", message: cause.message, fieldErrors: groupIssuesByField(cause.issues, locale) }
         return
       }
       saveState = { status: "error", message: actionErrorMessage(cause), fieldErrors: {} }
@@ -270,7 +268,7 @@
   // recent intent.
   async function retryKeepingDraft() {
     if (!memento) return
-    saveState = { status: "pending", message: "Rechecking…", fieldErrors: {} }
+    saveState = { status: "pending", message: message(locale, "admin.common.rechecking"), fieldErrors: {} }
     try {
       memento = await getMemento(memento.id)
       saveState = { status: "idle", message: "", fieldErrors: {} }
@@ -323,7 +321,7 @@
 
   async function confirmDelete() {
     if (!memento) return
-    deleteState = { status: "pending", message: "Deleting…" }
+    deleteState = { status: "pending", message: message(locale, "admin.common.deleting") }
     try {
       await deleteMemento(memento.id)
       location.hash = journeyDetailHash(journeyId)
@@ -332,7 +330,7 @@
       // carries a structured issue — surface its friendly message rather
       // than the raw error string.
       if (cause instanceof ApiError && cause.issues && cause.issues.length > 0) {
-        deleteState = { status: "error", message: cause.issues.map(issueMessage).join(" ") }
+        deleteState = { status: "error", message: cause.issues.map((issue) => issueMessage(issue, locale)).join(" ") }
         return
       }
       deleteState = { status: "error", message: actionErrorMessage(cause) }
@@ -391,7 +389,7 @@
     const input = event.currentTarget as HTMLInputElement
     const files = Array.from(input.files ?? [])
     if (files.length === 0) return
-    photoUploadStatus = `Uploading ${files.length} photo${files.length === 1 ? "" : "s"}…`
+    photoUploadStatus = message(locale, "admin.mementos.photo_uploading", { count: files.length })
     photoUploadError = false
     const failures: string[] = []
     for (const file of files) {
@@ -403,7 +401,7 @@
       }
     }
     photoUploadError = failures.length > 0
-    photoUploadStatus = failures.length > 0 ? failures.join("; ") : "Upload complete."
+    photoUploadStatus = failures.length > 0 ? failures.join("; ") : message(locale, "admin.mementos.photo_upload_complete")
     input.value = ""
   }
 
@@ -422,12 +420,12 @@
   async function savePhotoRow(row: PhotoRow) {
     if (!memento) return
     row.status = "pending"
-    row.message = "Saving…"
+    row.message = message(locale, "admin.common.saving")
     photoRows = [...photoRows]
     try {
       await upsertPhoto(buildPhotoPayload(row.id, memento.id, row.fields))
       row.status = "success"
-      row.message = "Saved."
+      row.message = message(locale, "admin.common.saved")
     } catch (cause) {
       row.status = "error"
       row.message = actionErrorMessage(cause)
@@ -437,24 +435,24 @@
 </script>
 
 <section class="editor">
-  <a class="back-link" href={journeyDetailHash(journeyId)}>&larr; Back to journey</a>
+  <a class="back-link" href={journeyDetailHash(journeyId)}>&larr; {message(locale, "admin.mementos.back_to_journey")}</a>
 
   {#if loading}
-    <p class="hint">Loading memento…</p>
+    <p class="hint">{message(locale, "admin.mementos.loading")}</p>
   {:else if loadError}
     <p class="api-error" role="alert">{loadError}</p>
   {:else if memento}
     <header class="editor-header">
       <p class="eyebrow">{memento.kind}</p>
-      <h1>{memento.title || memento.place || "Untitled memento"}</h1>
-      <span class={`badge badge--${memento.state}`}>{memento.state}</span>
+      <h1>{memento.title || memento.place || message(locale, "admin.mementos.untitled")}</h1>
+      <span class={`badge badge--${memento.state}`}>{statusMessage(locale, memento.state)}</span>
     </header>
 
     {#if saveState.status === "conflict"}
       <div class="conflict-banner" role="alert">
         <p>{saveState.message}</p>
-        <button type="button" onclick={retryKeepingDraft}>Save my version anyway</button>
-        <button type="button" class="secondary" onclick={discardDraftAndReload}>Discard my edits and load theirs</button>
+        <button type="button" onclick={retryKeepingDraft}>{message(locale, "admin.mementos.conflict.save_mine")}</button>
+        <button type="button" class="secondary" onclick={discardDraftAndReload}>{message(locale, "admin.mementos.conflict.discard_mine")}</button>
       </div>
     {/if}
 
@@ -472,52 +470,52 @@
       <p class="trigger-status trigger-status--success" role="status">{saveState.message}</p>
     {/if}
 
-    <section class="fields" aria-label="Common fields">
-      <h2>Details</h2>
+    <section class="fields" aria-label={message(locale, "admin.mementos.details_heading")}>
+      <h2>{message(locale, "admin.mementos.details_heading")}</h2>
       <div class="field-grid">
         <label class="field">
-          Title
+          {message(locale, "admin.common.title")}
           <input type="text" bind:value={common.title} />
         </label>
         <label class="field">
-          Place
+          {message(locale, "admin.common.place")}
           <input type="text" bind:value={common.place} />
         </label>
         <label class="field">
-          Occurred at
+          {message(locale, "admin.mementos.occurred_at")}
           <input type="datetime-local" bind:value={common.occurredAtLocal} />
         </label>
         <label class="field">
-          Timezone
+          {message(locale, "admin.mementos.timezone")}
           <input type="text" placeholder="Asia/Tokyo" bind:value={common.occurredTz} />
           {#if issuesFor("occurred_tz").length > 0}
             <span class="field-error">{issuesFor("occurred_tz").join(" ")}</span>
           {/if}
         </label>
         <label class="field">
-          Vendor
+          {message(locale, "admin.mementos.vendor")}
           <input type="text" bind:value={common.vendor} />
         </label>
         <label class="field">
-          Price amount
+          {message(locale, "admin.mementos.price_amount")}
           <input type="text" inputmode="decimal" bind:value={common.price.amount} />
         </label>
         <label class="field">
-          Price currency
+          {message(locale, "admin.mementos.price_currency")}
           <input type="text" placeholder="JPY" maxlength="3" bind:value={common.price.currency} />
         </label>
       </div>
       <label class="field field--wide">
-        Essay
+        {message(locale, "admin.mementos.essay")}
         <textarea rows="6" bind:value={common.essay}></textarea>
       </label>
     </section>
 
-    <section class="fields" aria-label="Location">
-      <h2>Location</h2>
+    <section class="fields" aria-label={message(locale, "admin.mementos.location_heading")}>
+      <h2>{message(locale, "admin.mementos.location_heading")}</h2>
       <p class="trigger-note">
-        {anchor() === "edge" ? "This kind spans a from → to route — enter both endpoints." : "This kind sits at a single point."}
-        Non-draft saves must resolve to a valid location.
+        {anchor() === "edge" ? message(locale, "admin.mementos.location_edge_note") : message(locale, "admin.mementos.location_point_note")}
+        {message(locale, "admin.mementos.location_validation_note")}
       </p>
       {#if issuesFor("geom").length > 0}
         <p class="field-error">{issuesFor("geom").join(" ")}</p>
@@ -525,28 +523,30 @@
       <div class="point-grid">
         {#each points as point, index (index)}
           <div class="point-row">
-            <span class="point-label">{anchor() === "edge" ? (index === 0 ? "From" : "To") : "Point"}</span>
+            <span class="point-label"
+              >{anchor() === "edge" ? (index === 0 ? message(locale, "admin.mementos.from") : message(locale, "admin.mementos.to")) : message(locale, "admin.mementos.point")}</span
+            >
             <label class="field">
-              Lat
+              {message(locale, "admin.mementos.latitude")}
               <input type="text" bind:value={point.lat} />
             </label>
             <label class="field">
-              Lng
+              {message(locale, "admin.mementos.longitude")}
               <input type="text" bind:value={point.lng} />
             </label>
             <button type="button" class="secondary" onclick={() => snapPoint(index)} disabled={snapStatus[index] === "pending"}>
-              {snapStatus[index] === "pending" ? "Snapping…" : "Snap to route"}
+              {snapStatus[index] === "pending" ? message(locale, "admin.mementos.snapping") : message(locale, "admin.mementos.snap_action")}
             </button>
             {#if snapStatus[index] === "error"}
-              <span class="field-error">Couldn't snap this point — enter a valid lat/lng first, or check the journey has a route.</span>
+              <span class="field-error">{message(locale, "admin.mementos.snap_error")}</span>
             {/if}
           </div>
         {/each}
       </div>
     </section>
 
-    <section class="fields" aria-label="Kind data">
-      <h2>{memento.kind} details</h2>
+    <section class="fields" aria-label={message(locale, "admin.mementos.kind_data_heading")}>
+      <h2>{memento.kind} {message(locale, "admin.mementos.details_heading")}</h2>
       {#if isHardcodedKind() && templates}
         <div class="field-grid">
           {#each templateFields() as tplField (tplField.Name)}
@@ -557,13 +557,13 @@
                   <input
                     type="text"
                     inputmode="decimal"
-                    placeholder="amount"
+                    placeholder={message(locale, "admin.common.amount")}
                     value={moneyField(tplField.Name).amount}
                     oninput={(e) => setMoneyField(tplField.Name, "amount", (e.currentTarget as HTMLInputElement).value)}
                   />
                   <input
                     type="text"
-                    placeholder="currency"
+                    placeholder={message(locale, "admin.common.currency")}
                     maxlength="3"
                     value={moneyField(tplField.Name).currency}
                     oninput={(e) => setMoneyField(tplField.Name, "currency", (e.currentTarget as HTMLInputElement).value)}
@@ -571,9 +571,24 @@
                 </span>
               {:else if tplField.Type === "station" || tplField.Type === "venue"}
                 <span class="place-inputs">
-                  <input type="text" placeholder="name" value={placeField(tplField.Name).name} oninput={(e) => setPlaceField(tplField.Name, "name", (e.currentTarget as HTMLInputElement).value)} />
-                  <input type="text" placeholder="lat" value={placeField(tplField.Name).lat} oninput={(e) => setPlaceField(tplField.Name, "lat", (e.currentTarget as HTMLInputElement).value)} />
-                  <input type="text" placeholder="lng" value={placeField(tplField.Name).lng} oninput={(e) => setPlaceField(tplField.Name, "lng", (e.currentTarget as HTMLInputElement).value)} />
+                  <input
+                    type="text"
+                    placeholder={message(locale, "admin.common.name")}
+                    value={placeField(tplField.Name).name}
+                    oninput={(e) => setPlaceField(tplField.Name, "name", (e.currentTarget as HTMLInputElement).value)}
+                  />
+                  <input
+                    type="text"
+                    placeholder={message(locale, "admin.mementos.latitude")}
+                    value={placeField(tplField.Name).lat}
+                    oninput={(e) => setPlaceField(tplField.Name, "lat", (e.currentTarget as HTMLInputElement).value)}
+                  />
+                  <input
+                    type="text"
+                    placeholder={message(locale, "admin.mementos.longitude")}
+                    value={placeField(tplField.Name).lng}
+                    oninput={(e) => setPlaceField(tplField.Name, "lng", (e.currentTarget as HTMLInputElement).value)}
+                  />
                 </span>
               {:else}
                 <input type="text" value={textFieldValue(tplField.Name)} oninput={(e) => setTextField(tplField.Name, (e.currentTarget as HTMLInputElement).value)} />
@@ -585,44 +600,48 @@
           {/each}
         </div>
       {:else if templates && !template()}
-        <p class="hint">Kind registry has no template for "{memento.kind}" — kind_data can't be validated here.</p>
+        <p class="hint">{message(locale, "admin.mementos.kind_registry_missing", { kind: memento.kind })}</p>
       {:else}
-        <p class="trigger-note">Read-only — this kind doesn't have a dedicated form yet.</p>
+        <p class="trigger-note">{message(locale, "admin.mementos.kind_read_only")}</p>
         <pre class="kind-data-json">{otherKindDataText}</pre>
       {/if}
     </section>
 
-    <section class="fields" aria-label="Photos">
+    <section class="fields" aria-label={message(locale, "admin.mementos.photos_heading")}>
       <div class="inbox-head">
-        <h2>Photos</h2>
+        <h2>{message(locale, "admin.mementos.photos_heading")}</h2>
         <label class="photo-upload">
-          Add photos
+          {message(locale, "admin.mementos.add_photos")}
           <input type="file" accept="image/jpeg,image/png,image/webp" multiple onchange={handlePhotoUpload} />
         </label>
       </div>
-      <p class="trigger-note">Uploads are stored privately. The public build resizes photos and strips EXIF metadata. Maximum 20 MiB per image; use JPEG, PNG, or WebP.</p>
+      <p class="trigger-note">{message(locale, "admin.mementos.photo_upload_note")}</p>
       {#if photoUploadStatus}
         <p class={photoUploadError ? "trigger-status trigger-status--error" : "trigger-status"} role={photoUploadError ? "alert" : "status"}>{photoUploadStatus}</p>
       {/if}
       {#if photoRows.length === 0}
-        <p class="hint">No photos yet.</p>
+        <p class="hint">{message(locale, "admin.mementos.empty_photos")}</p>
       {:else}
         <ul class="photo-list">
           {#each photoRows as row (row.id)}
             <li class="photo-row">
-              <img class="photo-preview" src={photoContentURL(row.id)} alt={row.fields.caption || `Photo ${Number(row.fields.seq) + 1}`} loading="lazy" />
+              <img class="photo-preview" src={photoContentURL(row.id)} alt={row.fields.caption || message(locale, "admin.mementos.photo_alt", { number: Number(row.fields.seq) + 1 })} loading="lazy" />
               <div class="field-grid">
                 <label class="field">
-                  Caption
+                  {message(locale, "admin.mementos.photo_caption")}
                   <input type="text" bind:value={row.fields.caption} />
                 </label>
               </div>
               <div class="photo-actions">
-                <button type="button" class="secondary" onclick={() => movePhoto(photoRows.indexOf(row), -1)} disabled={photoRows.indexOf(row) === 0 || row.status === "pending"}>Move up</button>
-                <button type="button" class="secondary" onclick={() => movePhoto(photoRows.indexOf(row), 1)} disabled={photoRows.indexOf(row) === photoRows.length - 1 || row.status === "pending"}
-                  >Move down</button
+                <button type="button" class="secondary" onclick={() => movePhoto(photoRows.indexOf(row), -1)} disabled={photoRows.indexOf(row) === 0 || row.status === "pending"}
+                  >{message(locale, "admin.mementos.move_photo_up")}</button
                 >
-                <button type="button" onclick={() => savePhotoRow(row)} disabled={row.status === "pending"}>{row.status === "pending" ? "Saving…" : "Save caption"}</button>
+                <button type="button" class="secondary" onclick={() => movePhoto(photoRows.indexOf(row), 1)} disabled={photoRows.indexOf(row) === photoRows.length - 1 || row.status === "pending"}
+                  >{message(locale, "admin.mementos.move_photo_down")}</button
+                >
+                <button type="button" onclick={() => savePhotoRow(row)} disabled={row.status === "pending"}
+                  >{row.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.mementos.photo_save_caption")}</button
+                >
               </div>
               {#if row.status === "success"}
                 <span class="trigger-status trigger-status--success">{row.message}</span>
@@ -635,41 +654,43 @@
       {/if}
     </section>
 
-    <section class="actions" aria-label="Save and publish actions">
-      <button type="button" onclick={() => save()} disabled={saveState.status === "pending"}>{saveState.status === "pending" ? "Saving…" : "Save"}</button>
+    <section class="actions" aria-label={message(locale, "admin.mementos.actions_label")}>
+      <button type="button" onclick={() => save()} disabled={saveState.status === "pending"}
+        >{saveState.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.mementos.save")}</button
+      >
       <button type="button" class="secondary" onclick={saveAndBack} disabled={saveState.status === "pending"}>
-        {saveState.status === "pending" ? "Saving…" : "Save & back to journey"}
+        {saveState.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.mementos.save_back")}
       </button>
       {#if unpublishActionLabel(memento.state) && previousLifecycleState(memento.state)}
         <button type="button" class="secondary" onclick={retreatLifecycle} disabled={saveState.status === "pending"}>
-          {unpublishActionLabel(memento.state)}
+          {message(locale, "admin.mementos.unpublish")}
         </button>
       {/if}
       {#if lifecycleActionLabel(memento.state) && nextLifecycleState(memento.state)}
         <button type="button" class="primary" onclick={advanceLifecycle} disabled={saveState.status === "pending"}>
-          {lifecycleActionLabel(memento.state)}
+          {memento.state === "draft" ? message(locale, "admin.mementos.mark_authored") : message(locale, "admin.mementos.publish")}
         </button>
       {/if}
     </section>
 
-    <section class="danger-zone" aria-label="Delete memento">
-      <h2>Delete this memento</h2>
-      <p class="trigger-note">Permanent — this cannot be undone, and its photos are removed with it. If this memento was derived from an import source, a future import may re-create it.</p>
+    <section class="danger-zone" aria-label={message(locale, "admin.mementos.delete_heading")}>
+      <h2>{message(locale, "admin.mementos.delete_heading")}</h2>
+      <p class="trigger-note">{message(locale, "admin.mementos.delete_note")}</p>
       {#if deleteBlockedByPublishedState()}
-        <p class="hint">Unpublish this memento before deleting it — a published memento can't be deleted directly.</p>
-        <button type="button" class="danger" disabled title="Unpublish first">Delete</button>
+        <p class="hint">{message(locale, "admin.mementos.unpublish_first")}</p>
+        <button type="button" class="danger" disabled title={message(locale, "admin.mementos.unpublish_first")}>{message(locale, "admin.common.delete")}</button>
       {:else if deleteState.status === "confirming" || deleteState.status === "pending"}
         <div class="confirm-strip" role="alert">
-          <p>Delete this memento permanently? Photos are removed too. A future import may re-create a source-derived memento like this one.</p>
+          <p>{message(locale, "admin.mementos.delete_confirmation")}</p>
           <div class="confirm-actions">
             <button type="button" class="danger" onclick={confirmDelete} disabled={deleteState.status === "pending"}>
-              {deleteState.status === "pending" ? "Deleting…" : "Confirm delete"}
+              {deleteState.status === "pending" ? message(locale, "admin.common.deleting") : message(locale, "admin.common.confirm_delete")}
             </button>
-            <button type="button" class="secondary" onclick={cancelDelete} disabled={deleteState.status === "pending"}>Cancel</button>
+            <button type="button" class="secondary" onclick={cancelDelete} disabled={deleteState.status === "pending"}>{message(locale, "admin.common.cancel")}</button>
           </div>
         </div>
       {:else}
-        <button type="button" class="danger" onclick={requestDelete}>Delete</button>
+        <button type="button" class="danger" onclick={requestDelete}>{message(locale, "admin.common.delete")}</button>
       {/if}
       {#if deleteState.status === "error"}
         <p class="trigger-status trigger-status--error" role="alert">{deleteState.message}</p>

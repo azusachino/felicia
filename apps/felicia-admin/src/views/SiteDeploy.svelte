@@ -1,5 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte"
+  import { message, type Locale } from "../i18n"
+
+  let { locale }: { locale: Locale } = $props()
   import {
     browseDirectories,
     compileSite,
@@ -19,7 +22,7 @@
   let error = $state("")
 
   function actionErrorMessage(cause: unknown): string {
-    return cause instanceof Error ? cause.message : "Request failed"
+    return cause instanceof Error ? cause.message : message(locale, "admin.common.request_failed")
   }
 
   type BuildStatus = "idle" | "pending" | "success" | "error"
@@ -39,8 +42,6 @@
   // copy the form binds to. Kept separate so a page reload (or a re-fetch
   // after Build) can't silently clobber in-progress edits — only saveSettings
   // re-derives draft from a fresh server response.
-  const designChoices: { id: AdminSiteSettings["design"]; label: string }[] = [{ id: "atlas", label: "Atlas (Map & Mementos)" }]
-
   type SiteIdentityDraft = Omit<AdminSiteSettings, "accent"> & { accent: string }
 
   // <input type="color"> requires a valid #rrggbb value at all times, but the
@@ -77,7 +78,7 @@
       const updated = await updateSiteSettings(draft)
       settings = updated
       draft = draftFromSettings(updated)
-      save = { status: "success", message: "Saved." }
+      save = { status: "success", message: message(locale, "admin.common.saved") }
     } catch (cause) {
       save = { status: "error", message: actionErrorMessage(cause) }
     }
@@ -96,10 +97,10 @@
   }
 
   async function triggerBuild() {
-    build = { status: "pending", message: "Building…" }
+    build = { status: "pending", message: message(locale, "admin.build.building") }
     try {
       const report = await compileSite()
-      build = { status: "success", message: "Build complete.", report }
+      build = { status: "success", message: message(locale, "admin.build.complete"), report }
       // Refresh site info so the preview link appears/updates once the
       // artifact is ready (artifact_ready flips from false to true on the
       // very first build). Deliberately not the full load() — that would
@@ -198,37 +199,33 @@
 
 <section class="site">
   <header class="site-header">
-    <p class="eyebrow">Felicia / Site &amp; Deploy</p>
-    <h1>Site &amp; Deploy</h1>
+    <p class="eyebrow">{message(locale, "admin.site.breadcrumb")}</p>
+    <h1>{message(locale, "admin.site.navigation")}</h1>
   </header>
 
-  <p class="hint">
-    This is the offline, local deployment target (epic FELICIA-ADMIN-02 milestone M0): building compiles the published content into a static artifact directory on this machine — no admin data, drafts,
-    or credentials leave it. That artifact directory can be hosted anywhere a static file server can reach (a CDN, a bucket, GitHub Pages, or just this machine) — this page's preview link is the
-    built-in local server for verifying the result before you ship it anywhere.
-  </p>
+  <p class="hint">{message(locale, "admin.site.deploy_note")}</p>
 
   {#if loading}
-    <p class="hint">Loading site info…</p>
+    <p class="hint">{message(locale, "admin.site.loading")}</p>
   {:else if error}
     <p class="api-error" role="alert">{error}</p>
   {:else if info}
-    <section class="site-info" aria-label="Build output">
+    <section class="site-info" aria-label={message(locale, "admin.site.output_directory")}>
       <div class="info-row">
-        <span class="info-label">Output directory</span>
+        <span class="info-label">{message(locale, "admin.site.output_directory")}</span>
         <code class="info-value">{info.out_dir}</code>
-        <button bind:this={pickerTrigger} type="button" class="secondary" onclick={openPicker}>Change location…</button>
+        <button bind:this={pickerTrigger} type="button" class="secondary" onclick={openPicker}>{message(locale, "admin.site.change_location")}</button>
       </div>
 
       {#if info.artifact_ready}
         <div class="info-row">
-          <span class="info-label">Preview</span>
+          <span class="info-label">{message(locale, "admin.site.preview")}</span>
           <a class="preview-link" href={previewUrl(info.preview_port)} target="_blank" rel="noreferrer">{previewUrl(info.preview_port)}</a>
         </div>
       {/if}
 
       {#if !info.spa_ready}
-        <p class="hint">The preview will serve the compiled JSON only until the public SPA is built (run <code>make web-build</code>) — the built-in server overlays the artifact on that build.</p>
+        <p class="hint">{message(locale, "admin.site.preview_unavailable_note")}</p>
       {/if}
 
       {#if picker.open}
@@ -240,14 +237,14 @@
           lock). role="dialog" + aria-modal + the Escape handler keep it
           keyboard-accessible without those tradeoffs.
         -->
-        <div bind:this={pickerPanel} class="picker-panel" role="dialog" aria-modal="true" aria-label="Choose output location" onkeydown={pickerKeydown} tabindex="-1">
+        <div bind:this={pickerPanel} class="picker-panel" role="dialog" aria-modal="true" aria-label={message(locale, "admin.site.output_picker.title")} onkeydown={pickerKeydown} tabindex="-1">
           <div class="picker-head">
-            <h3>Choose output location</h3>
-            <button type="button" class="secondary" onclick={closePicker} aria-label="Close">Close</button>
+            <h3>{message(locale, "admin.site.output_picker.title")}</h3>
+            <button type="button" class="secondary" onclick={closePicker} aria-label={message(locale, "admin.site.output_picker.close")}>{message(locale, "admin.site.output_picker.close")}</button>
           </div>
 
           {#if picker.status === "loading"}
-            <p class="hint">Loading…</p>
+            <p class="hint">{message(locale, "admin.common.loading")}</p>
           {:else if picker.status === "error"}
             <p class="trigger-status trigger-status--error" role="alert">{picker.message}</p>
           {:else if picker.browse}
@@ -258,7 +255,7 @@
             <ul class="picker-dirs">
               {#if browse.parent !== ""}
                 <li>
-                  <button type="button" class="picker-entry" onclick={() => navigateTo(browse.parent)}>.. (up)</button>
+                  <button type="button" class="picker-entry" onclick={() => navigateTo(browse.parent)}>{message(locale, "admin.site.output_picker.up")}</button>
                 </li>
               {/if}
               {#each browse.dirs as dir (dir.path)}
@@ -267,12 +264,12 @@
                 </li>
               {/each}
               {#if browse.dirs.length === 0}
-                <li class="hint">No subfolders here.</li>
+                <li class="hint">{message(locale, "admin.site.output_picker.empty")}</li>
               {/if}
             </ul>
             <div class="picker-actions">
-              <button type="button" onclick={selectCurrentFolder}>Select this folder</button>
-              <button type="button" class="secondary" onclick={closePicker}>Cancel</button>
+              <button type="button" onclick={selectCurrentFolder}>{message(locale, "admin.site.output_picker.select")}</button>
+              <button type="button" class="secondary" onclick={closePicker}>{message(locale, "admin.common.cancel")}</button>
             </div>
           {/if}
         </div>
@@ -281,55 +278,55 @@
 
     {#if settings && draft}
       {@const d = draft}
-      <section class="site-identity" aria-label="Site identity">
-        <h2>Site identity</h2>
-        <p class="trigger-note">Design, title, and style projected to the public site's <code>site.json</code>.</p>
+      <section class="site-identity" aria-label={message(locale, "admin.site.identity")}>
+        <h2>{message(locale, "admin.site.identity")}</h2>
+        <p class="trigger-note">{message(locale, "admin.site.identity_note")}</p>
 
         <div class="design-cards">
-          {#each designChoices as choice (choice.id)}
-            <button type="button" class="design-card" class:selected={d.design === choice.id} onclick={() => (d.design = choice.id)}>
-              <span class="design-card-id">{choice.id}</span>
-              <span class="design-card-label">{choice.label}</span>
-            </button>
-          {/each}
+          <button type="button" class="design-card" class:selected={d.design === "atlas"} onclick={() => (d.design = "atlas")}>
+            <span class="design-card-id">atlas</span>
+            <span class="design-card-label">{message(locale, "admin.site.design_atlas")}</span>
+          </button>
         </div>
 
         <div class="identity-fields">
           <label class="field field-wide">
-            <span class="field-label">Title</span>
-            <input type="text" bind:value={d.title} placeholder="Site title" />
+            <span class="field-label">{message(locale, "admin.site.title")}</span>
+            <input type="text" bind:value={d.title} placeholder={message(locale, "admin.site.title")} />
           </label>
 
           <label class="field field-wide">
-            <span class="field-label">Description</span>
-            <textarea bind:value={d.description} placeholder="Site description" rows="3"></textarea>
+            <span class="field-label">{message(locale, "admin.site.description")}</span>
+            <textarea bind:value={d.description} placeholder={message(locale, "admin.site.description")} rows="3"></textarea>
           </label>
 
           <label class="field">
-            <span class="field-label">Default language</span>
+            <span class="field-label">{message(locale, "admin.site.default_language")}</span>
             <select bind:value={d.default_language}>
-              <option value="ja">Japanese</option>
-              <option value="en">English</option>
-              <option value="zh">Chinese</option>
+              <option value="ja">{message(locale, "admin.common.language_japanese")}</option>
+              <option value="en">{message(locale, "admin.common.language_english")}</option>
+              <option value="zh">{message(locale, "admin.common.language_chinese")}</option>
             </select>
           </label>
 
           <label class="field">
-            <span class="field-label">Default theme</span>
+            <span class="field-label">{message(locale, "admin.site.default_theme")}</span>
             <select bind:value={d.default_theme}>
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
+              <option value="dark">{message(locale, "admin.common.theme_dark")}</option>
+              <option value="light">{message(locale, "admin.common.theme_light")}</option>
             </select>
           </label>
 
           <label class="field field-accent">
-            <span class="field-label">Accent color</span>
+            <span class="field-label">{message(locale, "admin.site.accent_color")}</span>
             <input type="color" bind:value={d.accent} />
           </label>
         </div>
 
         <div class="save-row">
-          <button type="button" onclick={saveSettings} disabled={save.status === "pending"}>{save.status === "pending" ? "Saving…" : "Save site settings"}</button>
+          <button type="button" onclick={saveSettings} disabled={save.status === "pending"}
+            >{save.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.site.save_settings")}</button
+          >
           {#if save.status === "success"}
             <span class="trigger-status trigger-status--success" role="status">{save.message}</span>
           {:else if save.status === "error"}
@@ -339,31 +336,33 @@
       </section>
     {/if}
 
-    <section class="build" aria-label="Build site">
+    <section class="build" aria-label={message(locale, "admin.site.build_action")}>
       <div class="build-head">
-        <h2>Build</h2>
-        <button type="button" onclick={triggerBuild} disabled={build.status === "pending"}>{build.status === "pending" ? "Building…" : "Build site"}</button>
+        <h2>{message(locale, "admin.site.build_heading")}</h2>
+        <button type="button" onclick={triggerBuild} disabled={build.status === "pending"}
+          >{build.status === "pending" ? message(locale, "admin.build.building") : message(locale, "admin.site.build_action")}</button
+        >
       </div>
-      <p class="trigger-note">Compiles all published journeys and mementos into the output directory above.</p>
+      <p class="trigger-note">{message(locale, "admin.site.build_note")}</p>
 
       {#if build.status === "success"}
         <p class="trigger-status trigger-status--success" role="status">{build.message}</p>
         {#if build.report}
           <dl class="report-grid">
             <div class="report-cell">
-              <dt>Journeys</dt>
+              <dt>{message(locale, "admin.stats.journeys")}</dt>
               <dd>{build.report.Journeys}</dd>
             </div>
             <div class="report-cell">
-              <dt>Mementos</dt>
+              <dt>{message(locale, "admin.stats.mementos")}</dt>
               <dd>{build.report.Mementos}</dd>
             </div>
             <div class="report-cell">
-              <dt>Media</dt>
+              <dt>{message(locale, "admin.stats.media")}</dt>
               <dd>{build.report.Media}</dd>
             </div>
             <div class="report-cell">
-              <dt>Removed</dt>
+              <dt>{message(locale, "admin.stats.removed")}</dt>
               <dd>{build.report.Removed}</dd>
             </div>
           </dl>

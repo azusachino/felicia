@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { message, statusMessage, type Locale } from "../i18n"
   import {
     compileSite,
     deleteJourney,
@@ -31,7 +32,7 @@
   } from "../api"
   import { listHash, mementoEditHash } from "../router"
 
-  let { id }: { id: string } = $props()
+  let { id, locale }: { id: string; locale: Locale } = $props()
 
   let journey = $state<AdminJourney | null>(null)
   let mementos = $state<AdminMemento[]>([])
@@ -51,35 +52,35 @@
   let trayAction = $state<ActionState<AdminPhotoTrayItem[]>>({ status: "idle", message: "" })
 
   function actionErrorMessage(cause: unknown): string {
-    return cause instanceof Error ? cause.message : "Request failed"
+    return cause instanceof Error ? cause.message : message(locale, "admin.common.request_failed")
   }
 
   async function triggerSyncRoute() {
-    routeAction = { status: "pending", message: "Syncing route…" }
+    routeAction = { status: "pending", message: message(locale, "admin.connectors.route.pending") }
     try {
       const result = await syncRoute(id)
       const count = routePointCount(result)
-      routeAction = { status: "success", message: `${count} route point${count === 1 ? "" : "s"} written`, data: count }
+      routeAction = { status: "success", message: message(locale, "admin.connectors.route.success", { count }), data: count }
     } catch (cause) {
       routeAction = { status: "error", message: actionErrorMessage(cause) }
     }
   }
 
   async function triggerSyncVisits() {
-    visitsAction = { status: "pending", message: "Loading visits…" }
+    visitsAction = { status: "pending", message: message(locale, "admin.connectors.visits.loading") }
     try {
       const visits = await syncVisits(id)
-      visitsAction = { status: "success", message: `${visits.length} visit${visits.length === 1 ? "" : "s"} found`, data: visits }
+      visitsAction = { status: "success", message: message(locale, "admin.connectors.visits.success", { count: visits.length }), data: visits }
     } catch (cause) {
       visitsAction = { status: "error", message: actionErrorMessage(cause) }
     }
   }
 
   async function triggerPhotoTray() {
-    trayAction = { status: "pending", message: "Loading photo tray…" }
+    trayAction = { status: "pending", message: message(locale, "admin.connectors.photos.loading") }
     try {
       const assets = await photoTray(id)
-      trayAction = { status: "success", message: `${assets.length} photo${assets.length === 1 ? "" : "s"} found`, data: assets }
+      trayAction = { status: "success", message: message(locale, "admin.connectors.photos.success", { count: assets.length }), data: assets }
     } catch (cause) {
       trayAction = { status: "error", message: actionErrorMessage(cause) }
     }
@@ -127,7 +128,7 @@
   // server's own error message.
   function candidateFailure(cause: unknown): CandidateActionState {
     if (isConflict(cause)) {
-      return { status: "conflict", message: "Someone else changed this candidate — reload the journey and try again." }
+      return { status: "conflict", message: message(locale, "admin.connectors.candidate.conflict") }
     }
     return { status: "error", message: actionErrorMessage(cause) }
   }
@@ -143,11 +144,14 @@
   }
 
   async function triggerPlanIntake() {
-    planAction = { status: "pending", message: "Planning intake…" }
+    planAction = { status: "pending", message: message(locale, "admin.connectors.inbox.pending") }
     try {
       const result = await planIntake(id)
-      const issueNote = result.issues.length > 0 ? `, ${result.issues.length} issue${result.issues.length === 1 ? "" : "s"}` : ""
-      planAction = { status: "success", message: `${result.stops.length} stop${result.stops.length === 1 ? "" : "s"} proposed${issueNote}`, data: result }
+      planAction = {
+        status: "success",
+        message: message(locale, "admin.connectors.inbox.proposed", { stops: result.stops.length, issues: result.issues.length }),
+        data: result,
+      }
       await loadStopCandidates(id)
     } catch (cause) {
       planAction = { status: "error", message: actionErrorMessage(cause) }
@@ -157,13 +161,13 @@
   async function promoteCandidate(candidate: AdminStopCandidate) {
     const kind = kindFor(candidate.id)
     if (!kind) {
-      candidateActions = { ...candidateActions, [candidate.id]: { status: "error", message: "No kind available to promote into — check the kind registry." } }
+      candidateActions = { ...candidateActions, [candidate.id]: { status: "error", message: message(locale, "admin.connectors.candidate.no_kind") } }
       return
     }
-    candidateActions = { ...candidateActions, [candidate.id]: { status: "pending", message: "Promoting…" } }
+    candidateActions = { ...candidateActions, [candidate.id]: { status: "pending", message: message(locale, "admin.connectors.candidate.promoting") } }
     try {
       await promoteStopCandidate(candidate.id, kind, candidate.revision)
-      candidateActions = { ...candidateActions, [candidate.id]: { status: "success", message: "Promoted to a draft memento." } }
+      candidateActions = { ...candidateActions, [candidate.id]: { status: "success", message: message(locale, "admin.connectors.candidate.promoted") } }
       // Both the inbox (this candidate leaves the actionable list) and the
       // memento list (the new draft appears) refresh without a reload.
       await Promise.all([loadStopCandidates(id), refreshMementos(id)])
@@ -173,11 +177,17 @@
   }
 
   async function reviewCandidate(candidate: AdminStopCandidate, state: "ignored" | "merged", mergedInto?: string) {
-    candidateActions = { ...candidateActions, [candidate.id]: { status: "pending", message: state === "ignored" ? "Discarding…" : "Merging…" } }
+    candidateActions = {
+      ...candidateActions,
+      [candidate.id]: { status: "pending", message: state === "ignored" ? message(locale, "admin.connectors.candidate.discarding") : message(locale, "admin.connectors.candidate.merging") },
+    }
     try {
       const updated = await reviewStopCandidate(candidate.id, { state, expectedRevision: candidate.revision, mergedInto })
       stopCandidates = stopCandidates.map((existing) => (existing.id === updated.id ? updated : existing))
-      candidateActions = { ...candidateActions, [candidate.id]: { status: "success", message: state === "ignored" ? "Discarded." : "Merged." } }
+      candidateActions = {
+        ...candidateActions,
+        [candidate.id]: { status: "success", message: state === "ignored" ? message(locale, "admin.connectors.candidate.discarded") : message(locale, "admin.connectors.candidate.merged") },
+      }
     } catch (cause) {
       candidateActions = { ...candidateActions, [candidate.id]: candidateFailure(cause) }
     }
@@ -216,7 +226,7 @@
       await deleteJourney(journey.id)
       window.location.hash = listHash
     } catch (cause) {
-      deleteState = { status: "error", message: cause instanceof Error ? cause.message : "Failed to delete journey" }
+      deleteState = { status: "error", message: cause instanceof Error ? cause.message : message(locale, "admin.common.request_failed") }
     }
   }
 
@@ -300,10 +310,10 @@
     })
 
   async function triggerJourneyBuild() {
-    buildState = { status: "pending", message: "Building…" }
+    buildState = { status: "pending", message: message(locale, "admin.build.building") }
     try {
       const report = await compileSite()
-      buildState = { status: "success", message: "Build complete.", report }
+      buildState = { status: "success", message: message(locale, "admin.build.complete"), report }
       siteInfo = await getSiteInfo()
       // The build just resolved every published<->authored toggle since the
       // last one — refresh so the pending highlights/count clear.
@@ -314,8 +324,8 @@
   }
 
   function buildButtonLabel(pending: number, status: BuildStatus): string {
-    if (status === "pending") return "Building…"
-    return pending > 0 ? `Build & preview (${pending})` : "Build & preview"
+    if (status === "pending") return message(locale, "admin.build.building")
+    return pending > 0 ? message(locale, "admin.build.label_pending", { count: pending }) : message(locale, "admin.build.label")
   }
 
   // Says which of the four situations the author is in. "Built" is the only
@@ -324,13 +334,13 @@
   function artifactStateLabel(state: string, pending: number): string {
     switch (state) {
       case "never_built":
-        return pending > 0 ? `Never built — ${pending} to publish` : "Never built"
+        return pending > 0 ? message(locale, "admin.build.never_built_pending", { count: pending }) : message(locale, "admin.build.never_built")
       case "changed":
-        return `Changes since last build (${pending})`
+        return message(locale, "admin.build.changed_pending", { count: pending })
       case "built":
-        return "Built — matches your published content"
+        return message(locale, "admin.build.built_current")
       case "unknown":
-        return "Build state unknown — could not read it"
+        return message(locale, "admin.build.unknown")
       default:
         return ""
     }
@@ -342,10 +352,10 @@
 </script>
 
 <section class="detail">
-  <a class="back-link" href={listHash}>&larr; Journeys</a>
+  <a class="back-link" href={listHash}>&larr; {message(locale, "admin.journeys.title")}</a>
 
   {#if loading}
-    <p class="hint">Loading journey…</p>
+    <p class="hint">{message(locale, "admin.journeys.loading")}</p>
   {:else if error}
     <p class="api-error" role="alert">{error}</p>
   {:else if journey}
@@ -355,15 +365,17 @@
       <p class="detail-meta">{journey.place} · {formatJourneyDate(journey.date_start)} – {formatJourneyDate(journey.date_end)}</p>
     </header>
 
-    <section class="triggers" aria-label="Import and preview triggers">
-      <h2>Import &amp; preview</h2>
+    <section class="triggers" aria-label={message(locale, "admin.connectors.import_preview")}>
+      <h2>{message(locale, "admin.connectors.import_preview")}</h2>
       <div class="trigger-grid">
         <article class="trigger">
           <div class="trigger-head">
-            <h3>Sync route</h3>
-            <button type="button" onclick={triggerSyncRoute} disabled={routeAction.status === "pending"}>{routeAction.status === "pending" ? "Syncing…" : "Sync route"}</button>
+            <h3>{message(locale, "admin.connectors.route.title")}</h3>
+            <button type="button" onclick={triggerSyncRoute} disabled={routeAction.status === "pending"}
+              >{routeAction.status === "pending" ? message(locale, "admin.connectors.route.pending") : message(locale, "admin.connectors.route.title")}</button
+            >
           </div>
-          <p class="trigger-note">Pulls the GPS track and writes gps_route.</p>
+          <p class="trigger-note">{message(locale, "admin.connectors.route.description")}</p>
           {#if routeAction.status === "success"}
             <p class="trigger-status trigger-status--success" role="status">{routeAction.message}</p>
           {:else if routeAction.status === "error"}
@@ -373,18 +385,20 @@
 
         <article class="trigger">
           <div class="trigger-head">
-            <h3>Preview visits</h3>
-            <button type="button" onclick={triggerSyncVisits} disabled={visitsAction.status === "pending"}>{visitsAction.status === "pending" ? "Loading…" : "Preview visits"}</button>
+            <h3>{message(locale, "admin.connectors.visits.title")}</h3>
+            <button type="button" onclick={triggerSyncVisits} disabled={visitsAction.status === "pending"}
+              >{visitsAction.status === "pending" ? message(locale, "admin.common.loading") : message(locale, "admin.connectors.visits.title")}</button
+            >
           </div>
-          <p class="trigger-note">Read-only — derived places, nothing is saved.</p>
+          <p class="trigger-note">{message(locale, "admin.connectors.visits.description")}</p>
           {#if visitsAction.status === "success"}
             <p class="trigger-status trigger-status--success" role="status">{visitsAction.message}</p>
             {#if visitsAction.data && visitsAction.data.length > 0}
               <ul class="preview-list">
                 {#each visitsAction.data as visit, index (index)}
                   <li>
-                    <strong>{visit.label || "Unlabeled visit"}</strong>
-                    <span class="preview-meta">{visit.arrive} → {visit.depart} · {Math.round(visit.confidence * 100)}%</span>
+                    <strong>{visit.label || message(locale, "admin.connectors.visits.unlabeled")}</strong>
+                    <span class="preview-meta">{visit.arrive} → {visit.depart} · {message(locale, "admin.connectors.candidate.confidence", { percent: Math.round(visit.confidence * 100) })}</span>
                   </li>
                 {/each}
               </ul>
@@ -396,10 +410,12 @@
 
         <article class="trigger">
           <div class="trigger-head">
-            <h3>Preview photo tray</h3>
-            <button type="button" onclick={triggerPhotoTray} disabled={trayAction.status === "pending"}>{trayAction.status === "pending" ? "Loading…" : "Preview photo tray"}</button>
+            <h3>{message(locale, "admin.connectors.photos.title")}</h3>
+            <button type="button" onclick={triggerPhotoTray} disabled={trayAction.status === "pending"}
+              >{trayAction.status === "pending" ? message(locale, "admin.common.loading") : message(locale, "admin.connectors.photos.title")}</button
+            >
           </div>
-          <p class="trigger-note">Read-only — Immich assets, nothing is saved.</p>
+          <p class="trigger-note">{message(locale, "admin.connectors.photos.description")}</p>
           {#if trayAction.status === "success"}
             <p class="trigger-status trigger-status--success" role="status">{trayAction.message}</p>
             {#if trayAction.data && trayAction.data.length > 0}
@@ -407,7 +423,9 @@
                 {#each trayAction.data as asset (asset.id)}
                   <li>
                     <strong>{asset.at}</strong>
-                    <span class="preview-meta">{asset.coord ? `${asset.coord[1].toFixed(4)}, ${asset.coord[0].toFixed(4)}` : "no GPS"} · {asset.checksum.slice(0, 10)}</span>
+                    <span class="preview-meta"
+                      >{asset.coord ? `${asset.coord[1].toFixed(4)}, ${asset.coord[0].toFixed(4)}` : message(locale, "admin.connectors.photos.no_gps")} · {asset.checksum.slice(0, 10)}</span
+                    >
                   </li>
                 {/each}
               </ul>
@@ -419,12 +437,14 @@
       </div>
     </section>
 
-    <section class="inbox" aria-label="Intake inbox">
+    <section class="inbox" aria-label={message(locale, "admin.connectors.inbox.title")}>
       <div class="inbox-head">
-        <h2>Intake inbox</h2>
-        <button type="button" onclick={triggerPlanIntake} disabled={planAction.status === "pending"}>{planAction.status === "pending" ? "Planning…" : "Plan intake"}</button>
+        <h2>{message(locale, "admin.connectors.inbox.title")}</h2>
+        <button type="button" onclick={triggerPlanIntake} disabled={planAction.status === "pending"}
+          >{planAction.status === "pending" ? message(locale, "admin.connectors.inbox.pending") : message(locale, "admin.connectors.inbox.action")}</button
+        >
       </div>
-      <p class="trigger-note">Runs the intake planner over the journey's sources and proposes stop candidates for review.</p>
+      <p class="trigger-note">{message(locale, "admin.connectors.inbox.description")}</p>
       {#if planAction.status === "success"}
         <p class="trigger-status trigger-status--success" role="status">{planAction.message}</p>
       {:else if planAction.status === "error"}
@@ -432,31 +452,33 @@
       {/if}
 
       {#if templatesError}
-        <p class="trigger-status trigger-status--error" role="alert">Kind registry unavailable: {templatesError}. Promoting is disabled until this loads.</p>
+        <p class="trigger-status trigger-status--error" role="alert">{message(locale, "admin.connectors.registry_unavailable", { error: templatesError })}</p>
       {/if}
 
       {#if stopCandidatesError}
         <p class="trigger-status trigger-status--error" role="alert">{stopCandidatesError}</p>
       {:else if stopCandidates.length === 0}
-        <p class="hint">No stop candidates yet. Run "Plan intake" to generate some.</p>
+        <p class="hint">{message(locale, "admin.connectors.inbox.empty")}</p>
       {:else}
         <ul class="candidate-list">
           {#each stopCandidates as candidate (candidate.id)}
             <li class="candidate-row">
               <div class="candidate-summary">
                 <div class="candidate-main">
-                  <strong>{candidate.label || "Unlabeled stop"}</strong>
-                  <span class="candidate-meta">{candidate.arrive} → {candidate.depart} · {Math.round(candidate.confidence * 100)}% confidence</span>
+                  <strong>{candidate.label || message(locale, "admin.connectors.unlabeled_stop")}</strong>
+                  <span class="candidate-meta"
+                    >{candidate.arrive} → {candidate.depart} · {message(locale, "admin.connectors.candidate.confidence", { percent: Math.round(candidate.confidence * 100) })}</span
+                  >
                 </div>
-                <span class={`badge badge--${candidate.state}`}>{candidate.state}</span>
+                <span class={`badge badge--${candidate.state}`}>{statusMessage(locale, candidate.state)}</span>
               </div>
 
               {#if candidate.state === "proposed"}
                 <div class="candidate-actions">
                   <label class="candidate-field">
-                    Kind
+                    {message(locale, "admin.connectors.kind_label")}
                     <select
-                      aria-label={`Kind for ${candidate.label || "stop"}`}
+                      aria-label={message(locale, "admin.connectors.candidate.kind_for", { label: candidate.label || message(locale, "admin.connectors.unlabeled_stop") })}
                       value={kindFor(candidate.id)}
                       onchange={(event) => (selectedKind[candidate.id] = (event.currentTarget as HTMLSelectElement).value)}
                       disabled={!templates}
@@ -468,14 +490,21 @@
                       {/if}
                     </select>
                   </label>
-                  <button type="button" onclick={() => promoteCandidate(candidate)} disabled={candidateAction(candidate.id).status === "pending" || !templates}>Promote</button>
-                  <button type="button" class="secondary" onclick={() => reviewCandidate(candidate, "ignored")} disabled={candidateAction(candidate.id).status === "pending"}>Discard</button>
+                  <button type="button" onclick={() => promoteCandidate(candidate)} disabled={candidateAction(candidate.id).status === "pending" || !templates}
+                    >{message(locale, "admin.connectors.promote")}</button
+                  >
+                  <button type="button" class="secondary" onclick={() => reviewCandidate(candidate, "ignored")} disabled={candidateAction(candidate.id).status === "pending"}
+                    >{message(locale, "admin.connectors.discard")}</button
+                  >
                   <label class="candidate-field">
-                    Merge into
-                    <select aria-label={`Merge target for ${candidate.label || "stop"}`} bind:value={mergeTarget[candidate.id]}>
-                      <option value="">Choose a candidate…</option>
+                    {message(locale, "admin.connectors.merge_into")}
+                    <select
+                      aria-label={message(locale, "admin.connectors.candidate.merge_target_for", { label: candidate.label || message(locale, "admin.connectors.unlabeled_stop") })}
+                      bind:value={mergeTarget[candidate.id]}
+                    >
+                      <option value="">{message(locale, "admin.connectors.merge_target_prompt")}</option>
                       {#each stopCandidates.filter((other) => other.id !== candidate.id) as other (other.id)}
-                        <option value={other.id}>{other.label || "Unlabeled"} ({other.state})</option>
+                        <option value={other.id}>{other.label || message(locale, "admin.connectors.unlabeled_stop")} ({statusMessage(locale, other.state)})</option>
                       {/each}
                     </select>
                   </label>
@@ -483,10 +512,10 @@
                     type="button"
                     class="secondary"
                     onclick={() => reviewCandidate(candidate, "merged", mergeTarget[candidate.id])}
-                    disabled={candidateAction(candidate.id).status === "pending" || !mergeTarget[candidate.id]}>Merge</button
+                    disabled={candidateAction(candidate.id).status === "pending" || !mergeTarget[candidate.id]}>{message(locale, "admin.connectors.merge")}</button
                   >
                 </div>
-                <p class="trigger-note candidate-discard-hint">Discarding hides this candidate but remembers it — a future intake plan won't propose it again.</p>
+                <p class="trigger-note candidate-discard-hint">{message(locale, "admin.connectors.discard_note")}</p>
               {/if}
 
               {#if candidateAction(candidate.id).status === "error" || candidateAction(candidate.id).status === "conflict"}
@@ -500,10 +529,10 @@
       {/if}
     </section>
 
-    <section class="mementos" aria-label="Mementos">
-      <h2>Mementos</h2>
+    <section class="mementos" aria-label={message(locale, "admin.mementos.title")}>
+      <h2>{message(locale, "admin.mementos.title")}</h2>
       {#if mementos.length === 0}
-        <p class="hint">No mementos yet.</p>
+        <p class="hint">{message(locale, "admin.mementos.empty")}</p>
       {:else}
         <ul class="memento-list">
           {#each mementos as memento (memento.id)}
@@ -513,9 +542,9 @@
                 <span class="memento-title">{memento.title || memento.place || memento.kind}</span>
                 <span class="memento-kind">{memento.kind}</span>
                 {#if pendingMementoIds.has(memento.id)}
-                  <span class="pending-dot" title="Pending build — this memento's visibility hasn't been built yet">pending build</span>
+                  <span class="pending-dot" title={message(locale, "admin.connectors.pending_build")}>{message(locale, "admin.mementos.pending_build")}</span>
                 {/if}
-                <span class={`badge badge--${memento.state}`}>{memento.state}</span>
+                <span class={`badge badge--${memento.state}`}>{statusMessage(locale, memento.state)}</span>
               </a>
             </li>
           {/each}
@@ -523,9 +552,9 @@
       {/if}
     </section>
 
-    <section class="build-shortcut" aria-label="Build and preview">
+    <section class="build-shortcut" aria-label={message(locale, "admin.build.preview_label")}>
       <div class="build-row">
-        <span class="build-label">Build &amp; preview</span>
+        <span class="build-label">{message(locale, "admin.build.label")}</span>
         <button type="button" onclick={triggerJourneyBuild} disabled={buildState.status === "pending"}>{buildButtonLabel(pendingCount, buildState.status)}</button>
         {#if artifactStateLabel(artifactState, pendingCount)}
           <p class="hint" class:api-error={artifactState === "unknown"}>{artifactStateLabel(artifactState, pendingCount)}</p>
@@ -533,34 +562,39 @@
         {#if buildState.status === "success"}
           {#if buildState.report}
             <span class="trigger-status trigger-status--success build-report">
-              {buildState.report.Journeys} journeys · {buildState.report.Mementos} mementos · {buildState.report.Media} media · {buildState.report.Removed} removed
+              {message(locale, "admin.build.report_summary", {
+                journeys: buildState.report.Journeys,
+                mementos: buildState.report.Mementos,
+                media: buildState.report.Media,
+                removed: buildState.report.Removed,
+              })}
             </span>
           {/if}
         {:else if buildState.status === "error"}
           <span class="trigger-status trigger-status--error">{buildState.message}</span>
         {/if}
         {#if siteInfo?.artifact_ready}
-          <a class="preview-link" href={previewUrl(siteInfo.preview_port)} target="_blank" rel="noreferrer">Open preview &#8599;</a>
+          <a class="preview-link" href={previewUrl(siteInfo.preview_port)} target="_blank" rel="noreferrer">{message(locale, "admin.site.open_preview")}</a>
         {/if}
       </div>
-      <p class="trigger-note">Compiles all published journeys and mementos — the same build the Site &amp; Deploy page runs, without leaving this page.</p>
+      <p class="trigger-note">{message(locale, "admin.build.detail_note")}</p>
     </section>
 
-    <section class="danger-zone" aria-label="Delete journey">
-      <h2>Delete this journey</h2>
-      <p class="trigger-note">Permanent — this cannot be undone. The journey, its route, all mementos, photos, and stop candidates will be permanently removed.</p>
+    <section class="danger-zone" aria-label={message(locale, "admin.journeys.delete_heading")}>
+      <h2>{message(locale, "admin.journeys.delete_heading")}</h2>
+      <p class="trigger-note">{message(locale, "admin.journeys.delete_note")}</p>
       {#if deleteState.status === "confirming" || deleteState.status === "pending"}
         <div class="confirm-strip" role="alert">
-          <p>Delete "{journey.title}" permanently? All memories and photos in this journey are removed too.</p>
+          <p>{message(locale, "admin.journeys.delete_confirmation", { title: journey.title })}</p>
           <div class="confirm-actions">
             <button type="button" class="danger" onclick={confirmDeleteJourney} disabled={deleteState.status === "pending"}>
-              {deleteState.status === "pending" ? "Deleting…" : "Yes, delete journey"}
+              {deleteState.status === "pending" ? message(locale, "admin.common.deleting") : message(locale, "admin.journeys.delete_confirm_action")}
             </button>
-            <button type="button" class="secondary" onclick={cancelDeleteJourney} disabled={deleteState.status === "pending"}>Cancel</button>
+            <button type="button" class="secondary" onclick={cancelDeleteJourney} disabled={deleteState.status === "pending"}>{message(locale, "admin.common.cancel")}</button>
           </div>
         </div>
       {:else}
-        <button type="button" class="danger" onclick={startDeleteJourney}>Delete journey</button>
+        <button type="button" class="danger" onclick={startDeleteJourney}>{message(locale, "admin.journeys.delete_action")}</button>
       {/if}
       {#if deleteState.status === "error"}
         <p class="api-error" role="alert">{deleteState.message}</p>

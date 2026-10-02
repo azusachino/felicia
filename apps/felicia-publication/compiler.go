@@ -20,7 +20,6 @@ type StaticJourney struct {
 	ID             string           `json:"id"`
 	JournalID      string           `json:"journal_id"`
 	Slug           string           `json:"slug"`
-	SourceRef      *string          `json:"source_ref,omitempty"`
 	Title          string           `json:"title"`
 	Place          string           `json:"place"`
 	Country        *string          `json:"country,omitempty"`
@@ -47,7 +46,6 @@ type StaticMemento struct {
 	PriceAmount   *int64           `json:"price_amount,omitempty"`
 	PriceCurrency *string          `json:"price_currency,omitempty"`
 	KindData      json.RawMessage  `json:"kind_data,omitempty"`
-	SourceRef     *string          `json:"source_ref,omitempty"`
 	Photos        []StaticPhoto    `json:"photos,omitempty"`
 }
 
@@ -60,7 +58,6 @@ type StaticPhoto struct {
 	Caption     *string `json:"caption,omitempty"`
 	Seq         int     `json:"seq"`
 	TakenAt     *string `json:"taken_at,omitempty"`
-	SourceRef   *string `json:"source_ref,omitempty"`
 }
 
 // GeoJSONGeometry is the stable geometry shape used by the public API.

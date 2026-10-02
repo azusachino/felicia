@@ -73,6 +73,19 @@ test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
     await page.close()
   })
 
+  test("selects and persists an admin language", async () => {
+    await page.goto("/")
+    const language = page.locator(".locale-control select")
+    await expect(language).toHaveAttribute("aria-label", "Language")
+    await language.selectOption("ja")
+    await expect(language).toHaveAttribute("aria-label", "言語")
+    await expect(page.getByRole("heading", { name: "旅程" })).toBeVisible()
+    await page.reload()
+    await expect(page.getByRole("heading", { name: "旅程" })).toBeVisible()
+    await language.selectOption("en")
+    await expect(page.getByRole("heading", { name: "Journeys" })).toBeVisible()
+  })
+
   test("navigates from the journey list to the seeded journey detail", async () => {
     await page.goto("/")
     await expect(page.getByRole("heading", { name: "Journeys" })).toBeVisible()
@@ -82,7 +95,7 @@ test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
 
   test("plans intake and shows a proposed candidate in the inbox", async () => {
     await page.getByRole("button", { name: "Plan intake" }).click()
-    await expect(page.getByText(/\d+ stops? proposed/)).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText(/\d+ stop candidates proposed/)).toBeVisible({ timeout: 15_000 })
 
     const proposedRow = page
       .locator(".candidate-row")
@@ -202,7 +215,7 @@ test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
     await designCard.click()
     await expect(designCard).toHaveClass(/selected/)
 
-    await page.getByPlaceholder("Site title").fill(SITE_TITLE)
+    await page.getByLabel("Title", { exact: true }).fill(SITE_TITLE)
     await page.getByLabel("Accent color").fill(SITE_ACCENT)
 
     await page.getByRole("button", { name: "Save site settings" }).click()
@@ -215,7 +228,7 @@ test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
 
     const designCard = page.getByRole("button", { name: new RegExp(SITE_DESIGN_LABEL) })
     await expect(designCard).toHaveClass(/selected/)
-    await expect(page.getByPlaceholder("Site title")).toHaveValue(SITE_TITLE)
+    await expect(page.getByLabel("Title", { exact: true })).toHaveValue(SITE_TITLE)
     await expect(page.getByLabel("Accent color")).toHaveValue(SITE_ACCENT)
   })
 

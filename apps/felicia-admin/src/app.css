@@ -130,6 +130,25 @@ h2 {
   font-size: clamp(28px, 4vw, 46px);
   line-height: 1.08;
 }
+.locale-control select {
+  padding: 6px 10px;
+  border: 1px solid #d8cdbb;
+  border-radius: 7px;
+  color: #342a1e;
+  background: #fffaf2;
+  font: inherit;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 .profile {
   display: inline-flex;
   align-items: center;
