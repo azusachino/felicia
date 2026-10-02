@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from scripts.verify_static_artifact import main
+from scripts.verify_static_artifact import AssetParser, main
 
 
 class StaticArtifactTest(unittest.TestCase):
@@ -25,6 +25,13 @@ class StaticArtifactTest(unittest.TestCase):
 
     def test_custom_output_and_base(self):
         self.verify("/travels", "/travels/assets/app.js")
+
+    def test_external_stylesheets_do_not_use_local_base(self):
+        parser = AssetParser()
+        parser.feed('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter">')
+        parser.feed('<link rel="stylesheet" href="//fonts.googleapis.com/css2?family=Inter">')
+        parser.feed('<script type="module" src="/felicia/assets/app.js"></script>')
+        self.assertEqual(parser.assets, ["/felicia/assets/app.js"])
 
     def test_root_base(self):
         self.verify("/", "/assets/app.js")
