@@ -212,7 +212,7 @@ push:
 
 ```bash
 git clone git@github.com:<you>/my-travels.git ~/my-travels-deploy
-rsync -a --delete --exclude .git apps/felicia-public-site/dist/ ~/my-travels-ops/
+rsync -a --delete --exclude .git --exclude CNAME apps/felicia-public-site/dist/ ~/my-travels-ops/
 touch ~/my-travels-ops/.nojekyll
 cd ~/my-travels-deploy && git add -A && git commit -m "deploy: site" && git push
 ```
@@ -297,11 +297,11 @@ page that loads with every asset and `.json` request returning 404.
 
 | Symptom                                                 | Cause                                                                                                |
 | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Page loads blank, assets 404                            | `BASE_PATH` does not match the deployed URL — rebuild step 3                                         |
+| Page loads blank, assets 404                            | `BASE_PATH` does not match the deployed URL — rebuild step 4                                         |
 | Settings → Pages has no Source selector                 | private repository on a free plan, or you are not a repository admin                                 |
 | The target branch is missing from the list              | it does not exist yet — push the artifact first, then set the source                                 |
 | Some files are missing from the live site               | `.nojekyll` was not deployed                                                                         |
-| The site keeps redirecting elsewhere                    | a stray `CNAME` file, or a Custom domain value that was saved by mistake                             |
+| The site keeps redirecting elsewhere                    | check that `CNAME` and the Pages Custom domain setting match your intended domain                             |
 | A journey is absent from the site                       | it has no `published` mementos                                                                       |
 | `site-build`: `resolve site settings: entity not found` | the journal is empty — author or import something first, or `DATABASE_PATH` points at the wrong file |
 
