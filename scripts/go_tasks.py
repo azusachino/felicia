@@ -39,9 +39,28 @@ def discover_modules(go_work: Path = GO_WORK) -> list[str]:
     return modules
 
 
+def should_skip_module(module: str) -> bool:
+    """Check if a module requires platform-specific toolchains that are missing."""
+    if module == "apps/felicia-desktop" and sys.platform.startswith("linux"):
+        check = subprocess.run(
+            ["pkg-config", "--exists", "gtk4", "webkitgtk-6.0"],
+            check=False,
+            capture_output=True,
+        )
+        if check.returncode != 0:
+            print(
+                "go_tasks: skipping apps/felicia-desktop on Linux (missing gtk4 / webkitgtk-6.0 dev packages)",
+                file=sys.stderr,
+            )
+            return True
+    return False
+
+
 def run_task(task: str, modules: list[str]) -> int:
     """Run one task in each discovered module, stopping at the first failure."""
     for module in modules:
+        if should_skip_module(module):
+            continue
         result = subprocess.run(TASKS[task], cwd=ROOT / module, check=False)
         if result.returncode:
             print(
