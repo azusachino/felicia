@@ -12,6 +12,7 @@ import (
 	"github.com/azusachino/felicia/apps/felicia-core/domain"
 	"github.com/azusachino/felicia/apps/felicia-providers/dawarich"
 	"github.com/azusachino/felicia/apps/felicia-providers/immich"
+	"github.com/azusachino/felicia/apps/felicia-providers/local"
 	"github.com/azusachino/felicia/apps/felicia-providers/sqlite"
 	"github.com/azusachino/felicia/apps/felicia-runtime/importer"
 	"github.com/azusachino/felicia/apps/felicia-server/api"
@@ -74,6 +75,7 @@ func run(logger *slog.Logger) error {
 	server := api.NewServer(repo, registry, cacheManager, logger, imp, api.RouteConfig{
 		TransitSegmentLengthM: cfg.TransitSegmentLenM,
 		MediaRoot:             cfg.MediaRoot,
+		BlobStore:             local.NewFileBlobStore(cfg.MediaRoot),
 		RatePerSecond:         cfg.RatePerSecond,
 		RateBurst:             cfg.RateBurst,
 		SiteOutDir:            cfg.SiteOutDir,

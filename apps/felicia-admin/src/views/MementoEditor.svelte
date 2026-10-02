@@ -7,6 +7,8 @@
     isConflict,
     listMementoPhotos,
     snapToRoute,
+    photoContentURL,
+    uploadPhoto,
     upsertMemento,
     upsertPhoto,
     ApiError,
@@ -355,9 +357,10 @@
     }
   }
 
-  // --- Photos (metadata-only; no byte upload in this epic) -----------------
-  // Existing photos load from GET /api/admin/mementos/{id}/photos; each row
-  // saves through the POST /api/admin/photos upsert keyed by its own id.
+  // --- Original photo upload and curation -----------------
+  // Originals stay private in the media store; publication emits sanitized copies.
+  let photoUploadStatus = $state("")
+  let photoUploadError = $state(false)
 
   interface PhotoRow {
     id: string
@@ -383,16 +386,37 @@
     }
   }
 
-  function addPhotoRow() {
-    photoRows = [
-      ...photoRows,
-      {
-        id: crypto.randomUUID(),
-        fields: photoFormFieldsFromRequest({ seq: String(photoRows.length) }),
-        status: "idle",
-        message: "",
-      },
-    ]
+  async function handlePhotoUpload(event: Event) {
+    if (!memento) return
+    const input = event.currentTarget as HTMLInputElement
+    const files = Array.from(input.files ?? [])
+    if (files.length === 0) return
+    photoUploadStatus = `Uploading ${files.length} photo${files.length === 1 ? "" : "s"}…`
+    photoUploadError = false
+    const failures: string[] = []
+    for (const file of files) {
+      try {
+        const uploaded = await uploadPhoto(memento.id, file)
+        photoRows = [...photoRows, photoRowFromExisting(uploaded)]
+      } catch (cause) {
+        failures.push(`${file.name}: ${actionErrorMessage(cause)}`)
+      }
+    }
+    photoUploadError = failures.length > 0
+    photoUploadStatus = failures.length > 0 ? failures.join("; ") : "Upload complete."
+    input.value = ""
+  }
+
+  async function movePhoto(index: number, delta: number) {
+    const target = index + delta
+    if (!memento || target < 0 || target >= photoRows.length) return
+    const reordered = [...photoRows]
+    ;[reordered[index], reordered[target]] = [reordered[target], reordered[index]]
+    photoRows = reordered
+    for (const [seq, row] of reordered.entries()) {
+      row.fields = photoFormFieldsFromRequest({ ...row.fields, seq: String(seq) })
+      await savePhotoRow(row)
+    }
   }
 
   async function savePhotoRow(row: PhotoRow) {
@@ -571,34 +595,35 @@
     <section class="fields" aria-label="Photos">
       <div class="inbox-head">
         <h2>Photos</h2>
-        <button type="button" onclick={addPhotoRow}>Add photo</button>
+        <label class="photo-upload">
+          Add photos
+          <input type="file" accept="image/jpeg,image/png,image/webp" multiple onchange={handlePhotoUpload} />
+        </label>
       </div>
-      <p class="trigger-note">Metadata only — object key and content hash must reference bytes already in the media store.</p>
+      <p class="trigger-note">Uploads are stored privately. The public build resizes photos and strips EXIF metadata. Maximum 20 MiB per image; use JPEG, PNG, or WebP.</p>
+      {#if photoUploadStatus}
+        <p class={photoUploadError ? "trigger-status trigger-status--error" : "trigger-status"} role={photoUploadError ? "alert" : "status"}>{photoUploadStatus}</p>
+      {/if}
       {#if photoRows.length === 0}
         <p class="hint">No photos yet.</p>
       {:else}
         <ul class="photo-list">
           {#each photoRows as row (row.id)}
             <li class="photo-row">
+              <img class="photo-preview" src={photoContentURL(row.id)} alt={row.fields.caption || `Photo ${Number(row.fields.seq) + 1}`} loading="lazy" />
               <div class="field-grid">
-                <label class="field">
-                  Object key
-                  <input type="text" bind:value={row.fields.objectKey} />
-                </label>
-                <label class="field">
-                  Content hash
-                  <input type="text" bind:value={row.fields.contentHash} />
-                </label>
                 <label class="field">
                   Caption
                   <input type="text" bind:value={row.fields.caption} />
                 </label>
-                <label class="field">
-                  Seq
-                  <input type="text" inputmode="numeric" bind:value={row.fields.seq} />
-                </label>
               </div>
-              <button type="button" onclick={() => savePhotoRow(row)} disabled={row.status === "pending"}>{row.status === "pending" ? "Saving…" : "Save photo"}</button>
+              <div class="photo-actions">
+                <button type="button" class="secondary" onclick={() => movePhoto(photoRows.indexOf(row), -1)} disabled={photoRows.indexOf(row) === 0 || row.status === "pending"}>Move up</button>
+                <button type="button" class="secondary" onclick={() => movePhoto(photoRows.indexOf(row), 1)} disabled={photoRows.indexOf(row) === photoRows.length - 1 || row.status === "pending"}
+                  >Move down</button
+                >
+                <button type="button" onclick={() => savePhotoRow(row)} disabled={row.status === "pending"}>{row.status === "pending" ? "Saving…" : "Save caption"}</button>
+              </div>
               {#if row.status === "success"}
                 <span class="trigger-status trigger-status--success">{row.message}</span>
               {:else if row.status === "error"}
@@ -796,7 +821,6 @@
   }
   .point-row button,
   .actions button,
-  .inbox-head button,
   .photo-row button,
   .danger-zone button {
     border: 0;
@@ -843,6 +867,29 @@
     padding: 0;
     list-style: none;
   }
+  .photo-upload {
+    display: inline-flex;
+    align-items: center;
+    border: 0;
+    border-radius: 7px;
+    padding: 9px 14px;
+    color: #fffaf2;
+    background: #9f522d;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .photo-upload:focus-within {
+    outline: 2px solid #6b5137;
+    outline-offset: 2px;
+  }
+  .photo-upload input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
   .photo-row {
     display: grid;
     gap: 10px;
@@ -850,6 +897,28 @@
     border: 1px solid #dfd4c1;
     border-radius: 10px;
     background: rgb(255 250 242 / 55%);
+  }
+  .photo-preview {
+    display: block;
+    width: min(100%, 480px);
+    max-height: 320px;
+    object-fit: contain;
+    border-radius: 6px;
+    background: #eee5d7;
+  }
+  .photo-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .photo-row button.secondary {
+    color: #6b5137;
+    background: transparent;
+    border: 1px solid #d8cdbb;
+  }
+  .photo-row button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
   }
   .trigger-status {
     font-size: 13px;

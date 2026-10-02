@@ -39,6 +39,14 @@ const JOURNEY_TITLE = "Admin GUI E2E Journey"
 const MEMENTO_TITLE = "Admin GUI E2E Memento"
 const ESSAY_SENTINEL = "Felicia admin GUI E2E authored essay -- sentinel 9f3c2b1a"
 const GOODS_NAME = "E2E Souvenir"
+const CURATION_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP43+DwHwAHAAK/K9fH4gAAAABJRU5ErkJggg==",
+  "base64",
+)
+const CURATION_PNG_TWO = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNwaPj/HwAFggK/465+UQAAAABJRU5ErkJggg==",
+  "base64",
+)
 
 // ADMIN-02 M2: site identity constants, kept identical to the constants of
 // the same name in scripts/e2e_admin_gui.py for the same reason as above —
@@ -116,6 +124,28 @@ test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
     await page.getByRole("button", { name: "Save", exact: true }).click()
     await expect(page.getByText("Saved.")).toBeVisible()
     await expect(page.locator(".editor-header .badge")).toHaveText("draft")
+
+    const photoInput = page.getByLabel("Add photos")
+    await photoInput.setInputFiles([
+      { name: "photo-one.png", mimeType: "image/png", buffer: CURATION_PNG },
+      { name: "photo-two.png", mimeType: "image/png", buffer: CURATION_PNG_TWO }
+    ])
+    const photoRows = page.locator(".photo-row")
+    await expect(photoRows).toHaveCount(2)
+    await expect(photoRows.nth(0).getByRole("img")).toHaveJSProperty("naturalWidth", 1)
+    await expect(photoRows.nth(1).getByRole("img")).toHaveJSProperty("naturalWidth", 1)
+
+    await page.getByLabel("Caption").nth(0).fill("First curated photo")
+    await page.getByLabel("Caption").nth(1).fill("Second curated photo")
+    await photoRows.nth(0).getByRole("button", { name: "Save caption" }).click()
+    await expect(photoRows.nth(0).getByText("Saved.")).toBeVisible()
+    await photoRows.nth(1).getByRole("button", { name: "Save caption" }).click()
+    await expect(photoRows.nth(1).getByText("Saved.")).toBeVisible()
+
+    await photoRows.nth(1).getByRole("button", { name: "Move up" }).click()
+    await expect(photoRows.nth(0).getByRole("img")).toHaveAttribute("alt", "Second curated photo")
+    await page.reload()
+    await expect(page.locator(".photo-row").nth(0).getByRole("img")).toHaveAttribute("alt", "Second curated photo")
   })
 
   test("advances the lifecycle draft -> authored -> published", async () => {
@@ -147,11 +177,20 @@ test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
 
     // The GUI already reflects "published" (previous step's badge assertion);
     // this confirms the live public API — the same surface the compiled
-    // static artifact is meant to match — also serves the authored essay.
+    // static artifact is meant to match — also serves the authored essay and
+    // ordered gallery.
     const publicResponse = await page.request.get(`${API_BASE}/api/v1/journeys/${JOURNEY_ID}/mementos`)
     expect(publicResponse.ok()).toBeTruthy()
-    const publicMementos = (await publicResponse.json()) as Array<{ essay?: string; title?: string }>
-    expect(publicMementos.some((memento) => memento.essay === ESSAY_SENTINEL && memento.title === MEMENTO_TITLE)).toBeTruthy()
+    const publicMementos = (await publicResponse.json()) as Array<{
+      essay?: string
+      title?: string
+      photos?: Array<{ caption?: string; seq: number; object_key: string }>
+    }>
+    const published = publicMementos.find((memento) => memento.essay === ESSAY_SENTINEL && memento.title === MEMENTO_TITLE)
+    expect(published).toBeTruthy()
+    expect(published?.photos?.map((photo) => photo.caption)).toEqual(["Second curated photo", "First curated photo"])
+    expect(published?.photos?.map((photo) => photo.seq)).toEqual([0, 1])
+    expect(published?.photos?.every((photo) => photo.object_key.length > 0)).toBeTruthy()
   })
 
   // ADMIN-02 M2: the Site & Deploy page's new Site identity section (design

@@ -101,7 +101,7 @@ Deliverables:
 
 - Journey create/edit: title, dates, place, route import/manual fallback, visibility.
 - Memento create/edit driven by the declarative template registry.
-- Photo upload, ordering, captions, derivative generation, and EXIF stripping.
+- Photo upload through the `BlobStore` port, private local originals, ordering, captions, admin previews, and EXIF-safe public derivatives.
 - Preview the public projection before publishing.
 - Review imported candidates and enrichment suggestions before applying authored fields.
 - Enforce revision/conflict checks and the rule that imports never clobber authored fields.
