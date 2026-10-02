@@ -103,6 +103,9 @@ func (h *DesktopHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Desktop native integration endpoints
 	if cleanPath == "/api/desktop/pick-folder" {
+		if !h.authorizedMutation(w, r) {
+			return
+		}
 		h.handlePickFolder(w, r)
 		return
 	}

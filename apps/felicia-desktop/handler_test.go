@@ -132,10 +132,29 @@ func TestHandlerReaderModeBlocksAdmin(t *testing.T) {
 }
 
 func TestHandlerPickFolder(t *testing.T) {
-	h, _, _ := setupTestHandler(t, "admin", "")
+	h, _, _ := setupTestHandler(t, "admin", "secure-token")
 
+	// 1. Missing token returns 403 Forbidden
 	req := httptest.NewRequest(http.MethodPost, "/api/desktop/pick-folder", nil)
 	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 when token omitted, got %d", rec.Code)
+	}
+
+	// 2. Invalid token returns 403 Forbidden
+	req = httptest.NewRequest(http.MethodPost, "/api/desktop/pick-folder", nil)
+	req.Header.Set("X-Desktop-Token", "wrong-token")
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 on invalid token, got %d", rec.Code)
+	}
+
+	// 3. Valid token returns 200 OK
+	req = httptest.NewRequest(http.MethodPost, "/api/desktop/pick-folder", nil)
+	req.Header.Set("X-Desktop-Token", "secure-token")
+	rec = httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
