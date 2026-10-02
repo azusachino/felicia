@@ -31,7 +31,7 @@ Immich / local photos ────────────┴─> intake plan ->
                                            -> author -> publish -> static site
 ```
 
-Go modules under `apps/` own the domain, runtime, providers, server, CLI, and publication compiler. `packages/felicia-model` holds frontend contracts; `packages/felicia-reader` is the Atlas reader. The two web hosts are `apps/felicia-admin` and `apps/felicia-public-site`. SQLite is the only persistence implementation for v1.
+Go modules under `apps/` own the domain, runtime, providers, server, CLI, desktop studio, and publication compiler. `packages/felicia-model` holds frontend contracts; `packages/felicia-reader` is the Atlas reader. The two web hosts are `apps/felicia-admin` and `apps/felicia-public-site`. SQLite is the only persistence implementation for v1.
 
 Google Timeline imports named place visits from local `Timeline.json` and Takeout monthly JSON exports. It does not turn activity segments into invented route lines: supply GPX or Dawarich when route geometry is needed. Import is a local, read-only planning step until you explicitly apply/review it.
 
@@ -41,7 +41,8 @@ Install the checked-in toolchain with `mise install`, then use the Make targets:
 
 ```sh
 make help
-make admin       # authoring stack; see network-binding note below
+make desktop     # native desktop studio (macOS app)
+make admin       # web authoring stack; see network-binding note below
 make web-dev     # public reader
 make check
 make validate

@@ -16,7 +16,7 @@ COMPOSE ?= $(shell \
 	elif command -v docker >/dev/null 2>&1; then echo docker compose; \
 	else echo ''; fi)
 
-.PHONY: help fmt fmt-check fmt-docs fmt-docs-check vet lint test test-api test-features layout-check test-sqlite check check-ci build cli-build experiment-intake journey-local validate deps-check tidy db-up db-down seed admin dev dev-sqlite test-workflow test-admin-e2e mock-up mock-down browser-mock web-install web-check web-build admin-check admin-build site-build site-verify pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
+.PHONY: help fmt fmt-check fmt-docs fmt-docs-check vet lint test test-api test-features layout-check test-sqlite check check-ci build cli-build desktop-assets desktop-build desktop-package desktop experiment-intake journey-local validate deps-check tidy db-up db-down seed admin dev dev-sqlite test-workflow test-admin-e2e mock-up mock-down browser-mock web-install web-check web-build admin-check admin-build site-build site-verify pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -53,6 +53,25 @@ build: ## Build all binaries
 cli-build: ## Build the felicia-cli executable into bin/
 	@mkdir -p bin
 	$(GO) build -o bin/felicia-cli ./apps/felicia-cli/cmd/felicia
+
+desktop-assets: admin-build web-build ## Prepare built admin and reader assets for embedding
+	mkdir -p apps/felicia-desktop/assets/admin apps/felicia-desktop/assets/reader
+	cp -R apps/felicia-admin/dist/. apps/felicia-desktop/assets/admin/
+	cp -R apps/felicia-public-site/dist/. apps/felicia-desktop/assets/reader/
+
+desktop-build: desktop-assets ## Build native desktop binary into bin/felicia-desktop
+	@mkdir -p bin
+	$(GO) build -o bin/felicia-desktop ./apps/felicia-desktop
+
+desktop-package: desktop-build ## Package into macOS .app bundle
+	mkdir -p bin/FeliciaStudio.app/Contents/MacOS
+	cp bin/felicia-desktop bin/FeliciaStudio.app/Contents/MacOS/felicia-desktop
+	cp apps/felicia-desktop/Info.plist bin/FeliciaStudio.app/Contents/Info.plist
+	codesign --force --sign - bin/FeliciaStudio.app
+	codesign --verify --deep --strict bin/FeliciaStudio.app
+
+desktop: desktop-package ## Run local desktop studio (macOS app)
+	./bin/FeliciaStudio.app/Contents/MacOS/felicia-desktop
 
 experiment-intake: cli-build ## Run the offline intake experiment matrix
 	$(UV_RUN) run python scripts/run_intake_experiments.py --out .felicia/experiments/intake/report.json
