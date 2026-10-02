@@ -125,6 +125,11 @@ def validate_public_image(attachment: dict, source: Path) -> None:
     if kind != "image":
         raise SystemExit(f"unsupported public media kind {kind!r}: {attachment.get('path', '')}")
     extension = source.suffix.lower()
+    if extension in {".heic", ".heif"}:
+        raise SystemExit(
+            f"HEIC/HEIF photos are not supported yet; convert {source.name} to JPEG "
+            "(on macOS: sips -s format jpeg input.heic --out output.jpg)"
+        )
     if extension not in {".jpg", ".jpeg", ".png", ".webp"}:
         raise SystemExit(f"only JPEG, PNG, and WebP images are supported in public packages: {source.name}")
     declared_mime = attachment.get("mime")

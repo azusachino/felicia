@@ -48,6 +48,8 @@ func SanitizePublicImage(objectKey string, source io.Reader) ([]byte, error) {
 		return sanitizePNG(raw)
 	case ".webp":
 		return sanitizeWebP(raw)
+	case ".heic", ".heif":
+		return nil, fmt.Errorf("HEIC/HEIF is not supported yet; convert %q to JPEG before publishing", objectKey)
 	default:
 		return nil, fmt.Errorf("unsupported public image format %q: only .jpg, .jpeg, .png and .webp can be stripped of metadata", extension)
 	}
