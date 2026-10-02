@@ -60,11 +60,13 @@ TrackSource {
   snaps to the nearest _visit_, not the nearest track vertex. For a plain GPX import (no Dawarich)
   a dwell-time clustering fallback produces the same `Visit` shape **at the edge** — the core
   stays generic over the normalized shape, exactly per the strategy above.
-- **Google Maps Timeline is not a first-class connector — it enters through Dawarich.** Google's
-  export (`placeVisit`/`activitySegment` Takeout, or the on-device `Timeline.json`
-  `semanticSegments`) is a shifting target, and post-2024 Google keeps only ~90 days on-device.
-  Dawarich already imports these formats; point a friend's export at Dawarich and felicia reads one
-  stable API. We do **not** hand-write a Google parser.
+- **Google Maps Timeline has a narrow local visit adapter.** Felicia reads concatenated
+  Timeline JSON documents and Takeout monthly `timelineObjects` exports, normalizing place visits
+  into `VisitSource`; activity segments are
+  ignored rather than flattened into synthetic points. This preserves place names and IDs for
+  intake review. It does not reconstruct activity routes: use a GPX or Dawarich route source when
+  route geometry is needed. The adapter is offline and runs through `felicia-cli journey plan
+  --timeline`; the export stays local.
 - **Dawarich + Immich are foundational**, not "sources among many" — a pre-history decision. The
   rule-of-three extensibility (a new `TrackSource`/`PhotoSource` impl) still stands for the
   _unusual_ user, but the assumed path is **Dawarich (track + visits) ⋈ Immich (photos)** joined on

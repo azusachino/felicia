@@ -17,7 +17,8 @@ import (
 var ErrNoCandidateStore = errors.New("stop candidate store is required")
 
 // SourceSet is the normalized capability bundle used by both CLI and server
-// compositions. Visits and media are optional; routes are required for a plan.
+// compositions. Routes, visits, and media are optional individually; a plan
+// requires at least one route or visit source.
 type SourceSet struct {
 	Routes domain.RouteSource
 	Visits domain.VisitSource
@@ -53,12 +54,16 @@ func (s *Service) Plan(ctx context.Context, request PlanRequest) (DraftPlan, err
 	if request.JourneyID == uuid.Nil {
 		return DraftPlan{}, errors.New("journey ID is required")
 	}
-	if request.Sources.Routes == nil {
-		return DraftPlan{}, errors.New("route source is required")
+	if request.Sources.Routes == nil && request.Sources.Visits == nil {
+		return DraftPlan{}, errors.New("route or visit source is required")
 	}
-	routes, err := request.Sources.Routes.FetchRoutes(ctx, request.From, request.To)
-	if err != nil {
-		return DraftPlan{}, fmt.Errorf("fetch routes: %w", err)
+	var routes []domain.Route
+	var err error
+	if request.Sources.Routes != nil {
+		routes, err = request.Sources.Routes.FetchRoutes(ctx, request.From, request.To)
+		if err != nil {
+			return DraftPlan{}, fmt.Errorf("fetch routes: %w", err)
+		}
 	}
 	var visits []domain.Visit
 	if request.Sources.Visits != nil {

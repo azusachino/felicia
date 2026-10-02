@@ -52,6 +52,21 @@ func TestGPXSourceKeepsUntimestampedGeometryAndRejectsBadCoordinates(t *testing.
 	}
 }
 
+func TestOverlapsFiltersOpenEndedRanges(t *testing.T) {
+	start := time.Date(2026, 4, 1, 9, 0, 0, 0, time.UTC)
+	end := start.Add(time.Hour)
+	bound := start.Add(30 * time.Minute)
+	if overlaps(start, end, bound.Add(time.Hour), time.Time{}) {
+		t.Fatal("from-only range included an earlier segment")
+	}
+	if overlaps(start, end, time.Time{}, start.Add(-time.Minute)) {
+		t.Fatal("to-only range included a later segment")
+	}
+	if !overlaps(start, end, bound, time.Time{}) || !overlaps(start, end, time.Time{}, bound) {
+		t.Fatal("open-ended range excluded an overlapping segment")
+	}
+}
+
 func TestPhotoSourceIsDeterministicAndPreservesMissingMetadata(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.Mkdir(filepath.Join(dir, "nested"), 0o700); err != nil {

@@ -87,6 +87,23 @@ func TestCLIJourneyPlanJSONL(t *testing.T) {
 	}
 }
 
+func TestCLIJourneyPlanFromTimelineWithoutTrack(t *testing.T) {
+	root := t.TempDir()
+	timeline := filepath.Join(root, "Timeline.json")
+	data := `{"placeVisit":{"duration":{"startTimestamp":"2026-04-01T09:00:00Z","endTimestamp":"2026-04-01T10:00:00Z"},"location":{"latitudeE7":356765000,"longitudeE7":1397440000,"placeId":"place-1","name":"Meiji Shrine"}}}`
+	if err := os.WriteFile(timeline, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var output strings.Builder
+	err := execute([]string{"journey", "plan", "--journey", "00000000-0000-0000-0000-000000000001", "--timeline", timeline}, &output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(output.String(), `"Label": "Meiji Shrine"`) || !strings.Contains(output.String(), `"system": "google-timeline"`) {
+		t.Fatalf("timeline visit missing from plan: %s", output.String())
+	}
+}
+
 func writeFixturePackage(t *testing.T, filename string) string {
 	t.Helper()
 	// content_hash must be the real digest of the bytes: the importer derives

@@ -115,6 +115,7 @@ Deliverables:
 
 - Import a GPX/manual route as the dependable fallback.
 - Add Dawarich track and visit ingestion behind a provider interface.
+- Read Google Timeline exports locally as named visit input; route geometry still comes from GPX or Dawarich.
 - Add Immich photo/stub ingestion and timestamp joining.
 - Add the versioned package import path for route/timeline/photos/notes.
 - Keep OCR/AI enrichment optional and confirmation-based.
