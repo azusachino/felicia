@@ -16,7 +16,7 @@ COMPOSE ?= $(shell \
 	elif command -v docker >/dev/null 2>&1; then echo docker compose; \
 	else echo ''; fi)
 
-.PHONY: help fmt fmt-check fmt-docs fmt-docs-check vet lint test test-api test-features layout-check test-sqlite check check-ci build cli-build desktop-assets desktop-build desktop-package desktop experiment-intake journey-local validate deps-check tidy db-up db-down seed admin dev dev-sqlite test-workflow test-admin-e2e mock-up mock-down browser-mock web-install web-check web-build admin-check admin-build site-build site-verify pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down
+.PHONY: help fmt fmt-check fmt-docs fmt-docs-check vet lint test test-api test-features layout-check test-sqlite check check-ci build cli-build desktop-assets desktop-build desktop-package desktop experiment-intake journey-local validate deps-check tidy db-up db-down seed admin dev dev-sqlite test-workflow test-admin-e2e mock-up mock-down browser-mock web-install web-check web-build admin-check admin-build site-build site-verify pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down e2e e2e-install desktop-e2e-build
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -59,14 +59,27 @@ desktop-assets: admin-build web-build ## Prepare built admin and reader assets f
 	cp -R apps/felicia-admin/dist/. apps/felicia-desktop/assets/admin/
 	cp -R apps/felicia-public-site/dist/. apps/felicia-desktop/assets/reader/
 
+desktop-e2e-build: desktop-assets ## Build test-only headless desktop composition
+	@mkdir -p bin
+	$(GO) build -tags production,e2e -o bin/felicia-desktop-e2e ./apps/felicia-desktop
+
+# Browser verification of desktop composition; does not drive the Wails window.
+e2e: desktop-e2e-build ## Run integrated desktop Chromium/WebKit specs on synthetic state
+	$(GO) test -tags e2e ./apps/felicia-desktop
+	$(BUN) run --cwd apps/felicia-admin e2e $(ARGS)
+
+e2e-install: ## Install browsers for the project's pinned Playwright version
+	$(BUN) run --cwd apps/felicia-admin e2e:install $(E2E_INSTALL_FLAGS)
+
 desktop-build: desktop-assets ## Build native desktop binary into bin/felicia-desktop
 	@mkdir -p bin
-	$(GO) build -o bin/felicia-desktop ./apps/felicia-desktop
+	$(GO) build -tags production -o bin/felicia-desktop ./apps/felicia-desktop
 
-desktop-package: desktop-build ## Package into macOS .app bundle
-	mkdir -p bin/FeliciaStudio.app/Contents/MacOS
+desktop-package: desktop-build ## Package the macOS app bundle with the native app icon
+	mkdir -p bin/FeliciaStudio.app/Contents/MacOS bin/FeliciaStudio.app/Contents/Resources
 	cp bin/felicia-desktop bin/FeliciaStudio.app/Contents/MacOS/felicia-desktop
 	cp apps/felicia-desktop/Info.plist bin/FeliciaStudio.app/Contents/Info.plist
+	cp apps/felicia-desktop/build/felicia.icns bin/FeliciaStudio.app/Contents/Resources/felicia.icns
 	codesign --force --sign - bin/FeliciaStudio.app
 	codesign --verify --deep --strict bin/FeliciaStudio.app
 

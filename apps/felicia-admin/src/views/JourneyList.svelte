@@ -2,10 +2,11 @@
   import { onMount } from "svelte"
   import { message, statusMessage, type Locale } from "../i18n"
 
-  let { locale }: { locale: Locale } = $props()
+  let { locale, desktop = false }: { locale: Locale; desktop?: boolean } = $props()
   import {
     compileSite,
     createJourney,
+    pickDesktopFolder,
     describeLoadFailure,
     formatJourneyDate,
     getBuildStatus,
@@ -38,15 +39,48 @@
   let createState = $state<"idle" | "pending" | "error">("idle")
   let createError = $state("")
   let slugManuallyEdited = $state(false)
+  const fallbackSlug = `journey-${crypto.getRandomValues(new Uint32Array(1))[0].toString(16)}`
+  let creationDialog = $state<HTMLDialogElement>()
+  let creationOpener: HTMLButtonElement | null = null
+
+  function openCreation(mode: "create" | "scan", event: MouseEvent) {
+    creationMode = mode
+    creationOpener = event.currentTarget as HTMLButtonElement
+    showNewJourney = true
+  }
+
+  function creationClosed() {
+    showNewJourney = false
+    creationOpener?.focus()
+  }
+
+  $effect(() => {
+    if (!creationDialog) return
+    if (showNewJourney && !creationDialog.open) {
+      creationDialog.showModal()
+      creationDialog.querySelector("input")?.focus()
+    } else if (!showNewJourney && creationDialog.open) {
+      creationDialog.close()
+    }
+  })
+
+  function cancelCreation(event?: Event) {
+    if (createState === "pending" || scanState === "importing") {
+      event?.preventDefault()
+      return
+    }
+    showNewJourney = false
+  }
 
   function onTitleInput() {
     if (!slugManuallyEdited) {
-      createSlug = createTitle
-        .toLowerCase()
-        .trim()
-        .replace(/[^\w\s-]/g, "")
-        .replace(/[\s_-]+/g, "-")
-        .replace(/^-+|-+$/g, "")
+      createSlug =
+        createTitle
+          .toLowerCase()
+          .trim()
+          .replace(/[^\w\s-]/g, "")
+          .replace(/[\s_-]+/g, "-")
+          .replace(/^-+|-+$/g, "") || fallbackSlug
     }
   }
 
@@ -73,12 +107,27 @@
 
   // Scan form state
   let workspace = $state("")
+  let browseState = $state<"idle" | "pending">("idle")
   let slug = $state("")
   let title = $state("")
   let place = $state("")
   let scanState = $state<"idle" | "scanning" | "ready" | "importing" | "error">("idle")
   let scanError = $state("")
   let scanned = $state<LocalJourneyPlan | null>(null)
+
+  // Desktop only: ask the native shell for a folder and fill the input.
+  // The web admin has no /api/desktop bridge; the typed-path input stays.
+  async function browseWorkspace() {
+    browseState = "pending"
+    try {
+      const res = await pickDesktopFolder(message(locale, "admin.connectors.folder_path"))
+      if (res.selected && res.path) workspace = res.path
+    } catch (cause) {
+      scanError = actionErrorMessage(cause)
+    } finally {
+      browseState = "idle"
+    }
+  }
 
   async function load() {
     loading = true
@@ -179,66 +228,58 @@
 
 <section class="journeys">
   <header class="journeys-header">
-    <div>
-      <p class="eyebrow">{message(locale, "admin.journeys.breadcrumb")}</p>
-      <h1>{message(locale, "admin.journeys.title")}</h1>
-    </div>
+    <h1>{message(locale, "admin.journeys.title")}</h1>
     <div class="header-actions">
-      <button class="secondary" type="button" onclick={() => (showNewJourney = !showNewJourney)}
-        >{showNewJourney ? message(locale, "admin.common.close") : message(locale, "admin.journeys.new_action")}</button
-      >
       <button class="secondary" type="button" onclick={load} disabled={loading}>{loading ? message(locale, "admin.common.loading") : message(locale, "admin.common.refresh")}</button>
+      <button class="secondary" type="button" onclick={(event) => openCreation("scan", event)}>{message(locale, "admin.connectors.scan_trip_folder")}</button>
+      <button class="primary" type="button" onclick={(event) => openCreation("create", event)}>{message(locale, "admin.journeys.new_action")}</button>
     </div>
   </header>
 
-  {#if showNewJourney}
-    <section class="new-journey" aria-labelledby="new-journey-title">
-      <div class="new-journey-tabs">
-        <button type="button" class:active={creationMode === "create"} onclick={() => (creationMode = "create")}>{message(locale, "admin.journeys.create_blank")}</button>
-        <button type="button" class:active={creationMode === "scan"} onclick={() => (creationMode = "scan")}>{message(locale, "admin.connectors.scan_trip_folder")}</button>
-      </div>
-
+  <dialog class="studio-dialog new-journey" bind:this={creationDialog} aria-labelledby="new-journey-title" oncancel={cancelCreation} onclose={creationClosed}>
+    <header class="sheet-header">
+      <h2 id="new-journey-title">{message(locale, creationMode === "create" ? "admin.journeys.create_heading" : "admin.connectors.scan_heading")}</h2>
+      <button type="button" class="icon-button" aria-label={message(locale, "admin.common.close")} onclick={() => cancelCreation()} disabled={createState === "pending" || scanState === "importing"}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" /></svg>
+      </button>
+    </header>
+    <div class="sheet-body">
       {#if creationMode === "create"}
-        <p class="eyebrow">{message(locale, "admin.journeys.direct_authoring")}</p>
-        <h2 id="new-journey-title">{message(locale, "admin.journeys.create_heading")}</h2>
         <p class="hint">{message(locale, "admin.journeys.create_note")}</p>
-        <div class="new-journey-form">
-          <label>{message(locale, "admin.common.title")}<input bind:value={createTitle} oninput={onTitleInput} /></label>
-          <label>{message(locale, "admin.common.place")}<input bind:value={createPlace} /></label>
-          <label>{message(locale, "admin.journeys.slug")}<input bind:value={createSlug} oninput={() => (slugManuallyEdited = true)} placeholder="hakone-weekend-walk-2026" /></label>
-          <label>{message(locale, "admin.journeys.start_date")}<input type="date" bind:value={createDateStart} /></label>
-          <label>{message(locale, "admin.journeys.end_date")}<input type="date" bind:value={createDateEnd} /></label>
-          <label>{message(locale, "admin.journeys.country_optional")}<input bind:value={createCountry} /></label>
-          <label>{message(locale, "admin.journeys.region_optional")}<input bind:value={createRegion} /></label>
-        </div>
-        <div class="new-journey-actions">
-          <button class="primary" type="button" onclick={submitCreateJourney} disabled={!createTitle || !createPlace || !createSlug || !createDateStart || !createDateEnd || createState === "pending"}>
-            {createState === "pending" ? message(locale, "admin.journeys.creating") : message(locale, "admin.journeys.create_action")}
-          </button>
-          <button class="secondary" type="button" onclick={() => (showNewJourney = false)}>{message(locale, "admin.common.cancel")}</button>
-        </div>
+        <form
+          id="journey-create-form"
+          class="new-journey-form"
+          onsubmit={(event) => {
+            event.preventDefault()
+            submitCreateJourney()
+          }}
+        >
+          <label>{message(locale, "admin.common.title")}<input required bind:value={createTitle} oninput={onTitleInput} /></label>
+          <label>{message(locale, "admin.common.place")}<input required bind:value={createPlace} /></label>
+          <label>{message(locale, "admin.journeys.start_date")}<input required type="date" bind:value={createDateStart} /></label>
+          <label>{message(locale, "admin.journeys.end_date")}<input required type="date" min={createDateStart} bind:value={createDateEnd} /></label>
+          <details class="more-options">
+            <summary>{message(locale, "admin.journeys.more_options")}</summary>
+            <div class="optional-fields">
+              <label>{message(locale, "admin.journeys.slug")}<input required bind:value={createSlug} oninput={() => (slugManuallyEdited = true)} /></label>
+              <label>{message(locale, "admin.journeys.country_optional")}<input bind:value={createCountry} /></label>
+              <label>{message(locale, "admin.journeys.region_optional")}<input bind:value={createRegion} /></label>
+            </div>
+          </details>
+        </form>
         {#if createError}<p class="api-error" role="alert">{createError}</p>{/if}
       {:else}
-        <p class="eyebrow">{message(locale, "admin.connectors.local_source_intake")}</p>
-        <h2 id="new-journey-title">{message(locale, "admin.connectors.scan_heading")}</h2>
         <p class="hint">
           {message(locale, "admin.connectors.scan_note")}
         </p>
         <div class="new-journey-form">
-          <label>{message(locale, "admin.connectors.folder_path")}<input bind:value={workspace} placeholder="/Users/you/trips/izu-trip-2026-08-01" /></label>
+          <label
+            >{message(locale, "admin.connectors.folder_path")}<input bind:value={workspace} placeholder="/Users/you/trips/izu-trip-2026-08-01" />
+            {#if desktop}<button class="secondary" type="button" onclick={browseWorkspace} disabled={browseState === "pending"}>{message(locale, "admin.connectors.browse")}</button>{/if}</label
+          >
           <label>{message(locale, "admin.journeys.slug")}<input bind:value={slug} placeholder="izu-trip-2026-08-01" /></label>
           <label>{message(locale, "admin.common.title")}<input bind:value={title} placeholder="Izu · 2026-08-01 – 2026-08-02" /></label>
           <label>{message(locale, "admin.common.place")}<input bind:value={place} placeholder="Izu" /></label>
-        </div>
-        <div class="new-journey-actions">
-          <button class="secondary" type="button" onclick={scanWorkspace} disabled={!workspace || scanState === "scanning"}
-            >{scanState === "scanning" ? message(locale, "admin.connectors.scanning") : message(locale, "admin.connectors.scan_preview")}</button
-          >
-          {#if scanned}
-            <button class="primary" type="button" onclick={importWorkspace} disabled={!slug || !title || scanState === "importing"}
-              >{scanState === "importing" ? message(locale, "admin.connectors.importing") : message(locale, "admin.connectors.confirm_import")}</button
-            >
-          {/if}
         </div>
         {#if scanError}<p class="api-error" role="alert">{scanError}</p>{/if}
         {#if scanned}
@@ -250,8 +291,28 @@
           </div>
         {/if}
       {/if}
-    </section>
-  {/if}
+    </div>
+    <footer class="sheet-actions">
+      <button class="secondary" type="button" onclick={() => cancelCreation()} disabled={createState === "pending" || scanState === "importing"}>{message(locale, "admin.common.cancel")}</button>
+      {#if creationMode === "create"}
+        <button
+          class="primary"
+          type="submit"
+          form="journey-create-form"
+          disabled={!createTitle.trim() || !createPlace.trim() || !createSlug.trim() || !createDateStart || !createDateEnd || createState === "pending"}
+        >
+          {createState === "pending" ? message(locale, "admin.journeys.creating") : message(locale, "admin.journeys.create_action")}
+        </button>
+      {:else}
+        <button class="secondary" type="button" onclick={scanWorkspace} disabled={!workspace || scanState === "scanning"}
+          >{scanState === "scanning" ? message(locale, "admin.connectors.scanning") : message(locale, "admin.connectors.scan_preview")}</button
+        >
+        {#if scanned}<button class="primary" type="button" onclick={importWorkspace} disabled={!slug || !title || scanState === "importing"}
+            >{scanState === "importing" ? message(locale, "admin.connectors.importing") : message(locale, "admin.connectors.confirm_import")}</button
+          >{/if}
+      {/if}
+    </footer>
+  </dialog>
 
   {#if loading}
     <p class="hint">{message(locale, "admin.journeys.loading")}</p>
@@ -319,49 +380,33 @@
 </section>
 
 <style>
+  .journeys {
+    padding: 24px;
+  }
   .journeys-header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    min-height: 52px;
+    margin: -24px -24px 24px;
+    padding: 6px 24px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    --wails-draggable: drag;
   }
-  .header-actions,
-  .new-journey-actions {
+  .journeys-header h1 {
+    font-size: 16px;
+  }
+  .header-actions {
+    --wails-draggable: no-drag;
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
-  }
-  .new-journey {
-    margin-top: 24px;
-    padding: 20px 24px;
-    border: 1px solid #dfd4c1;
-    border-radius: 12px;
-    background: rgb(255 250 242 / 70%);
-  }
-  .new-journey-tabs {
-    display: inline-flex;
-    gap: 4px;
-    padding: 3px;
-    background: #ede6d8;
-    border-radius: 8px;
-    margin-bottom: 16px;
-  }
-  .new-journey-tabs button {
-    border: 0;
-    border-radius: 6px;
-    padding: 6px 14px;
-    font-size: 13px;
-    color: #6b5137;
-    background: transparent;
-    cursor: pointer;
-  }
-  .new-journey-tabs button.active {
-    background: #fffaf2;
-    color: #342a1e;
-    font-weight: 600;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  }
-  .new-journey h2 {
-    margin: 2px 0 0;
   }
   .new-journey-form {
     display: grid;
@@ -372,16 +417,32 @@
   .new-journey-form label {
     display: grid;
     gap: 5px;
-    color: #6b5137;
-    font-size: 12px;
-    font-weight: 600;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
   }
   .new-journey-form input {
     min-width: 0;
     padding: 9px 10px;
-    border: 1px solid #d8cdbb;
-    border-radius: 6px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--text);
+    background: var(--surface);
     font: inherit;
+  }
+  .more-options {
+    grid-column: 1 / -1;
+    color: var(--muted);
+  }
+  .more-options summary {
+    cursor: pointer;
+    font-size: 13px;
+    padding: 4px 0;
+  }
+  .optional-fields {
+    display: grid;
+    gap: 12px;
+    margin-top: 12px;
   }
   .scan-result {
     display: flex;
@@ -389,48 +450,26 @@
     gap: 12px;
     margin-top: 16px;
     padding: 12px;
-    color: #6b5137;
-    background: #f7eddd;
-    border-radius: 6px;
+    color: var(--text);
+    background: var(--surface-muted);
+    border-radius: 8px;
     font-size: 13px;
   }
   .scan-warning {
-    color: #9f522d;
-  }
-  .secondary {
-    border: 1px solid #d8cdbb;
-    border-radius: 7px;
-    padding: 9px 14px;
-    color: #6b5137;
-    background: #fffaf2;
-  }
-  .secondary:disabled {
-    opacity: 0.6;
-    cursor: default;
-  }
-  /* "Confirm import" is this form's primary action and previously had no
-     class at all — an unstyled <button> next to a bordered .secondary one,
-     so it rendered as plain text with no button affordance. Matches the
-     app's other primary-action buttons (e.g. .build-row button). */
-  .primary {
-    border: 0;
-    border-radius: 7px;
-    padding: 9px 14px;
-    color: #fffaf2;
-    background: #9f522d;
-  }
-  .primary:disabled {
-    opacity: 0.6;
-    cursor: default;
+    color: var(--accent);
   }
   .hint {
-    margin-top: 24px;
-    color: #766956;
+    margin: 16px 0;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .sheet-body .hint {
+    margin-top: 0;
   }
   .journey-cards {
     display: grid;
     gap: 12px;
-    margin: 24px 0 0;
+    margin: 0;
     padding: 0;
     list-style: none;
   }
@@ -439,31 +478,31 @@
     align-items: center;
     justify-content: space-between;
     gap: 24px;
-    padding: 20px 24px;
-    border: 1px solid #dfd4c1;
-    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
     color: inherit;
     text-decoration: none;
-    background: rgb(255 250 242 / 55%);
+    background: var(--surface-raised);
     transition: border-color 0.15s ease;
   }
   .journey-card:hover {
-    border-color: #b3673a;
+    border-color: var(--accent);
   }
   /* Pending-build highlight (memento-lifecycle staged rebuild, ADMIN-02
      §6) — the same visual language as the journey-detail memento row: a
      left border + subtle background, plus an inline "pending build"
      label rather than color alone. */
   .journey-card--pending {
-    border-left: 3px solid #b3673a;
-    background: rgb(231 162 96 / 14%);
+    border-inline-start: 3px solid var(--accent);
+    background: var(--accent-soft);
   }
   .pending-dot {
     display: inline-flex;
     align-items: center;
     gap: 5px;
     margin-top: 8px;
-    color: #9f522d;
+    color: var(--accent);
     font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
@@ -476,15 +515,15 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #b3673a;
+    background: var(--accent);
   }
   .journey-card-main h2 {
     margin: 2px 0 0;
-    font-size: 22px;
+    font-size: 16px;
   }
   .journey-card-dates {
     margin: 6px 0 0;
-    color: #766956;
+    color: var(--muted);
     font-size: 13px;
   }
   .journey-card-meta {
@@ -499,15 +538,23 @@
     text-align: right;
   }
   .stat strong {
-    font-family: Georgia, serif;
-    font-size: 24px;
-    font-weight: 500;
+    font-size: 16px;
+    font-weight: 600;
   }
   .badge-row {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
     max-width: 220px;
+  }
+  @media (max-width: 820px) {
+    .journeys {
+      padding: 20px 16px;
+    }
+    .journeys-header {
+      margin: -20px -16px 20px;
+      padding-inline: 16px;
+    }
   }
   @media (max-width: 720px) {
     .journey-card {
@@ -524,9 +571,9 @@
   .build-shortcut {
     margin-top: 24px;
     padding: 14px 18px;
-    border: 1px solid #dfd4c1;
+    border: 1px solid var(--line);
     border-radius: 10px;
-    background: rgb(255 250 242 / 55%);
+    background: var(--surface-raised);
   }
   .build-row {
     display: flex;
@@ -535,7 +582,7 @@
     gap: 14px;
   }
   .build-label {
-    color: #6b5137;
+    color: var(--text);
     font-weight: 600;
     font-size: 14px;
   }
@@ -543,8 +590,8 @@
     border: 0;
     border-radius: 7px;
     padding: 8px 12px;
-    color: #fffaf2;
-    background: #9f522d;
+    color: var(--surface);
+    background: var(--accent);
     font-size: 13px;
     white-space: nowrap;
   }
@@ -557,7 +604,7 @@
   }
   .trigger-note {
     margin: 8px 0 0;
-    color: #766956;
+    color: var(--muted);
     font-size: 12px;
   }
   .trigger-status {
@@ -567,9 +614,9 @@
   /* #3f7a52 measured 4.45:1 on this background — just under the 4.5:1 AA
      floor (axe color-contrast, serious). */
   .trigger-status--success {
-    color: #2f5e40;
+    color: var(--text);
   }
   .trigger-status--error {
-    color: #a84a34;
+    color: var(--danger);
   }
 </style>

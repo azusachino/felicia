@@ -39,6 +39,10 @@ The exploration trail, roughly in order:
 - [UX & style rethink](research/ux-restyle.md)
 - [Desktop studio](research/desktop-studio.md) — Magpie study, desktop/CLI boundaries,
   macOS-first distribution, and static export/direct publishing options.
+- [Desktop studio redesign](research/desktop-studio-redesign.md) — reference comparison,
+  proposed layouts, implementation slices, and integrated/native verification criteria;
+  direction approved; [execution plan](roadmap/desktop-studio-redesign.md) defines
+  the ordered slices and acceptance gates.
 
 ## Archive
 

@@ -11,6 +11,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  desktop-e2e:
+    name: Desktop composition (Chromium + WebKit)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install mise toolchain
+        uses: jdx/mise-action@v4
+      - name: Install frontend dependencies
+        run: make web-install
+      - name: Install pinned Playwright browsers
+        run: make e2e-install
+      - name: Run integrated desktop-composition tests
+        run: make e2e
+      - name: Keep synthetic browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-browser-evidence
+          path: apps/felicia-admin/test-results/
+          if-no-files-found: warn
+
   backend:
     name: Backend (make check-ci)
     runs-on: ubuntu-latest

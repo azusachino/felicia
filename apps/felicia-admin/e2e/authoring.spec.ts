@@ -75,14 +75,18 @@ test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
 
   test("selects and persists an admin language", async () => {
     await page.goto("/")
-    const language = page.locator(".locale-control select")
+    await page.getByRole("button", { name: "Settings", exact: true }).click()
+    const language = page.getByRole("combobox")
     await expect(language).toHaveAttribute("aria-label", "Language")
     await language.selectOption("ja")
     await expect(language).toHaveAttribute("aria-label", "言語")
+    await page.keyboard.press("Escape")
     await expect(page.getByRole("heading", { name: "旅程" })).toBeVisible()
     await page.reload()
     await expect(page.getByRole("heading", { name: "旅程" })).toBeVisible()
+    await page.getByRole("button", { name: "設定", exact: true }).click()
     await language.selectOption("en")
+    await page.keyboard.press("Escape")
     await expect(page.getByRole("heading", { name: "Journeys" })).toBeVisible()
   })
 

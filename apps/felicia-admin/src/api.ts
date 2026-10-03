@@ -403,6 +403,13 @@ export async function createJourney(payload: CreateJourneyPayload): Promise<{ st
   return postJSON<{ status: string; id: string }>("/api/admin/journeys", payload)
 }
 
+// Desktop-only: opens the native folder picker and returns the chosen path.
+// On the web admin this endpoint does not exist and the call fails; callers
+// should hide the browse affordance when it does.
+export async function pickDesktopFolder(title: string): Promise<{ selected: boolean; path: string; basename: string }> {
+  return postJSON<{ selected: boolean; path: string; basename: string }>("/api/desktop/pick-folder", { title })
+}
+
 export async function listMementos(journeyId: string): Promise<AdminMemento[]> {
   return asArray(await getJSON<AdminMemento[] | null>(`/api/admin/journeys/${journeyId}/mementos`))
 }

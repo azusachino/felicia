@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"embed"
 	"encoding/json"
 	"errors"
@@ -21,7 +22,9 @@ import (
 
 	core "github.com/azusachino/felicia/apps/felicia-core"
 	"github.com/azusachino/felicia/apps/felicia-core/domain"
+	"github.com/azusachino/felicia/apps/felicia-core/ports"
 	publication "github.com/azusachino/felicia/apps/felicia-publication"
+	"github.com/azusachino/felicia/apps/felicia-runtime/intake"
 	journeyruntime "github.com/azusachino/felicia/apps/felicia-runtime/journey"
 	mementoruntime "github.com/azusachino/felicia/apps/felicia-runtime/memento"
 )
@@ -37,16 +40,18 @@ type HandlerConfig struct {
 	MediaRoot     string
 	PublicDir     string
 	Mode          string // "admin" or "reader"
-	Token         string
+	Token         string // optional; tests only. The packaged app runs tokenless on the webview-only scheme.
 	PreviewPort   string
 	PreviewPortFn func() string
-	OnPickFolder  func() (string, error)
+	OnPickFolder  func(title string) (string, error)
+	OnPickFile    func(title string) (string, error)
 }
 
 type DesktopHandler struct {
 	cfg           HandlerConfig
 	journeyWriter *journeyruntime.Service
 	mementoWriter *mementoruntime.Service
+	intake        *intake.Service
 	adminFS       fs.FS
 	readerFS      fs.FS
 	mu            sync.RWMutex
@@ -73,11 +78,19 @@ func NewHandler(cfg HandlerConfig) (*DesktopHandler, error) {
 		cfg:           cfg,
 		journeyWriter: journeyruntime.New(cfg.Repo),
 		mementoWriter: mementoruntime.New(cfg.Repo),
+		intake:        intake.NewService(candidateStore(cfg.Repo), cfg.Repo),
 		adminFS:       adminSub,
 		readerFS:      readerSub,
 		publicDir:     cfg.PublicDir,
 	}
 	return h, nil
+}
+
+func candidateStore(repo domain.Repository) ports.StopCandidateStore {
+	if store, ok := repo.(ports.StopCandidateStore); ok {
+		return store
+	}
+	return nil
 }
 
 func (h *DesktopHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -106,13 +119,28 @@ func (h *DesktopHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if !h.authorizedMutation(w, r) {
 			return
 		}
-		h.handlePickFolder(w, r)
+		h.handlePick(w, r, true)
+		return
+	}
+	if cleanPath == "/api/desktop/pick-file" {
+		if !h.authorizedMutation(w, r) {
+			return
+		}
+		h.handlePick(w, r, false)
 		return
 	}
 
 	// Admin API routing
 	if strings.HasPrefix(cleanPath, "/api/admin/") {
 		if !h.authorizedMutation(w, r) {
+			return
+		}
+		if cleanPath == "/api/admin/local-journeys/scan" {
+			h.handleScanLocalJourney(w, r)
+			return
+		}
+		if cleanPath == "/api/admin/local-journeys/import" {
+			h.handleImportLocalJourney(w, r)
 			return
 		}
 		h.routeAdmin(w, r, cleanPath)
@@ -156,16 +184,30 @@ func (h *DesktopHandler) handleBoot(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write(append(append([]byte("window.bootPrefs = "), b...), ";\n"...))
 }
 
-func (h *DesktopHandler) handlePickFolder(w http.ResponseWriter, r *http.Request) {
+func (h *DesktopHandler) handlePick(w http.ResponseWriter, r *http.Request, directories bool) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if h.cfg.OnPickFolder == nil {
+	var body struct {
+		Title string `json:"title"`
+	}
+	_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<10)).Decode(&body)
+	if body.Title == "" {
+		body.Title = "Choose a folder"
+		if !directories {
+			body.Title = "Choose a file"
+		}
+	}
+	pick := h.cfg.OnPickFolder
+	if !directories {
+		pick = h.cfg.OnPickFile
+	}
+	if pick == nil {
 		respondJSON(w, http.StatusOK, map[string]any{"selected": false, "path": "", "basename": ""})
 		return
 	}
-	chosen, err := h.cfg.OnPickFolder()
+	chosen, err := pick(body.Title)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -193,6 +235,9 @@ func (h *DesktopHandler) routeAdmin(w http.ResponseWriter, r *http.Request, reqP
 		h.handleListJourneyMementos(w, r, idStr)
 	case strings.HasPrefix(reqPath, "/api/admin/journeys/") && strings.HasSuffix(reqPath, "/stop-candidates"):
 		respondJSON(w, http.StatusOK, []any{})
+	case strings.HasPrefix(reqPath, "/api/admin/journeys/") && strings.HasSuffix(reqPath, "/build-status"):
+		idStr := strings.TrimSuffix(strings.TrimPrefix(reqPath, "/api/admin/journeys/"), "/build-status")
+		h.handleBuildStatus(w, r, idStr)
 	case strings.HasPrefix(reqPath, "/api/admin/journeys/"):
 		idStr := strings.TrimPrefix(reqPath, "/api/admin/journeys/")
 		switch r.Method {
@@ -231,7 +276,7 @@ func (h *DesktopHandler) routeAdmin(w http.ResponseWriter, r *http.Request, reqP
 	case reqPath == "/api/admin/site":
 		h.handleSiteInfo(w, r)
 	case reqPath == "/api/admin/build-status":
-		respondJSON(w, http.StatusOK, map[string]any{"pending_memento_ids": []string{}, "pending_count": 0})
+		h.handleBuildStatus(w, r, "")
 	case reqPath == "/api/admin/compile":
 		if r.Method == http.MethodPost {
 			h.handleCompile(w, r)
@@ -301,8 +346,21 @@ func (h *DesktopHandler) handleUpsertJourney(w http.ResponseWriter, r *http.Requ
 		respondError(w, http.StatusBadRequest, "invalid date_end format (YYYY-MM-DD)")
 		return
 	}
+	if end.Before(start) {
+		respondError(w, http.StatusBadRequest, "End date must not be before start date.")
+		return
+	}
 	if req.ID == uuid.Nil {
 		req.ID = uuid.Must(uuid.NewV7())
+	}
+	existing, lookupErr := h.cfg.Repo.GetJourneyBySlug(r.Context(), req.Slug)
+	if lookupErr != nil && !errors.Is(lookupErr, domain.ErrNotFound) && !errors.Is(lookupErr, sql.ErrNoRows) {
+		respondError(w, http.StatusInternalServerError, lookupErr.Error())
+		return
+	}
+	if existing != nil && existing.ID != req.ID {
+		respondError(w, http.StatusConflict, "A journey with this slug already exists. Choose another slug.")
+		return
 	}
 	if req.JournalID == uuid.Nil {
 		sole, getErr := h.cfg.Repo.GetSoleJournal(r.Context())

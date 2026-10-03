@@ -1,17 +1,18 @@
 // Package main provides the entrypoint for Felicia Desktop Studio.
+//
+// Security posture: the privileged admin surface is served only through the
+// app's own webview custom scheme (no TCP listener); the optional session
+// token in HandlerConfig exists for tests. The local preview server is a
+// read-only loopback listener for published artifacts only.
 package main
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -31,14 +32,18 @@ func main() {
 
 func run() error {
 	mode := flag.String("mode", "admin", "desktop mode: admin or reader")
-	smoke := flag.Bool("smoke", false, "run automated native smoke verification and exit")
 	dbPath := flag.String("db", "", "path to SQLite database (default ~/.felicia/felicia.sqlite)")
 	mediaPath := flag.String("media-root", "", "path to media root (default ~/.felicia/media)")
 	publicPath := flag.String("public-dir", "", "path to public static site output (default ~/.felicia/site)")
+	previewAddr := flag.String("preview-addr", "127.0.0.1:8081", "loopback address for the read-only site preview server (admin mode)")
 	flag.Parse()
 
 	if *mode != "admin" && *mode != "reader" {
 		return fmt.Errorf("invalid mode %q: must be 'admin' or 'reader'", *mode)
+	}
+
+	if err := validateE2EPaths(*dbPath, *mediaPath, *publicPath); err != nil {
+		return err
 	}
 
 	workspace, err := resolveDefaultWorkspace()
@@ -59,14 +64,10 @@ func run() error {
 		actualPublic = filepath.Join(workspace, "site")
 	}
 
-	if err := os.MkdirAll(filepath.Dir(actualDB), 0o755); err != nil {
-		return fmt.Errorf("create db dir: %w", err)
-	}
-	if err := os.MkdirAll(actualMedia, 0o755); err != nil {
-		return fmt.Errorf("create media dir: %w", err)
-	}
-	if err := os.MkdirAll(actualPublic, 0o755); err != nil {
-		return fmt.Errorf("create public dir: %w", err)
+	for _, dir := range []string{filepath.Dir(actualDB), actualMedia, actualPublic} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("create %s: %w", dir, err)
+		}
 	}
 
 	repo, err := sqlite.Open(actualDB)
@@ -75,13 +76,14 @@ func run() error {
 	}
 	defer func() { _ = repo.Close() }()
 
-	// Ensure sole journal exists
+	// Ensure the sole journal exists.
 	ctx := context.Background()
 	if _, err := repo.GetSoleJournal(ctx); err != nil {
 		_ = repo.CreateJournal(ctx, &domain.Journal{ID: uuid.Must(uuid.NewV7()), CreatedAt: time.Now().UTC()})
 	}
 
-	// In reader mode, compile if manifest is absent so reader has data
+	// In reader mode, compile once when no artifact manifest exists so the
+	// reader has data to show.
 	if *mode == "reader" {
 		manifestFile := filepath.Join(actualPublic, filepath.FromSlash(publication.ManifestPath))
 		if _, err := os.Stat(manifestFile); err != nil {
@@ -92,30 +94,28 @@ func run() error {
 		}
 	}
 
-	tokenBytes := make([]byte, 32)
-	_, _ = rand.Read(tokenBytes)
-	sessionToken := hex.EncodeToString(tokenBytes)
-
 	var app *application.App
 	var window *application.WebviewWindow
 
-	onPickFolder := func() (string, error) {
+	onPick := func(directories, files bool, title string) (string, error) {
 		if app == nil || window == nil {
 			return "", fmt.Errorf("desktop window is not initialized")
 		}
 		return app.Dialog.OpenFile().
-			CanChooseDirectories(true).
-			CanChooseFiles(false).
-			CanCreateDirectories(true).
-			SetTitle("Select Workspace Folder").
+			CanChooseDirectories(directories).
+			CanChooseFiles(files).
+			CanCreateDirectories(directories).
+			SetTitle(title).
 			AttachToWindow(window).
 			PromptForSingleSelection()
 	}
+	onPickFolder := func(title string) (string, error) { return onPick(true, false, title) }
+	onPickFile := func(title string) (string, error) { return onPick(false, true, title) }
 
 	var previewServer *PreviewServer
 	if *mode == "admin" {
 		readerSub, _ := fs.Sub(embeddedAssets, "assets/reader")
-		ps, err := StartPreviewServer("127.0.0.1:8081", func() string { return actualPublic }, readerSub)
+		ps, err := StartPreviewServer(*previewAddr, func() string { return actualPublic }, readerSub)
 		if err == nil {
 			previewServer = ps
 			defer func() { _ = previewServer.Close() }()
@@ -127,7 +127,6 @@ func run() error {
 		MediaRoot: actualMedia,
 		PublicDir: actualPublic,
 		Mode:      *mode,
-		Token:     sessionToken,
 		PreviewPortFn: func() string {
 			if previewServer != nil {
 				return previewServer.Port()
@@ -135,9 +134,14 @@ func run() error {
 			return ""
 		},
 		OnPickFolder: onPickFolder,
+		OnPickFile:   onPickFile,
 	})
 	if err != nil {
 		return fmt.Errorf("initialize handler: %w", err)
+	}
+
+	if handled, err := serveE2E(handler); handled {
+		return err
 	}
 
 	app = application.New(application.Options{
@@ -149,26 +153,6 @@ func run() error {
 		Mac: application.MacOptions{
 			ActivationPolicy: application.ActivationPolicyRegular,
 		},
-		RawMessageHandler: func(_ application.Window, message string, _ *application.OriginInfo) {
-			if !strings.HasPrefix(message, "desktop:") || len(message) > 1<<20 {
-				return
-			}
-			var payload struct {
-				Token      string          `json:"token"`
-				Diagnostic json.RawMessage `json:"diagnostic"`
-				Evidence   json.RawMessage `json:"evidence"`
-			}
-			raw := strings.TrimPrefix(message, "desktop:")
-			if err := json.Unmarshal([]byte(raw), &payload); err != nil || payload.Token != sessionToken {
-				return
-			}
-			if len(payload.Evidence) > 0 {
-				fmt.Println("NATIVE_EVIDENCE=" + string(payload.Evidence))
-				if *smoke {
-					time.AfterFunc(300*time.Millisecond, app.Quit)
-				}
-			}
-		},
 	})
 
 	title := "Felicia Studio"
@@ -176,21 +160,14 @@ func run() error {
 		title = "Felicia — Public Reader"
 	}
 
-	window = app.Window.NewWithOptions(application.WebviewWindowOptions{
+	windowOptions := application.WebviewWindowOptions{
 		Title:  title,
 		Width:  1100,
 		Height: 760,
 		URL:    "/",
-	})
-
-	if *smoke {
-		// In automated smoke runs, ensure timeout kills app if stuck
-		timer := time.AfterFunc(60*time.Second, func() {
-			fmt.Fprintln(os.Stderr, "felicia-desktop: smoke check timed out")
-			app.Quit()
-		})
-		defer timer.Stop()
 	}
+	applyPlatformWindowChrome(&windowOptions)
+	window = app.Window.NewWithOptions(windowOptions)
 
 	return app.Run()
 }
