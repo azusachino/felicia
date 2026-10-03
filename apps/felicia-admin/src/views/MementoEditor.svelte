@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { push } from "svelte-spa-router"
   import { message, statusMessage, type Locale } from "../i18n"
   import {
     deleteMemento,
@@ -291,7 +292,7 @@
   async function saveAndBack() {
     await save()
     if (saveState.status === "success") {
-      location.hash = journeyDetailHash(journeyId)
+      await push(journeyDetailHash(journeyId))
     }
   }
 
@@ -324,7 +325,7 @@
     deleteState = { status: "pending", message: message(locale, "admin.common.deleting") }
     try {
       await deleteMemento(memento.id)
-      location.hash = journeyDetailHash(journeyId)
+      await push(journeyDetailHash(journeyId))
     } catch (cause) {
       // A 422 (delete_requires_unpublish, or in principle invalid_transition)
       // carries a structured issue — surface its friendly message rather

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte"
+  import { push } from "svelte-spa-router"
   import { message, statusMessage, type Locale } from "../i18n"
 
   let { locale, desktop = false }: { locale: Locale; desktop?: boolean } = $props()
@@ -98,7 +99,7 @@
         region: createRegion.trim() || undefined,
       })
       showNewJourney = false
-      window.location.hash = journeyDetailHash(res.id)
+      await push(journeyDetailHash(res.id))
     } catch (cause) {
       createError = actionErrorMessage(cause)
       createState = "error"

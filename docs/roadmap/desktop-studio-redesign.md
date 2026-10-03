@@ -92,13 +92,50 @@ blocked until that revised S1 scope is accepted; retiring the scan modal in S1
 must not masquerade as completed import. S3/S4 retain their deeper workflow gates.
 Use grouped `make local-check` while iterating; invoke affected browser specs for
 behavior and one final uncached owning gate per delivery boundary, not full gates
-for every line. No commit/push, release or remote setting changes are approved.
+for every line. The owner subsequently approved local checkpoint commits and
+immediate implementation. Pushes, releases and remote setting changes remain
+unapproved.
 
 Primary component references: [Vite integration](https://www.shadcn-svelte.com/docs/installation/vite),
 [Button](https://www.shadcn-svelte.com/docs/components/button), and
 [Popover](https://www.shadcn-svelte.com/docs/components/popover). Preserve existing
 Svelte 5/Vite/Tailwind 4 tooling and inspect generated source; do not let a CLI
 initialization overwrite existing global styling or add unused components.
+
+### Routing foundation
+
+The owner selected a maintained router instead of extending the handwritten
+route union/parser. The admin uses pinned `svelte-spa-router` 5.1.1 for Svelte 5,
+with its hash-based path-to-component table, parameter decoding, history and
+programmatic navigation. `src/routes.ts` owns the table; `src/router.ts` only
+constructs URL strings. The small `RouteView` adapter forwards library parameters
+to existing page props and live locale settings, remounting on identifier changes
+but preserving drafts on language changes. Adding a page requires a table entry,
+not a parser branch or shell rendering branch. Unknown URLs retain the library
+fallback; malformed encoded identifiers redirect to it through library conditions.
+
+References: [getting started](https://svelte-spa-router.italypaleale.me/docs/getting-started/)
+and [navigation](https://svelte-spa-router.italypaleale.me/docs/navigation/).
+Browser regression coverage includes deep links, trailing slashes, encoded IDs,
+query strings, fallback, back/forward, identifier changes and live locale updates.
+The desktop memento/locale test supplies only an empty per-memento photo list:
+that endpoint is absent in the existing desktop handler. This is routing evidence,
+not proof of desktop authoring API parity; the web-host authoring closed loop uses
+its real photo endpoint. Track that desktop gap when authoring work is dispatched.
+
+Fresh independent Herdr peer `felicia-router-review` (`wV:p4S`), Pi
+`openai-codex/gpt-6-luna` medium, verified the staged router checkpoint on
+`feat/desktop-studio-revision` at parent `1d08e3ee0fd835aaac3693eb08abaec25e9dac00`
+(source/index tree `5292c9e33eed0d697e6317cf841f47a51b80f37b`, before this evidence
+paragraph). It found no material routing issues. The exact staged source export,
+without the unfinished shadcn/task-page work, passed locked installation,
+`make admin-check` (101 unit tests), `make e2e` (30/30 Chromium/WebKit),
+`make test-admin-e2e` (14/14 real web-host closed loop) and `make docs-build`.
+Snapshot-only `make check` stopped at four existing Markdown exemptions because
+its absent Git root changed path matching; the peer then ran canonical
+`make check` in the owning checkout, exit 0. No rules or unrelated docs were
+weakened. Browser evidence is not native visual acceptance. Local checkpoint
+commits are approved; no push or release is approved.
 
 ### Platform revision checkpoint
 
@@ -120,7 +157,8 @@ launched: runtime/visual acceptance on macOS 26 remains a separate gate.
 
 The shared component foundation, full-page task navigation and isolated sample
 are still unimplemented. Builds updated the already-dirty generated reader index;
-it was left intact, not silently reset. All source changes remain uncommitted.
+it was left intact, not silently reset. This verified platform/tooling checkpoint
+was committed as `1d08e3e` on `feat/desktop-studio-revision` after owner approval.
 
 ## S0 — integrated browser harness and native baseline
 

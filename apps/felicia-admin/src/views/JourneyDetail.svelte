@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { push } from "svelte-spa-router"
   import { message, statusMessage, type Locale } from "../i18n"
   import {
     compileSite,
@@ -224,7 +225,7 @@
     deleteState = { status: "pending" }
     try {
       await deleteJourney(journey.id)
-      window.location.hash = listHash
+      await push(listHash)
     } catch (cause) {
       deleteState = { status: "error", message: cause instanceof Error ? cause.message : message(locale, "admin.common.request_failed") }
     }

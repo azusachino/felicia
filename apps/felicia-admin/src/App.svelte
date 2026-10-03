@@ -1,20 +1,24 @@
 <script lang="ts">
-  import { parseRoute, listHash, siteHash } from "./router"
-  import JourneyList from "./views/JourneyList.svelte"
-  import JourneyDetail from "./views/JourneyDetail.svelte"
-  import MementoEditor from "./views/MementoEditor.svelte"
-  import SiteDeploy from "./views/SiteDeploy.svelte"
+  import Router, { replace } from "svelte-spa-router"
+  import { listHash, siteHash } from "./router"
+  import { createRoutes } from "./routes"
   import { loadLocale, message, saveLocale, type Locale } from "./i18n"
 
   let locale = $state(loadLocale())
-  let hash = $state(location.hash)
+  let library = $state(true)
+  let site = $state(false)
   let settingsOpen = $state(false)
   let settingsMenu: HTMLDivElement
   let settingsTrigger: HTMLButtonElement
   // Wails beta.24 identifies its macOS webview with this user-agent suffix.
   const desktop = navigator.userAgent.includes("wails.io")
   const nativeMac = desktop && navigator.userAgent.includes("Macintosh")
-  const route = $derived(parseRoute(hash))
+  const routes = createRoutes({
+    get locale() {
+      return locale
+    },
+    desktop,
+  })
 
   function changeLocale(event: Event) {
     locale = (event.currentTarget as HTMLSelectElement).value as Locale
@@ -33,7 +37,7 @@
   })
 </script>
 
-<svelte:window on:hashchange={() => (hash = location.hash)} on:keydown={dismissSettingsOnEscape} on:pointerdown={dismissSettingsOutside} />
+<svelte:window on:keydown={dismissSettingsOnEscape} on:pointerdown={dismissSettingsOutside} />
 <svelte:head><title>{message(locale, "admin.shell.page_title")}</title></svelte:head>
 
 <div class="admin-shell" class:native-mac={nativeMac}>
@@ -42,11 +46,11 @@
   </header>
   <aside class="sidebar">
     <nav aria-label={message(locale, "admin.shell.navigation_label")}>
-      <a class:active={route.name !== "site"} aria-current={route.name !== "site" ? "page" : undefined} href={listHash}>
+      <a class:active={!site} aria-current={!site ? "page" : undefined} href={listHash}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2V5ZM9 3v16M15 5v16" /></svg>
         {message(locale, "admin.journeys.title")}
       </a>
-      <a class:active={route.name === "site"} aria-current={route.name === "site" ? "page" : undefined} href={siteHash}>
+      <a class:active={site} aria-current={site ? "page" : undefined} href={siteHash}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v12H4V8ZM12 3v11m-4-7 4-4 4 4" /></svg>
         {message(locale, "admin.site.navigation")}
       </a>
@@ -69,15 +73,14 @@
       <span class="workspace-status"><span class="status-dot"></span>{message(locale, "admin.shell.local_workspace")}</span>
     </div>
   </aside>
-  <main class="content" class:library={route.name === "list"}>
-    {#if route.name === "detail"}
-      {#key route.id}<JourneyDetail id={route.id} {locale} />{/key}
-    {:else if route.name === "memento"}
-      {#key `${route.journeyId}/${route.id}`}<MementoEditor journeyId={route.journeyId} id={route.id} {locale} />{/key}
-    {:else if route.name === "site"}
-      <SiteDeploy {locale} />
-    {:else}
-      <JourneyList {locale} {desktop} />
-    {/if}
+  <main class="content" class:library>
+    <Router
+      {routes}
+      onConditionsFailed={() => replace(listHash)}
+      onRouteLoaded={({ route }) => {
+        library = route === "/" || route === "*"
+        site = route === "/site"
+      }}
+    />
   </main>
 </div>
