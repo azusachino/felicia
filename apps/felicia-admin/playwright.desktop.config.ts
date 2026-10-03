@@ -8,7 +8,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   failOnFlakyTests: Boolean(process.env.CI),
   reporter: "list",
-  outputDir: "../../../../.tmp/felicia-desktop-redesign/test-results",
+  outputDir: process.env.CI ? "test-results" : "../../../../.tmp/felicia-desktop-redesign/test-results",
   use: {
     viewport: { width: 1100, height: 760 },
     locale: "en-US",
