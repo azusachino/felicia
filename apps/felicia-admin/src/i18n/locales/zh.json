@@ -4,6 +4,8 @@
   "admin.shell.navigation_label": "管理导航",
   "admin.shell.language_label": "语言",
   "admin.shell.local_workspace": "本地工作区",
+  "admin.shell.settings": "设置",
+  "admin.journeys.more_options": "更多选项",
   "admin.journeys.title": "旅程",
   "admin.journeys.breadcrumb": "Felicia / 旅程",
   "admin.journeys.new_action": "新建旅程",

@@ -4,6 +4,8 @@
   "admin.shell.navigation_label": "Admin navigation",
   "admin.shell.language_label": "Language",
   "admin.shell.local_workspace": "Local workspace",
+  "admin.shell.settings": "Settings",
+  "admin.journeys.more_options": "More options",
   "admin.journeys.title": "Journeys",
   "admin.journeys.breadcrumb": "Felicia / Journeys",
   "admin.journeys.new_action": "New journey",

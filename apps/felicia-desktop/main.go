@@ -42,6 +42,10 @@ func run() error {
 		return fmt.Errorf("invalid mode %q: must be 'admin' or 'reader'", *mode)
 	}
 
+	if err := validateE2EPaths(*dbPath, *mediaPath, *publicPath); err != nil {
+		return err
+	}
+
 	workspace, err := resolveDefaultWorkspace()
 	if err != nil {
 		return fmt.Errorf("resolve workspace: %w", err)
@@ -136,6 +140,10 @@ func run() error {
 		return fmt.Errorf("initialize handler: %w", err)
 	}
 
+	if handled, err := serveE2E(handler); handled {
+		return err
+	}
+
 	app = application.New(application.Options{
 		Name:        "Felicia Studio",
 		Description: "Map-based travel journal studio",
@@ -152,19 +160,14 @@ func run() error {
 		title = "Felicia — Public Reader"
 	}
 
-	window = app.Window.NewWithOptions(application.WebviewWindowOptions{
+	windowOptions := application.WebviewWindowOptions{
 		Title:  title,
 		Width:  1100,
 		Height: 760,
 		URL:    "/",
-		Mac: application.MacWindow{
-			// Liquid Glass (macOS 15+) with automatic style; Wails falls back
-			// to translucent on older macOS. The richer Vibrant style would
-			// require Wails' private_mac_apis build tag — deliberately unused.
-			Backdrop:    application.MacBackdropLiquidGlass,
-			LiquidGlass: application.MacLiquidGlass{Style: application.LiquidGlassStyleAutomatic},
-		},
-	})
+	}
+	applyPlatformWindowChrome(&windowOptions)
+	window = app.Window.NewWithOptions(windowOptions)
 
 	return app.Run()
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"embed"
 	"encoding/json"
 	"errors"
@@ -234,6 +235,9 @@ func (h *DesktopHandler) routeAdmin(w http.ResponseWriter, r *http.Request, reqP
 		h.handleListJourneyMementos(w, r, idStr)
 	case strings.HasPrefix(reqPath, "/api/admin/journeys/") && strings.HasSuffix(reqPath, "/stop-candidates"):
 		respondJSON(w, http.StatusOK, []any{})
+	case strings.HasPrefix(reqPath, "/api/admin/journeys/") && strings.HasSuffix(reqPath, "/build-status"):
+		idStr := strings.TrimSuffix(strings.TrimPrefix(reqPath, "/api/admin/journeys/"), "/build-status")
+		h.handleBuildStatus(w, r, idStr)
 	case strings.HasPrefix(reqPath, "/api/admin/journeys/"):
 		idStr := strings.TrimPrefix(reqPath, "/api/admin/journeys/")
 		switch r.Method {
@@ -272,7 +276,7 @@ func (h *DesktopHandler) routeAdmin(w http.ResponseWriter, r *http.Request, reqP
 	case reqPath == "/api/admin/site":
 		h.handleSiteInfo(w, r)
 	case reqPath == "/api/admin/build-status":
-		respondJSON(w, http.StatusOK, map[string]any{"pending_memento_ids": []string{}, "pending_count": 0})
+		h.handleBuildStatus(w, r, "")
 	case reqPath == "/api/admin/compile":
 		if r.Method == http.MethodPost {
 			h.handleCompile(w, r)
@@ -342,8 +346,21 @@ func (h *DesktopHandler) handleUpsertJourney(w http.ResponseWriter, r *http.Requ
 		respondError(w, http.StatusBadRequest, "invalid date_end format (YYYY-MM-DD)")
 		return
 	}
+	if end.Before(start) {
+		respondError(w, http.StatusBadRequest, "End date must not be before start date.")
+		return
+	}
 	if req.ID == uuid.Nil {
 		req.ID = uuid.Must(uuid.NewV7())
+	}
+	existing, lookupErr := h.cfg.Repo.GetJourneyBySlug(r.Context(), req.Slug)
+	if lookupErr != nil && !errors.Is(lookupErr, domain.ErrNotFound) && !errors.Is(lookupErr, sql.ErrNoRows) {
+		respondError(w, http.StatusInternalServerError, lookupErr.Error())
+		return
+	}
+	if existing != nil && existing.ID != req.ID {
+		respondError(w, http.StatusConflict, "A journey with this slug already exists. Choose another slug.")
+		return
 	}
 	if req.JournalID == uuid.Nil {
 		sole, getErr := h.cfg.Repo.GetSoleJournal(r.Context())

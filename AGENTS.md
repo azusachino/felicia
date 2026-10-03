@@ -75,6 +75,16 @@ SQLite uses a single `apps/felicia-providers/sqlite/schema.sql`, without a migra
 | `make validate` | check + build + public/Admin frontend checks — **before PR**                     |
 | `make admin`    | local admin GUI: authoring API + felicia-admin on `0.0.0.0` for Tailscale access |
 | `make desktop`  | native desktop studio: package and run local macOS app (`FeliciaStudio.app`)     |
+| `make e2e-install` | install Chromium/WebKit for project-pinned Playwright                         |
+| `make e2e`      | integrated Bun/Playwright desktop-composition tests on isolated synthetic state |
+
+`make e2e` builds a test-only headless transport (`production,e2e`) using the real
+embedded admin and desktop handler. It does not drive the Wails window or native
+dialogs. Normal desktop builds have no test flags or authoring TCP listener. Evidence
+lives under workstation `.tmp/felicia-desktop-redesign/`; native visual acceptance
+remains a separate gate. `make test-admin-e2e` retains the existing web-host authoring
+closed loop. The ordered redesign plan is
+[`docs/roadmap/desktop-studio-redesign.md`](docs/roadmap/desktop-studio-redesign.md).
 
 ## Coding Conventions
 

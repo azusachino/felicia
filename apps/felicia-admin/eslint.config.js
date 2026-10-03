@@ -19,4 +19,8 @@ export default ts.config(
     languageOptions: { parserOptions: { parser: ts.parser, extraFileExtensions: [".svelte"] } },
   },
   { languageOptions: { globals: { ...globals.browser } } },
+  {
+    files: ["e2e-desktop/**/*.ts", "playwright.desktop.config.ts"],
+    languageOptions: { globals: { ...globals.node } },
+  },
 )

@@ -87,6 +87,12 @@ projection:
 
 ## Status log
 
+- **Desktop redesign execution** — the compact-library/focused-editor direction is
+  approved; [ordered S0–S5 plan](desktop-studio-redesign.md) governs implementation.
+  S0 adds a test-build-only authenticated transport and integrated pinned Bun/Playwright
+  Chromium/WebKit specs against synthetic SQLite. This verifies desktop composition,
+  not the native Wails window; layout implementation and native acceptance remain pending.
+
 - **Google Timeline visits (#81)** — `felicia-cli journey plan --timeline <Timeline.json>` now reads concatenated Timeline JSON and Takeout `timelineObjects`, preserving place names, IDs, coordinates, and visit times as semantic intake visits. Activity segments are not synthesized into route geometry; provide GPX or Dawarich for a route. Timeline input is read-only and stays local.
 
 - **Offline timezone defaults (#58)** — Intake candidates, promoted mementos,

@@ -4,6 +4,8 @@ export const MESSAGE_KEYS = [
   "admin.shell.navigation_label",
   "admin.shell.language_label",
   "admin.shell.local_workspace",
+  "admin.shell.settings",
+  "admin.journeys.more_options",
   "admin.journeys.title",
   "admin.journeys.breadcrumb",
   "admin.journeys.new_action",

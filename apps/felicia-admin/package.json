@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "check": "svelte-check --tsconfig ./tsconfig.app.json && eslint . && prettier --check . && bun test src/",
+    "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.e2e.json && eslint . && prettier --check . && bun test src/",
     "test": "bun test src/",
+    "e2e": "playwright test --config playwright.desktop.config.ts",
+    "e2e:install": "playwright install chromium webkit",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
