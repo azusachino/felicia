@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import os
+import plistlib
 import subprocess
 import sys
 from pathlib import Path
@@ -15,6 +17,9 @@ TASKS = {
     "lint": ["golangci-lint", "run", "./..."],
     "test": ["go", "test", "-race", "-cover", "./..."],
     "build": ["go", "build", "./..."],
+    "desktop-build": ["go", "build", "-tags", "production", "-o", "../../bin/felicia-desktop", "."],
+    "desktop-e2e-build": ["go", "build", "-tags", "production,e2e", "-o", "../../bin/felicia-desktop-e2e", "."],
+    "desktop-e2e-test": ["go", "test", "-tags", "e2e", "."],
 }
 
 
@@ -56,12 +61,27 @@ def should_skip_module(module: str) -> bool:
     return False
 
 
+def module_environment(module: str) -> dict[str, str]:
+    environment = dict(os.environ)
+    if (
+        module == "apps/felicia-desktop"
+        and sys.platform == "darwin"
+        and environment.get("GOOS", "darwin") == "darwin"
+    ):
+        info = plistlib.loads((ROOT / module / "Info.plist").read_bytes())
+        minimum = info["LSMinimumSystemVersion"]
+        environment["MACOSX_DEPLOYMENT_TARGET"] = minimum
+        for flag in ("CGO_CFLAGS", "CGO_LDFLAGS"):
+            environment[flag] = environment.get(flag, "-O2 -g") + f" -mmacosx-version-min={minimum}"
+    return environment
+
+
 def run_task(task: str, modules: list[str]) -> int:
     """Run one task in each discovered module, stopping at the first failure."""
     for module in modules:
         if should_skip_module(module):
             continue
-        result = subprocess.run(TASKS[task], cwd=ROOT / module, check=False)
+        result = subprocess.run(TASKS[task], cwd=ROOT / module, env=module_environment(module), check=False)
         if result.returncode:
             print(
                 f"go_tasks: {task} failed in {module} (exit {result.returncode})",
@@ -75,7 +95,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("task", choices=sorted(TASKS))
     args = parser.parse_args()
-    modules = discover_modules()
+    modules = ["apps/felicia-desktop"] if args.task.startswith("desktop-") else discover_modules()
     if not modules:
         print(f"go_tasks: no modules found in {GO_WORK}", file=sys.stderr)
         return 1

@@ -91,7 +91,18 @@ projection:
   approved; [ordered S0–S5 plan](desktop-studio-redesign.md) governs implementation.
   S0 adds a test-build-only authenticated transport and integrated pinned Bun/Playwright
   Chromium/WebKit specs against synthetic SQLite. This verifies desktop composition,
-  not the native Wails window; layout implementation and native acceptance remain pending.
+  not the native Wails window. S1 library and creation implementation merged in PR
+  #157; native acceptance remains pending and S2 is gated. Agent-only follow-up
+  rebuilds existing CLI binaries before local-workflow use to prevent stale embedded
+  SQLite schemas, and waits for persisted photo-order writes before E2E reload.
+  See the ordered plan's gate-remediation checkpoint; these checks do not accept
+  native appearance. Iteration now has
+  [grouped local checks](../development/local-checks.md) with content-keyed local
+  results; commit/PR/CI and browser/native acceptance gates remain uncached.
+  Owner feedback now requires full-page tasks, a shared shadcn-svelte foundation,
+  an isolated demo workspace, and macOS 26+ support; acceptance is tracked in
+  [#158](https://github.com/azusachino/felicia/issues/158). These are ordered revision
+  slices, not completed capabilities.
 
 - **Google Timeline visits (#81)** — `felicia-cli journey plan --timeline <Timeline.json>` now reads concatenated Timeline JSON and Takeout `timelineObjects`, preserving place names, IDs, coordinates, and visit times as semantic intake visits. Activity segments are not synthesized into route geometry; provide GPX or Dawarich for a route. Timeline input is read-only and stays local.
 

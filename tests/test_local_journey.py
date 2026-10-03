@@ -5,14 +5,25 @@ import unittest
 import zipfile
 from argparse import Namespace
 from pathlib import Path
+from unittest.mock import patch
 
 from scripts.local_journey import build_package, guard_workspace_identity, resolve_identity
-from scripts.local_journey_common import DEFAULT_WORKSPACE_ROOT, derive_journey_identity
+from scripts.local_journey_common import DEFAULT_WORKSPACE_ROOT, derive_journey_identity, ensure_cli
 from scripts.local_journey_package import validate_public_image
 from scripts.validate_local_authoring import validate_document, validate_workspace, validate_workspace_root
 
 
 class LocalJourneyWorkflowTest(unittest.TestCase):
+    def test_ensure_cli_rebuilds_existing_binary(self):
+        with tempfile.TemporaryDirectory() as directory:
+            stale_cli = Path(directory) / "felicia-cli"
+            stale_cli.write_text("stale binary")
+            with patch("scripts.local_journey_common.CLI", stale_cli), patch(
+                "scripts.local_journey_common.run"
+            ) as build:
+                ensure_cli()
+            build.assert_called_once_with(["make", "cli-build"])
+
     def test_izu_publication_workspace_validates(self):
         root = Path(__file__).resolve().parents[1] / "publication" / "journeys"
         validate_workspace_root(root)

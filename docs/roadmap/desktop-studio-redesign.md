@@ -3,6 +3,7 @@
 > This is the execution contract. Research and design rationale live in
 > `docs/research/desktop-studio-redesign.md`; live task state and claims live in
 > Asobi. Do not dispatch a later slice while an earlier acceptance gate is open.
+> The owner-feedback revision below supersedes the earlier modal-creation direction.
 
 ## Goal and constraints
 
@@ -10,7 +11,8 @@ Deliver Felicia as a polished local desktop studio: import → author → previe
 export, while retaining CLI and local read-only serving. Develop on Wails v3;
 defer public release until the workflow matures.
 
-- macOS first, with Windows/Linux planned. Reuse existing Svelte, core, runtime,
+- macOS 26+ first (owner-selected support floor), with Windows/Linux planned.
+  Compilation, linking and bundle metadata must agree on that floor. Reuse existing Svelte, core, runtime,
   providers and publication modules. Application modules must not import other
   composition modules.
 - SQLite, drafts, originals, credentials and admin assets stay out of public
@@ -29,9 +31,96 @@ defer public release until the workflow matures.
 
 The approved visual direction is a compact aligned library shell, real Felicia
 branding, language in actual settings, no fictional account/profile chrome,
-system-aware neutral surfaces with restrained amber, and an accessible creation
-sheet. The focused authoring workspace should adapt to available width. See
+system-aware neutral surfaces with restrained amber, and full-page creation/import
+tasks. The focused authoring workspace should adapt to available width. See
 [`docs/research/desktop-studio-redesign.md`](../research/desktop-studio-redesign.md).
+
+## Owner-feedback revision — 2026-10-03
+
+Acceptance issue: [#158](https://github.com/azusachino/felicia/issues/158).
+
+The owner rejected the current studio's design consistency and scan workflow after
+inspecting the interface and supplying a scan-dialog screenshot. Browser-functional
+passes do not accept that design. The owner explicitly selected:
+
+- Full-page New journey and Import tasks, not modal task forms.
+- shadcn-svelte as the shared control foundation, with one Felicia theme across
+  library, journey/editor and Site & Deploy. Component adoption alone is not visual
+  acceptance; persistent inline status/errors must use one consistent pattern.
+- A separate synthetic demo workspace, never automatic seeding of the real journal.
+- macOS 26+ support, with one verified deployment target rather than suppressed
+  linker warnings or an unsupported older-version claim.
+
+The static Local workspace label/green dot must be removed: it is not a real health
+or workspace-selection state. The existing Refresh action only reloads journey
+summaries. Remove it from the primary toolbar unless a genuine user need remains;
+any retained action must name its scope and refresh all state it claims to update.
+
+### Ordered revision slices
+
+1. **Platform contract:** set compilation/link/bundle minimum to macOS 26.0 across
+   canonical native build and test targets, preserving other-platform behavior.
+   Gate: a real packaged build has no deployment-target mismatch warnings; inspect
+   Mach-O build-version metadata and plist; retain signature checks. An SDK version
+   of 27 does not by itself require a deployment minimum of 27.
+2. **Shared studio foundation:** add only needed shadcn-svelte primitives and
+   shared tokens; apply a single toolbar, panel, field, button and inline feedback
+   language to library, journey/editor and output pages. Remove misleading static
+   status. Gate: all routes/states visibly share the foundation in ja/en/zh at the
+   owning sizes/zoom, while existing authoring/publish behavior remains intact.
+   This styling work does not claim S3's adaptive authoring-pane behavior is done.
+3. **Full-page creation:** a dedicated navigable route with Back/Cancel, required
+   title/place/dates, editable derived slug under optional details, visible errors
+   and input preservation. Gate: no task dialog; create/reload persists; cancel has
+   no database effect; collisions/date errors and keyboard flow still pass.
+4. **Isolated demo:** explicitly open a synthetic sample workspace with journey,
+   visits, mementos, essay and safe photos that exercise populated library, editor
+   and published preview. Gate: author DB/media/output/credentials are never read,
+   seeded or overwritten; reopening the demo is deterministic; real data is
+   unchanged; the UI clearly identifies demo mode and how to return to real work.
+5. **S2 source workflow:** replace the legacy scan popup with a full-page
+   Sources → Review → Apply task. Explain Timeline visits versus GPX geometry,
+   optional photos, detected dates/counts/warnings and the no-mutation-before-Apply
+   boundary. Trip-folder discovery is an advanced shortcut, not required setup.
+   Gate: native selection/cancel, review/input identity, re-import protection and
+   malformed/empty/changed-input recovery as specified by S2 below. Current desktop
+   Apply rescans inputs and the fingerprint covers only one source (or a constant
+   fallback); S2 must bind the entire reviewed input set, not merely restyle it.
+
+Slices 1–4 are the revised S1 acceptance scope. S2 source implementation remains
+blocked until that revised S1 scope is accepted; retiring the scan modal in S1
+must not masquerade as completed import. S3/S4 retain their deeper workflow gates.
+Use grouped `make local-check` while iterating; invoke affected browser specs for
+behavior and one final uncached owning gate per delivery boundary, not full gates
+for every line. No commit/push, release or remote setting changes are approved.
+
+Primary component references: [Vite integration](https://www.shadcn-svelte.com/docs/installation/vite),
+[Button](https://www.shadcn-svelte.com/docs/components/button), and
+[Popover](https://www.shadcn-svelte.com/docs/components/popover). Preserve existing
+Svelte 5/Vite/Tailwind 4 tooling and inspect generated source; do not let a CLI
+initialization overwrite existing global styling or add unused components.
+
+### Platform revision checkpoint
+
+At `main` / `9c38309074645a425294fbdef9bc19c2c76d925a` plus the working diff,
+`Info.plist` now selects macOS 26.0. The shared Go task runner derives desktop-only
+compile/link/deployment flags from that metadata, including canonical production
+and test-only builds/tests. Other modules, platforms and non-Darwin cross-targets
+retain their environment. This corrects mixed 11/13/27 deployment targets without
+suppressing warnings or making SDK 27 the support minimum.
+
+Fresh independent Herdr peer `felicia-macos26-review` (`wV:p4R`), Pi
+`openai-codex/gpt-6-luna` medium (lead-confirmed startup/footer), found no platform
+slice issues. It ran `make local-check ARGS='--groups go scripts'` (Go format/vet/
+lint/tests and 73 Python tests), `make desktop-package`, and `make e2e` (24/24
+Chromium/WebKit), all exit 0. Production and headless E2E Mach-O metadata report
+`minos 26.0`, `sdk 27.0`; the packaged plist is 26.0; signature verification passed.
+Package/E2E logs contain no deployment mismatch warnings. No native window was
+launched: runtime/visual acceptance on macOS 26 remains a separate gate.
+
+The shared component foundation, full-page task navigation and isolated sample
+are still unimplemented. Builds updated the already-dirty generated reader index;
+it was left intact, not silently reset. All source changes remain uncommitted.
 
 ## S0 — integrated browser harness and native baseline
 
@@ -67,9 +156,9 @@ desktop window chrome adapter and creation handler tests.
 3. Use quiet system-aware neutral surfaces and restrained amber. Native material
    is platform-specific and optional; maintain opaque/readable fallback behavior.
    Do not treat a backdrop flag or CSS blur as proof of Liquid Glass.
-4. Keep New journey creation in its own accessible sheet with focus return, Escape
-   and cancel behavior, scrollable body and stable action footer. Use restrained
-   open/close motion only when reduced motion is not requested. Require title, place
+4. Keep New journey creation in its own full-page task with Back/Cancel,
+   route/focus behavior, scrollable body and stable action footer. Respect reduced
+   motion for any transitions. Require title, place
    and dates, derive an editable slug, disclose optional metadata, surface slug
    collisions and server failures without discarding input. Source import is a
    separate Sources → Review → Apply task owned by S2, not another creation mode.
@@ -80,8 +169,9 @@ desktop window chrome adapter and creation handler tests.
    720×600; test ja/en/zh, long titles and 200% zoom. Inspect actual native chrome
    and material independently.
 
-Acceptance: create persists and navigates; cancel adds no row; collisions preserve
-existing records; invalid dates are rejected; actions and focus remain reachable;
+Acceptance: the revised owner-feedback slices 1–4 above are covered; create
+persists and navigates; cancel adds no row; collisions preserve existing records;
+invalid dates are rejected; actions and focus remain reachable;
 all geometry and locale assertions pass. Native window must render and be visually
 inspected before S1 is DONE.
 
@@ -146,8 +236,8 @@ has retry and prior output remains usable.
    import, editor and compiled-reader states. Check resize, scroll, focus, pick/cancel
    and map rendering.
 2. Review each target OS's native chrome. Verify macOS material only where
-   supported and readable reduced-transparency/motion, dark/light and older-OS
-   fallbacks. Do not require private APIs. OS/CPU support remains a packaging
+   supported and readable reduced-transparency/motion, dark/light and macOS 26
+   minimum-version fallbacks. Do not require private APIs. OS/CPU support remains a packaging
    contract decision.
 3. Run owning gates, integrated suites and documentation builds. Obtain a fresh
    Herdr Luna medium review. Persist criterion-by-criterion evidence in Felicia
@@ -175,7 +265,72 @@ lint, `make validate`, docs checks and docs build passed. The peer inspected the
 [`native-library-before.png`](../experiments/desktop-studio/native-library-before.png).
 This completed S0, not S5 native workflow acceptance.
 
-### S1 in progress — native appearance blocked
+### S1 merged implementation — acceptance remains blocked
+
+PR [#157](https://github.com/azusachino/felicia/pull/157) merged into `main` at
+`9c38309074645a425294fbdef9bc19c2c76d925a`. The merged tracked tree matches the
+PR head `8d512df6b467fccaeb6e7cc749524e2f0f7ffcde`; merge is not native acceptance.
+The owner requested agent-only follow-up. S1 remains open and S2 is not dispatched.
+
+Fresh task-created Herdr peer `felicia-s1-main-verify` (`wV:p4F`), Pi
+`openai-codex/gpt-6-luna` medium (startup argv and live footer confirmed by the
+lead), revalidated the merged revision. Initial follow-up results:
+
+- `make e2e` passed 24/24 Chromium/WebKit tests after `make e2e-install` installed
+  the missing project-pinned browsers. Compact toolbar and creation/persistence,
+  cancel, collision/retry, focus, motion, locale and size checks passed on browser
+  composition. Platform intent separation was verified from source. Native chrome,
+  material/fallback appearance and visual acceptance remain unverifiable.
+- `make validate` exited 2 at the legacy-root assertion: this checkout still has
+  `apps/felicia-web/node_modules`. The leftover directory was not moved or deleted;
+  the assertion was not weakened. Earlier gate passes below are historical.
+- `make test-admin-e2e` exited 2 twice because `/readyz` returned HTTP 503,
+  `database is not ready`. `apps/felicia-server/api/server.go` returns that response
+  when `ListJourneys` fails; the underlying repository error is not identified by
+  this evidence. The web-host closed loop is not currently verified.
+- `make fmt-docs-check docs-build`, `make desktop-package` and
+  `codesign --verify --deep --strict bin/FeliciaStudio.app` exited 0. No native
+  window or capture was attempted. No matching test-server processes or
+  Felicia-related TCP listeners remained in the peer's post-run check.
+- E2E asset generation changed the tracked reader `index.html` asset hashes. The
+  lead reverted only that generated diff to the reviewed content; no implementation
+  changes were made. Raw run logs are disposable workstation scratch under
+  `.tmp/felicia-s1-main/review/`; this checkpoint preserves the result.
+
+#### Agent-only gate remediation
+
+The lead preserved four retired directories (`apps/felicia-web` and
+`packages/felicia-{components,renderers,runtime}`) intact under workstation
+`.tmp/felicia-s1-main/legacy-output/`. They contained only ignored dependency
+symlinks, not regular files; no layout assertion was changed.
+
+The readiness probe identified a stale September `bin/felicia-cli`: it seeded a
+SQLite schema without the journey `revision` column required by the current
+server. Rebuilding the CLI made the same synthetic readiness probe pass.
+`ensure_cli()` now always invokes the cached `make cli-build`; the existing-binary
+regression failed before the fix and passed afterward. This shared fix covers all
+local-workflow callers, not just the E2E seeder.
+
+The next web-host run exposed an optimistic photo-reorder test race: reload
+aborted sequence writes before persistence. The trace recorded aborted photo
+POSTs. The spec now awaits both successful sequence responses before reload;
+reload and published gallery-order assertions remain unchanged. The lead reran
+`make test-admin-e2e` (14/14) and `make validate` (57 Python and 118 admin tests),
+both exit 0. Fresh independent Herdr peer `felicia-s1-gate-review` (`wV:p4H`),
+Pi `openai-codex/gpt-6-luna` medium (lead-confirmed startup/footer), reviewed this
+five-path working diff at `main` / `9c38309074645a425294fbdef9bc19c2c76d925a`.
+It reproduced `make validate` (57 Python and 118 admin tests), `make e2e` (24/24),
+`make test-admin-e2e` twice (14/14 each), and `make fmt-docs-check docs-build`, all
+exit 0. CLI freshness, both successful sequence writes, unchanged reload/public
+order assertions, reversible dependency cleanup and fixture teardown met criteria;
+no findings. Native acceptance remains unverified.
+
+Remaining gates: obtain owner-device
+native inspection of the library, Settings popover and New journey sheet. Do not
+mark S1 DONE or advance S2 on browser results alone. No commit or push is
+authorized by this follow-up.
+
+#### Historical pre-delivery checkpoint
 
 Working branch: `feat/desktop-studio-scaffold` at
 `15693e1418ac42a915b1005241e64505ae418c2c`; lead-owned changes are uncommitted.

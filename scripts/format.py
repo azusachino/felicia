@@ -68,8 +68,11 @@ def format_web(check: bool) -> bool:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--only", choices=("go", "web"))
     args = parser.parse_args()
-    success = format_go(args.check) and format_web(args.check)
+    success = (args.only == "web" or format_go(args.check)) and (
+        args.only == "go" or format_web(args.check)
+    )
     return 0 if success else 1
 
 

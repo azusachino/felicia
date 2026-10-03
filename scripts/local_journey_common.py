@@ -42,8 +42,8 @@ def run(command: list[str]) -> None:
 
 
 def ensure_cli() -> None:
-    if not CLI.exists():
-        run(["make", "cli-build"])
+    # An existing binary can embed an older SQLite schema than the current server.
+    run(["make", "cli-build"])
 
 
 def as_coord(value: Any) -> list[float] | None:

@@ -1,7 +1,7 @@
 # felicia task runner.
 # mise owns the repository toolchain and loads the optional .env file. These
 # wrappers keep every target usable without shell activation.
-MISE_RUN := mise exec --
+MISE_RUN ?= mise exec --
 UV_RUN  := $(MISE_RUN) uv
 GO      ?= $(MISE_RUN) go
 BUN     ?= $(MISE_RUN) bun
@@ -27,6 +27,13 @@ fmt: fmt-docs ## Format Go, frontend code and Markdown
 
 fmt-check: fmt-docs-check ## Check Go, frontend and Markdown without modifying files
 	$(UV_RUN) run python scripts/format.py --check
+
+.PHONY: fmt-go-check local-check
+fmt-go-check: ## Check Go formatting only for local iteration
+	$(UV_RUN) run python scripts/format.py --check --only go
+
+local-check: ## Cache unchanged local groups (ARGS='--groups scripts' or '--force')
+	$(UV_RUN) run python scripts/local_checks.py $(ARGS)
 
 fmt-docs: ## Fix Markdown lint with rumdl
 	$(RUMDL) check --config .rumdl.toml --fix .
@@ -61,11 +68,11 @@ desktop-assets: admin-build web-build ## Prepare built admin and reader assets f
 
 desktop-e2e-build: desktop-assets ## Build test-only headless desktop composition
 	@mkdir -p bin
-	$(GO) build -tags production,e2e -o bin/felicia-desktop-e2e ./apps/felicia-desktop
+	$(UV_RUN) run python scripts/go_tasks.py desktop-e2e-build
 
 # Browser verification of desktop composition; does not drive the Wails window.
 e2e: desktop-e2e-build ## Run integrated desktop Chromium/WebKit specs on synthetic state
-	$(GO) test -tags e2e ./apps/felicia-desktop
+	$(UV_RUN) run python scripts/go_tasks.py desktop-e2e-test
 	$(BUN) run --cwd apps/felicia-admin e2e $(ARGS)
 
 e2e-install: ## Install browsers for the project's pinned Playwright version
@@ -73,7 +80,7 @@ e2e-install: ## Install browsers for the project's pinned Playwright version
 
 desktop-build: desktop-assets ## Build native desktop binary into bin/felicia-desktop
 	@mkdir -p bin
-	$(GO) build -tags production -o bin/felicia-desktop ./apps/felicia-desktop
+	$(UV_RUN) run python scripts/go_tasks.py desktop-build
 
 desktop-package: desktop-build ## Package the macOS app bundle with the native app icon
 	mkdir -p bin/FeliciaStudio.app/Contents/MacOS bin/FeliciaStudio.app/Contents/Resources

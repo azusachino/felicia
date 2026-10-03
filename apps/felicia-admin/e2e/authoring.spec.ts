@@ -159,7 +159,14 @@ test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
     await photoRows.nth(1).getByRole("button", { name: "Save caption" }).click()
     await expect(photoRows.nth(1).getByText("Saved.")).toBeVisible()
 
+    // Reordering is optimistic; reload only after both sequence writes persist.
+    const orderSaved = Promise.all([0, 1].map((seq) => page.waitForResponse((response) =>
+      response.url().endsWith("/api/admin/photos") &&
+      response.request().method() === "POST" &&
+      response.request().postDataJSON().seq === seq
+    )))
     await photoRows.nth(1).getByRole("button", { name: "Move up" }).click()
+    for (const response of await orderSaved) expect(response.ok()).toBeTruthy()
     await expect(photoRows.nth(0).getByRole("img")).toHaveAttribute("alt", "Second curated photo")
     await page.reload()
     await expect(page.locator(".photo-row").nth(0).getByRole("img")).toHaveAttribute("alt", "Second curated photo")

@@ -41,11 +41,12 @@ Install the checked-in toolchain with `mise install`, then use the Make targets:
 
 ```sh
 make help
-make desktop     # native desktop studio (macOS app)
+make desktop     # native desktop studio (macOS 26+ app)
 make admin       # web authoring stack; see network-binding note below
 make web-dev     # public reader
-make check
-make validate
+make local-check # reuse unchanged local check groups while iterating
+make check       # uncached pre-commit gate
+make validate    # uncached pre-PR gate
 ```
 
 Plan intake from a Google Timeline export without a GPX track:
@@ -62,7 +63,18 @@ Add `--gpx /path/to/route.gpx` for route geometry and `--photos /path/to/photos`
 
 `make admin` binds the authoring stack to `0.0.0.0` for tailnet access; the admin API has no authentication. Use only on a trusted host/network, or set `FELICIA_HOST=127.0.0.1` for host-only access.
 
+For small changes, select a check group with
+`make local-check ARGS='--groups scripts'` (or `admin`, `public`, `go`, `docs`).
+Use `ARGS='--force'` to bypass local results. See
+[the local-check workflow](docs/development/local-checks.md); full acceptance gates
+never consume this cache.
+
 ## Build and publish
+
+The native desktop build targets macOS 26.0 or newer. The Go task runner derives
+compilation/link deployment flags from the bundle's minimum system version;
+SDK version and deployment minimum are distinct. Native visual acceptance remains
+separate from a successful build.
 
 The admin studio runs locally. The public site is compiled from published records; deploying that static output is separate from authoring:
 
