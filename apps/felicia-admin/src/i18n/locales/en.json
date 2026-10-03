@@ -1,4 +1,5 @@
 {
+  "admin.mementos.unsaved_leave": "Discard unsaved changes and leave this memento?",
   "admin.shell.page_title": "Felicia Admin · Journeys",
   "admin.shell.workspace_label": "Authoring workspace",
   "admin.shell.navigation_label": "Admin navigation",

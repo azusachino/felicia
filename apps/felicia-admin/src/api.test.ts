@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, test } from "vitest"
 import {
   ApiError,
   browseDirectories,
@@ -40,15 +40,6 @@ import {
   type AdminStopCandidate,
   type UpsertMementoRequest,
 } from "./api"
-
-// bun test runs outside Vite, so import.meta.env isn't populated the way it
-// is in the browser/dev-server build. Seed it once, the same way
-// the public site's source.test.ts does for its fetch boundary tests.
-const importMeta = import.meta as unknown as { env: { VITE_API_BASE?: string } }
-beforeAll(() => {
-  if (!importMeta.env) importMeta.env = {}
-  importMeta.env.VITE_API_BASE = "http://localhost:8080"
-})
 
 const originalFetch = globalThis.fetch
 afterEach(() => {

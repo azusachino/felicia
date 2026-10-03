@@ -26,7 +26,8 @@ journey and its per-stage status live in
   The PostgreSQL/PostGIS provider has been retired.
 - **Media storage:** provider-neutral `BlobStore` with private, content-addressed local originals;
   publication emits resized, metadata-stripped derivatives ([ADR 0005](docs/adr/0005-sqlite-storage-and-content-addressed-media.md)).
-- **Frontend:** Vite + Svelte apps for the Atlas public reader and Admin authoring (Bun workspace).
+- **Frontend:** SvelteKit static SPA for Admin authoring; Svelte + Vite for the Atlas public reader.
+  Both share a Bun workspace. Go remains the backend; no JavaScript server is deployed.
 - **Locales:** static system UI catalogs support Japanese, English, and Chinese. Authored content
   has no translation sidecar and is rendered exactly as entered.
 - **Host:** self-hosted container deployment; Cloudflare Tunnel is an optional ingress.
@@ -61,7 +62,13 @@ The root Go module has been retired; all Go code is built through `go.work`.
 ## Build, Run & Test
 
 All daily operations go through `make <target>`; use `make help` for the current target list.
-Go, Bun, uv, Prettier, and golangci-lint are managed through the checked-in tooling configuration.
+mise selects Node LTS and stable/latest channels for the other managed tools;
+`mise.lock` records the resolved versions. Use `mise install --locked` after checkout.
+Bun installs the frozen frontend workspace lockfile and executes compatible
+scripts with `--bun`; source uses portable Node-style APIs. Node LTS is the
+fallback for demonstrated runtime capability failures, not a second package
+manager. Vitest owns unit tests and Playwright owns browser checks. A runtime
+probe checks that unit tests execute under the requested runtime.
 SQLite uses a single `apps/felicia-providers/sqlite/schema.sql`, without a migration framework.
 
 | Target          | Does                                                                             |

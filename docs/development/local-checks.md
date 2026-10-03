@@ -16,8 +16,8 @@ make local-check ARGS='--force'          # rerun all groups
 | --- | --- | --- |
 | `go` | Go formatting, vet, lint, race/coverage tests | All Go apps and `go.work*` |
 | `scripts` | Ruff and Python feature-contract tests | Scripts/tests, Go apps used by CLI fixtures, frontend/package layout, contracts and publication fixtures |
-| `admin` | Admin formatting, type/lint checks and Bun tests | Admin app and shared packages |
-| `public` | Public frontend checks | Public app and shared packages |
+| `admin` | Admin formatting, type/lint checks and Vitest tests | Admin app and shared packages |
+| `public` | Public frontend checks and public/shared Vitest tests | Public app and shared packages |
 | `docs` | Markdown checks | Markdown and documentation files |
 
 Shared packages invalidate both frontend groups and scripts. Check runners, root
@@ -32,8 +32,11 @@ checkout-contained symlink targets, ignored root/app/package `.env*` inputs, too
 versions and resolved paths, Python/platform, commands and relevant environment.
 Environment and dotenv contents are hashed, never stored in cache records. Outer
 Make control flags/selectors and terminal/session metadata do not affect keys.
-Missing or mismatched pinned tools fail closed; use the normal Make target to
-enter the project's mise environment.
+Missing tools or runtime versions that differ from the project's resolved mise
+selection fail closed; use the normal Make target to enter its environment.
+The verifier asks mise to resolve LTS/latest selectors and excludes ancestor
+config selections. Both Bun and Node identities participate in keys so a change
+to either the primary runtime or its compatibility fallback invalidates hits.
 
 Locked frontend installation and the cheap layout guard always run, including on
 all-hit runs. The layout guard catches ignored leftovers at retired paths, which
@@ -69,7 +72,7 @@ predate this focused correction and were not rerun per line. The final cache
 suite has 13 tests for boundaries, keys, tools, failure/force/corruption, symlinks,
 preflight and CI refusal. Docs-only closeout uses the docs group and docs build.
 
-This is verification of local tooling, not native S1 acceptance. Changes remain
-uncommitted pending owner delivery approval; Iroha was read-only. Raw logs under
+This is verification of local tooling, not native S1 acceptance. The original
+checkpoint was committed in `1d08e3e` after owner approval; Iroha was read-only. Raw logs under
 workstation `.tmp/felicia-local-checks/review/` are disposable; this page preserves
 the results.

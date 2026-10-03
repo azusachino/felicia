@@ -1,6 +1,6 @@
 // Pure form-mapping/validation helpers for the memento editor (ADMIN-01.4 /
 // ADMIN-01.5). Kept dependency-free from Svelte/DOM so they're testable under
-// bun:test without a browser, the same split api.ts already uses for its
+// Vitest without a browser, the same split api.ts already uses for its
 // fetch boundary vs. the view components.
 //
 // Server field-name/shape notes this module has to respect (see

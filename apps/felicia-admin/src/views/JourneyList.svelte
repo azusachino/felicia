@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte"
-  import { push } from "svelte-spa-router"
+  import { goto } from "$app/navigation"
+  import { resolve } from "$app/paths"
   import { message, statusMessage, type Locale } from "../i18n"
 
   let { locale, desktop = false }: { locale: Locale; desktop?: boolean } = $props()
@@ -19,7 +20,7 @@
     type LocalJourneyPlan,
     type MementoState,
   } from "../api"
-  import { journeyDetailHash } from "../router"
+  import { journeyDetailPath } from "../router"
 
   const stateOrder: MementoState[] = ["candidate", "draft", "authored", "published", "archived"]
 
@@ -99,7 +100,7 @@
         region: createRegion.trim() || undefined,
       })
       showNewJourney = false
-      await push(journeyDetailHash(res.id))
+      await goto(resolve(journeyDetailPath(res.id)))
     } catch (cause) {
       createError = actionErrorMessage(cause)
       createState = "error"
@@ -325,7 +326,7 @@
     <ul class="journey-cards">
       {#each summaries as summary (summary.journey.id)}
         <li>
-          <a class="journey-card" class:journey-card--pending={pendingByJourney[summary.journey.id] > 0} href={journeyDetailHash(summary.journey.id)}>
+          <a class="journey-card" class:journey-card--pending={pendingByJourney[summary.journey.id] > 0} href={resolve(journeyDetailPath(summary.journey.id))}>
             <div class="journey-card-main">
               <p class="eyebrow">{summary.journey.slug}</p>
               <h2>{summary.journey.title}</h2>

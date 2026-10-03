@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vitest"
 import { catalogs, message, resolveLocale, type MessageKey } from "./catalog"
 
 describe("system locale catalogs", () => {

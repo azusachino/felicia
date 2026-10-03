@@ -152,6 +152,23 @@ test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
     await expect(photoRows.nth(0).getByRole("img")).toHaveJSProperty("naturalWidth", 1)
     await expect(photoRows.nth(1).getByRole("img")).toHaveJSProperty("naturalWidth", 1)
 
+    await page.getByLabel("Caption").nth(0).fill("Keyboard saved caption")
+    const leaveDialog = page.waitForEvent("dialog")
+    const leave = page.getByRole("link", { name: /Back to journey/ }).click()
+    await (await leaveDialog).dismiss()
+    await leave
+    await expect(page.getByLabel("Caption").nth(0)).toHaveValue("Keyboard saved caption")
+    const captionSaved = page.waitForResponse((response) =>
+      response.url().endsWith("/api/admin/photos") && response.request().method() === "POST" && response.request().postDataJSON().caption === "Keyboard saved caption"
+    )
+    await page.keyboard.press("Control+s")
+    expect((await captionSaved).ok()).toBe(true)
+    await expect(photoRows.nth(0).getByText("Saved.")).toBeVisible()
+    const mementoId = new URL(page.url()).hash.split("/").at(-1)
+    const persistedPhotos = await page.request.get(`/api/admin/mementos/${mementoId}/photos`)
+    expect(persistedPhotos.ok()).toBe(true)
+    expect(await persistedPhotos.json()).toEqual(expect.arrayContaining([expect.objectContaining({ caption: "Keyboard saved caption" })]))
+
     await page.getByLabel("Caption").nth(0).fill("First curated photo")
     await page.getByLabel("Caption").nth(1).fill("Second curated photo")
     await photoRows.nth(0).getByRole("button", { name: "Save caption" }).click()

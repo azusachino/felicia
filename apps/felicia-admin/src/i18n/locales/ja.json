@@ -1,4 +1,5 @@
 {
+  "admin.mementos.unsaved_leave": "未保存の変更を破棄して、このメメントから移動しますか？",
   "admin.shell.page_title": "Felicia 管理 · 旅程",
   "admin.shell.workspace_label": "編集ワークスペース",
   "admin.shell.navigation_label": "管理ナビゲーション",

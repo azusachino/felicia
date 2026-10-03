@@ -30,6 +30,7 @@ export const MESSAGE_KEYS = [
   "admin.journeys.delete_confirm_action",
   "admin.common.deleting",
   "admin.mementos.pending_build",
+  "admin.mementos.unsaved_leave",
   "admin.connectors.navigation",
   "admin.connectors.local_source_intake",
   "admin.connectors.scan_trip_folder",

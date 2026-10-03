@@ -90,9 +90,12 @@ class LocalChecksTest(unittest.TestCase):
     def test_version_mismatch_and_missing_tool_fail_closed(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "mise.toml").write_text('[tools]\ngo = "1.27"\n')
+            (root / "mise.toml").write_text('[tools]\ngo = "latest"\n')
             with patch.object(checks.shutil, "which", return_value="/bin/go"), \
-                 patch.object(checks.subprocess, "check_output", return_value="go version go1.26.7 darwin/arm64"):
+                 patch.object(checks.subprocess, "check_output", side_effect=[
+                     json.dumps({"go": [{"version": "1.27.0", "source": {"path": str(root / "mise.toml")}}]}),
+                     "go version go1.26.7 darwin/arm64",
+                 ]):
                 with self.assertRaisesRegex(RuntimeError, "does not match pin"):
                     checks.verify_tools(root)
             with patch.object(checks.shutil, "which", return_value=None):
@@ -103,15 +106,24 @@ class LocalChecksTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "mise.toml").write_text(
-                '[tools]\ngo="1.27"\nuv="0.12"\nbun="1.4.2"\ngolangci-lint="v2.14.0"\n'
+                '[tools]\ngo="latest"\nuv="latest"\nnode="lts"\nbun="latest"\ngolangci-lint="latest"\n'
             )
+            selected = {name: [{"version": version, "source": {"path": str(root / "mise.toml")}}] for name, version in {
+                "go": "1.27.0", "uv": "0.12.10", "node": "24.21.0",
+                "bun": "1.4.2", "golangci-lint": "2.14.0",
+            }.items()}
+            # An ancestor's selection must not override this project's Bun.
+            selected["bun"].append({"version": "99.0.0", "source": {"path": str(root.parent / "mise.toml")}})
             with patch.object(checks.shutil, "which", return_value="/bin/tool"), \
                  patch.object(checks.subprocess, "check_output", side_effect=[
-                     "go version go1.27.0 darwin/arm64", "uv 0.12.10", "1.4.2", "version 2.14.0", "node version", "make version", "rumdl version",
-                 ]):
+                     json.dumps(selected), "go version go1.27.0 darwin/arm64", "uv 0.12.10",
+                     "v24.21.0", "1.4.2", "version 2.14.0", "make version", "rumdl version",
+                 ]) as output:
                 identities = checks.verify_tools(root)
                 self.assertIn(":1.27.0", identities["go"])
+                self.assertIn(":24.21.0", identities["node"])
                 self.assertIn(":1.4.2", identities["bun"])
+                output.assert_any_call(["mise", "ls", "--local", "--current", "--json"], cwd=root, text=True)
                 self.assertIn("make version", identities["make"])
 
     def test_ignored_dotenv_changes_invalidate_frontend(self):

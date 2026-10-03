@@ -73,10 +73,10 @@ desktop-e2e-build: desktop-assets ## Build test-only headless desktop compositio
 # Browser verification of desktop composition; does not drive the Wails window.
 e2e: desktop-e2e-build ## Run integrated desktop Chromium/WebKit specs on synthetic state
 	$(UV_RUN) run python scripts/go_tasks.py desktop-e2e-test
-	$(BUN) run --cwd apps/felicia-admin e2e $(ARGS)
+	$(BUN) --bun run --filter @felicia/admin e2e $(ARGS)
 
 e2e-install: ## Install browsers for the project's pinned Playwright version
-	$(BUN) run --cwd apps/felicia-admin e2e:install $(E2E_INSTALL_FLAGS)
+	$(BUN) --bun run --filter @felicia/admin e2e:install $(E2E_INSTALL_FLAGS)
 
 desktop-build: desktop-assets ## Build native desktop binary into bin/felicia-desktop
 	@mkdir -p bin
@@ -146,7 +146,7 @@ test-api: ## Run Python-based E2E API integration tests (requires running server
 test-workflow: ## Run full journey workflow against disposable SQLite
 	$(UV_RUN) run python scripts/test_journey_workflow.py --start-server
 
-test-admin-e2e: ## Run the admin GUI closed-loop E2E pass (disposable server + bun run dev + Playwright/chromium) — ADMIN-01.8, local-only (not part of validate)
+test-admin-e2e: ## Run the admin GUI closed-loop E2E pass (disposable server + Bun dev + Playwright/chromium) — ADMIN-01.8, local-only (not part of validate)
 	$(UV_RUN) run python scripts/e2e_admin_gui.py
 
 test-sqlite: ## Run all tests with SQLite as the only enabled provider
@@ -159,16 +159,16 @@ test-features: ## Run offline Python feature-contract tests
 layout-check: ## Verify application/package layout and dependency boundaries
 	$(UV_RUN) run python -m unittest tests.test_layout tests.test_kind_registry_drift
 
-web-install: ## Install all frontend workspace deps (bun from mise)
-	$(BUN) install
+web-install: ## Install locked frontend workspace deps (Bun from mise)
+	$(BUN) install --frozen-lockfile
 
-web-dev: ## Run frontend dev server (bun + vite)
-	$(BUN) run --cwd apps/felicia-public-site dev
+web-dev: ## Run public frontend dev server (Bun + Vite)
+	$(BUN) --bun run --filter @felicia/public-site dev
 
-web-build: ## Build public frontend for production (bun + vite)
+web-build: ## Build public frontend for production (Bun + Vite)
 	$(BUN) run web:public:build
 
-admin-build: ## Build admin frontend for production (bun + vite)
+admin-build: ## Build static studio frontend (Bun + SvelteKit)
 	$(BUN) run web:admin:build
 
 # The deployable site: the public SPA built for the target base path, with the
@@ -207,7 +207,7 @@ web-check: ## Frontend typecheck + lint + format check
 admin-check: ## Admin frontend typecheck + lint + format check
 	$(BUN) run web:admin:check
 
-# Docs preview (uv-managed env, isolated from Go/bun). Binds 0.0.0.0 so it is
+# Docs preview (uv-managed env, isolated from Go/Node). Binds 0.0.0.0 so it is
 # reachable over SSH — forward with `ssh -L 8000:localhost:8000 <host>`.
 docs: ## Live-preview docs in the browser (uv + mkdocs-material)
 	$(UV_RUN) run --group docs mkdocs serve -a 0.0.0.0:8000

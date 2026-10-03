@@ -1,19 +1,22 @@
 <script lang="ts">
-  import Router, { replace } from "svelte-spa-router"
-  import { listHash, siteHash } from "./router"
-  import { createRoutes } from "./routes"
-  import { loadLocale, message, saveLocale, type Locale } from "./i18n"
+  import { setContext, type Snippet } from "svelte"
+  import { page } from "$app/state"
+  import { resolve } from "$app/paths"
+  import { STUDIO_CONTEXT, type StudioState } from "./studio"
+  import { loadLocale, message, saveLocale, type Locale } from "../i18n"
+
+  let { children }: { children: Snippet } = $props()
 
   let locale = $state(loadLocale())
-  let library = $state(true)
-  let site = $state(false)
+  const library = $derived(page.route.id === "/" || page.route.id === "/[...missing]")
+  const site = $derived(page.route.id === "/site")
   let settingsOpen = $state(false)
   let settingsMenu: HTMLDivElement
   let settingsTrigger: HTMLButtonElement
   // Wails beta.24 identifies its macOS webview with this user-agent suffix.
   const desktop = navigator.userAgent.includes("wails.io")
   const nativeMac = desktop && navigator.userAgent.includes("Macintosh")
-  const routes = createRoutes({
+  setContext<StudioState>(STUDIO_CONTEXT, {
     get locale() {
       return locale
     },
@@ -46,11 +49,11 @@
   </header>
   <aside class="sidebar">
     <nav aria-label={message(locale, "admin.shell.navigation_label")}>
-      <a class:active={!site} aria-current={!site ? "page" : undefined} href={listHash}>
+      <a class:active={!site} aria-current={!site ? "page" : undefined} href={resolve("/")}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2V5ZM9 3v16M15 5v16" /></svg>
         {message(locale, "admin.journeys.title")}
       </a>
-      <a class:active={site} aria-current={site ? "page" : undefined} href={siteHash}>
+      <a class:active={site} aria-current={site ? "page" : undefined} href={resolve("/site")}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v12H4V8ZM12 3v11m-4-7 4-4 4 4" /></svg>
         {message(locale, "admin.site.navigation")}
       </a>
@@ -74,13 +77,6 @@
     </div>
   </aside>
   <main class="content" class:library>
-    <Router
-      {routes}
-      onConditionsFailed={() => replace(listHash)}
-      onRouteLoaded={({ route }) => {
-        library = route === "/" || route === "*"
-        site = route === "/site"
-      }}
-    />
+    {@render children()}
   </main>
 </div>

@@ -57,7 +57,7 @@ def format_web(check: bool) -> bool:
         return True
     success = True
     for web in web_apps:
-        command = ["bun", "run", "format:check" if check else "format"]
+        command = ["bun", "--bun", "run", "format:check" if check else "format"]
         result = run(command, cwd=web)
         print(result.stdout, end="")
         print(result.stderr, end="")

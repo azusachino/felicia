@@ -1,18 +1,24 @@
 {
   "name": "felicia-frontend-workspace",
   "private": true,
+  "type": "module",
   "version": "0.1.0",
-  "packageManager": "bun@1.4.0",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "workspaces": ["apps/felicia-admin", "apps/felicia-public-site", "packages/*"],
+  "engines": { "node": ">=24" },
   "scripts": {
-    "web:public:dev": "bun run --cwd apps/felicia-public-site dev",
-    "web:public:build": "bun run --cwd apps/felicia-public-site build",
-    "web:public:check": "bun run --cwd apps/felicia-public-site check",
-    "web:admin:dev": "bun run --cwd apps/felicia-admin dev",
-    "web:admin:build": "bun run --cwd apps/felicia-admin build",
-    "web:admin:check": "bun run --cwd apps/felicia-admin check"
+    "web:public:dev": "bun --bun run --filter @felicia/public-site dev",
+    "web:public:build": "bun --bun run --filter @felicia/public-site build",
+    "web:public:check": "bun --bun run --filter @felicia/public-site check",
+    "web:admin:dev": "bun --bun run --filter @felicia/admin dev",
+    "web:admin:build": "bun --bun run --filter @felicia/admin build",
+    "web:admin:check": "bun --bun run --filter @felicia/admin check",
+    "test": "bun --bun node_modules/vitest/vitest.mjs run",
+    "test:watch": "bun --bun node_modules/vitest/vitest.mjs"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^6.2.4",
+    "svelte": "^5.57.1",
+    "vite": "^7.3.6",
+    "vitest": "^4.0.0"
   }
 }

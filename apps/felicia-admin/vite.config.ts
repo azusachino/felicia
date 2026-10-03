@@ -1,9 +1,16 @@
 import { defineConfig } from "vite"
 import tailwindcss from "@tailwindcss/vite"
-import { svelte } from "@sveltejs/vite-plugin-svelte"
+import adapter from "@sveltejs/adapter-static"
+import { sveltekit } from "@sveltejs/kit/vite"
 
 export default defineConfig({
-  plugins: [svelte(), tailwindcss()],
+  plugins: [
+    sveltekit({
+      adapter: adapter({ pages: "dist", assets: "dist", fallback: "index.html" }),
+      router: { type: "hash" },
+    }),
+    tailwindcss(),
+  ],
   server: {
     host: "0.0.0.0",
     port: 5174,

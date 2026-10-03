@@ -220,7 +220,7 @@
       {#if info.artifact_ready}
         <div class="info-row">
           <span class="info-label">{message(locale, "admin.site.preview")}</span>
-          <a class="preview-link" href={previewUrl(info.preview_port)} target="_blank" rel="noreferrer">{previewUrl(info.preview_port)}</a>
+          <a class="preview-link" href={previewUrl(info.preview_port)} target="_blank" rel="external noreferrer">{previewUrl(info.preview_port)}</a>
         </div>
       {/if}
 

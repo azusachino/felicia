@@ -10,7 +10,7 @@ export default ts.config(
   // out of `validate` per ADMIN-01.8, so they're kept out of this lint scope
   // too rather than stretching the browser-only `globals.browser` config
   // below to also cover Node globals like `process`.
-  { ignores: ["dist/", "e2e/**", "playwright.config.ts", "playwright-report/**", "test-results/**"] },
+  { ignores: [".svelte-kit/", "dist/", "e2e/**", "playwright.config.ts", "playwright-report/**", "test-results/**"] },
   js.configs.recommended,
   ...ts.configs.recommended,
   ...svelte.configs.recommended,

@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { push } from "svelte-spa-router"
+  import { goto } from "$app/navigation"
+  import { resolve } from "$app/paths"
   import { message, statusMessage, type Locale } from "../i18n"
   import {
     compileSite,
@@ -31,7 +32,7 @@
     type CompileReport,
     type PlanIntakeResult,
   } from "../api"
-  import { listHash, mementoEditHash } from "../router"
+  import { mementoEditPath } from "../router"
 
   let { id, locale }: { id: string; locale: Locale } = $props()
 
@@ -225,7 +226,7 @@
     deleteState = { status: "pending" }
     try {
       await deleteJourney(journey.id)
-      await push(listHash)
+      await goto(resolve("/"))
     } catch (cause) {
       deleteState = { status: "error", message: cause instanceof Error ? cause.message : message(locale, "admin.common.request_failed") }
     }
@@ -353,7 +354,7 @@
 </script>
 
 <section class="detail">
-  <a class="back-link" href={listHash}>&larr; {message(locale, "admin.journeys.title")}</a>
+  <a class="back-link" href={resolve("/")}>&larr; {message(locale, "admin.journeys.title")}</a>
 
   {#if loading}
     <p class="hint">{message(locale, "admin.journeys.loading")}</p>
@@ -538,7 +539,7 @@
         <ul class="memento-list">
           {#each mementos as memento (memento.id)}
             <li class="memento-row" class:memento-row--pending={pendingMementoIds.has(memento.id)}>
-              <a class="memento-link" href={mementoEditHash(id, memento.id)}>
+              <a class="memento-link" href={resolve(mementoEditPath(id, memento.id))}>
                 <span class="memento-seq">#{memento.seq}</span>
                 <span class="memento-title">{memento.title || memento.place || memento.kind}</span>
                 <span class="memento-kind">{memento.kind}</span>
@@ -575,7 +576,7 @@
           <span class="trigger-status trigger-status--error">{buildState.message}</span>
         {/if}
         {#if siteInfo?.artifact_ready}
-          <a class="preview-link" href={previewUrl(siteInfo.preview_port)} target="_blank" rel="noreferrer">{message(locale, "admin.site.open_preview")}</a>
+          <a class="preview-link" href={previewUrl(siteInfo.preview_port)} target="_blank" rel="external noreferrer">{message(locale, "admin.site.open_preview")}</a>
         {/if}
       </div>
       <p class="trigger-note">{message(locale, "admin.build.detail_note")}</p>

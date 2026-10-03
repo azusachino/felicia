@@ -97,7 +97,7 @@ def publish(base_path: str) -> None:
         )
     environment = os.environ.copy()
     environment["BASE_PATH"] = base_path
-    run(["bun", "run", "build"], cwd=WEB, env=environment)
+    run(["bun", "--bun", "run", "build"], cwd=WEB, env=environment)
     run(
         [
             str(CLI),

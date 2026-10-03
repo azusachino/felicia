@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vitest"
 import type { ApiJourney, ApiMemento } from "@felicia/reader"
 import { adaptJourney } from "@felicia/reader"
 import { loadGoldenRouteFixture } from "../../tests/fixtures"

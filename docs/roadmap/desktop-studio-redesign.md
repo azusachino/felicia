@@ -35,6 +35,41 @@ system-aware neutral surfaces with restrained amber, and full-page creation/impo
 tasks. The focused authoring workspace should adapt to available width. See
 [`docs/research/desktop-studio-redesign.md`](../research/desktop-studio-redesign.md).
 
+## Authoring design discussion
+
+The owner selected **write and curate** as the primary task when opening a journey,
+and **native macOS studio** as the authoring interface's visual character. The
+workspace should prioritize selecting a memento, writing its story and arranging
+photos; the map supplies context. The public reader's map-led identity does not
+require the authoring editor to put the map first. Use compact toolbars, neutral
+surfaces, system typography and restrained color; keep expressive journal styling
+in reader previews.
+
+The owner also selected a persistent memento item rail beside one focused editor,
+explicit Save/keyboard-save with visible dirty/saving/saved/error states and a
+leave-with-unsaved-changes guard, and private preview of the current unsaved
+story/photos without publication. The compiled published-site preview remains a
+separately named action.
+
+The owner approved a studio-only SvelteKit static SPA migration before further UI
+implementation. Use its layouts, routing and navigation hooks while preserving
+the Go backend and the separate Vite public reader. Bun remains the package
+manager and the real runtime for compatible commands; Node LTS is an explicitly
+permitted fallback on demonstrated runtime capability failures. Keep Node-style
+source, Vitest and Playwright. The abandoned pnpm migration is not a delivery.
+
+A first migration slice reuses the existing screens, retains hash deep links,
+and checks embedded assets, malformed URL recovery, history, locale-preserved
+edits and the unsaved-change leave guard. SvelteKit hash mode disables SSR and
+prerendering itself; do not also set those page options. References:
+[SvelteKit SPA](https://svelte.dev/docs/kit/single-page-apps),
+[router configuration](https://svelte.dev/docs/kit/configuration#router), and
+[navigation guards](https://svelte.dev/docs/kit/$app-navigation#beforeNavigate).
+
+Remaining S3 workspace details are still being discussed. The owner approved
+continuing the framework and revised S1 slices; those choices are not a completed
+workspace design or native acceptance. S2 remains gated on revised S1 acceptance.
+
 ## Owner-feedback revision — 2026-10-03
 
 Acceptance issue: [#158](https://github.com/azusachino/felicia/issues/158).
@@ -102,11 +137,13 @@ Primary component references: [Vite integration](https://www.shadcn-svelte.com/d
 Svelte 5/Vite/Tailwind 4 tooling and inspect generated source; do not let a CLI
 initialization overwrite existing global styling or add unused components.
 
-### Routing foundation
+### Routing foundation — interim checkpoint
 
 The owner selected a maintained router instead of extending the handwritten
-route union/parser. The admin uses pinned `svelte-spa-router` 5.1.1 for Svelte 5,
-with its hash-based path-to-component table, parameter decoding, history and
+route union/parser. At checkpoint `7123d5f`, the admin used pinned
+`svelte-spa-router` 5.1.1 for Svelte 5. This interim implementation is superseded
+by the static SvelteKit migration below. The interim router provided a hash-based
+path-to-component table, parameter decoding, history and
 programmatic navigation. `src/routes.ts` owns the table; `src/router.ts` only
 constructs URL strings. The small `RouteView` adapter forwards library parameters
 to existing page props and live locale settings, remounting on identifier changes
@@ -136,6 +173,56 @@ its absent Git root changed path matching; the peer then ran canonical
 `make check` in the owning checkout, exit 0. No rules or unrelated docs were
 weakened. Browser evidence is not native visual acceptance. Local checkpoint
 commits are approved; no push or release is approved.
+
+### Static studio and portable tooling checkpoint
+
+The migration replaces the interim route table with SvelteKit filesystem pages,
+static adapter output at `dist/index.html`, hash navigation and framework guards.
+`vite.config.ts` owns the configuration; the unused `svelte.config.js` is removed.
+The shared shell/context preserves locale changes without discarding an editor.
+Only malformed URL normalization is custom. Go still embeds static assets; the
+public reader remains Vite and no JavaScript server is deployed.
+
+Bun owns frozen workspace installation and actual compatible execution. TypeScript
+source uses portable `node:*` APIs, Vitest and Playwright; Node LTS is a capability
+fallback, not another package manager. The runtime assertion checks the actual
+engine. Project-local mise selectors and both runtime identities enter local cache
+keys; full gates never consume the iteration cache.
+
+Fresh read-only Herdr peer `felicia-kit-review` (`wV:p40`), Claude Sonnet 5.5,
+launched at medium effort, independently verified the working diff at
+`7123d5f4377d6f0b36a3f25045bebaf870609bf9`. After review fixes, `make validate`
+passed (74 Python and 120 Vitest tests), uncached desktop tests passed, browser
+composition passed 32/32 Chromium/WebKit, and real web authoring passed 14/14.
+The peer inspected real held-response and stored-value assertions, not only
+successful test output. Save/keyboard-save submit the form and dirty photo rows,
+retain later edits, and guard internal leave and browser reload. Photo persistence
+is verified against the real web API; desktop photo-list parity remains open.
+
+The new keyboard test exposed a desktop adapter that decoded essays but omitted
+them from manual-patch fields. Local checkpoint
+`f3958781438d8919da6bdce7e2a1edf2d94f9b5f` repairs that omission and tests
+create/edit/clear on SQLite. The endpoint is full-payload: an omitted essay clears
+its stored value, as required by blank-form serialization. This is not a general
+API-parity fix. The peer was closed after its final report; raw logs are disposable
+workstation scratch under `.tmp/felicia-desktop-feedback/kit-review/`.
+
+Fresh checkpoint verifier `felicia-kit-checkpoint` (`wV:p54`), Claude Sonnet 5.5
+at launcher-selected medium effort, verified staged tree
+`42ad1a82a95b7302b7d64cc0c20df1d539072a2d` at parent `f3958781`. All 503 staged
+blobs matched the clean export; unfinished controls/task pages, their dependencies
+and creation/import translations were excluded. Frozen install, `make validate`
+(74 Python and 120 Vitest tests), `make e2e` (32/32), `make test-admin-e2e` (14/14)
+and `make docs-build` exited 0. Matching Bun/Node runtime probes passed; the
+wrong-runtime control failed. The lead also ran canonical `make check`, exit 0.
+
+The peer's findings were stale Make help labels and generated index churn. The
+lead corrected help to name Bun/Vite or Bun/SvelteKit and excluded both generated
+desktop indexes, preserving their worktree outputs; the frozen lock remained
+byte-identical after gates. Composition gates rebuild embedded assets before use.
+Native Wails confirmation/unload/keyboard behavior and visual acceptance are still
+unverified. Item rail, private unsaved preview, full-page tasks, demo and S2 import
+identity are not delivered by this slice.
 
 ### Platform revision checkpoint
 
