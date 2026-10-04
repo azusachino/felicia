@@ -1,4 +1,9 @@
 <script lang="ts">
+  import { beforeNavigate, goto } from "$app/navigation"
+  import { resolve } from "$app/paths"
+  import { Button } from "$lib/components/ui/button"
+  import IconButton from "$lib/components/IconButton.svelte"
+  import { ArrowLeft, ArrowUp, ArrowDown, Save, Undo2, Upload, Check } from "@lucide/svelte"
   import { message, statusMessage, type Locale } from "../i18n"
   import {
     deleteMemento,
@@ -43,7 +48,7 @@
     type LatLngInput,
     type PhotoFormFields,
   } from "../mementoForm"
-  import { journeyDetailHash } from "../router"
+  import { journeyDetailPath } from "../router"
 
   let { journeyId, id, locale }: { journeyId: string; id: string; locale: Locale } = $props()
 
@@ -152,6 +157,29 @@
   // author explicitly chooses to discard their draft. A conflict does NOT
   // call this: ADMIN-01.5 rules out a merge UI, which is a reason not to build
   // a diff editor, not a reason to delete the only copy of an essay.
+  let savedForm = $state("")
+  let photoRows = $state<PhotoRow[]>([])
+  function formSnapshot(): string {
+    return JSON.stringify({ common, points, kindFormState, otherKindDataText })
+  }
+  const unsaved = $derived((savedForm !== "" && formSnapshot() !== savedForm) || photoRows.some((row) => JSON.stringify(row.fields) !== row.savedFields))
+
+  beforeNavigate((navigation) => {
+    if (!unsaved && saveState.status !== "pending" && !photoRows.some((row) => row.status === "pending")) return
+    if (navigation.willUnload) {
+      navigation.cancel()
+    } else if (saveState.status === "pending" || photoRows.some((row) => row.status === "pending") || !confirm(message(locale, "admin.mementos.unsaved_leave"))) {
+      navigation.cancel()
+    }
+  })
+
+  function saveShortcut(event: KeyboardEvent) {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
+      event.preventDefault()
+      if (memento && saveState.status !== "pending" && !photoRows.some((row) => row.status === "pending")) void saveEditor()
+    }
+  }
+
   function hydrateForm(fetched: AdminMementoDetail, registry: AdminTemplateRegistry | null) {
     common = {
       title: fetched.title ?? "",
@@ -172,6 +200,7 @@
       kindFormState = tpl ? emptyKindFormState(tpl.Fields) : {}
       otherKindDataText = JSON.stringify(fetched.kind_data ?? {}, null, 2)
     }
+    savedForm = formSnapshot()
   }
 
   async function loadAll() {
@@ -225,13 +254,16 @@
       expectedRevision: memento.revision,
     })
 
+    const submittedSnapshot = formSnapshot()
     saveState = { status: "pending", message: message(locale, "admin.common.saving"), fieldErrors: {} }
     try {
       await upsertMemento(payload)
       // Re-fetch so the next save carries the fresh revision (ADMIN-01.5).
       const refreshed = await getMemento(memento.id)
       memento = refreshed
-      hydrateForm(refreshed, templates)
+      // Edits typed while a save is in flight remain an unsaved working copy.
+      if (formSnapshot() === submittedSnapshot) hydrateForm(refreshed, templates)
+      else savedForm = submittedSnapshot
       saveState = { status: "success", message: message(locale, "admin.common.saved"), fieldErrors: {} }
     } catch (cause) {
       if (isConflict(cause)) {
@@ -288,10 +320,20 @@
   // validation error keeps the author on this page to fix it — navigate
   // back to the journey detail, where the pending-build highlight/count
   // now reflects any published<->authored toggle this save just made.
-  async function saveAndBack() {
+  // Save/keyboard-save cover the whole editor. Each request captures its
+  // current fields before awaiting I/O; later edits remain unsaved.
+  async function saveEditor(): Promise<boolean> {
+    if (saveState.status === "pending" || photoRows.some((row) => row.status === "pending")) return false
+    const dirtyPhotos = photoRows.filter((row) => JSON.stringify(row.fields) !== row.savedFields).map((row) => ({ row, fields: { ...row.fields } }))
     await save()
-    if (saveState.status === "success") {
-      location.hash = journeyDetailHash(journeyId)
+    if (saveState.status !== "success") return false
+    for (const { row, fields } of dirtyPhotos) await savePhotoRow(row, fields)
+    return dirtyPhotos.every(({ row }) => row.status === "success") && !unsaved
+  }
+
+  async function saveAndBack() {
+    if (await saveEditor()) {
+      await goto(resolve(journeyDetailPath(journeyId)))
     }
   }
 
@@ -324,7 +366,9 @@
     deleteState = { status: "pending", message: message(locale, "admin.common.deleting") }
     try {
       await deleteMemento(memento.id)
-      location.hash = journeyDetailHash(journeyId)
+      savedForm = formSnapshot()
+      photoRows = []
+      await goto(resolve(journeyDetailPath(journeyId)))
     } catch (cause) {
       // A 422 (delete_requires_unpublish, or in principle invalid_transition)
       // carries a structured issue — surface its friendly message rather
@@ -363,22 +407,24 @@
   interface PhotoRow {
     id: string
     fields: PhotoFormFields
+    savedFields: string
     status: "idle" | "pending" | "success" | "error"
     message: string
   }
-  let photoRows = $state<PhotoRow[]>([])
 
   function photoRowFromExisting(photo: AdminMementoPhoto): PhotoRow {
+    const fields = photoFormFieldsFromRequest({
+      objectKey: photo.object_key,
+      contentHash: photo.content_hash,
+      caption: photo.caption ?? "",
+      seq: String(photo.seq),
+      takenAt: photo.taken_at ? fromRFC3339(photo.taken_at) : "",
+      sourceRef: photo.source_ref ?? "",
+    })
     return {
       id: photo.id,
-      fields: photoFormFieldsFromRequest({
-        objectKey: photo.object_key,
-        contentHash: photo.content_hash,
-        caption: photo.caption ?? "",
-        seq: String(photo.seq),
-        takenAt: photo.taken_at ? fromRFC3339(photo.taken_at) : "",
-        sourceRef: photo.source_ref ?? "",
-      }),
+      fields,
+      savedFields: JSON.stringify(fields),
       status: "idle",
       message: "",
     }
@@ -417,13 +463,15 @@
     }
   }
 
-  async function savePhotoRow(row: PhotoRow) {
+  async function savePhotoRow(row: PhotoRow, fields: PhotoFormFields = row.fields) {
     if (!memento) return
     row.status = "pending"
     row.message = message(locale, "admin.common.saving")
     photoRows = [...photoRows]
     try {
-      await upsertPhoto(buildPhotoPayload(row.id, memento.id, row.fields))
+      const savedFields = JSON.stringify(fields)
+      await upsertPhoto(buildPhotoPayload(row.id, memento.id, fields))
+      row.savedFields = savedFields
       row.status = "success"
       row.message = message(locale, "admin.common.saved")
     } catch (cause) {
@@ -434,8 +482,12 @@
   }
 </script>
 
+<svelte:window onkeydown={saveShortcut} />
+
 <section class="editor">
-  <a class="back-link" href={journeyDetailHash(journeyId)}>&larr; {message(locale, "admin.mementos.back_to_journey")}</a>
+  <div class="back-link">
+    <IconButton variant="ghost" href={resolve(journeyDetailPath(journeyId))} label={message(locale, "admin.mementos.back_to_journey")}><ArrowLeft size={16} aria-hidden="true" /></IconButton>
+  </div>
 
   {#if loading}
     <p class="hint">{message(locale, "admin.mementos.loading")}</p>
@@ -633,14 +685,22 @@
                 </label>
               </div>
               <div class="photo-actions">
-                <button type="button" class="secondary" onclick={() => movePhoto(photoRows.indexOf(row), -1)} disabled={photoRows.indexOf(row) === 0 || row.status === "pending"}
-                  >{message(locale, "admin.mementos.move_photo_up")}</button
+                <IconButton
+                  label={message(locale, "admin.mementos.move_photo_up")}
+                  onclick={() => movePhoto(photoRows.indexOf(row), -1)}
+                  disabled={photoRows.indexOf(row) === 0 || row.status === "pending"}><ArrowUp size={16} aria-hidden="true" /></IconButton
                 >
-                <button type="button" class="secondary" onclick={() => movePhoto(photoRows.indexOf(row), 1)} disabled={photoRows.indexOf(row) === photoRows.length - 1 || row.status === "pending"}
-                  >{message(locale, "admin.mementos.move_photo_down")}</button
+                <IconButton
+                  label={message(locale, "admin.mementos.move_photo_down")}
+                  onclick={() => movePhoto(photoRows.indexOf(row), 1)}
+                  disabled={photoRows.indexOf(row) === photoRows.length - 1 || row.status === "pending"}><ArrowDown size={16} aria-hidden="true" /></IconButton
                 >
-                <button type="button" onclick={() => savePhotoRow(row)} disabled={row.status === "pending"}
-                  >{row.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.mementos.photo_save_caption")}</button
+                <Button
+                  type="button"
+                  onclick={() => savePhotoRow(row)}
+                  disabled={row.status === "pending"}
+                  aria-label={row.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.mementos.photo_save_caption")}
+                  ><Save size={16} aria-hidden="true" />{row.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.common.save")}</Button
                 >
               </div>
               {#if row.status === "success"}
@@ -655,21 +715,22 @@
     </section>
 
     <section class="actions" aria-label={message(locale, "admin.mementos.actions_label")}>
-      <button type="button" onclick={() => save()} disabled={saveState.status === "pending"}
-        >{saveState.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.mementos.save")}</button
-      >
-      <button type="button" class="secondary" onclick={saveAndBack} disabled={saveState.status === "pending"}>
-        {saveState.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.mementos.save_back")}
-      </button>
+      <Button type="button" onclick={() => saveEditor()} disabled={saveState.status === "pending" || photoRows.some((row) => row.status === "pending")}>
+        <Save size={16} aria-hidden="true" />{saveState.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.mementos.save")}
+      </Button>
+      <Button type="button" variant="outline" onclick={saveAndBack} disabled={saveState.status === "pending"}>
+        <ArrowLeft size={16} aria-hidden="true" />{saveState.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.mementos.save_back")}
+      </Button>
       {#if unpublishActionLabel(memento.state) && previousLifecycleState(memento.state)}
-        <button type="button" class="secondary" onclick={retreatLifecycle} disabled={saveState.status === "pending"}>
-          {message(locale, "admin.mementos.unpublish")}
-        </button>
+        <Button type="button" variant="outline" onclick={retreatLifecycle} disabled={saveState.status === "pending"}>
+          <Undo2 size={16} aria-hidden="true" />{message(locale, "admin.mementos.unpublish")}
+        </Button>
       {/if}
       {#if lifecycleActionLabel(memento.state) && nextLifecycleState(memento.state)}
-        <button type="button" class="primary" onclick={advanceLifecycle} disabled={saveState.status === "pending"}>
+        <Button type="button" onclick={advanceLifecycle} disabled={saveState.status === "pending"}>
+          {#if memento.state === "draft"}<Check size={16} aria-hidden="true" />{:else}<Upload size={16} aria-hidden="true" />{/if}
           {memento.state === "draft" ? message(locale, "admin.mementos.mark_authored") : message(locale, "admin.mementos.publish")}
-        </button>
+        </Button>
       {/if}
     </section>
 
@@ -706,9 +767,6 @@
     color: #9f522d;
     font-size: 13px;
     text-decoration: none;
-  }
-  .back-link:hover {
-    text-decoration: underline;
   }
   .hint {
     color: #766956;
@@ -841,8 +899,6 @@
     min-width: 40px;
   }
   .point-row button,
-  .actions button,
-  .photo-row button,
   .danger-zone button {
     border: 0;
     border-radius: 7px;
@@ -853,7 +909,6 @@
     white-space: nowrap;
   }
   .point-row button.secondary,
-  .actions button.secondary,
   .danger-zone button.secondary {
     color: #6b5137;
     background: transparent;
@@ -932,15 +987,6 @@
     flex-wrap: wrap;
     gap: 8px;
   }
-  .photo-row button.secondary {
-    color: #6b5137;
-    background: transparent;
-    border: 1px solid #d8cdbb;
-  }
-  .photo-row button:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
   .trigger-status {
     font-size: 13px;
   }
@@ -962,9 +1008,6 @@
     flex-wrap: wrap;
     gap: 12px;
     margin: 32px 0 8px;
-  }
-  .actions button.primary {
-    background: #3f7a52;
   }
   .danger-zone {
     margin: 36px 0 8px;

@@ -76,7 +76,7 @@ test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
   test("selects and persists an admin language", async () => {
     await page.goto("/")
     await page.getByRole("button", { name: "Settings", exact: true }).click()
-    const language = page.getByRole("combobox")
+    const language = page.getByRole("combobox", { name: /^(Language|言語)$/ })
     await expect(language).toHaveAttribute("aria-label", "Language")
     await language.selectOption("ja")
     await expect(language).toHaveAttribute("aria-label", "言語")
@@ -152,14 +152,44 @@ test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
     await expect(photoRows.nth(0).getByRole("img")).toHaveJSProperty("naturalWidth", 1)
     await expect(photoRows.nth(1).getByRole("img")).toHaveJSProperty("naturalWidth", 1)
 
-    await page.getByLabel("Caption").nth(0).fill("First curated photo")
-    await page.getByLabel("Caption").nth(1).fill("Second curated photo")
+    await page.getByRole("textbox", { name: "Caption", exact: true }).nth(0).fill("Keyboard saved caption")
+    const leaveDialog = page.waitForEvent("dialog")
+    const leave = page.getByRole("link", { name: /Back to journey/ }).click()
+    await (await leaveDialog).dismiss()
+    await leave
+    await expect(page.getByRole("textbox", { name: "Caption", exact: true }).nth(0)).toHaveValue("Keyboard saved caption")
+    const captionSaved = page.waitForResponse((response) =>
+      response.url().endsWith("/api/admin/photos") && response.request().method() === "POST" && response.request().postDataJSON().caption === "Keyboard saved caption"
+    )
+    await page.keyboard.press("Control+s")
+    expect((await captionSaved).ok()).toBe(true)
+    await expect(photoRows.nth(0).getByText("Saved.")).toBeVisible()
+    const mementoId = new URL(page.url()).hash.split("/").at(-1)
+    const persistedPhotos = await page.request.get(`/api/admin/mementos/${mementoId}/photos`)
+    expect(persistedPhotos.ok()).toBe(true)
+    expect(await persistedPhotos.json()).toEqual(expect.arrayContaining([expect.objectContaining({ caption: "Keyboard saved caption" })]))
+
+    await page.getByRole("textbox", { name: "Caption", exact: true }).nth(0).fill("First curated photo")
+    await page.getByRole("textbox", { name: "Caption", exact: true }).nth(1).fill("Second curated photo")
     await photoRows.nth(0).getByRole("button", { name: "Save caption" }).click()
     await expect(photoRows.nth(0).getByText("Saved.")).toBeVisible()
     await photoRows.nth(1).getByRole("button", { name: "Save caption" }).click()
     await expect(photoRows.nth(1).getByText("Saved.")).toBeVisible()
 
+    const moveUp = photoRows.nth(1).getByRole("button", { name: "Move up", exact: true })
+    await expect(moveUp).toHaveText("")
+    await expect(moveUp.locator('svg[aria-hidden="true"]')).toHaveCount(1)
+    await moveUp.hover()
+    await expect(page.getByRole("tooltip")).toHaveText("Move up")
+
+    // Reordering is optimistic; reload only after both sequence writes persist.
+    const orderSaved = Promise.all([0, 1].map((seq) => page.waitForResponse((response) =>
+      response.url().endsWith("/api/admin/photos") &&
+      response.request().method() === "POST" &&
+      response.request().postDataJSON().seq === seq
+    )))
     await photoRows.nth(1).getByRole("button", { name: "Move up" }).click()
+    for (const response of await orderSaved) expect(response.ok()).toBeTruthy()
     await expect(photoRows.nth(0).getByRole("img")).toHaveAttribute("alt", "Second curated photo")
     await page.reload()
     await expect(page.locator(".photo-row").nth(0).getByRole("img")).toHaveAttribute("alt", "Second curated photo")

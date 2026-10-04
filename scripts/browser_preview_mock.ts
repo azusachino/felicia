@@ -2,7 +2,9 @@
 // Run `make browser-mock`, then start the public site with
 // `VITE_API_BASE=http://127.0.0.1:8099 make web-dev`.
 
-const port = Number(Bun.env.BROWSER_MOCK_PORT ?? 8099)
+import { createServer } from "node:http"
+
+const port = Number(process.env.BROWSER_MOCK_PORT ?? 8099)
 const journey = {
   id: "browser-journey",
   journal_id: "browser-journal",
@@ -57,29 +59,30 @@ const mementos = [
   },
 ]
 
-const headers = { "content-type": "application/json", "access-control-allow-origin": "*" }
-const json = (body: unknown) => new Response(JSON.stringify(body), { headers })
+const routes: Record<string, unknown> = {
+  "/api/v1/site.json": { title: "Felicia", description: "A map for the moments", design: "atlas", default_language: "en", default_theme: "dark", accent: "#ff9b72" },
+  "/api/v1/journeys.json": [
+    {
+      ...journey,
+      representative_dots: [
+        [138.98, 34.66],
+        [139.1, 34.91],
+        [139.2, 34.8],
+      ],
+    },
+  ],
+  [`/api/v1/journeys/${journey.id}.json`]: journey,
+  [`/api/v1/journeys/${journey.id}/mementos.json`]: mementos,
+}
 
-Bun.serve({
-  port,
-  fetch(req) {
-    const path = new URL(req.url).pathname
-    if (path === "/api/v1/site.json") return json({ title: "Felicia", description: "A map for the moments", design: "atlas", default_language: "en", default_theme: "dark", accent: "#ff9b72" })
-    if (path === "/api/v1/journeys.json")
-      return json([
-        {
-          ...journey,
-          representative_dots: [
-            [138.98, 34.66],
-            [139.1, 34.91],
-            [139.2, 34.8],
-          ],
-        },
-      ])
-    if (path === `/api/v1/journeys/${journey.id}.json`) return json(journey)
-    if (path === `/api/v1/journeys/${journey.id}/mementos.json`) return json(mementos)
-    return new Response("not found", { status: 404, headers })
-  },
+const server = createServer((request, response) => {
+  const path = new URL(request.url ?? "/", `http://127.0.0.1:${port}`).pathname
+  const body = Object.hasOwn(routes, path) ? routes[path] : undefined
+  response.writeHead(body === undefined ? 404 : 200, { "content-type": "application/json", "access-control-allow-origin": "*" })
+  response.end(JSON.stringify(body ?? { error: "not found" }))
 })
-
-console.log(`Felicia browser mock listening on http://127.0.0.1:${port}`)
+server.listen(port, "127.0.0.1", () => {
+  const address = server.address()
+  const boundPort = address && typeof address !== "string" ? address.port : port
+  console.log(`Felicia browser mock listening on http://127.0.0.1:${boundPort}`)
+})

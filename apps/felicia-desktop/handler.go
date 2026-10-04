@@ -545,7 +545,7 @@ func (h *DesktopHandler) handleUpsertMemento(w http.ResponseWriter, r *http.Requ
 		SourceRef:     req.SourceRef,
 		State:         state,
 	}
-	fields := []string{"journey_id", "kind", "seq", "occurred_at", "occurred_tz", "title", "place", "kind_data", "source_ref"}
+	fields := []string{"journey_id", "kind", "seq", "occurred_at", "occurred_tz", "title", "place", "essay", "kind_data", "source_ref"}
 	if err := h.mementoWriter.ApplyManualPatch(r.Context(), &domain.ManualMementoPatch{
 		Memento:          memento,
 		Fields:           fields,

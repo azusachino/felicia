@@ -1,4 +1,9 @@
 <script lang="ts">
+  import { goto } from "$app/navigation"
+  import { resolve } from "$app/paths"
+  import { Button } from "$lib/components/ui/button"
+  import IconButton from "$lib/components/IconButton.svelte"
+  import { ArrowLeft, Hammer } from "@lucide/svelte"
   import { message, statusMessage, type Locale } from "../i18n"
   import {
     compileSite,
@@ -30,7 +35,7 @@
     type CompileReport,
     type PlanIntakeResult,
   } from "../api"
-  import { listHash, mementoEditHash } from "../router"
+  import { mementoEditPath } from "../router"
 
   let { id, locale }: { id: string; locale: Locale } = $props()
 
@@ -224,7 +229,7 @@
     deleteState = { status: "pending" }
     try {
       await deleteJourney(journey.id)
-      window.location.hash = listHash
+      await goto(resolve("/"))
     } catch (cause) {
       deleteState = { status: "error", message: cause instanceof Error ? cause.message : message(locale, "admin.common.request_failed") }
     }
@@ -352,7 +357,7 @@
 </script>
 
 <section class="detail">
-  <a class="back-link" href={listHash}>&larr; {message(locale, "admin.journeys.title")}</a>
+  <div class="back-link"><IconButton variant="ghost" href={resolve("/")} label={message(locale, "admin.journeys.back")}><ArrowLeft size={16} aria-hidden="true" /></IconButton></div>
 
   {#if loading}
     <p class="hint">{message(locale, "admin.journeys.loading")}</p>
@@ -537,7 +542,7 @@
         <ul class="memento-list">
           {#each mementos as memento (memento.id)}
             <li class="memento-row" class:memento-row--pending={pendingMementoIds.has(memento.id)}>
-              <a class="memento-link" href={mementoEditHash(id, memento.id)}>
+              <a class="memento-link" href={resolve(mementoEditPath(id, memento.id))}>
                 <span class="memento-seq">#{memento.seq}</span>
                 <span class="memento-title">{memento.title || memento.place || memento.kind}</span>
                 <span class="memento-kind">{memento.kind}</span>
@@ -555,7 +560,10 @@
     <section class="build-shortcut" aria-label={message(locale, "admin.build.preview_label")}>
       <div class="build-row">
         <span class="build-label">{message(locale, "admin.build.label")}</span>
-        <button type="button" onclick={triggerJourneyBuild} disabled={buildState.status === "pending"}>{buildButtonLabel(pendingCount, buildState.status)}</button>
+        <Button type="button" onclick={triggerJourneyBuild} disabled={buildState.status === "pending"} aria-label={buildButtonLabel(pendingCount, buildState.status)}
+          ><Hammer size={16} aria-hidden="true" />{buildState.status === "pending" ? message(locale, "admin.build.building") : message(locale, "admin.common.build")}{#if pendingCount > 0}
+            ({pendingCount}){/if}</Button
+        >
         {#if artifactStateLabel(artifactState, pendingCount)}
           <p class="hint" class:api-error={artifactState === "unknown"}>{artifactStateLabel(artifactState, pendingCount)}</p>
         {/if}
@@ -574,7 +582,7 @@
           <span class="trigger-status trigger-status--error">{buildState.message}</span>
         {/if}
         {#if siteInfo?.artifact_ready}
-          <a class="preview-link" href={previewUrl(siteInfo.preview_port)} target="_blank" rel="noreferrer">{message(locale, "admin.site.open_preview")}</a>
+          <a class="preview-link" href={previewUrl(siteInfo.preview_port)} target="_blank" rel="external noreferrer">{message(locale, "admin.site.open_preview")}</a>
         {/if}
       </div>
       <p class="trigger-note">{message(locale, "admin.build.detail_note")}</p>
@@ -610,9 +618,6 @@
     color: #9f522d;
     font-size: 13px;
     text-decoration: none;
-  }
-  .back-link:hover {
-    text-decoration: underline;
   }
   .hint {
     color: #766956;
@@ -657,19 +662,6 @@
     color: #6b5137;
     font-weight: 600;
     font-size: 14px;
-  }
-  .build-row button {
-    border: 0;
-    border-radius: 7px;
-    padding: 8px 12px;
-    color: #fffaf2;
-    background: #9f522d;
-    font-size: 13px;
-    white-space: nowrap;
-  }
-  .build-row button:disabled {
-    opacity: 0.6;
-    cursor: default;
   }
   .build-row .trigger-status {
     margin: 0;

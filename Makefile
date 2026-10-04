@@ -1,7 +1,7 @@
 # felicia task runner.
 # mise owns the repository toolchain and loads the optional .env file. These
 # wrappers keep every target usable without shell activation.
-MISE_RUN := mise exec --
+MISE_RUN ?= mise exec --
 UV_RUN  := $(MISE_RUN) uv
 GO      ?= $(MISE_RUN) go
 BUN     ?= $(MISE_RUN) bun
@@ -27,6 +27,13 @@ fmt: fmt-docs ## Format Go, frontend code and Markdown
 
 fmt-check: fmt-docs-check ## Check Go, frontend and Markdown without modifying files
 	$(UV_RUN) run python scripts/format.py --check
+
+.PHONY: fmt-go-check local-check
+fmt-go-check: ## Check Go formatting only for local iteration
+	$(UV_RUN) run python scripts/format.py --check --only go
+
+local-check: ## Cache unchanged local groups (ARGS='--groups scripts' or '--force')
+	$(UV_RUN) run python scripts/local_checks.py $(ARGS)
 
 fmt-docs: ## Fix Markdown lint with rumdl
 	$(RUMDL) check --config .rumdl.toml --fix .
@@ -61,19 +68,19 @@ desktop-assets: admin-build web-build ## Prepare built admin and reader assets f
 
 desktop-e2e-build: desktop-assets ## Build test-only headless desktop composition
 	@mkdir -p bin
-	$(GO) build -tags production,e2e -o bin/felicia-desktop-e2e ./apps/felicia-desktop
+	$(UV_RUN) run python scripts/go_tasks.py desktop-e2e-build
 
 # Browser verification of desktop composition; does not drive the Wails window.
 e2e: desktop-e2e-build ## Run integrated desktop Chromium/WebKit specs on synthetic state
-	$(GO) test -tags e2e ./apps/felicia-desktop
-	$(BUN) run --cwd apps/felicia-admin e2e $(ARGS)
+	$(UV_RUN) run python scripts/go_tasks.py desktop-e2e-test
+	$(BUN) --bun run --filter @felicia/admin e2e $(ARGS)
 
 e2e-install: ## Install browsers for the project's pinned Playwright version
-	$(BUN) run --cwd apps/felicia-admin e2e:install $(E2E_INSTALL_FLAGS)
+	$(BUN) --bun run --filter @felicia/admin e2e:install $(E2E_INSTALL_FLAGS)
 
 desktop-build: desktop-assets ## Build native desktop binary into bin/felicia-desktop
 	@mkdir -p bin
-	$(GO) build -tags production -o bin/felicia-desktop ./apps/felicia-desktop
+	$(UV_RUN) run python scripts/go_tasks.py desktop-build
 
 desktop-package: desktop-build ## Package the macOS app bundle with the native app icon
 	mkdir -p bin/FeliciaStudio.app/Contents/MacOS bin/FeliciaStudio.app/Contents/Resources
@@ -139,7 +146,7 @@ test-api: ## Run Python-based E2E API integration tests (requires running server
 test-workflow: ## Run full journey workflow against disposable SQLite
 	$(UV_RUN) run python scripts/test_journey_workflow.py --start-server
 
-test-admin-e2e: ## Run the admin GUI closed-loop E2E pass (disposable server + bun run dev + Playwright/chromium) — ADMIN-01.8, local-only (not part of validate)
+test-admin-e2e: ## Run the admin GUI closed-loop E2E pass (disposable server + Bun dev + Playwright/chromium) — ADMIN-01.8, local-only (not part of validate)
 	$(UV_RUN) run python scripts/e2e_admin_gui.py
 
 test-sqlite: ## Run all tests with SQLite as the only enabled provider
@@ -152,16 +159,16 @@ test-features: ## Run offline Python feature-contract tests
 layout-check: ## Verify application/package layout and dependency boundaries
 	$(UV_RUN) run python -m unittest tests.test_layout tests.test_kind_registry_drift
 
-web-install: ## Install all frontend workspace deps (bun from mise)
-	$(BUN) install
+web-install: ## Install locked frontend workspace deps (Bun from mise)
+	$(BUN) install --frozen-lockfile
 
-web-dev: ## Run frontend dev server (bun + vite)
-	$(BUN) run --cwd apps/felicia-public-site dev
+web-dev: ## Run public frontend dev server (Bun + Vite)
+	$(BUN) --bun run --filter @felicia/public-site dev
 
-web-build: ## Build public frontend for production (bun + vite)
+web-build: ## Build public frontend for production (Bun + Vite)
 	$(BUN) run web:public:build
 
-admin-build: ## Build admin frontend for production (bun + vite)
+admin-build: ## Build static studio frontend (Bun + SvelteKit)
 	$(BUN) run web:admin:build
 
 # The deployable site: the public SPA built for the target base path, with the
@@ -200,7 +207,7 @@ web-check: ## Frontend typecheck + lint + format check
 admin-check: ## Admin frontend typecheck + lint + format check
 	$(BUN) run web:admin:check
 
-# Docs preview (uv-managed env, isolated from Go/bun). Binds 0.0.0.0 so it is
+# Docs preview (uv-managed env, isolated from Go/Node). Binds 0.0.0.0 so it is
 # reachable over SSH — forward with `ssh -L 8000:localhost:8000 <host>`.
 docs: ## Live-preview docs in the browser (uv + mkdocs-material)
 	$(UV_RUN) run --group docs mkdocs serve -a 0.0.0.0:8000

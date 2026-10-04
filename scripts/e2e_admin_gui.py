@@ -145,7 +145,7 @@ def mock_upstream(port: int):
 
 @contextmanager
 def vite_dev_server(port: int, api_base: str):
-    """Runs `bun run dev` for apps/felicia-admin with Vite's /api proxy pointed at
+    """Runs `bun --bun run dev` for apps/felicia-admin with Vite's /api proxy pointed at
     the disposable API server (VITE_API_PROXY, see vite.config.ts): the GUI
     fetches same-origin exactly like the compiled artifact does, so no CORS
     wiring is needed on the server. The Python side owns this process's
@@ -155,9 +155,9 @@ def vite_dev_server(port: int, api_base: str):
     process = subprocess.Popen(
         [
             "bun",
+            "--bun",
             "run",
             "dev",
-            "--",
             "--port",
             str(port),
             "--strictPort",
@@ -350,7 +350,7 @@ def run_admin_gui_e2e() -> None:
                         "E2E_OUT_DIR": str(out_dir),
                     }
                     result = subprocess.run(
-                        ["bunx", "playwright", "test"], cwd=WEB_ADMIN_DIR, env=env
+                        ["bun", "x", "--bun", "playwright", "test"], cwd=WEB_ADMIN_DIR, env=env
                     )
                     if result.returncode != 0:
                         raise RuntimeError(

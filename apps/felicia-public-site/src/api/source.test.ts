@@ -1,24 +1,7 @@
-import { describe, expect, test, mock, beforeAll, afterAll } from "bun:test"
+import { describe, expect, test, vi, beforeAll, afterEach } from "vitest"
 import { loadJourney, loadJourneys } from "./source"
 import type { ApiJourney, ApiMemento } from "@felicia/reader"
 import { loadGoldenRouteFixture } from "../../tests/fixtures"
-
-// Access import.meta.env in a type-safe way that is extensible and avoids ESLint any/ignore rules
-const importMeta = import.meta as unknown as {
-  env: {
-    VITE_API_BASE?: string
-    PROD?: boolean
-    DEV?: boolean
-  }
-}
-
-if (!importMeta.env) {
-  importMeta.env = {
-    VITE_API_BASE: "http://localhost:8080",
-    PROD: false,
-    DEV: true,
-  }
-}
 
 const originalFetch = globalThis.fetch
 let journeyID = ""
@@ -34,12 +17,12 @@ describe("source API", () => {
     journeyID = japanSpringJourney.id
   })
 
-  afterAll(() => {
+  afterEach(() => {
     globalThis.fetch = originalFetch
   })
 
   test("loadJourney fetches detail and mementos, then adapts them (dev mode)", async () => {
-    globalThis.fetch = mock((url: string | URL) => {
+    globalThis.fetch = vi.fn((url: string | URL) => {
       const urlStr = url.toString()
       if (urlStr.endsWith(`/api/v1/journeys/${journeyID}.json`)) {
         return Promise.resolve(Response.json(japanSpringJourney))
@@ -68,7 +51,7 @@ describe("source API", () => {
       },
     ]
 
-    globalThis.fetch = mock((url: string | URL) => {
+    globalThis.fetch = vi.fn((url: string | URL) => {
       const urlStr = url.toString()
       if (urlStr.endsWith("/api/v1/journeys.json")) {
         return Promise.resolve(Response.json(listFixture))
@@ -93,7 +76,7 @@ describe("source API", () => {
     const bareID = "f02ed764-5a4a-41c1-8553-3a283832c7d7"
     const listFixture = [{ id: bareID, slug: "bare-2026", title: "空路", memento_count: 0, representative_dots: null }]
 
-    globalThis.fetch = mock((url: string | URL) => {
+    globalThis.fetch = vi.fn((url: string | URL) => {
       const urlStr = url.toString()
       if (urlStr.endsWith("/api/v1/journeys.json")) {
         return Promise.resolve(Response.json(listFixture))
@@ -115,14 +98,14 @@ describe("source API", () => {
   })
 
   test("loadJourney throws on non-ok response", async () => {
-    globalThis.fetch = mock(() => Promise.resolve(new Response("Error", { status: 500 }))) as unknown as typeof fetch
+    globalThis.fetch = vi.fn(() => Promise.resolve(new Response("Error", { status: 500 }))) as unknown as typeof fetch
 
-    expect(loadJourney(journeyID)).rejects.toThrow()
+    await expect(loadJourney(journeyID)).rejects.toThrow()
   })
 
   test("loadJourneys throws on non-ok response", async () => {
-    globalThis.fetch = mock(() => Promise.resolve(new Response("Error", { status: 500 }))) as unknown as typeof fetch
+    globalThis.fetch = vi.fn(() => Promise.resolve(new Response("Error", { status: 500 }))) as unknown as typeof fetch
 
-    expect(loadJourneys()).rejects.toThrow()
+    await expect(loadJourneys()).rejects.toThrow()
   })
 })

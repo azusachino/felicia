@@ -10,7 +10,7 @@ export default ts.config(
   // out of `validate` per ADMIN-01.8, so they're kept out of this lint scope
   // too rather than stretching the browser-only `globals.browser` config
   // below to also cover Node globals like `process`.
-  { ignores: ["dist/", "e2e/**", "playwright.config.ts", "playwright-report/**", "test-results/**"] },
+  { ignores: [".svelte-kit/", "dist/", "e2e/**", "playwright.config.ts", "playwright-report/**", "test-results/**"] },
   js.configs.recommended,
   ...ts.configs.recommended,
   ...svelte.configs.recommended,
@@ -19,6 +19,12 @@ export default ts.config(
     languageOptions: { parserOptions: { parser: ts.parser, extraFileExtensions: [".svelte"] } },
   },
   { languageOptions: { globals: { ...globals.browser } } },
+  {
+    // Generated UI primitives forward caller-owned URLs, including external
+    // links. Route-owning views must resolve internal navigation themselves.
+    files: ["src/lib/components/ui/button/button.svelte"],
+    rules: { "svelte/no-navigation-without-resolve": "off" },
+  },
   {
     files: ["e2e-desktop/**/*.ts", "playwright.desktop.config.ts"],
     languageOptions: { globals: { ...globals.node } },

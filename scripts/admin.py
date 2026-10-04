@@ -96,16 +96,15 @@ def start_api(arguments: argparse.Namespace) -> subprocess.Popen:
 
 
 def start_gui(arguments: argparse.Namespace) -> None:
-    if not (WEB_ADMIN / "node_modules").exists():
-        run(["bun", "install"], cwd=ROOT)
+    run(["bun", "install", "--frozen-lockfile"], cwd=ROOT)
     environment = os.environ.copy()
     environment["VITE_API_PROXY"] = f"http://{LOCALHOST}:{arguments.api_port}"
     run(
         [
             "bun",
+            "--bun",
             "run",
             "dev",
-            "--",
             "--host",
             arguments.host,
             "--port",

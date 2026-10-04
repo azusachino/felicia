@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
 
+env:
+  MISE_LOCKED: "1"
+
 # Cancel superseded runs on the same ref.
 concurrency:
   group: ci-${{ github.ref }}
