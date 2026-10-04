@@ -85,9 +85,9 @@ test("journey Back is an icon-only native link with hover and keyboard hints", a
 
 test("modal Close hint renders inside the top layer and preserves cancellation", async ({ page }) => {
   await page.goto("/")
-  const create = page.getByRole("button", { name: "New journey", exact: true })
+  const create = page.getByRole("button", { name: "Scan trip folder", exact: true })
   await create.click()
-  const sheet = page.getByRole("dialog", { name: "Create a new journey", exact: true })
+  const sheet = page.getByRole("dialog", { name: "Scan a trip folder", exact: true })
   const close = sheet.getByRole("button", { name: "Close", exact: true })
   await expect(close).toHaveText("")
   await close.hover()

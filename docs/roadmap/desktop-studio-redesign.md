@@ -305,10 +305,22 @@ static SvelteKit/Bun tooling, desktop essay persistence, and the live
 appearance/shared-control/icon increment. This PR does not complete revised S1
 or close [#158](https://github.com/azusachino/felicia/issues/158).
 
-Exclude unwired `NewJourney.svelte` / `ImportJourney.svelte`, unused generated
-Input/Label/Textarea/Badge scaffolds, import-page-only translations, and generated
-desktop asset index churn. Keep those worktree artifacts intact for subsequent
-slices. The candidate includes the live journey Back translation. Verify an
+The owner corrected the initial publication scope after
+[PR #159](https://github.com/azusachino/felicia/pull/159): full-page creation is
+part of this PR, not an excluded prototype. The PR is draft while the dedicated
+`/journey/new` route is implemented and verified. Include `NewJourney.svelte`
+and the Input/Label controls it uses. Library New opens that route instead of a
+creation dialog. Required acceptance: direct entry and initial title focus,
+Back/Cancel with no accidental write, guarded unsaved/pending navigation,
+required title/place/dates, visible date-range validation, editable derived
+slug, optional metadata, retained inputs on collision and successful retry,
+real persisted creation/reload, one write while pending, locale and bounded
+small/zoomed layouts. Browser checks do not establish native Wails acceptance.
+
+Exclude unwired `ImportJourney.svelte`, unused Textarea/Badge scaffolds,
+import-page-only translations, and generated desktop asset index churn. Keep
+those worktree artifacts intact; legacy scan/apply is not the reviewed S2
+source contract. The candidate includes the live journey Back translation. Verify an
 isolated export of the exact index with frozen Bun install, uncached project and
 browser gates, then a fresh independent pass before publication. Previous
 working-diff reviews remain historical evidence, not acceptance of a changed

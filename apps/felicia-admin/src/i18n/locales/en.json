@@ -27,6 +27,8 @@
   "admin.journeys.country_optional": "Country (optional)",
   "admin.journeys.region_optional": "Region (optional)",
   "admin.journeys.creating": "Creating…",
+  "admin.journeys.invalid_dates": "End date must be on or after the start date.",
+  "admin.journeys.unsaved_leave": "Discard this unsaved journey and leave?",
   "admin.journeys.create_action": "Create journey",
   "admin.journeys.loading": "Loading journeys…",
   "admin.journeys.empty": "No journeys yet.",

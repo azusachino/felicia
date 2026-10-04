@@ -18,6 +18,8 @@ test("creates a journey through labeled fields and persists it after reload", as
   await info.attach("library-aria", { path: ariaPath, contentType: "text/plain" })
 
   await page.getByRole("button", { name: "New journey", exact: true }).click()
+  await expect(page).toHaveURL(/#\/journey\/new$/)
+  await expect(page.getByRole("dialog")).toHaveCount(0)
   const create = page.getByRole("button", { name: "Create journey", exact: true })
   await expect(create).toBeDisabled()
   await page.getByLabel("Title", { exact: true }).fill("Synthetic Kyoto Journey")
@@ -46,7 +48,7 @@ test("cancels creation without persisting a row", async ({ page, request }) => {
   await page.goto("/")
   await page.getByRole("button", { name: "New journey", exact: true }).click()
   await page.getByLabel("Title", { exact: true }).fill("Cancelled synthetic journey")
-  await page.getByRole("button", { name: "Close", exact: true }).click()
+  await page.getByRole("button", { name: "Cancel", exact: true }).click()
   await expect(page.getByText("No journeys yet.", { exact: true })).toBeVisible()
   const rows = await request.get("/api/admin/journeys")
   expect(await rows.json()).toEqual([])

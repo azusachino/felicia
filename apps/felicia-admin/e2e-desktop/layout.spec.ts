@@ -5,7 +5,7 @@ for (const viewport of [
   { width: 900, height: 600 },
   { width: 720, height: 600 },
 ]) {
-  test(`compact shell and creation sheet at ${viewport.width}x${viewport.height}`, async ({ page }, info) => {
+  test(`compact shell and full creation page at ${viewport.width}x${viewport.height}`, async ({ page }, info) => {
     await page.setViewportSize(viewport)
     await page.goto("/")
     await expect(page.getByText("YP", { exact: true })).toHaveCount(0)
@@ -36,7 +36,9 @@ for (const viewport of [
     await page.getByRole("heading", { name: "Journeys", exact: true }).click()
     await expect(settings).toBeHidden()
     await page.getByRole("button", { name: "New journey", exact: true }).click()
-    const sheet = page.getByRole("dialog")
+    await expect(page).toHaveURL(/#\/journey\/new$/)
+    await expect(page.getByRole("dialog")).toHaveCount(0)
+    const sheet = page.getByRole("region", { name: "Create a new journey", exact: true })
     await expect(sheet).toBeVisible()
     await expect(sheet.getByLabel("Title", { exact: true })).toBeFocused()
     const create = sheet.getByRole("button", { name: "Create journey", exact: true })
@@ -44,10 +46,10 @@ for (const viewport of [
     expect(box).not.toBeNull()
     expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height)
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width)
-    await page.screenshot({ path: info.outputPath("creation-sheet.png") })
-    await page.keyboard.press("Escape")
+    await page.screenshot({ path: info.outputPath("creation-page.png") })
+    await sheet.getByRole("button", { name: "Cancel", exact: true }).click()
     await expect(sheet).toBeHidden()
-    await expect(page.getByRole("button", { name: "New journey", exact: true })).toBeFocused()
+    await expect(page.getByRole("button", { name: "New journey", exact: true })).toBeVisible()
   })
 }
 
@@ -60,8 +62,8 @@ test("popover and dialog motion honor reduced-motion preference", async ({ page 
   await settingsTrigger.click()
   await expect(settings).toBeHidden()
 
-  await page.getByRole("button", { name: "New journey", exact: true }).click()
-  const creation = page.getByRole("dialog", { name: "Create a new journey", exact: true })
+  await page.getByRole("button", { name: "Scan trip folder", exact: true }).click()
+  const creation = page.getByRole("dialog", { name: "Scan a trip folder", exact: true })
   expect(await creation.evaluate((element) => getComputedStyle(element).transitionDuration)).toContain("0.16s")
   await page.emulateMedia({ reducedMotion: "reduce" })
   expect(await creation.evaluate((element) => getComputedStyle(element).transitionDuration)).toBe("0s")

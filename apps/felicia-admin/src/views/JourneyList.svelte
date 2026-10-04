@@ -10,7 +10,6 @@
   let { locale, desktop = false }: { locale: Locale; desktop?: boolean } = $props()
   import {
     compileSite,
-    createJourney,
     pickDesktopFolder,
     describeLoadFailure,
     formatJourneyDate,
@@ -31,25 +30,10 @@
   let loading = $state(true)
   let error = $state("")
   let showNewJourney = $state(false)
-  let creationMode = $state<"create" | "scan">("create")
-
-  // Create form state
-  let createTitle = $state("")
-  let createPlace = $state("")
-  let createSlug = $state("")
-  let createDateStart = $state("")
-  let createDateEnd = $state("")
-  let createCountry = $state("")
-  let createRegion = $state("")
-  let createState = $state<"idle" | "pending" | "error">("idle")
-  let createError = $state("")
-  let slugManuallyEdited = $state(false)
-  const fallbackSlug = `journey-${crypto.getRandomValues(new Uint32Array(1))[0].toString(16)}`
   let creationDialog = $state<HTMLDialogElement>()
   let creationOpener: HTMLButtonElement | null = null
 
-  function openCreation(mode: "create" | "scan", event: MouseEvent) {
-    creationMode = mode
+  function openCreation(event: MouseEvent) {
     creationOpener = event.currentTarget as HTMLButtonElement
     showNewJourney = true
   }
@@ -70,44 +54,11 @@
   })
 
   function cancelCreation(event?: Event) {
-    if (createState === "pending" || scanState === "importing") {
+    if (scanState === "importing") {
       event?.preventDefault()
       return
     }
     showNewJourney = false
-  }
-
-  function onTitleInput() {
-    if (!slugManuallyEdited) {
-      createSlug =
-        createTitle
-          .toLowerCase()
-          .trim()
-          .replace(/[^\w\s-]/g, "")
-          .replace(/[\s_-]+/g, "-")
-          .replace(/^-+|-+$/g, "") || fallbackSlug
-    }
-  }
-
-  async function submitCreateJourney() {
-    createState = "pending"
-    createError = ""
-    try {
-      const res = await createJourney({
-        title: createTitle.trim(),
-        place: createPlace.trim(),
-        slug: createSlug.trim(),
-        date_start: createDateStart,
-        date_end: createDateEnd,
-        country: createCountry.trim() || undefined,
-        region: createRegion.trim() || undefined,
-      })
-      showNewJourney = false
-      await goto(resolve(journeyDetailPath(res.id)))
-    } catch (cause) {
-      createError = actionErrorMessage(cause)
-      createState = "error"
-    }
   }
 
   // Scan form state
@@ -235,104 +186,64 @@
   <header class="journeys-header">
     <h1>{message(locale, "admin.journeys.title")}</h1>
     <div class="header-actions">
-      <Button variant="outline" size="sm" type="button" onclick={(event) => openCreation("scan", event)} aria-label={message(locale, "admin.connectors.scan_trip_folder")}
+      <Button variant="outline" size="sm" type="button" onclick={openCreation} aria-label={message(locale, "admin.connectors.scan_trip_folder")}
         ><FolderSearch size={16} aria-hidden="true" />{message(locale, "admin.common.scan")}</Button
       >
-      <Button size="sm" type="button" onclick={(event) => openCreation("create", event)}><Plus size={16} aria-hidden="true" />{message(locale, "admin.journeys.new_action")}</Button>
+      <Button size="sm" type="button" onclick={() => goto(resolve("/journey/new"))}><Plus size={16} aria-hidden="true" />{message(locale, "admin.journeys.new_action")}</Button>
     </div>
   </header>
 
-  <dialog class="studio-dialog new-journey" bind:this={creationDialog} aria-labelledby="new-journey-title" oncancel={cancelCreation} onclose={creationClosed}>
+  <dialog class="studio-dialog new-journey" bind:this={creationDialog} aria-labelledby="scan-journey-title" oncancel={cancelCreation} onclose={creationClosed}>
     <header class="sheet-header">
-      <h2 id="new-journey-title">{message(locale, creationMode === "create" ? "admin.journeys.create_heading" : "admin.connectors.scan_heading")}</h2>
-      <IconButton variant="ghost" label={message(locale, "admin.common.close")} onclick={() => cancelCreation()} disabled={createState === "pending" || scanState === "importing"}
-        ><X size={16} aria-hidden="true" /></IconButton
-      >
+      <h2 id="scan-journey-title">{message(locale, "admin.connectors.scan_heading")}</h2>
+      <IconButton variant="ghost" label={message(locale, "admin.common.close")} onclick={() => cancelCreation()} disabled={scanState === "importing"}><X size={16} aria-hidden="true" /></IconButton>
     </header>
     <div class="sheet-body">
-      {#if creationMode === "create"}
-        <p class="hint">{message(locale, "admin.journeys.create_note")}</p>
-        <form
-          id="journey-create-form"
-          class="new-journey-form"
-          onsubmit={(event) => {
-            event.preventDefault()
-            submitCreateJourney()
-          }}
-        >
-          <label>{message(locale, "admin.common.title")}<input required bind:value={createTitle} oninput={onTitleInput} /></label>
-          <label>{message(locale, "admin.common.place")}<input required bind:value={createPlace} /></label>
-          <label>{message(locale, "admin.journeys.start_date")}<input required type="date" bind:value={createDateStart} /></label>
-          <label>{message(locale, "admin.journeys.end_date")}<input required type="date" min={createDateStart} bind:value={createDateEnd} /></label>
-          <details class="more-options">
-            <summary>{message(locale, "admin.journeys.more_options")}</summary>
-            <div class="optional-fields">
-              <label>{message(locale, "admin.journeys.slug")}<input required bind:value={createSlug} oninput={() => (slugManuallyEdited = true)} /></label>
-              <label>{message(locale, "admin.journeys.country_optional")}<input bind:value={createCountry} /></label>
-              <label>{message(locale, "admin.journeys.region_optional")}<input bind:value={createRegion} /></label>
-            </div>
-          </details>
-        </form>
-        {#if createError}<p class="api-error" role="alert">{createError}</p>{/if}
-      {:else}
-        <p class="hint">
-          {message(locale, "admin.connectors.scan_note")}
-        </p>
-        <div class="new-journey-form">
-          <div class="source-folder">
-            <label for="source-folder-path">{message(locale, "admin.connectors.folder_path")}</label>
-            <div class="path-control">
-              <input id="source-folder-path" bind:value={workspace} placeholder="/Users/you/trips/izu-trip-2026-08-01" />
-              {#if desktop}<IconButton label={message(locale, "admin.connectors.browse")} onclick={browseWorkspace} disabled={browseState === "pending"}
-                  ><FolderOpen size={16} aria-hidden="true" /></IconButton
-                >{/if}
-            </div>
+      <p class="hint">
+        {message(locale, "admin.connectors.scan_note")}
+      </p>
+      <div class="new-journey-form">
+        <div class="source-folder">
+          <label for="source-folder-path">{message(locale, "admin.connectors.folder_path")}</label>
+          <div class="path-control">
+            <input id="source-folder-path" bind:value={workspace} placeholder="/Users/you/trips/izu-trip-2026-08-01" />
+            {#if desktop}<IconButton label={message(locale, "admin.connectors.browse")} onclick={browseWorkspace} disabled={browseState === "pending"}
+                ><FolderOpen size={16} aria-hidden="true" /></IconButton
+              >{/if}
           </div>
-          <label>{message(locale, "admin.journeys.slug")}<input bind:value={slug} placeholder="izu-trip-2026-08-01" /></label>
-          <label>{message(locale, "admin.common.title")}<input bind:value={title} placeholder="Izu · 2026-08-01 – 2026-08-02" /></label>
-          <label>{message(locale, "admin.common.place")}<input bind:value={place} placeholder="Izu" /></label>
         </div>
-        {#if scanError}<p class="api-error" role="alert">{scanError}</p>{/if}
-        {#if scanned}
-          <div class="scan-result">
-            <strong>{message(locale, "admin.connectors.dry_run_result")}</strong>
-            <span>{scanned.plan.date_start ? formatJourneyDate(scanned.plan.date_start) : "?"} – {scanned.plan.date_end ? formatJourneyDate(scanned.plan.date_end) : "?"}</span>
-            <span>{message(locale, "admin.connectors.scan_counts", { routes: scanned.plan.routes.length, stops: scanned.plan.stops.length, mementos: scanned.plan.mementos.length })}</span>
-            {#if scanned.plan.issues.length > 0}<span class="scan-warning">{message(locale, "admin.connectors.review_notes", { count: scanned.plan.issues.length })}</span>{/if}
-          </div>
-        {/if}
+        <label>{message(locale, "admin.journeys.slug")}<input bind:value={slug} placeholder="izu-trip-2026-08-01" /></label>
+        <label>{message(locale, "admin.common.title")}<input bind:value={title} placeholder="Izu · 2026-08-01 – 2026-08-02" /></label>
+        <label>{message(locale, "admin.common.place")}<input bind:value={place} placeholder="Izu" /></label>
+      </div>
+      {#if scanError}<p class="api-error" role="alert">{scanError}</p>{/if}
+      {#if scanned}
+        <div class="scan-result">
+          <strong>{message(locale, "admin.connectors.dry_run_result")}</strong>
+          <span>{scanned.plan.date_start ? formatJourneyDate(scanned.plan.date_start) : "?"} – {scanned.plan.date_end ? formatJourneyDate(scanned.plan.date_end) : "?"}</span>
+          <span>{message(locale, "admin.connectors.scan_counts", { routes: scanned.plan.routes.length, stops: scanned.plan.stops.length, mementos: scanned.plan.mementos.length })}</span>
+          {#if scanned.plan.issues.length > 0}<span class="scan-warning">{message(locale, "admin.connectors.review_notes", { count: scanned.plan.issues.length })}</span>{/if}
+        </div>
       {/if}
     </div>
     <footer class="sheet-actions">
-      <button class="secondary" type="button" onclick={() => cancelCreation()} disabled={createState === "pending" || scanState === "importing"}>{message(locale, "admin.common.cancel")}</button>
-      {#if creationMode === "create"}
-        <Button
-          type="submit"
-          form="journey-create-form"
-          aria-label={createState === "pending" ? message(locale, "admin.journeys.creating") : message(locale, "admin.journeys.create_action")}
-          disabled={!createTitle.trim() || !createPlace.trim() || !createSlug.trim() || !createDateStart || !createDateEnd || createState === "pending"}
-        >
-          <Plus size={16} aria-hidden="true" />
-          {createState === "pending" ? message(locale, "admin.journeys.creating") : message(locale, "admin.common.create")}
-        </Button>
-      {:else}
-        <Button
-          variant="outline"
+      <button class="secondary" type="button" onclick={() => cancelCreation()} disabled={scanState === "importing"}>{message(locale, "admin.common.cancel")}</button>
+      <Button
+        variant="outline"
+        type="button"
+        onclick={scanWorkspace}
+        disabled={!workspace || scanState === "scanning"}
+        aria-label={scanState === "scanning" ? message(locale, "admin.connectors.scanning") : message(locale, "admin.connectors.scan_preview")}
+        ><FolderSearch size={16} aria-hidden="true" />{scanState === "scanning" ? message(locale, "admin.connectors.scanning") : message(locale, "admin.common.scan")}</Button
+      >
+      {#if scanned}<Button
           type="button"
-          onclick={scanWorkspace}
-          disabled={!workspace || scanState === "scanning"}
-          aria-label={scanState === "scanning" ? message(locale, "admin.connectors.scanning") : message(locale, "admin.connectors.scan_preview")}
-          ><FolderSearch size={16} aria-hidden="true" />{scanState === "scanning" ? message(locale, "admin.connectors.scanning") : message(locale, "admin.common.scan")}</Button
+          onclick={importWorkspace}
+          disabled={!slug || !title || scanState === "importing"}
+          aria-label={scanState === "importing" ? message(locale, "admin.connectors.importing") : message(locale, "admin.connectors.confirm_import")}
         >
-        {#if scanned}<Button
-            type="button"
-            onclick={importWorkspace}
-            disabled={!slug || !title || scanState === "importing"}
-            aria-label={scanState === "importing" ? message(locale, "admin.connectors.importing") : message(locale, "admin.connectors.confirm_import")}
-          >
-            <Download size={16} aria-hidden="true" />{scanState === "importing" ? message(locale, "admin.connectors.importing") : message(locale, "admin.common.import")}</Button
-          >{/if}
-      {/if}
+          <Download size={16} aria-hidden="true" />{scanState === "importing" ? message(locale, "admin.connectors.importing") : message(locale, "admin.common.import")}</Button
+        >{/if}
     </footer>
   </dialog>
 
@@ -470,20 +381,6 @@
     color: var(--text);
     background: var(--surface);
     font: inherit;
-  }
-  .more-options {
-    grid-column: 1 / -1;
-    color: var(--muted);
-  }
-  .more-options summary {
-    cursor: pointer;
-    font-size: 13px;
-    padding: 4px 0;
-  }
-  .optional-fields {
-    display: grid;
-    gap: 12px;
-    margin-top: 12px;
   }
   .scan-result {
     display: flex;

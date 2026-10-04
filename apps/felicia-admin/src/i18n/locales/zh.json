@@ -27,6 +27,8 @@
   "admin.journeys.country_optional": "国家（可选）",
   "admin.journeys.region_optional": "地区（可选）",
   "admin.journeys.creating": "正在创建…",
+  "admin.journeys.invalid_dates": "结束日期不能早于开始日期。",
+  "admin.journeys.unsaved_leave": "放弃这段未保存的旅程并离开？",
   "admin.journeys.create_action": "创建旅程",
   "admin.journeys.loading": "正在加载旅程…",
   "admin.journeys.empty": "暂无旅程。",

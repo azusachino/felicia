@@ -27,6 +27,8 @@
   "admin.journeys.country_optional": "国（任意）",
   "admin.journeys.region_optional": "地域（任意）",
   "admin.journeys.creating": "作成中…",
+  "admin.journeys.invalid_dates": "終了日は開始日以降にしてください。",
+  "admin.journeys.unsaved_leave": "未保存の旅程を破棄して移動しますか？",
   "admin.journeys.create_action": "旅程を作成",
   "admin.journeys.loading": "旅程を読み込み中…",
   "admin.journeys.empty": "まだ旅程がありません。",
