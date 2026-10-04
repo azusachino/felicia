@@ -1,5 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte"
+  import { Button } from "$lib/components/ui/button"
+  import IconButton from "$lib/components/IconButton.svelte"
+  import { FolderOpen, FolderSearch, Plus, Hammer, Download, X } from "@lucide/svelte"
   import { goto } from "$app/navigation"
   import { resolve } from "$app/paths"
   import { message, statusMessage, type Locale } from "../i18n"
@@ -232,18 +235,19 @@
   <header class="journeys-header">
     <h1>{message(locale, "admin.journeys.title")}</h1>
     <div class="header-actions">
-      <button class="secondary" type="button" onclick={load} disabled={loading}>{loading ? message(locale, "admin.common.loading") : message(locale, "admin.common.refresh")}</button>
-      <button class="secondary" type="button" onclick={(event) => openCreation("scan", event)}>{message(locale, "admin.connectors.scan_trip_folder")}</button>
-      <button class="primary" type="button" onclick={(event) => openCreation("create", event)}>{message(locale, "admin.journeys.new_action")}</button>
+      <Button variant="outline" size="sm" type="button" onclick={(event) => openCreation("scan", event)} aria-label={message(locale, "admin.connectors.scan_trip_folder")}
+        ><FolderSearch size={16} aria-hidden="true" />{message(locale, "admin.common.scan")}</Button
+      >
+      <Button size="sm" type="button" onclick={(event) => openCreation("create", event)}><Plus size={16} aria-hidden="true" />{message(locale, "admin.journeys.new_action")}</Button>
     </div>
   </header>
 
   <dialog class="studio-dialog new-journey" bind:this={creationDialog} aria-labelledby="new-journey-title" oncancel={cancelCreation} onclose={creationClosed}>
     <header class="sheet-header">
       <h2 id="new-journey-title">{message(locale, creationMode === "create" ? "admin.journeys.create_heading" : "admin.connectors.scan_heading")}</h2>
-      <button type="button" class="icon-button" aria-label={message(locale, "admin.common.close")} onclick={() => cancelCreation()} disabled={createState === "pending" || scanState === "importing"}>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" /></svg>
-      </button>
+      <IconButton variant="ghost" label={message(locale, "admin.common.close")} onclick={() => cancelCreation()} disabled={createState === "pending" || scanState === "importing"}
+        ><X size={16} aria-hidden="true" /></IconButton
+      >
     </header>
     <div class="sheet-body">
       {#if creationMode === "create"}
@@ -275,10 +279,15 @@
           {message(locale, "admin.connectors.scan_note")}
         </p>
         <div class="new-journey-form">
-          <label
-            >{message(locale, "admin.connectors.folder_path")}<input bind:value={workspace} placeholder="/Users/you/trips/izu-trip-2026-08-01" />
-            {#if desktop}<button class="secondary" type="button" onclick={browseWorkspace} disabled={browseState === "pending"}>{message(locale, "admin.connectors.browse")}</button>{/if}</label
-          >
+          <div class="source-folder">
+            <label for="source-folder-path">{message(locale, "admin.connectors.folder_path")}</label>
+            <div class="path-control">
+              <input id="source-folder-path" bind:value={workspace} placeholder="/Users/you/trips/izu-trip-2026-08-01" />
+              {#if desktop}<IconButton label={message(locale, "admin.connectors.browse")} onclick={browseWorkspace} disabled={browseState === "pending"}
+                  ><FolderOpen size={16} aria-hidden="true" /></IconButton
+                >{/if}
+            </div>
+          </div>
           <label>{message(locale, "admin.journeys.slug")}<input bind:value={slug} placeholder="izu-trip-2026-08-01" /></label>
           <label>{message(locale, "admin.common.title")}<input bind:value={title} placeholder="Izu · 2026-08-01 – 2026-08-02" /></label>
           <label>{message(locale, "admin.common.place")}<input bind:value={place} placeholder="Izu" /></label>
@@ -297,20 +306,31 @@
     <footer class="sheet-actions">
       <button class="secondary" type="button" onclick={() => cancelCreation()} disabled={createState === "pending" || scanState === "importing"}>{message(locale, "admin.common.cancel")}</button>
       {#if creationMode === "create"}
-        <button
-          class="primary"
+        <Button
           type="submit"
           form="journey-create-form"
+          aria-label={createState === "pending" ? message(locale, "admin.journeys.creating") : message(locale, "admin.journeys.create_action")}
           disabled={!createTitle.trim() || !createPlace.trim() || !createSlug.trim() || !createDateStart || !createDateEnd || createState === "pending"}
         >
-          {createState === "pending" ? message(locale, "admin.journeys.creating") : message(locale, "admin.journeys.create_action")}
-        </button>
+          <Plus size={16} aria-hidden="true" />
+          {createState === "pending" ? message(locale, "admin.journeys.creating") : message(locale, "admin.common.create")}
+        </Button>
       {:else}
-        <button class="secondary" type="button" onclick={scanWorkspace} disabled={!workspace || scanState === "scanning"}
-          >{scanState === "scanning" ? message(locale, "admin.connectors.scanning") : message(locale, "admin.connectors.scan_preview")}</button
+        <Button
+          variant="outline"
+          type="button"
+          onclick={scanWorkspace}
+          disabled={!workspace || scanState === "scanning"}
+          aria-label={scanState === "scanning" ? message(locale, "admin.connectors.scanning") : message(locale, "admin.connectors.scan_preview")}
+          ><FolderSearch size={16} aria-hidden="true" />{scanState === "scanning" ? message(locale, "admin.connectors.scanning") : message(locale, "admin.common.scan")}</Button
         >
-        {#if scanned}<button class="primary" type="button" onclick={importWorkspace} disabled={!slug || !title || scanState === "importing"}
-            >{scanState === "importing" ? message(locale, "admin.connectors.importing") : message(locale, "admin.connectors.confirm_import")}</button
+        {#if scanned}<Button
+            type="button"
+            onclick={importWorkspace}
+            disabled={!slug || !title || scanState === "importing"}
+            aria-label={scanState === "importing" ? message(locale, "admin.connectors.importing") : message(locale, "admin.connectors.confirm_import")}
+          >
+            <Download size={16} aria-hidden="true" />{scanState === "importing" ? message(locale, "admin.connectors.importing") : message(locale, "admin.common.import")}</Button
           >{/if}
       {/if}
     </footer>
@@ -360,7 +380,10 @@
     <section class="build-shortcut" aria-label={message(locale, "admin.build.preview_label")}>
       <div class="build-row">
         <span class="build-label">{message(locale, "admin.build.label")}</span>
-        <button type="button" onclick={triggerBuild} disabled={buildState.status === "pending"}>{buildButtonLabel(pendingJourneyCount(), buildState.status)}</button>
+        <Button type="button" onclick={triggerBuild} disabled={buildState.status === "pending"} aria-label={buildButtonLabel(pendingJourneyCount(), buildState.status)}
+          ><Hammer size={16} aria-hidden="true" />{buildState.status === "pending" ? message(locale, "admin.build.building") : message(locale, "admin.common.build")}{#if pendingJourneyCount() > 0}
+            ({pendingJourneyCount()}){/if}</Button
+        >
         {#if buildState.status === "success"}
           {#if buildState.report}
             <span class="trigger-status trigger-status--success build-report">
@@ -382,6 +405,22 @@
 </section>
 
 <style>
+  .source-folder {
+    display: grid;
+    align-content: start;
+    gap: 6px;
+    min-width: 0;
+  }
+  .path-control {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+  }
+  .path-control input {
+    min-width: 0;
+    width: 100%;
+  }
   .journeys {
     padding: 24px;
   }
@@ -587,19 +626,6 @@
     color: var(--text);
     font-weight: 600;
     font-size: 14px;
-  }
-  .build-row button {
-    border: 0;
-    border-radius: 7px;
-    padding: 8px 12px;
-    color: var(--surface);
-    background: var(--accent);
-    font-size: 13px;
-    white-space: nowrap;
-  }
-  .build-row button:disabled {
-    opacity: 0.6;
-    cursor: default;
   }
   .build-row .trigger-status {
     margin: 0;

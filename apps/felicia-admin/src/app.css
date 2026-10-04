@@ -1,10 +1,33 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* shadcn controls share the studio's system-aware surfaces, not a second palette. */
+@theme inline {
+  --color-background: var(--surface);
+  --color-foreground: var(--text);
+  --color-card: var(--surface-raised);
+  --color-card-foreground: var(--text);
+  --color-popover: var(--surface-raised);
+  --color-popover-foreground: var(--text);
+  --color-primary: var(--text);
+  --color-primary-foreground: var(--surface);
+  --color-secondary: var(--surface-muted);
+  --color-secondary-foreground: var(--text);
+  --color-muted: var(--surface-muted);
+  --color-muted-foreground: var(--muted);
+  --color-accent: var(--accent-soft);
+  --color-accent-foreground: var(--accent);
+  --color-destructive: var(--danger);
+  --color-border: var(--line);
+  --color-input: var(--line);
+  --color-ring: var(--accent);
+}
 
 :root {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   font-size: 14px;
   font-synthesis: none;
-  color-scheme: light dark;
+  color-scheme: light;
   --surface: #fcfcfd;
   --surface-raised: #fff;
   --surface-muted: #f1f2f4;
@@ -15,22 +38,24 @@
   --accent: #a9501c;
   --accent-soft: #f8e9dc;
   --danger: #a82f37;
+  --secondary: var(--surface-muted);
+  --foreground: var(--text);
+  --radius-md: 0.375rem;
   color: var(--text);
   background: transparent;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --surface: #202226;
-    --surface-raised: #292c31;
-    --surface-muted: #303339;
-    --glass: rgb(31 33 38 / 70%);
-    --line: #454950;
-    --text: #eceef1;
-    --muted: #b0b5bf;
-    --accent: #f4ad77;
-    --accent-soft: #453326;
-    --danger: #ff9a9e;
-  }
+:root.dark {
+  color-scheme: dark;
+  --surface: #202226;
+  --surface-raised: #292c31;
+  --surface-muted: #303339;
+  --glass: rgb(31 33 38 / 70%);
+  --line: #454950;
+  --text: #eceef1;
+  --muted: #b0b5bf;
+  --accent: #f4ad77;
+  --accent-soft: #453326;
+  --danger: #ff9a9e;
 }
 * {
   box-sizing: border-box;
@@ -57,6 +82,7 @@ button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 select:focus-visible,
+textarea:focus-visible,
 summary:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
@@ -154,16 +180,26 @@ nav a.active {
   margin-top: auto;
   color: var(--muted);
 }
-.settings-menu {
-  position: relative;
+.studio-tooltip {
+  z-index: 100;
+  max-width: 240px;
+  padding: 6px 9px;
+  border-radius: 6px;
+  background: var(--text);
+  color: var(--surface);
+  font-size: 12px;
+  line-height: 1.4;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
 }
 .settings-trigger {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
   border: 0;
   border-radius: 8px;
-  padding: 9px 10px;
+  padding: 0;
   color: var(--muted);
   background: transparent;
   font-size: 13px;
@@ -188,19 +224,6 @@ nav a.active {
 }
 .settings-popover[hidden] {
   display: none;
-}
-.workspace-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px;
-  font-size: 11px;
-}
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
 }
 .content {
   grid-column: 2;
@@ -387,6 +410,12 @@ h2 {
     opacity: 1;
   }
 }
+@media (prefers-reduced-motion: reduce) {
+  .settings-panel {
+    animation: none !important;
+    transition: none !important;
+  }
+}
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   :root {
     --glass: var(--surface-muted);
@@ -422,9 +451,6 @@ h2 {
     inset-inline-start: auto;
     top: calc(100% + 8px);
     bottom: auto;
-  }
-  .workspace-status {
-    display: none;
   }
   .content {
     grid-column: 1;

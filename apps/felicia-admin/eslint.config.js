@@ -20,6 +20,12 @@ export default ts.config(
   },
   { languageOptions: { globals: { ...globals.browser } } },
   {
+    // Generated UI primitives forward caller-owned URLs, including external
+    // links. Route-owning views must resolve internal navigation themselves.
+    files: ["src/lib/components/ui/button/button.svelte"],
+    rules: { "svelte/no-navigation-without-resolve": "off" },
+  },
+  {
     files: ["e2e-desktop/**/*.ts", "playwright.desktop.config.ts"],
     languageOptions: { globals: { ...globals.node } },
   },

@@ -102,7 +102,16 @@ projection:
   Owner feedback now requires full-page tasks, a shared shadcn-svelte foundation,
   an isolated demo workspace, and macOS 26+ support; acceptance is tracked in
   [#158](https://github.com/azusachino/felicia/issues/158). These are ordered revision
-  slices, not completed capabilities.
+  slices; full-page tasks, isolated demo, complete shared styling and native
+  acceptance remain pending. The verified revision checkpoints establish the
+  macOS 26 build floor, static SvelteKit studio with Bun tooling, and persisted
+  desktop essay edits. The live studio now has locally saved System / Light /
+  Dark appearance, theme-aware Site panels, and icon-first shared controls with
+  accessible names and hover/keyboard hints. Save includes dirty photo metadata
+  and protects later edits while requests are in flight. Browser verification is
+  46/46 desktop-composition checks plus 14/14 real web-authoring checks; it does
+  not establish native Wails or source-review/apply acceptance. See the ordered
+  plan for independent review and the remaining boundaries.
 
 - **Google Timeline visits (#81)** — `felicia-cli journey plan --timeline <Timeline.json>` now reads concatenated Timeline JSON and Takeout `timelineObjects`, preserving place names, IDs, coordinates, and visit times as semantic intake visits. Activity segments are not synthesized into route geometry; provide GPX or Dawarich for a route. Timeline input is read-only and stays local.
 

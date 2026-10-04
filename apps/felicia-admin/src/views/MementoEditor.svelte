@@ -1,6 +1,9 @@
 <script lang="ts">
   import { beforeNavigate, goto } from "$app/navigation"
   import { resolve } from "$app/paths"
+  import { Button } from "$lib/components/ui/button"
+  import IconButton from "$lib/components/IconButton.svelte"
+  import { ArrowLeft, ArrowUp, ArrowDown, Save, Undo2, Upload, Check } from "@lucide/svelte"
   import { message, statusMessage, type Locale } from "../i18n"
   import {
     deleteMemento,
@@ -482,7 +485,9 @@
 <svelte:window onkeydown={saveShortcut} />
 
 <section class="editor">
-  <a class="back-link" href={resolve(journeyDetailPath(journeyId))}>&larr; {message(locale, "admin.mementos.back_to_journey")}</a>
+  <div class="back-link">
+    <IconButton variant="ghost" href={resolve(journeyDetailPath(journeyId))} label={message(locale, "admin.mementos.back_to_journey")}><ArrowLeft size={16} aria-hidden="true" /></IconButton>
+  </div>
 
   {#if loading}
     <p class="hint">{message(locale, "admin.mementos.loading")}</p>
@@ -680,14 +685,22 @@
                 </label>
               </div>
               <div class="photo-actions">
-                <button type="button" class="secondary" onclick={() => movePhoto(photoRows.indexOf(row), -1)} disabled={photoRows.indexOf(row) === 0 || row.status === "pending"}
-                  >{message(locale, "admin.mementos.move_photo_up")}</button
+                <IconButton
+                  label={message(locale, "admin.mementos.move_photo_up")}
+                  onclick={() => movePhoto(photoRows.indexOf(row), -1)}
+                  disabled={photoRows.indexOf(row) === 0 || row.status === "pending"}><ArrowUp size={16} aria-hidden="true" /></IconButton
                 >
-                <button type="button" class="secondary" onclick={() => movePhoto(photoRows.indexOf(row), 1)} disabled={photoRows.indexOf(row) === photoRows.length - 1 || row.status === "pending"}
-                  >{message(locale, "admin.mementos.move_photo_down")}</button
+                <IconButton
+                  label={message(locale, "admin.mementos.move_photo_down")}
+                  onclick={() => movePhoto(photoRows.indexOf(row), 1)}
+                  disabled={photoRows.indexOf(row) === photoRows.length - 1 || row.status === "pending"}><ArrowDown size={16} aria-hidden="true" /></IconButton
                 >
-                <button type="button" onclick={() => savePhotoRow(row)} disabled={row.status === "pending"}
-                  >{row.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.mementos.photo_save_caption")}</button
+                <Button
+                  type="button"
+                  onclick={() => savePhotoRow(row)}
+                  disabled={row.status === "pending"}
+                  aria-label={row.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.mementos.photo_save_caption")}
+                  ><Save size={16} aria-hidden="true" />{row.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.common.save")}</Button
                 >
               </div>
               {#if row.status === "success"}
@@ -702,21 +715,22 @@
     </section>
 
     <section class="actions" aria-label={message(locale, "admin.mementos.actions_label")}>
-      <button type="button" onclick={() => saveEditor()} disabled={saveState.status === "pending" || photoRows.some((row) => row.status === "pending")}
-        >{saveState.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.mementos.save")}</button
-      >
-      <button type="button" class="secondary" onclick={saveAndBack} disabled={saveState.status === "pending"}>
-        {saveState.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.mementos.save_back")}
-      </button>
+      <Button type="button" onclick={() => saveEditor()} disabled={saveState.status === "pending" || photoRows.some((row) => row.status === "pending")}>
+        <Save size={16} aria-hidden="true" />{saveState.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.mementos.save")}
+      </Button>
+      <Button type="button" variant="outline" onclick={saveAndBack} disabled={saveState.status === "pending"}>
+        <ArrowLeft size={16} aria-hidden="true" />{saveState.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.mementos.save_back")}
+      </Button>
       {#if unpublishActionLabel(memento.state) && previousLifecycleState(memento.state)}
-        <button type="button" class="secondary" onclick={retreatLifecycle} disabled={saveState.status === "pending"}>
-          {message(locale, "admin.mementos.unpublish")}
-        </button>
+        <Button type="button" variant="outline" onclick={retreatLifecycle} disabled={saveState.status === "pending"}>
+          <Undo2 size={16} aria-hidden="true" />{message(locale, "admin.mementos.unpublish")}
+        </Button>
       {/if}
       {#if lifecycleActionLabel(memento.state) && nextLifecycleState(memento.state)}
-        <button type="button" class="primary" onclick={advanceLifecycle} disabled={saveState.status === "pending"}>
+        <Button type="button" onclick={advanceLifecycle} disabled={saveState.status === "pending"}>
+          {#if memento.state === "draft"}<Check size={16} aria-hidden="true" />{:else}<Upload size={16} aria-hidden="true" />{/if}
           {memento.state === "draft" ? message(locale, "admin.mementos.mark_authored") : message(locale, "admin.mementos.publish")}
-        </button>
+        </Button>
       {/if}
     </section>
 
@@ -753,9 +767,6 @@
     color: #9f522d;
     font-size: 13px;
     text-decoration: none;
-  }
-  .back-link:hover {
-    text-decoration: underline;
   }
   .hint {
     color: #766956;
@@ -888,8 +899,6 @@
     min-width: 40px;
   }
   .point-row button,
-  .actions button,
-  .photo-row button,
   .danger-zone button {
     border: 0;
     border-radius: 7px;
@@ -900,7 +909,6 @@
     white-space: nowrap;
   }
   .point-row button.secondary,
-  .actions button.secondary,
   .danger-zone button.secondary {
     color: #6b5137;
     background: transparent;
@@ -979,15 +987,6 @@
     flex-wrap: wrap;
     gap: 8px;
   }
-  .photo-row button.secondary {
-    color: #6b5137;
-    background: transparent;
-    border: 1px solid #d8cdbb;
-  }
-  .photo-row button:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
   .trigger-status {
     font-size: 13px;
   }
@@ -1009,9 +1008,6 @@
     flex-wrap: wrap;
     gap: 12px;
     margin: 32px 0 8px;
-  }
-  .actions button.primary {
-    background: #3f7a52;
   }
   .danger-zone {
     margin: 36px 0 8px;

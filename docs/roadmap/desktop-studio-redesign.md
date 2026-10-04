@@ -224,6 +224,97 @@ Native Wails confirmation/unload/keyboard behavior and visual acceptance are sti
 unverified. Item rail, private unsaved preview, full-page tasks, demo and S2 import
 identity are not delivered by this slice.
 
+### Shared foundation — first increment in progress
+
+At checkpoint `f04eec52ce4827e550985278dff88f101ea19ef2`, the lead started the
+shared-control slice: shadcn Button now serves library toolbar actions; Tailwind
+semantic colors map to the existing system-aware studio tokens. The fictional
+Local workspace indicator and ambiguous Refresh action are removed. Unused date
+and animation dependencies were dropped; native date inputs remain the baseline.
+
+Self-verification: `make admin-check` passed with 0 diagnostics and 104 tests;
+targeted compact-shell/reduced-motion browser checks passed 8/8 Chromium/WebKit
+at 1100×760, 900×600 and 720×600, including absence of fake status/Refresh and
+existing creation/focus behavior. The browser creation-sheet image was inspected;
+it still shows the legacy sheet, not the approved future full-page task. This
+increment is uncommitted and has no fresh independent acceptance yet. Remaining:
+shared editor/output controls, panels and inline feedback, locale/dark/zoom
+coverage, then full-page creation and isolated demo. S1 is not complete.
+
+Owner feedback extended this slice to locally persisted System / Light / Dark
+appearance (default System), independently of published-site settings. Settings
+now composes shadcn Popover primitives; ModeWatcher owns the document dark class.
+Site output/identity/build panels use studio tokens and shared action Buttons;
+the bounded output-path grid wraps long paths. The scan form's Browse action is
+adjacent to, not nested inside, the input label. No generic Settings wrapper or
+second studio palette was introduced.
+
+Self checks passed: `make admin-check` (104 tests, 0 diagnostics) and targeted
+`make e2e ARGS='--grep "settings|appearance|site folder|compact shell|motion" --workers=2'`
+(20/20 Chromium/WebKit). These cover ja/zh preferences, OS-theme changes, saved
+appearance after reload, unchanged published settings, Escape/focus restoration,
+reduced motion, and Site action bounds at 1100/720px. Synthetic dark Site and
+Settings captures were inspected. Browser testing caught and repaired an
+undefined bound Button ref (Site render failure), missing popover dialog role,
+and WebKit close-focus restoration. Picker execution/native acceptance and the
+remaining journey/editor palettes and controls are not certified by this check.
+Changes remain uncommitted and independently unaccepted; task 12 stays in progress.
+
+### Icon-first action increment — independently verified, uncommitted
+
+Owner preference: familiar Browse, Settings, Back and photo reorder controls use
+icons with localized accessible names and hover/keyboard-focus hints. New, Scan,
+Create, Save, Build and Import use icons with compact text; keep explicit text for
+ambiguous lifecycle/save-and-back actions and destructive confirmations. New
+icons share the Lucide set (`@lucide/svelte`), current color and decorative SVG
+semantics. Shared Buttons retain native links for Back and existing handlers,
+pending/disabled states and save protection.
+
+The live library, Site, journey navigation/build and memento/photo action changes
+were independently accepted by fresh task-created Herdr peer
+`felicia-icons-verify` (`wV:p57`), Claude Sonnet 5.5, launcher medium, against
+`feat/desktop-studio-revision` at `f04eec52ce4827e550985278dff88f101ea19ef2` plus
+the working diff. Final gates: `make admin-check` exit 0 (104 tests, no
+diagnostics), `make e2e ARGS='--workers=2'` exit 0 (46/46 Chromium/WebKit), and
+`make test-admin-e2e` exit 0 (14/14 real authoring checks, including persisted
+caption/reorder and compiled essay/site identity). Back link hover/keyboard hints,
+activation, modal cancellation/focus restoration, locales, theme and zoom checks
+pass. Pending labels were also reviewed in source; not every pending action was
+held in a browser. Synthetic Site captures were inspected.
+
+Review exposed a real native HTML dialog top-layer bug: the tooltip Portal mounted
+before its trigger ref existed and fell back to the body. Mounting only while the
+hint is open resolves the nearest open dialog at mount; the unchanged regression
+then passed in both browsers. Settings also unmounts closed hints to avoid stale
+hint nodes during keyboard navigation. Evidence:
+`.tmp/felicia-desktop-feedback/icons-review/accepted-report.md`, with distinct
+final `admin-check3.log`, `e2e3.log`, `admin-e2e3.log`; the prior failed `e2e2.log`
+was 42/46. `cn`/Lucide usage follows the
+[official manual setup](https://www.shadcn-svelte.com/docs/installation/manual).
+
+This accepts the icon increment only, not the complete shared-foundation task.
+Remaining independent journey/editor palettes, full-page tasks, synthetic demo,
+picker API parity and native Wails acceptance remain open. Unfinished task views
+and generated asset changes stay preserved and uncommitted; no push/deployment.
+
+### PR publication scope
+
+The owner approved publishing the verified checkpoints together from
+`feat/desktop-studio-revision`: local gate/cache repair and macOS 26 build floor,
+static SvelteKit/Bun tooling, desktop essay persistence, and the live
+appearance/shared-control/icon increment. This PR does not complete revised S1
+or close [#158](https://github.com/azusachino/felicia/issues/158).
+
+Exclude unwired `NewJourney.svelte` / `ImportJourney.svelte`, unused generated
+Input/Label/Textarea/Badge scaffolds, import-page-only translations, and generated
+desktop asset index churn. Keep those worktree artifacts intact for subsequent
+slices. The candidate includes the live journey Back translation. Verify an
+isolated export of the exact index with frozen Bun install, uncached project and
+browser gates, then a fresh independent pass before publication. Previous
+working-diff reviews remain historical evidence, not acceptance of a changed
+candidate. No release, deployment, native-window launch or repository-setting
+change is authorized by opening this PR.
+
 ### Platform revision checkpoint
 
 At `main` / `9c38309074645a425294fbdef9bc19c2c76d925a` plus the working diff,

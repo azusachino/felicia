@@ -1,5 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte"
+  import { Button } from "$lib/components/ui/button"
+  import IconButton from "$lib/components/IconButton.svelte"
+  import { FolderOpen, Folder, ArrowUp, X, Save, Hammer, Check } from "@lucide/svelte"
   import { message, type Locale } from "../i18n"
 
   let { locale }: { locale: Locale } = $props()
@@ -189,7 +192,7 @@
   // nothing until the author had already tabbed or clicked into the panel —
   // and a screen reader user got no cue the dialog existed at all.
   let pickerPanel = $state<HTMLDivElement | undefined>(undefined)
-  let pickerTrigger = $state<HTMLButtonElement | undefined>(undefined)
+  let pickerTrigger = $state<HTMLButtonElement | null>(null)
   $effect(() => {
     if (picker.open) pickerPanel?.focus()
   })
@@ -214,7 +217,7 @@
       <div class="info-row">
         <span class="info-label">{message(locale, "admin.site.output_directory")}</span>
         <code class="info-value">{info.out_dir}</code>
-        <button bind:this={pickerTrigger} type="button" class="secondary" onclick={openPicker}>{message(locale, "admin.site.change_location")}</button>
+        <IconButton bind:ref={pickerTrigger} label={message(locale, "admin.site.change_location")} onclick={openPicker}><FolderOpen size={16} aria-hidden="true" /></IconButton>
       </div>
 
       {#if info.artifact_ready}
@@ -240,7 +243,7 @@
         <div bind:this={pickerPanel} class="picker-panel" role="dialog" aria-modal="true" aria-label={message(locale, "admin.site.output_picker.title")} onkeydown={pickerKeydown} tabindex="-1">
           <div class="picker-head">
             <h3>{message(locale, "admin.site.output_picker.title")}</h3>
-            <button type="button" class="secondary" onclick={closePicker} aria-label={message(locale, "admin.site.output_picker.close")}>{message(locale, "admin.site.output_picker.close")}</button>
+            <IconButton variant="ghost" onclick={closePicker} label={message(locale, "admin.site.output_picker.close")}><X size={16} aria-hidden="true" /></IconButton>
           </div>
 
           {#if picker.status === "loading"}
@@ -255,12 +258,14 @@
             <ul class="picker-dirs">
               {#if browse.parent !== ""}
                 <li>
-                  <button type="button" class="picker-entry" onclick={() => navigateTo(browse.parent)}>{message(locale, "admin.site.output_picker.up")}</button>
+                  <Button type="button" variant="ghost" class="w-full justify-start" onclick={() => navigateTo(browse.parent)}
+                    ><ArrowUp size={16} aria-hidden="true" />{message(locale, "admin.site.output_picker.up")}</Button
+                  >
                 </li>
               {/if}
               {#each browse.dirs as dir (dir.path)}
                 <li>
-                  <button type="button" class="picker-entry" onclick={() => navigateTo(dir.path)}>{dir.name}</button>
+                  <Button type="button" variant="ghost" class="w-full justify-start" onclick={() => navigateTo(dir.path)}><Folder size={16} aria-hidden="true" />{dir.name}</Button>
                 </li>
               {/each}
               {#if browse.dirs.length === 0}
@@ -268,8 +273,8 @@
               {/if}
             </ul>
             <div class="picker-actions">
-              <button type="button" onclick={selectCurrentFolder}>{message(locale, "admin.site.output_picker.select")}</button>
-              <button type="button" class="secondary" onclick={closePicker}>{message(locale, "admin.common.cancel")}</button>
+              <Button type="button" onclick={selectCurrentFolder}><Check size={16} aria-hidden="true" />{message(locale, "admin.site.output_picker.select")}</Button>
+              <Button type="button" variant="outline" onclick={closePicker}>{message(locale, "admin.common.cancel")}</Button>
             </div>
           {/if}
         </div>
@@ -324,8 +329,13 @@
         </div>
 
         <div class="save-row">
-          <button type="button" onclick={saveSettings} disabled={save.status === "pending"}
-            >{save.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.site.save_settings")}</button
+          <Button
+            type="button"
+            onclick={saveSettings}
+            disabled={save.status === "pending"}
+            aria-label={save.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.site.save_settings")}
+          >
+            <Save size={16} aria-hidden="true" />{save.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.common.save")}</Button
           >
           {#if save.status === "success"}
             <span class="trigger-status trigger-status--success" role="status">{save.message}</span>
@@ -339,8 +349,13 @@
     <section class="build" aria-label={message(locale, "admin.site.build_action")}>
       <div class="build-head">
         <h2>{message(locale, "admin.site.build_heading")}</h2>
-        <button type="button" onclick={triggerBuild} disabled={build.status === "pending"}
-          >{build.status === "pending" ? message(locale, "admin.build.building") : message(locale, "admin.site.build_action")}</button
+        <Button
+          type="button"
+          onclick={triggerBuild}
+          disabled={build.status === "pending"}
+          aria-label={build.status === "pending" ? message(locale, "admin.build.building") : message(locale, "admin.site.build_action")}
+        >
+          <Hammer size={16} aria-hidden="true" />{build.status === "pending" ? message(locale, "admin.build.building") : message(locale, "admin.common.build")}</Button
         >
       </div>
       <p class="trigger-note">{message(locale, "admin.site.build_note")}</p>
@@ -375,153 +390,104 @@
 </section>
 
 <style>
+  .site {
+    max-width: 1040px;
+    margin-inline: auto;
+  }
   .site-header h1 {
     margin-top: 4px;
   }
-  .hint {
-    margin-top: 16px;
-    color: #766956;
+  .hint,
+  .trigger-note {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
   }
+  .hint,
   .api-error {
     margin-top: 16px;
   }
-  .site-info {
-    margin-top: 32px;
-    padding: 20px 24px;
-    border: 1px solid #dfd4c1;
-    border-radius: 12px;
-    background: rgb(255 250 242 / 55%);
+  .site-info,
+  .site-identity,
+  .build {
+    margin-top: 24px;
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-raised);
   }
   .info-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(112px, auto) minmax(0, 1fr) auto;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
   }
   .info-row + .info-row {
     margin-top: 12px;
   }
-  .info-label {
-    min-width: 120px;
-    color: #766956;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-  .info-value {
-    padding: 4px 8px;
-    border-radius: 6px;
-    background: rgb(255 255 255 / 60%);
+  .info-label,
+  .field-label {
+    color: var(--muted);
     font-size: 13px;
+  }
+  .info-value,
+  .picker-path code {
+    min-width: 0;
+    padding: 6px 8px;
+    border-radius: 4px;
+    background: var(--surface-muted);
+    overflow-wrap: anywhere;
+    font-size: 12px;
   }
   .preview-link {
-    color: #9f522d;
-    font-weight: 500;
-  }
-  .info-row .secondary {
-    border: 1px solid #d8cdbb;
-    border-radius: 7px;
-    padding: 7px 12px;
-    color: #6b5137;
-    background: #fffaf2;
-    font-size: 13px;
-    white-space: nowrap;
+    color: var(--accent);
+    overflow-wrap: anywhere;
   }
   .picker-panel {
-    margin-top: 18px;
-    padding: 16px 18px;
-    border: 1px solid #dfd4c1;
-    border-radius: 10px;
-    background: rgb(255 255 255 / 55%);
+    margin-top: 16px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--surface);
   }
-  .picker-head {
+  .picker-head,
+  .build-head {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
   }
   .picker-head h3 {
     margin: 0;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
-  }
-  .picker-head button {
-    border: 1px solid #d8cdbb;
-    border-radius: 7px;
-    padding: 6px 10px;
-    color: #6b5137;
-    background: #fffaf2;
-    font-size: 12px;
   }
   .picker-path {
     margin: 12px 0 0;
-    font-size: 12px;
-    color: #766956;
-  }
-  .picker-path code {
-    padding: 3px 7px;
-    border-radius: 6px;
-    background: rgb(255 255 255 / 60%);
+    color: var(--muted);
+    overflow-wrap: anywhere;
   }
   .picker-dirs {
     display: grid;
     gap: 4px;
-    margin: 10px 0 0;
+    margin: 12px 0 0;
     padding: 0;
     list-style: none;
     max-height: 220px;
-    overflow-y: auto;
+    overflow: auto;
   }
-  .picker-entry {
-    display: block;
-    width: 100%;
-    text-align: left;
-    padding: 8px 10px;
-    border: 1px solid transparent;
-    border-radius: 7px;
-    color: #342a1e;
-    background: transparent;
-    font-size: 13px;
-  }
-  .picker-entry:hover,
-  .picker-entry:focus-visible {
-    border-color: #d8cdbb;
-    background: rgb(255 255 255 / 70%);
-  }
-  .picker-actions {
+  .picker-actions,
+  .save-row {
     display: flex;
-    gap: 10px;
-    margin-top: 14px;
-  }
-  .picker-actions button {
-    border: 0;
-    border-radius: 7px;
-    padding: 8px 14px;
-    color: #fffaf2;
-    background: #9f522d;
-    font-size: 13px;
-  }
-  .picker-actions button.secondary {
-    color: #6b5137;
-    background: transparent;
-    border: 1px solid #d8cdbb;
-  }
-  .site-identity {
-    margin-top: 32px;
-    padding: 20px 24px;
-    border: 1px solid #dfd4c1;
-    border-radius: 12px;
-    background: rgb(255 250 242 / 55%);
-  }
-  .site-identity h2 {
-    margin: 0;
-    font-family: Georgia, serif;
-    font-size: 22px;
-    font-weight: 500;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
   }
   .design-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-    gap: 10px;
+    gap: 8px;
     margin-top: 16px;
   }
   .design-card {
@@ -529,33 +495,23 @@
     flex-direction: column;
     gap: 4px;
     align-items: flex-start;
-    padding: 12px 14px;
-    border: 1px solid #d8cdbb;
-    border-radius: 9px;
-    background: #fffaf2;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--surface);
     text-align: left;
   }
-  .design-card:hover,
-  .design-card:focus-visible {
-    border-color: #b98a5c;
-  }
   .design-card.selected {
-    border-color: #9f522d;
-    background: rgb(159 82 45 / 8%);
-    box-shadow: inset 0 0 0 1px #9f522d;
+    border-color: var(--accent);
   }
   .design-card-id {
-    font-family: Georgia, serif;
-    font-size: 15px;
+    color: var(--text);
+    font-size: 14px;
     font-weight: 600;
-    text-transform: uppercase;
-    color: #342a1e;
   }
   .design-card-label {
+    color: var(--muted);
     font-size: 12px;
-    /* #766956 measured 4.43:1 against the selected card's tinted background
-       — just under the 4.5:1 AA floor (axe color-contrast, serious). */
-    color: #5c5142;
   }
   .identity-fields {
     display: grid;
@@ -571,100 +527,42 @@
   .field-wide {
     grid-column: 1 / -1;
   }
-  .field-label {
-    color: #766956;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
   .field input[type="text"],
   .field textarea,
   .field select {
     padding: 8px 10px;
-    border: 1px solid #d8cdbb;
-    border-radius: 7px;
-    background: #fffaf2;
-    color: #342a1e;
-    font-size: 13px;
-    font-family: inherit;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
   }
   .field textarea {
     resize: vertical;
   }
   .field-accent input[type="color"] {
     width: 56px;
-    height: 36px;
+    height: 32px;
     padding: 2px;
-    border: 1px solid #d8cdbb;
-    border-radius: 7px;
-    background: #fffaf2;
-  }
-  .save-row {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-top: 22px;
-  }
-  .save-row button {
-    border: 0;
-    border-radius: 7px;
-    padding: 8px 14px;
-    color: #fffaf2;
-    background: #9f522d;
-    font-size: 13px;
-    white-space: nowrap;
-  }
-  .save-row button:disabled {
-    opacity: 0.6;
-    cursor: default;
-  }
-  .save-row .trigger-status {
-    margin-top: 0;
-  }
-  .build {
-    margin-top: 40px;
-  }
-  .build-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-  .build-head h2 {
-    margin: 0;
-    font-family: Georgia, serif;
-    font-size: 22px;
-    font-weight: 500;
-  }
-  .build-head button {
-    border: 0;
-    border-radius: 7px;
-    padding: 8px 12px;
-    color: #fffaf2;
-    background: #9f522d;
-    font-size: 13px;
-    white-space: nowrap;
-  }
-  .build-head button:disabled {
-    opacity: 0.6;
-    cursor: default;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--surface);
   }
   .trigger-note {
     margin: 8px 0 0;
-    color: #766956;
-    font-size: 12px;
   }
   .trigger-status {
     margin: 10px 0 0;
     font-size: 13px;
   }
-  /* #3f7a52 measured 4.45:1 on this background — just under the 4.5:1 AA
-     floor (axe color-contrast, serious). */
   .trigger-status--success {
-    color: #2f5e40;
+    color: var(--text);
   }
   .trigger-status--error {
-    color: #a84a34;
+    color: var(--danger);
+  }
+  .save-row .trigger-status {
+    margin-top: 0;
   }
   .report-grid {
     display: grid;
@@ -673,22 +571,27 @@
     margin: 16px 0 0;
   }
   .report-cell {
-    padding: 14px 16px;
-    border: 1px solid #dfd4c1;
-    border-radius: 10px;
-    background: rgb(255 250 242 / 55%);
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--surface);
     text-align: center;
   }
   .report-cell dt {
-    color: #766956;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+    color: var(--muted);
+    font-size: 12px;
   }
   .report-cell dd {
     margin: 4px 0 0;
-    font-family: Georgia, serif;
-    font-size: 22px;
-    font-weight: 500;
+    font-size: 20px;
+    font-weight: 600;
+  }
+  @media (max-width: 900px) {
+    .info-row {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+    .info-label {
+      grid-column: 1 / -1;
+    }
   }
 </style>

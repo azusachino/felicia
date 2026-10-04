@@ -4,15 +4,19 @@
   import { resolve } from "$app/paths"
   import { STUDIO_CONTEXT, type StudioState } from "./studio"
   import { loadLocale, message, saveLocale, type Locale } from "../i18n"
+  import * as Popover from "$lib/components/ui/popover"
+  import { setMode, userPrefersMode } from "mode-watcher"
+  import { Tooltip } from "bits-ui"
+  import { Settings2 } from "@lucide/svelte"
 
   let { children }: { children: Snippet } = $props()
 
   let locale = $state(loadLocale())
+  let settingsTrigger = $state<HTMLButtonElement | null>(null)
+  let settingsOpen = $state(false)
+  let settingsHintOpen = $state(false)
   const library = $derived(page.route.id === "/" || page.route.id === "/[...missing]")
   const site = $derived(page.route.id === "/site")
-  let settingsOpen = $state(false)
-  let settingsMenu: HTMLDivElement
-  let settingsTrigger: HTMLButtonElement
   // Wails beta.24 identifies its macOS webview with this user-agent suffix.
   const desktop = navigator.userAgent.includes("wails.io")
   const nativeMac = desktop && navigator.userAgent.includes("Macintosh")
@@ -27,20 +31,11 @@
     locale = (event.currentTarget as HTMLSelectElement).value as Locale
     saveLocale(locale)
   }
-  function dismissSettingsOnEscape(event: KeyboardEvent) {
-    if (event.key !== "Escape" || !settingsOpen) return
-    settingsOpen = false
-    settingsTrigger?.focus()
-  }
-  function dismissSettingsOutside(event: PointerEvent) {
-    if (settingsOpen && settingsMenu && !settingsMenu.contains(event.target as Node)) settingsOpen = false
-  }
   $effect(() => {
     document.documentElement.lang = locale
   })
 </script>
 
-<svelte:window on:keydown={dismissSettingsOnEscape} on:pointerdown={dismissSettingsOutside} />
 <svelte:head><title>{message(locale, "admin.shell.page_title")}</title></svelte:head>
 
 <div class="admin-shell" class:native-mac={nativeMac}>
@@ -59,21 +54,53 @@
       </a>
     </nav>
     <div class="sidebar-footer">
-      <div class="settings-menu" bind:this={settingsMenu}>
-        <button bind:this={settingsTrigger} class="settings-trigger" type="button" aria-expanded={settingsOpen} aria-controls="settings-popover" onclick={() => (settingsOpen = !settingsOpen)}>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16M8 4v6M16 14v6" /></svg>
-          {message(locale, "admin.shell.settings")}
-        </button>
-        <div id="settings-popover" class="settings-popover" role="group" aria-label={message(locale, "admin.shell.settings")} hidden={!settingsOpen}>
-          <label class="locale-control"
-            >{message(locale, "admin.shell.language_label")}
+      <Popover.Root
+        bind:open={settingsOpen}
+        onOpenChange={(open) => {
+          if (open) settingsHintOpen = false
+        }}
+      >
+        <Tooltip.Root bind:open={settingsHintOpen} disabled={settingsOpen}>
+          <Tooltip.Trigger>
+            {#snippet child({ props })}
+              <Popover.Trigger {...props} bind:ref={settingsTrigger} class="settings-trigger" aria-label={message(locale, "admin.shell.settings")}>
+                <Settings2 size={18} aria-hidden="true" />
+              </Popover.Trigger>
+            {/snippet}
+          </Tooltip.Trigger>
+          {#if settingsHintOpen && !settingsOpen}
+            <Tooltip.Portal>
+              <Tooltip.Content role="tooltip" side="top" sideOffset={6} class="studio-tooltip">{message(locale, "admin.shell.settings")}</Tooltip.Content>
+            </Tooltip.Portal>
+          {/if}
+        </Tooltip.Root>
+        <Popover.Content
+          side="top"
+          align="start"
+          role="dialog"
+          class="settings-panel w-64"
+          aria-label={message(locale, "admin.shell.settings")}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault()
+            settingsTrigger?.focus()
+          }}
+        >
+          <label class="locale-control">
+            {message(locale, "admin.shell.language_label")}
             <select aria-label={message(locale, "admin.shell.language_label")} value={locale} onchange={changeLocale}>
               <option value="ja">日本語</option><option value="en">English</option><option value="zh">中文</option>
             </select>
           </label>
-        </div>
-      </div>
-      <span class="workspace-status"><span class="status-dot"></span>{message(locale, "admin.shell.local_workspace")}</span>
+          <label class="locale-control">
+            {message(locale, "admin.shell.appearance")}
+            <select aria-label={message(locale, "admin.shell.appearance")} value={userPrefersMode.current} onchange={(event) => setMode(event.currentTarget.value as "system" | "light" | "dark")}>
+              <option value="system">{message(locale, "admin.common.theme_system")}</option>
+              <option value="light">{message(locale, "admin.common.theme_light")}</option>
+              <option value="dark">{message(locale, "admin.common.theme_dark")}</option>
+            </select>
+          </label>
+        </Popover.Content>
+      </Popover.Root>
     </div>
   </aside>
   <main class="content" class:library>
