@@ -102,12 +102,13 @@ projection:
   Owner feedback now requires full-page tasks, a shared shadcn-svelte foundation,
   an isolated demo workspace, and macOS 26+ support; acceptance is tracked in
   [#158](https://github.com/azusachino/felicia/issues/158). These are ordered revision
-  slices; isolated demo, complete shared styling, import source/apply and native
-  acceptance remain pending. The owner corrected
+  slices; isolated demo and shared controls now have bounded source/browser
+  verification, while import source/apply and broader native acceptance remain
+  pending. The owner corrected
   [PR #159](https://github.com/azusachino/felicia/pull/159) to include full-page
   creation: Library New opens `/journey/new`, not a dialog, with shared fields,
   Back/Cancel, retained errors, date validation and unsaved/pending protection.
-  The PR is draft until fresh independent verification of that addition. The verified revision checkpoints establish the
+  PR #159 merged after its bounded verification. The verified revision checkpoints establish the
   macOS 26 build floor, static SvelteKit studio with Bun tooling, and persisted
   desktop essay edits. The live studio now has locally saved System / Light /
   Dark appearance, theme-aware Site panels, and icon-first shared controls with
@@ -116,7 +117,20 @@ projection:
   checkpoint passed 46/46 desktop-composition checks plus 14/14 real web-authoring
   checks; updated full-page creation evidence belongs to the owning PR. Browser
   checks do not establish native Wails or source-review/apply acceptance. See the ordered
-  plan for independent review and the remaining boundaries.
+  plan for independent review and the remaining boundaries. The next verified
+  candidate adds same-window isolated sample switching, journey Edit/Add memento
+  authoring, shared Bits UI controls/dialogs and fixed date/time segments, in-app
+  last-built preview, and locally bundled original reader fonts. Its full
+  desktop-composition checkpoint passed 150/150; web authoring passed 14/14.
+  Fresh independent Close verification reused frozen source/binary/log hashes and
+  ran 10 focused cases rather than repeating the unchanged full suite. The owner
+  confirmed standalone sample Close keeps the native app open in an empty,
+  isolated temporary studio. This accepts that Close fix only; it does not close
+  issue #158 or accept all of S1/S2. Native photo upload and normal external-source
+  review/apply remain explicitly unavailable. Live Asobi record reconciliation is
+  blocked by DNS; verified findings are retained in the owning execution plan and
+  draft delivery PR. The proposed clearer temporary-workspace notice remains an
+  unapplied copy follow-up.
 
 - **Google Timeline visits (#81)** — `felicia-cli journey plan --timeline <Timeline.json>` now reads concatenated Timeline JSON and Takeout `timelineObjects`, preserving place names, IDs, coordinates, and visit times as semantic intake visits. Activity segments are not synthesized into route geometry; provide GPX or Dawarich for a route. Timeline input is read-only and stays local.
 

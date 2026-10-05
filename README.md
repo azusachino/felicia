@@ -89,6 +89,13 @@ Follow [docs/publish.md](docs/publish.md) for the full local and CI publication 
 
 Felicia is in the implementation stage. The selected end-to-end flow and current stage status are in [the user journey](docs/roadmap/user-journey.md); milestones and remaining work are in [the roadmap](docs/roadmap.md). Read [the project instructions](AGENTS.md) before contributing. Architecture records live in [`docs/adr/`](docs/adr/), and the broader design/research trail in [`docs/research/`](docs/research/).
 
+The desktop follow-up provides isolated sample/empty temporary workspaces,
+journey and memento authoring, shared library controls and an in-app last-built
+preview with locally bundled reader fonts. The owner verified the native sample
+Close behavior; broader native S1 acceptance and S2 reviewed imports remain open.
+See the [desktop execution plan](docs/roadmap/desktop-studio-redesign.md) for the
+verified slices and explicit capability limits.
+
 ## Acknowledgements
 
 [liuaaron.com](https://liuaaron.com/) inspired the project. Felicia can connect to [Dawarich](https://github.com/Freika/dawarich) and [Immich](https://github.com/immich-app/immich); map rendering uses [MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js) and [OpenStreetMap](https://www.openstreetmap.org/).
