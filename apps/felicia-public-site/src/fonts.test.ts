@@ -13,6 +13,19 @@ const faces = {
 }
 const licenseNames = { inter: "inter", outfit: "outfit", "share-tech-mono": "sharetechmono", spectral: "spectral", "zen-old-mincho": "zenoldmincho" }
 
+test("Fontsource lock entries preserve pins and integrity without a machine-local registry", () => {
+  const lock = readFileSync(new URL("../../../bun.lock", import.meta.url), "utf8")
+  const app = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { dependencies: Record<string, string> }
+  const entries = [...lock.matchAll(/"(@fontsource\/[^"]+)": (\[[^\n]+\])/g)]
+  expect(entries).toHaveLength(Object.keys(faces).length)
+  for (const [, name, value] of entries) {
+    const [version, registry, , integrity] = JSON.parse(value) as [string, string, unknown, string]
+    expect(version).toBe(`${name}@${app.dependencies[name]}`)
+    expect(registry).toBe("")
+    expect(integrity).toMatch(/^sha512-/)
+  }
+})
+
 test("reader fonts use pinned Fontsource dependencies, local glyph subsets and matching licenses", () => {
   const css = readFileSync(new URL("./fonts.css", import.meta.url), "utf8")
   const imports = [...css.matchAll(/@import\s+"([^"]+)"/g)].map((match) => match[1])

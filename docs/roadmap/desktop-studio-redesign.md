@@ -1029,9 +1029,28 @@ the initial broader review alone does not verify the changed provider.
 Canonical Asobi connectivity recovered on the verified remote graph. The owning
 S1 task's stale branch, commit and next action were reconciled while retaining
 `BLOCKED_ON owner-native-acceptance`. Tracker-only duplicate implementation todos
-were superseded, not counted as native completion. The native application bundle
-has not been replaced or relaunched. No broader native/S1/S2 acceptance, merge,
-release or deployment is claimed.
+were superseded, not counted as native completion.
+
+After delivery commit `24cc847`, CI run `37277657567` failed all three jobs before
+checks: frozen installs used Fontsource tarball URLs pointing at the local mirror,
+which GitHub runners could not reach (`ConnectionRefused`). The transient mirror
+had leaked into shared lockfile provenance. Only those five registry fields are
+returned to Bun's default-registry form; versions, package metadata and SHA-512
+hashes remain identical. A new font test rejects non-default registry fields.
+The empty-cache, five-package frozen probe passed using an explicitly temporary,
+Fontsource-scoped local mirror; full-repo offline frozen install and 18 reader
+tests pass. Local official-npm TLS verification still fails; no TLS bypass or
+trust/network repair was made. These local results do not replace the rerun CI
+gate. Fresh GLM Flash/medium review verified the root cause, default-registry
+mapping, pinned-package continuity and unchanged CI gates with no proven blockers.
+Its tool budget stopped before inspecting the new portability test; that criterion
+is explicitly unverified. A narrowly scoped follow-up dispatcher stalled before
+launching a child and was stopped, without route substitution or host repair.
+Source and local-gate results do not claim CI or native acceptance. The owner
+approved a rebuilt isolated Sample launch; it was packaged and signed, but launch
+is held while this CI follow-up is verified. No native application launch was performed during source delivery or the
+CI follow-up. No broader native/S1/S2 acceptance, merge, release or deployment is
+claimed.
 
 ## Evidence and closeout
 

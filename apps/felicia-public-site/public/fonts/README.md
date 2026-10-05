@@ -25,4 +25,8 @@ References:
 
 Local npm TLS failures may be worked around with the owner-approved
 `https://npm.okcoin.tokyo/` mirror. Do not disable TLS verification or downgrade
-unrelated locked packages. No persistent registry setting is required.
+unrelated locked packages. Keep the mirror override in a temporary local config,
+not the shared lockfile: Fontsource entries must use Bun's empty/default registry
+field, retaining their exact versions and integrity hashes. The portability test
+rejects machine-local tarball URLs. A cached or local-mirror frozen install does
+not prove the public registry is reachable from CI.
