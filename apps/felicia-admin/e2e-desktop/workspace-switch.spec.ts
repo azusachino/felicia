@@ -1,4 +1,5 @@
 import { test, expect } from "./fixtures"
+import { decideDiscard } from "./discard-dialog"
 
 test.use({ userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/605.1.15 wails.io" })
 
@@ -34,8 +35,8 @@ test("cancelled dirty-page navigation never switches the backend workspace", asy
   await page.goto("/#/journey/new")
   await page.getByLabel("Title", { exact: true }).fill("Keep this unsaved title")
   await page.getByRole("button", { name: "Settings", exact: true }).click()
-  page.once("dialog", (dialog) => dialog.dismiss())
   await page.getByRole("button", { name: "Open sample trip", exact: true }).click()
+  await decideDiscard(page, false)
   await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Keep this unsaved title")
   expect((await (await page.request.get("/api/desktop/workspace")).json()).sample).toBe(false)
 })

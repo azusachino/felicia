@@ -22,6 +22,7 @@
 // ends up promoted is not assumed; the spec reads back whichever it clicked.
 import { test, expect, type Page } from "@playwright/test"
 import { chooseSelect } from "../e2e-desktop/select-field"
+import { decideDiscard } from "../e2e-desktop/discard-dialog"
 
 function requireEnv(name: string): string {
   const value = process.env[name]
@@ -148,10 +149,8 @@ test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
     await expect(photoRows.nth(1).getByRole("img")).toHaveJSProperty("naturalWidth", 1)
 
     await page.getByRole("textbox", { name: "Caption", exact: true }).nth(0).fill("Keyboard saved caption")
-    const leaveDialog = page.waitForEvent("dialog")
-    const leave = page.getByRole("button", { name: /Back to journey/ }).click()
-    await (await leaveDialog).dismiss()
-    await leave
+    await page.getByRole("button", { name: /Back to journey/ }).click()
+    await decideDiscard(page, false)
     await expect(page.getByRole("textbox", { name: "Caption", exact: true }).nth(0)).toHaveValue("Keyboard saved caption")
     const captionSaved = page.waitForResponse(
       (response) => response.url().endsWith("/api/admin/photos") && response.request().method() === "POST" && response.request().postDataJSON().caption === "Keyboard saved caption",

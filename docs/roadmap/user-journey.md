@@ -126,11 +126,20 @@ projection:
   ran 10 focused cases rather than repeating the unchanged full suite. The owner
   confirmed standalone sample Close keeps the native app open in an empty,
   isolated temporary studio. This accepts that Close fix only; it does not close
-  issue #158 or accept all of S1/S2. Native photo upload and normal external-source
-  review/apply remain explicitly unavailable. Live Asobi record reconciliation is
-  blocked by DNS; verified findings are retained in the owning execution plan and
-  draft delivery PR. The proposed clearer temporary-workspace notice remains an
-  unapplied copy follow-up.
+  issue #158 or accept all of S1/S2. PR #160 owner-feedback rework replaces tracked
+  font binaries with pinned Fontsource build dependencies, shares validated image
+  upload between desktop and web, adds generated-only photos in temporary
+  workspaces, gates their automatically managed output location, and uses a shared
+  asynchronous dirty-Return dialog. Fresh independent source review meets these
+  four bounded criteria; native file-picker/appearance acceptance and normal
+  external-source review/apply remain open. Lead checks include 111 admin tests,
+  17 reader tests, 14 sequential web-authoring cases and a completed 158/158
+  desktop-composition gate. A final independent provider-error mapping review
+  confirms safe failed-upload compensation. Historical interrupted-run boundaries
+  and the unproven transient web failure are retained in the execution plan. Canonical Asobi
+  connectivity recovered and the stale branch/next-action records were corrected,
+  retaining blocked S1/native status. The proposed clearer temporary-workspace
+  notice remains an unapplied copy follow-up.
 
 - **Google Timeline visits (#81)** — `felicia-cli journey plan --timeline <Timeline.json>` now reads concatenated Timeline JSON and Takeout `timelineObjects`, preserving place names, IDs, coordinates, and visit times as semantic intake visits. Activity segments are not synthesized into route geometry; provide GPX or Dawarich for a route. Timeline input is read-only and stays local.
 

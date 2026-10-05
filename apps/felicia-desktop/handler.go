@@ -23,10 +23,12 @@ import (
 	core "github.com/azusachino/felicia/apps/felicia-core"
 	"github.com/azusachino/felicia/apps/felicia-core/domain"
 	"github.com/azusachino/felicia/apps/felicia-core/ports"
+	"github.com/azusachino/felicia/apps/felicia-providers/local"
 	publication "github.com/azusachino/felicia/apps/felicia-publication"
 	"github.com/azusachino/felicia/apps/felicia-runtime/intake"
 	journeyruntime "github.com/azusachino/felicia/apps/felicia-runtime/journey"
 	mementoruntime "github.com/azusachino/felicia/apps/felicia-runtime/memento"
+	photoruntime "github.com/azusachino/felicia/apps/felicia-runtime/photos"
 )
 
 //go:embed all:assets
@@ -56,6 +58,7 @@ type DesktopHandler struct {
 	cfg           HandlerConfig
 	journeyWriter *journeyruntime.Service
 	mementoWriter *mementoruntime.Service
+	photoWriter   *photoruntime.Service
 	intake        *intake.Service
 	adminFS       fs.FS
 	readerFS      fs.FS
@@ -83,6 +86,7 @@ func NewHandler(cfg HandlerConfig) (*DesktopHandler, error) {
 		cfg:           cfg,
 		journeyWriter: journeyruntime.New(cfg.Repo),
 		mementoWriter: mementoruntime.New(cfg.Repo),
+		photoWriter:   photoruntime.New(cfg.Repo, local.NewFileBlobStore(cfg.MediaRoot)),
 		intake:        intake.NewService(candidateStore(cfg.Repo), cfg.Repo),
 		adminFS:       adminSub,
 		readerFS:      readerSub,
@@ -155,7 +159,7 @@ func (h *DesktopHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Both the sample and its empty temporary baseline forbid author-path access.
-	if (h.cfg.Sample || h.cfg.Isolated) && (strings.HasPrefix(cleanPath, "/api/desktop/pick-") || strings.HasPrefix(cleanPath, "/api/admin/local-journeys/") || cleanPath == "/api/admin/site/output-dir" || strings.HasPrefix(cleanPath, "/api/admin/site/directories")) {
+	if (h.cfg.Sample || h.cfg.Isolated) && (strings.HasPrefix(cleanPath, "/api/desktop/pick-") || strings.HasPrefix(cleanPath, "/api/admin/local-journeys/") || cleanPath == "/api/admin/site/output-dir" || strings.HasPrefix(cleanPath, "/api/admin/site/directories") || cleanPath == "/api/admin/browse" || (cleanPath == "/api/admin/site" && r.Method != http.MethodGet && r.Method != http.MethodHead)) {
 		http.Error(w, "not available in the isolated sample workspace", http.StatusForbidden)
 		return
 	}
@@ -301,6 +305,10 @@ func (h *DesktopHandler) routeAdmin(w http.ResponseWriter, r *http.Request, reqP
 		} else {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
+	case strings.HasPrefix(reqPath, "/api/admin/mementos/") && strings.HasSuffix(reqPath, "/photos/upload"):
+		h.handleUploadPhoto(w, r, false)
+	case strings.HasPrefix(reqPath, "/api/admin/mementos/") && strings.HasSuffix(reqPath, "/photos/sample"):
+		h.handleUploadPhoto(w, r, true)
 	case strings.HasPrefix(reqPath, "/api/admin/mementos/") && strings.HasSuffix(reqPath, "/photos"):
 		h.handleMementoPhotos(w, r)
 	case reqPath == "/api/admin/photos":
@@ -327,7 +335,11 @@ func (h *DesktopHandler) routeAdmin(w http.ResponseWriter, r *http.Request, reqP
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
 	case reqPath == "/api/admin/site":
-		h.handleSiteInfo(w, r)
+		if r.Method == http.MethodGet || r.Method == http.MethodHead {
+			h.handleSiteInfo(w, r)
+		} else {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
 	case reqPath == "/api/admin/build-status":
 		h.handleBuildStatus(w, r, "")
 	case reqPath == "/api/admin/compile":

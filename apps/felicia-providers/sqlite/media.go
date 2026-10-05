@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/google/uuid"
 
@@ -12,7 +13,11 @@ import (
 // GetPhoto retrieves a memento photo by ID.
 func (r *Repository) GetPhoto(ctx context.Context, id uuid.UUID) (*domain.MementoPhoto, error) {
 	row := r.db.QueryRowContext(ctx, "SELECT memento_id, object_key, content_hash, caption, seq, taken_at, source_ref, created_at FROM tb_memento_photos WHERE id = ?", idString(id))
-	return scanPhoto(row, id)
+	photo, err := scanPhoto(row, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, domain.ErrNotFound
+	}
+	return photo, err
 }
 
 // ListPhotosByMemento retrieves a memento's photos in sequence order.

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte"
-  import { beforeNavigate } from "$app/navigation"
+  import { guardDirtyNavigation } from "$lib/navigation-guard"
   import { Button } from "$lib/components/ui/button"
   import { Input } from "$lib/components/ui/input"
   import { Textarea } from "$lib/components/ui/textarea"
@@ -75,13 +75,11 @@
   }
   let save = $state<SaveState>({ status: "idle", message: "" })
 
-  beforeNavigate((navigation) => {
-    if (save.status === "pending" || build.status === "pending") {
-      navigation.cancel()
-      return
-    }
-    const dirty = settings && draft && JSON.stringify(draft) !== JSON.stringify(draftFromSettings(settings))
-    if (dirty && (navigation.willUnload || !confirm(message(locale, "admin.site.unsaved_leave")))) navigation.cancel()
+  guardDirtyNavigation({
+    dirty: () => Boolean(settings && draft && JSON.stringify(draft) !== JSON.stringify(draftFromSettings(settings))),
+    pending: () => save.status === "pending" || build.status === "pending",
+    prompt: () => message(locale, "admin.site.unsaved_leave"),
+    confirmDiscard: studio.confirmDiscard,
   })
 
   async function loadSettings() {
@@ -149,6 +147,7 @@
   let picker = $state<PickerState>({ open: false, status: "idle", message: "", browse: null })
 
   async function openPicker() {
+    if (studio.desktop && (!studio.workspaceReady || studio.isolated)) return
     picker = { open: true, status: "loading", message: "", browse: null }
     try {
       const result = await browseDirectories(info?.out_dir)
@@ -230,10 +229,16 @@
   {:else if info}
     <section class="site-info" aria-label={message(locale, "admin.site.output_directory")}>
       <div class="info-row output-path">
-        <IconButton bind:ref={pickerTrigger} label={message(locale, "admin.site.change_location")} onclick={openPicker}><FolderOpen size={16} aria-hidden="true" /></IconButton>
+        {#if !studio.desktop || (studio.workspaceReady && !studio.isolated)}
+          <IconButton bind:ref={pickerTrigger} label={message(locale, "admin.site.change_location")} onclick={openPicker}><FolderOpen size={16} aria-hidden="true" /></IconButton>
+        {/if}
         <span class="info-label">{message(locale, "admin.site.output_directory")}</span>
         <code class="info-value">{info.out_dir}</code>
       </div>
+
+      {#if studio.desktop && studio.isolated}
+        <p class="trigger-note">{message(locale, "admin.site.sample_output_auto_managed")}</p>
+      {/if}
 
       {#if info.artifact_ready}
         <div class="info-row">

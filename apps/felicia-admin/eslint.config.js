@@ -20,6 +20,12 @@ export default ts.config(
   },
   { languageOptions: { globals: { ...globals.browser } } },
   {
+    // The guard forwards SvelteKit-owned ResolvedPathname values; keep the
+    // navigation rule enabled and let it check that type contract.
+    files: ["src/lib/navigation-guard.ts"],
+    languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
+  },
+  {
     // Generated UI primitives forward caller-owned URLs, including external
     // links. Route-owning views must resolve internal navigation themselves.
     files: ["src/lib/components/ui/button/button.svelte"],

@@ -1,5 +1,6 @@
 import { test, expect } from "./fixtures"
 import { setDate } from "./date-field"
+import { decideDiscard } from "./discard-dialog"
 
 async function openDraft(page: import("@playwright/test").Page) {
   await page.goto("/#/journey/new")
@@ -37,19 +38,13 @@ test("Return is a visible button and protects an unsaved draft", async ({ page }
   const back = page.getByRole("button", { name: "Back to journeys", exact: true })
   await expect(back).toHaveText("Return")
   await back.focus()
-  const dismissed = new Promise<void>((resolve) => {
-    page.once("dialog", async (dialog) => {
-      expect(dialog.message()).toContain("unsaved journey")
-      await dialog.dismiss()
-      resolve()
-    })
-  })
   await page.keyboard.press("Enter")
-  await dismissed
+  await expect(page.getByRole("alertdialog")).toContainText("unsaved journey")
+  await decideDiscard(page, false)
   await expect(page).toHaveURL(/#\/journey\/new$/)
   await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Keep this draft")
-  page.once("dialog", (dialog) => dialog.accept())
   await back.click()
+  await decideDiscard(page, true)
   await expect(page.getByRole("heading", { name: "Journeys", exact: true })).toBeVisible()
   expect(await (await page.request.get("/api/admin/journeys")).json()).toEqual([])
 })

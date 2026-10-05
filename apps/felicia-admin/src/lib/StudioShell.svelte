@@ -6,6 +6,7 @@
   import SampleButton from "$lib/components/SampleButton.svelte"
   import { Button } from "$lib/components/ui/button"
   import SelectField from "$lib/components/SelectField.svelte"
+  import DiscardChangesDialog from "$lib/components/DiscardChangesDialog.svelte"
   import CompiledPreview from "$lib/components/CompiledPreview.svelte"
   import { getDesktopWorkspace, closeDesktopSample } from "../api"
   import { prepareWorkspaceSwitch } from "$lib/workspace"
@@ -36,6 +37,21 @@
   let sampleReturnAvailable = $state(false)
   let workspaceReady = $state(!desktop)
   let previewOpen = $state(false)
+  let discardPrompt = $state<string | null>(null)
+  let discardResolver: ((discard: boolean) => void) | null = null
+  function decideDiscard(discard: boolean) {
+    const resolve = discardResolver
+    discardResolver = null
+    discardPrompt = null
+    resolve?.(discard)
+  }
+  function confirmDiscard(prompt: string): Promise<boolean> {
+    if (discardResolver) return Promise.resolve(false)
+    discardPrompt = prompt
+    return new Promise((resolve) => {
+      discardResolver = resolve
+    })
+  }
   let workspaceError = $state("")
   let closingSample = $state(false)
   onMount(() => {
@@ -79,6 +95,7 @@
     get workspaceReady() {
       return workspaceReady
     },
+    confirmDiscard,
     openPreview() {
       previewOpen = true
     },
@@ -97,6 +114,8 @@
   <title>{message(locale, "admin.shell.page_title")}</title>
   {#if desktop}<script type="module" src="/wails/runtime.js"></script>{/if}
 </svelte:head>
+
+<DiscardChangesDialog prompt={discardPrompt} {locale} decide={decideDiscard} />
 
 <div class="admin-shell" class:native-mac={nativeMac}>
   <header class="window-toolbar">

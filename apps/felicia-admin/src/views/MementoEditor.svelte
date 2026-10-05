@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { beforeNavigate, goto } from "$app/navigation"
+  import { guardedGoto as goto, guardDirtyNavigation } from "$lib/navigation-guard"
   import { resolve } from "$app/paths"
   import { getStudio } from "$lib/studio"
   const studio = getStudio()
@@ -20,6 +20,7 @@
     snapToRoute,
     photoContentURL,
     uploadPhoto,
+    addSamplePhoto,
     upsertMemento,
     upsertPhoto,
     ApiError,
@@ -167,21 +168,21 @@
   function formSnapshot(): string {
     return JSON.stringify({ common, points, kindFormState, otherKindDataText })
   }
+  let photoUploading = $state(false)
+  const editorPending = $derived(photoUploading || saveState.status === "pending" || photoRows.some((row) => row.status === "pending"))
   const unsaved = $derived((savedForm !== "" && formSnapshot() !== savedForm) || photoRows.some((row) => JSON.stringify(row.fields) !== row.savedFields))
 
-  beforeNavigate((navigation) => {
-    if (!unsaved && saveState.status !== "pending" && !photoRows.some((row) => row.status === "pending")) return
-    if (navigation.willUnload) {
-      navigation.cancel()
-    } else if (saveState.status === "pending" || photoRows.some((row) => row.status === "pending") || !confirm(message(locale, "admin.mementos.unsaved_leave"))) {
-      navigation.cancel()
-    }
+  guardDirtyNavigation({
+    dirty: () => unsaved,
+    pending: () => editorPending,
+    prompt: () => message(locale, "admin.mementos.unsaved_leave"),
+    confirmDiscard: studio.confirmDiscard,
   })
 
   function saveShortcut(event: KeyboardEvent) {
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
       event.preventDefault()
-      if (memento && saveState.status !== "pending" && !photoRows.some((row) => row.status === "pending")) void saveEditor()
+      if (memento && !editorPending) void saveEditor()
     }
   }
 
@@ -331,7 +332,7 @@
   // Save/keyboard-save cover the whole editor. Each request captures its
   // current fields before awaiting I/O; later edits remain unsaved.
   async function saveEditor(): Promise<boolean> {
-    if (saveState.status === "pending" || photoRows.some((row) => row.status === "pending")) return false
+    if (editorPending) return false
     const dirtyPhotos = photoRows.filter((row) => JSON.stringify(row.fields) !== row.savedFields).map((row) => ({ row, fields: { ...row.fields } }))
     await save()
     if (saveState.status !== "success") return false
@@ -439,11 +440,29 @@
     }
   }
 
+  async function addGeneratedPhoto() {
+    if (!memento || photoUploading) return
+    photoUploading = true
+    photoUploadError = false
+    photoUploadStatus = message(locale, "admin.mementos.photo_uploading", { count: 1 })
+    try {
+      const uploaded = await addSamplePhoto(memento.id)
+      photoRows = [...photoRows, photoRowFromExisting(uploaded)]
+      photoUploadStatus = message(locale, "admin.mementos.photo_upload_complete")
+    } catch (cause) {
+      photoUploadError = true
+      photoUploadStatus = actionErrorMessage(cause)
+    } finally {
+      photoUploading = false
+    }
+  }
+
   async function handlePhotoUpload(event: Event) {
-    if (!memento) return
+    if (!memento || photoUploading) return
     const input = event.currentTarget as HTMLInputElement
     const files = Array.from(input.files ?? [])
     if (files.length === 0) return
+    photoUploading = true
     photoUploadStatus = message(locale, "admin.mementos.photo_uploading", { count: files.length })
     photoUploadError = false
     const failures: string[] = []
@@ -458,6 +477,7 @@
     photoUploadError = failures.length > 0
     photoUploadStatus = failures.length > 0 ? failures.join("; ") : message(locale, "admin.mementos.photo_upload_complete")
     input.value = ""
+    photoUploading = false
   }
 
   async function movePhoto(index: number, delta: number) {
@@ -492,11 +512,24 @@
 </script>
 
 <svelte:window onkeydown={saveShortcut} />
+<svelte:document
+  onclickcapture={(event) => {
+    if (editorPending && event.target instanceof Element && event.target.closest("a[href]")) {
+      event.preventDefault()
+      event.stopPropagation()
+    }
+  }}
+/>
 
 <section class="editor">
   <div class="back-link">
-    <Button type="button" variant="outline" class="min-h-[36px]" aria-label={message(locale, "admin.mementos.back_to_journey")} onclick={() => goto(resolve(journeyDetailPath(journeyId)))}
-      ><ArrowLeft size={16} aria-hidden="true" />{message(locale, "admin.common.return")}</Button
+    <Button
+      type="button"
+      variant="outline"
+      class="min-h-[36px]"
+      aria-label={message(locale, "admin.mementos.back_to_journey")}
+      disabled={editorPending}
+      onclick={() => goto(resolve(journeyDetailPath(journeyId)))}><ArrowLeft size={16} aria-hidden="true" />{message(locale, "admin.common.return")}</Button
     >
   </div>
 
@@ -530,19 +563,17 @@
     {/if}
 
     <section class="actions" aria-label={message(locale, "admin.mementos.actions_label")}>
-      <Button type="button" onclick={() => saveEditor()} disabled={saveState.status === "pending" || photoRows.some((row) => row.status === "pending")}>
+      <Button type="button" onclick={() => saveEditor()} disabled={editorPending}>
         <Save size={16} aria-hidden="true" />{saveState.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.mementos.save")}
       </Button>
-      <Button type="button" variant="outline" onclick={saveAndBack} disabled={saveState.status === "pending"}>
+      <Button type="button" variant="outline" onclick={saveAndBack} disabled={editorPending}>
         <ArrowLeft size={16} aria-hidden="true" />{saveState.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.mementos.save_back")}
       </Button>
       {#if unpublishActionLabel(memento.state) && previousLifecycleState(memento.state)}
-        <Button type="button" variant="outline" onclick={retreatLifecycle} disabled={saveState.status === "pending"}
-          ><Undo2 size={16} aria-hidden="true" />{message(locale, "admin.mementos.unpublish")}</Button
-        >
+        <Button type="button" variant="outline" onclick={retreatLifecycle} disabled={editorPending}><Undo2 size={16} aria-hidden="true" />{message(locale, "admin.mementos.unpublish")}</Button>
       {/if}
       {#if lifecycleActionLabel(memento.state) && nextLifecycleState(memento.state)}
-        <Button type="button" variant="outline" onclick={advanceLifecycle} disabled={saveState.status === "pending"}>
+        <Button type="button" variant="outline" onclick={advanceLifecycle} disabled={editorPending}>
           {#if memento.state === "draft"}<Check size={16} aria-hidden="true" />{:else}<Upload size={16} aria-hidden="true" />{/if}
           {memento.state === "draft" ? message(locale, "admin.mementos.mark_authored") : message(locale, "admin.mementos.publish")}
         </Button>
@@ -696,25 +727,30 @@
     <section class="fields" aria-label={message(locale, "admin.mementos.photos_heading")}>
       <div class="inbox-head">
         <h2>{message(locale, "admin.mementos.photos_heading")}</h2>
-        {#if !studio.desktop}
-          <Button type="button" variant="outline" onclick={() => photoFileInput?.click()} disabled={saveState.status === "pending"}
+        {#if studio.desktop && !studio.workspaceReady}
+          <p class="trigger-note">{message(locale, "admin.common.loading")}</p>
+        {:else if studio.desktop && studio.isolated}
+          <Button type="button" variant="outline" onclick={addGeneratedPhoto} disabled={editorPending}
+            ><Upload size={16} aria-hidden="true" />{message(locale, "admin.mementos.add_sample_photo")}</Button
+          >
+        {:else}
+          <Button type="button" variant="outline" onclick={() => photoFileInput?.click()} disabled={editorPending}
             ><Upload size={16} aria-hidden="true" />{message(locale, "admin.mementos.add_photos")}</Button
           >
           <Input
             type="file"
-            class="sr-only"
+            hidden
             tabindex={-1}
             aria-label={message(locale, "admin.mementos.add_photos")}
             bind:ref={photoFileInput}
+            disabled={editorPending}
             accept="image/jpeg,image/png,image/webp"
             multiple
             onchange={handlePhotoUpload}
           />
-        {:else}
-          <p class="trigger-note">{message(locale, "admin.mementos.photo_upload_desktop_unavailable")}</p>
         {/if}
       </div>
-      {#if !studio.desktop}<p class="trigger-note">{message(locale, "admin.mementos.photo_upload_note")}</p>{/if}
+      <p class="trigger-note">{message(locale, studio.desktop && studio.isolated ? "admin.mementos.photo_upload_sample_note" : "admin.mementos.photo_upload_note")}</p>
       {#if photoUploadStatus}
         <p class={photoUploadError ? "trigger-status trigger-status--error" : "trigger-status"} role={photoUploadError ? "alert" : "status"}>{photoUploadStatus}</p>
       {/if}

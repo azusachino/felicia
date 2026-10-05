@@ -912,6 +912,127 @@ WKWebView rendering remains unverified. Generated indexes are retained; expected
 SvelteKit regeneration changes their hashes rather than authored-source behavior.
 The approved isolated sample launch follows final safe-affordance verification.
 
+### PR 160 owner feedback: dirty-page Return
+
+The owner reported that Return from Add memento appeared frozen. The source
+used synchronous browser `confirm()` for dirty navigation; the pinned Wails
+macOS delegate has no JavaScript-confirm handler. A browser repro with
+`window.confirm` returning false reproduced the blocked Return. This is not
+proof of the full native failure's origin.
+
+Internal dirty navigation now uses a shared Bits UI AlertDialog with localized
+Keep editing / Discard changes actions. Journey creation/editing, Add memento,
+the memento editor and Site share the guard. Pending writes and unload
+cancellation remain protected; browser unload retains its browser-owned prompt.
+Workspace switches await the actual discard decision before touching the
+backend. Focused tests caught an additional SvelteKit boundary: a cancelled
+`goto()` can resolve before that decision. The continuation now handles that
+case, including standalone Close from a dirty editor.
+
+Lead verification of this uncommitted slice:
+
+- `make admin-check`: 110 tests pass, zero Svelte diagnostics, lint/format pass.
+- Headless desktop rebuild plus 38 affected Chromium/WebKit cases pass:
+  Return, draft retention/discard, pending creation, keyboard saves, reload
+  cancellation, routing and same-window workspace/standalone Close behavior.
+- `make test-admin-e2e`: 14 real web authoring cases pass.
+- Source tests cover resolved cancellation, refusing discard, a write becoming
+  pending while confirming, and pending/unload refusal. The Svelte AST control
+  guard now also rejects view-level native `alert()`, `confirm()` and `prompt()`.
+
+Evidence: workstation scratch `.tmp/felicia-desktop-polish/return-*.log`.
+Fresh independent verification and actual native retesting remain open. The
+native application bundle was not replaced or relaunched. Font packaging,
+native image upload and sample output-location remediation are separate open
+PR 160 feedback items; their four browser regression cases were not included
+in this Return-only gate. No native/S1/S2 acceptance or issue is closed here.
+
+### PR 160 owner feedback: font dependencies and photo creation
+
+The owner rejected tracked font binaries. Reader typography now comes from five
+pinned `@fontsource` 5.3.0 dependencies (Inter, Outfit, Share Tech Mono, Spectral,
+Zen Old Mincho). The same 17 family/weight/style combinations and the packages'
+Unicode subsets remain locally served, bundled by Vite and embedded in desktop
+assets. Public/desktop copies of font binaries and the hand-maintained face/hash
+manifests are removed from the working tree; licenses and provenance remain.
+The owner-approved npm mirror was scoped temporarily to these packages. The
+existing dependency versions were preserved and an offline frozen install passed.
+Earlier branch commits still contain font binaries: no history rewrite or
+force-push has been performed.
+
+The old desktop upload notice was a capability gate for a missing backend, not a
+macOS permission problem. Ordinary desktop image creation now uses the same
+runtime photo service as web multipart uploads. JPEG, PNG and WebP are accepted;
+HEIC/HEIF requires conversion. The service checks actual image bytes, a 20 MiB
+limit, dimensions up to 50,000 per side and 50 million pixels. Generated keys
+contain the content digest and a new photo UUID, never client filenames or source
+paths. Existing photo identities remain unchanged. Sequence allocation is
+serialized within each service instance, not across processes.
+
+Private filesystem reads, writes and deletion use `os.OpenRoot`; writes use
+owner-only temporary objects and atomic rename. Rejected metadata writes remove
+only the new upload's original after a fresh lookup confirms that its identity is
+absent. An uncertain committed write retains its original; an unavailable lookup
+also retains bytes rather than risk deleting committed data. Such an uncertain
+failure can leave a private orphan and must not be automatically retried.
+
+Sample and empty temporary workspaces expose Add sample photo, generating PNG
+bytes internally. They never expose a file input or invoke a native file picker;
+ordinary file uploads are forbidden at the backend. Pending upload controls and
+navigation remain guarded. Temporary output is automatically managed: the folder
+picker is hidden, and backend browsing/output mutations return 403 instead of a
+misleading 404 or touching author roots.
+
+Focused lead checks cover format/size/dimension rejection, symlink confinement,
+compensation and uncertain outcomes, photo sequencing, generated-only isolation,
+three-locale generated-photo curation and ordinary desktop upload/curation in
+Chromium and WebKit. These are source/headless checks, not Wails file-picker
+acceptance. The final lead checkpoint passed `make validate` (including 111 admin
+and 17 public-reader tests), focused runtime/provider/server race tests, desktop
+Go tests, Markdown checks and the documentation build. Web authoring passed all
+14 cases in a sequential run. Desktop coverage comprises 158 distinct cases:
+120 passed before the harness's 120-second deadline interrupted the full run;
+a bounded WebKit remainder passed 39 cases with one overlap. No test failure was
+reported in that interrupted desktop run. This is not a single completed
+`make e2e` receipt. A first concurrent web attempt lost a caption draft; its cause
+is unproven. The sequential rerun passed without source or assertion changes.
+Build-producing gates should not share the checkout concurrently. After the
+review correction below, a serialized final `make e2e` completed successfully:
+**158/158, exit 0** (`rework-desktop-complete.log` and `.exit`). That replaces the
+interrupted-run receipt as the final desktop gate, without diagnosing the earlier
+web failure or weakening assertions. Final `make validate`, Markdown checks and
+docs build also passed (`rework-postreview-validate.log`).
+
+Evidence is in workstation scratch `.tmp/felicia-desktop-polish/`:
+`rework-validate-final.log`, `photo-go-final.log`, `rework-desktop-final.log`,
+`rework-desktop-remainder.log`, `rework-web-sequential.log` and
+`rework-docs-final.log`. Fresh read-only pi-subagents review completed on the
+owner-selected `zai-coding-cn/glm-5.3-flash` at observed medium effort, run
+`d22c2b70-05f8-4fbd-a722-2b03763c2ad6`. It met all four source criteria with no
+proven blocking findings, inspected exact source/test copies and matched their
+SHA-256s to frozen working state
+`f4c7a8e89f3fa6adee8c64f125f8efb50b57ef0a8cc1fe08b34d02cdf9a3dbc6`, and reused
+owner-permitted matching gate evidence. Report: workstation scratch
+`rework-independent-review.md`. This is source verification, not native acceptance.
+
+A review coverage note exposed a real provider gap: SQLite `GetPhoto` returned
+raw `sql.ErrNoRows`, so compensation's domain-not-found check could not remove a
+rejected upload's new original. A regression first failed on that exact error;
+the provider now maps only missing rows to `domain.ErrNotFound`. Focused
+SQLite/runtime/provider/server race and desktop tests pass, with the actual
+`-race` command retained in `photo-mapping-green.log`. A final fresh, narrowly
+scoped pi-subagents GLM Flash/medium review met the mapping, regression and safe
+compensation criteria with no findings (`rework-mapping-review-result.md`). It
+inspected the actual provider/test/service files and reused the focused gate;
+the initial broader review alone does not verify the changed provider.
+
+Canonical Asobi connectivity recovered on the verified remote graph. The owning
+S1 task's stale branch, commit and next action were reconciled while retaining
+`BLOCKED_ON owner-native-acceptance`. Tracker-only duplicate implementation todos
+were superseded, not counted as native completion. The native application bundle
+has not been replaced or relaunched. No broader native/S1/S2 acceptance, merge,
+release or deployment is claimed.
+
 ## Evidence and closeout
 
 For each slice, record branch/full commit and working-diff ownership, exact commands

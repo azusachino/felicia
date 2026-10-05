@@ -1,4 +1,4 @@
-import { goto } from "$app/navigation"
+import { guardedGoto } from "$lib/navigation-guard"
 import { resolve } from "$app/paths"
 import { page } from "$app/state"
 
@@ -6,7 +6,7 @@ import { page } from "$app/state"
 // Never switch the backend beneath a page whose navigation was cancelled.
 export async function prepareWorkspaceSwitch(): Promise<boolean> {
   try {
-    await goto(resolve("/"))
+    if (!(await guardedGoto(resolve("/")))) return false
   } catch (cause) {
     if (page.route.id !== "/") return false
     throw cause

@@ -67,6 +67,7 @@ type MementoStore interface {
 type BlobStore interface {
 	Put(context.Context, string, []byte) error
 	Open(context.Context, string) (io.ReadCloser, error)
+	Delete(context.Context, string) error
 }
 
 // MediaStore persists memento media.

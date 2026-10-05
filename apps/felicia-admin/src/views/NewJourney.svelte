@@ -1,5 +1,8 @@
 <script lang="ts">
-  import { afterNavigate, beforeNavigate, goto } from "$app/navigation"
+  import { afterNavigate } from "$app/navigation"
+  import { guardedGoto as goto, guardDirtyNavigation } from "$lib/navigation-guard"
+  import { getStudio } from "$lib/studio"
+  const studio = getStudio()
   import { resolve } from "$app/paths"
   import { untrack } from "svelte"
   import { Collapsible } from "bits-ui"
@@ -36,9 +39,12 @@
   const dirty = $derived(JSON.stringify([title, place, slug, dateStart, dateEnd, country, region]) !== originalFields)
   const invalidDates = $derived(Boolean(dateStart && dateEnd && dateEnd < dateStart))
 
-  beforeNavigate((navigation) => {
-    if (leaving || created || (!dirty && !pending)) return
-    if (navigation.willUnload || pending || !confirm(message(locale, "admin.journeys.unsaved_leave"))) navigation.cancel()
+  guardDirtyNavigation({
+    allowed: () => leaving || created,
+    dirty: () => dirty,
+    pending: () => pending,
+    prompt: () => message(locale, "admin.journeys.unsaved_leave"),
+    confirmDiscard: studio.confirmDiscard,
   })
 
   function deriveSlug() {

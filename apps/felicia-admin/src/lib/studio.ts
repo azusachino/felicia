@@ -7,6 +7,7 @@ export interface StudioState {
   readonly sample: boolean
   readonly isolated: boolean
   readonly workspaceReady: boolean
+  confirmDiscard(prompt: string): Promise<boolean>
   openPreview(): void
 }
 

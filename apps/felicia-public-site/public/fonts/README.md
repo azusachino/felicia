@@ -1,33 +1,28 @@
-# Reader fonts
+# Reader font licenses
 
-The reader self-hosts its existing Inter, Outfit, Share Tech Mono, Zen Old Mincho,
-and Spectral typefaces. The owner selected bundling rather than changing the
-paper-memento typography or retaining external font requests.
+Font binaries are build dependencies, not repository assets. The public reader
+imports the existing fixed family/weight/style faces from pinned Fontsource
+packages in `src/fonts.css`; Bun's lockfile records their package integrity.
+Vite bundles the CSS and fingerprints local font assets under `assets/`, including
+all supplied Unicode subsets. The desktop embeds that same reader build.
 
-`reader-fonts.css` retains the families, styles, weights, display behavior and
-Unicode subsets served by the two original Google Fonts stylesheet URLs recorded
-in `sources.json`. Only font URLs are replaced with local filenames. The stylesheets
-were fetched with a WOFF2-capable Chrome user agent on 2026-10-04. All 425 font-face
-rules and 396 unique WOFF2 files are retained, including Japanese subsets: do not
-silently prune glyph coverage. Font binaries total approximately 8.7 MB.
+The original Inter, Outfit, Share Tech Mono, Spectral and Zen Old Mincho CSS
+family declarations remain unchanged. Fixed imports retain those family names,
+weights and styles; Japanese Zen Old Mincho subsets are included. No Google
+Fonts requests are needed at runtime. Map tiles remain an online dependency.
 
-`sources.json` records each original Google-hosted font URL, local filename and
-content SHA-256. The filenames are derived from the URL SHA-256; content hashes
-verify the actual downloaded binaries. These provenance URLs are data, not
-runtime requests. The HTML uses Vite's base-aware local stylesheet path and font
-URLs are relative to that stylesheet, supporting both root and subpath output.
+The five `*-OFL.txt` files are copied verbatim from each pinned package's
+`LICENSE` and travel with every reader build. `src/fonts.test.ts` verifies the
+imports, package versions, license equality, local WOFF2 signatures and Japanese
+subset presence. The desktop browser test loads all five families with external
+traffic blocked.
 
-All five families use SIL Open Font License 1.1. Their unmodified copyright and
-license files are included alongside the assets:
+References:
 
-- `inter-OFL.txt`: <https://github.com/google/fonts/tree/main/ofl/inter>
-- `outfit-OFL.txt`: <https://github.com/google/fonts/tree/main/ofl/outfit>
-- `sharetechmono-OFL.txt`: <https://github.com/google/fonts/tree/main/ofl/sharetechmono>
-- `zenoldmincho-OFL.txt`: <https://github.com/google/fonts/tree/main/ofl/zenoldmincho>
-- `spectral-OFL.txt`: <https://github.com/google/fonts/tree/main/ofl/spectral>
+- [Fontsource installation and fixed-face imports](https://fontsource.org/docs/getting-started/install)
+- [Fontsource subsets](https://fontsource.org/docs/getting-started/subsets)
+- [Vite asset bundling](https://vite.dev/guide/assets.html)
 
-Refresh deliberately from the recorded stylesheet URLs, retaining licenses,
-checking WOFF2 signatures and content hashes, and reviewing family/weight/subset
-changes. Verify publication and the embedded desktop reader without external
-font requests before accepting a refresh. No runtime download or new package
-dependency is needed.
+Local npm TLS failures may be worked around with the owner-approved
+`https://npm.okcoin.tokyo/` mirror. Do not disable TLS verification or downgrade
+unrelated locked packages. No persistent registry setting is required.

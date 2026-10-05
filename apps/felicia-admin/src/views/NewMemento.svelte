@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { beforeNavigate, goto } from "$app/navigation"
+  import { guardedGoto as goto, guardDirtyNavigation } from "$lib/navigation-guard"
+  import { getStudio } from "$lib/studio"
+  const studio = getStudio()
   import { resolve } from "$app/paths"
   import { Button } from "$lib/components/ui/button"
   import { Input } from "$lib/components/ui/input"
@@ -42,9 +44,12 @@
       active = false
     }
   })
-  beforeNavigate((navigation) => {
-    if (saved || (!dirty && !pending)) return
-    if (navigation.willUnload || pending || !confirm(message(locale, "admin.journeys.unsaved_leave"))) navigation.cancel()
+  guardDirtyNavigation({
+    allowed: () => saved,
+    dirty: () => dirty,
+    pending: () => pending,
+    prompt: () => message(locale, "admin.journeys.unsaved_leave"),
+    confirmDiscard: studio.confirmDiscard,
   })
   async function create() {
     if (pending || saved || !journey || !kind || !title.trim()) return

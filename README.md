@@ -91,8 +91,12 @@ Felicia is in the implementation stage. The selected end-to-end flow and current
 
 The desktop follow-up provides isolated sample/empty temporary workspaces,
 journey and memento authoring, shared library controls and an in-app last-built
-preview with locally bundled reader fonts. The owner verified the native sample
-Close behavior; broader native S1 acceptance and S2 reviewed imports remain open.
+preview with reader fonts bundled from pinned Fontsource dependencies. Ordinary
+desktop image upload shares web validation/storage; temporary workspaces add
+only generated photos and manage output automatically. Internal dirty Return
+uses a shared confirmation dialog. The owner verified the native sample Close
+behavior; broader native S1 acceptance, native file-picker testing and S2 reviewed
+imports remain open.
 See the [desktop execution plan](docs/roadmap/desktop-studio-redesign.md) for the
 verified slices and explicit capability limits.
 

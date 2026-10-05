@@ -1,4 +1,5 @@
 import { test, expect } from "./fixtures"
+import { decideDiscard } from "./discard-dialog"
 import { message, type Locale } from "../src/i18n"
 
 test.use({ sampleMode: true, userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X) wails.io" })
@@ -14,12 +15,15 @@ for (const locale of ["en", "ja", "zh"] as Locale[]) {
       await page.getByRole("link", { name: /A little paper keepsake/ }).click()
       const essay = page.getByLabel("Essay", { exact: true })
       await essay.fill("Unsaved synthetic essay")
-      page.once("dialog", (dialog) => dialog.dismiss())
       await page.getByRole("button", { name: "Close", exact: true }).click()
+      await decideDiscard(page, false)
       await expect(essay).toHaveValue("Unsaved synthetic essay")
       expect((await (await page.request.get("/api/desktop/workspace")).json()).sample).toBe(true)
-      page.once("dialog", (dialog) => dialog.accept())
-      await page.getByRole("link", { name: "Journeys", exact: true }).click()
+      await page.getByRole("button", { name: "Close", exact: true }).click()
+      await decideDiscard(page, true)
+      await expect(page.getByText(message(locale, "admin.sample.empty_studio"), { exact: true })).toBeVisible()
+      await page.getByRole("button", { name: message(locale, "admin.sample.open"), exact: true }).click()
+      await expect(page.getByRole("link", { name: /A Kyoto afternoon/ })).toBeVisible()
     }
     const workspace = await (await page.request.get("/api/desktop/workspace")).json()
     expect(workspace).toEqual({ sample: true, return_available: false, isolated: true })

@@ -553,6 +553,10 @@ export async function upsertPhoto(payload: UpsertPhotoRequest): Promise<{ status
   return postJSON<{ status: string }>("/api/admin/photos", payload)
 }
 
+export function addSamplePhoto(mementoId: string): Promise<AdminMementoPhoto> {
+  return postJSON<AdminMementoPhoto>(`/api/admin/mementos/${mementoId}/photos/sample`)
+}
+
 export async function uploadPhoto(mementoId: string, file: File): Promise<AdminMementoPhoto> {
   const form = new FormData()
   form.append("file", file)

@@ -12,6 +12,12 @@ test("studio widgets use shared/library components, not view-level native substi
     const ast = parse(readFileSync(join(root, file), "utf8"), { modern: true })
     JSON.stringify(ast, (_key, node) => {
       if (node?.type === "RegularElement" && ["input", "textarea", "select", "button", "details", "summary", "dialog"].includes(node.name)) violations.push(`${file}: ${node.name}`)
+      if (node?.type === "CallExpression") {
+        const callee = node.callee
+        const global = callee.type === "MemberExpression" && ["window", "globalThis"].includes(callee.object?.name)
+        const name = callee.type === "Identifier" ? callee.name : global ? (callee.property?.name ?? callee.property?.value) : null
+        if (["alert", "confirm", "prompt"].includes(name)) violations.push(`${file}: native ${name}()`)
+      }
       return node
     })
   }

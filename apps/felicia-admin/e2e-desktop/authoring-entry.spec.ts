@@ -1,4 +1,5 @@
 import { test, expect } from "./fixtures"
+import { decideDiscard } from "./discard-dialog"
 
 async function createEmptyJourney(page: import("@playwright/test").Page) {
   await page.goto("/#/journey/new")
@@ -52,8 +53,8 @@ test("journey edit cancellation and conflicting save preserve input and the othe
   const original = await (await page.request.get(`/api/admin/journeys/${id}`)).json()
   await page.getByRole("button", { name: "Edit journey", exact: true }).click()
   await page.getByLabel("Title", { exact: true }).fill("Unsaved owner title")
-  page.once("dialog", (dialog) => dialog.dismiss())
   await page.getByRole("button", { name: "Back to journey", exact: true }).click()
+  await decideDiscard(page, false)
   await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Unsaved owner title")
   const competing = await page.request.post("/api/admin/journeys", {
     data: { ...original, title: "Other writer title", date_start: original.date_start.slice(0, 10), date_end: original.date_end.slice(0, 10), expected_revision: original.revision },
@@ -81,8 +82,8 @@ test("new memento keyboard choice, dirty return, pending navigation and retry re
   const title = page.getByLabel("Title", { exact: true })
   await title.fill("A remembered ride")
   expect((await title.boundingBox())!.height).toBeGreaterThanOrEqual(40)
-  page.once("dialog", (dialog) => dialog.dismiss())
   await page.getByRole("button", { name: "Return", exact: true }).click()
+  await decideDiscard(page, false)
   await expect(title).toHaveValue("A remembered ride")
   let release!: () => void
   const held = new Promise<void>((resolve) => {
