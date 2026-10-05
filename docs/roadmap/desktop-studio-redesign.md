@@ -5,6 +5,38 @@
 > Asobi. Do not dispatch a later slice while an earlier acceptance gate is open.
 > The owner-feedback revision below supersedes the earlier modal-creation direction.
 
+## Current delivery — PR 160
+
+[PR #160](https://github.com/azusachino/felicia/pull/160) is draft for owner review.
+Implementation and CI remediation are delivered on `feat/desktop-sample-polish`
+through `6944c1ebb1ad926a03a48a48255ef99c729bad9e`.
+
+- [CI run 37283214499](https://github.com/azusachino/felicia/actions/runs/37283214499)
+  passed all three jobs: backend, frontend and desktop composition. Current local
+  validation has 111 admin and 18 reader tests; complete desktop composition is
+  158/158 and sequential real web authoring is 14/14.
+- Fonts are pinned Fontsource build dependencies, not tracked binaries. Shared
+  desktop/web image upload, generated-only temporary photos, auto-managed
+  temporary output and asynchronous dirty Return passed fresh independent source
+  checks. The SQLite compensation mapping and CI portability regression were
+  separately verified, the latter through an explicitly owner-approved fresh
+  direct GLM Flash/medium reviewer.
+- Canonical Asobi connectivity and stale branch/commit/next-action records are
+  reconciled. The old DNS outage is no longer a current blocker.
+- After green CI, the signed app was launched once with `--sample` only. The owner
+  reports it is basically working and will review this PR next. This does not
+  authorize a real workspace, normal file picker or blanket native/S1/S2 closure.
+  Standalone Close has its earlier bounded native acceptance; remaining native
+  criteria and S2 reviewed-input/apply remain open.
+
+The checkpoint narratives below are historical evidence, not current task or
+permission state. Their uncommitted changes, earlier test counts, temporary DNS
+outage, upload gating and launch/review holds are superseded by this delivery and
+its [final rework record](#pr-160-owner-feedback-font-dependencies-and-photo-creation).
+Generated desktop indexes may differ after packaging; that build-only drift is
+preserved outside this documentation update. No hand-authored implementation changes remain
+uncommitted.
+
 ## Goal and constraints
 
 Deliver Felicia as a polished local desktop studio: import → author → preview →
@@ -617,7 +649,10 @@ false and its capture fails; this does not establish remote permission state or
 whether Felicia rendered. Native appearance remains unverified. S1 remains open;
 S2 is not dispatched.
 
-## Sample and theme polish — working slice
+## Sample and theme polish — checkpoint history
+
+This records the earlier candidate and its successive fixes. Current upload,
+Close, connectivity, verification and launch state are summarized above.
 
 On `feat/desktop-sample-polish`, the uncommitted studio adds explicit **Open
 sample trip** actions in Library and Settings. `--sample` selects a fresh
@@ -715,9 +750,10 @@ the current admin/reader builds, and generated outputs were retained.
 
 This supersedes the prior safe-launch review and clears the current source-only
 launch gate for the already-approved isolated synthetic `--sample` invocation.
-The canonical Asobi graph is temporarily unreachable (DNS/request failure), so
-live task/claim reconciliation remains blocked; no fallback graph or networking
-change was made. Verified results are promoted here while that update waits.
+At this checkpoint the canonical Asobi graph was temporarily unreachable
+(DNS/request failure), blocking live task/claim reconciliation. No fallback graph
+or networking change was made. Connectivity and records were later reconciled
+as recorded in the current delivery.
 Native Wails acceptance remains owner-only, with no real-workspace launch,
 permissions, real photo/folder selection, commits or pushes authorized.
 
@@ -727,8 +763,8 @@ After the fresh pass, the lead launched the signed bundle with `--sample` only
 evidence, not native UI acceptance. No pre-existing packaged native process was
 replaced. The sample window is retained for owner checks; native controls, fonts,
 Dock, dragging, authoring and preview appearance still require that feedback.
-Live-record reconciliation remains blocked by Asobi DNS, independently of the
-source/test pass.
+Live-record reconciliation was still blocked by Asobi DNS at that launch,
+independently of the source/test pass; the final delivery resolves that blocker.
 
 ### Owner feedback: standalone Close must keep the studio open
 
@@ -765,7 +801,8 @@ the bounded native Close fix, not the rest of S1/S2. The owner asked about the
 “your journal is not connected” notice; it explains the isolated launch, rather
 than a connection failure. The clearer proposed wording (“Temporary workspace —
 changes are cleared when you quit”) has not yet been applied to the catalogs.
-Asobi DNS continues to block live-record reconciliation. Unsupported actions are not
+Asobi DNS still blocked live-record reconciliation at this Close checkpoint.
+Unsupported actions were not
 shown as enabled controls; the UI explains the boundary. These changes and
 focused browser checks do not establish complete desktop/native UX parity.
 
@@ -941,11 +978,11 @@ Lead verification of this uncommitted slice:
   guard now also rejects view-level native `alert()`, `confirm()` and `prompt()`.
 
 Evidence: workstation scratch `.tmp/felicia-desktop-polish/return-*.log`.
-Fresh independent verification and actual native retesting remain open. The
-native application bundle was not replaced or relaunched. Font packaging,
-native image upload and sample output-location remediation are separate open
-PR 160 feedback items; their four browser regression cases were not included
-in this Return-only gate. No native/S1/S2 acceptance or issue is closed here.
+At this Return-only checkpoint, fresh independent verification and actual native
+retesting were still open; the bundle was not replaced or relaunched. Font
+packaging, native image upload and temporary output remediation were not included
+in that gate. The combined rework below subsequently implements and verifies
+those source criteria. This historical checkpoint closes no native/S1/S2 issue.
 
 ### PR 160 owner feedback: font dependencies and photo creation
 
@@ -954,8 +991,9 @@ pinned `@fontsource` 5.3.0 dependencies (Inter, Outfit, Share Tech Mono, Spectra
 Zen Old Mincho). The same 17 family/weight/style combinations and the packages'
 Unicode subsets remain locally served, bundled by Vite and embedded in desktop
 assets. Public/desktop copies of font binaries and the hand-maintained face/hash
-manifests are removed from the working tree; licenses and provenance remain.
-The owner-approved npm mirror was scoped temporarily to these packages. The
+manifests are removed from the delivered tree; licenses and provenance remain.
+The npm mirror was used temporarily for these packages; leaked lockfile URLs
+were later corrected in the CI follow-up below. The
 existing dependency versions were preserved and an offline frozen install passed.
 Earlier branch commits still contain font binaries: no history rewrite or
 force-push has been performed.
@@ -987,8 +1025,8 @@ Focused lead checks cover format/size/dimension rejection, symlink confinement,
 compensation and uncertain outcomes, photo sequencing, generated-only isolation,
 three-locale generated-photo curation and ordinary desktop upload/curation in
 Chromium and WebKit. These are source/headless checks, not Wails file-picker
-acceptance. The final lead checkpoint passed `make validate` (including 111 admin
-and 17 public-reader tests), focused runtime/provider/server race tests, desktop
+acceptance. The initial lead rework checkpoint passed `make validate` (111 admin
+and 17 public-reader tests before the portability regression), focused runtime/provider/server race tests, desktop
 Go tests, Markdown checks and the documentation build. Web authoring passed all
 14 cases in a sequential run. Desktop coverage comprises 158 distinct cases:
 120 passed before the harness's 120-second deadline interrupted the full run;
@@ -1044,12 +1082,29 @@ trust/network repair was made. These local results do not replace the rerun CI
 gate. Fresh GLM Flash/medium review verified the root cause, default-registry
 mapping, pinned-package continuity and unchanged CI gates with no proven blockers.
 Its tool budget stopped before inspecting the new portability test; that criterion
-is explicitly unverified. A narrowly scoped follow-up dispatcher stalled before
-launching a child and was stopped, without route substitution or host repair.
-Source and local-gate results do not claim CI or native acceptance. The owner
-approved a rebuilt isolated Sample launch; it was packaged and signed, but launch
-is held while this CI follow-up is verified. No native application launch was performed during source delivery or the
-CI follow-up. No broader native/S1/S2 acceptance, merge, release or deployment is
+was initially unverified. A narrowly scoped follow-up dispatcher stalled before
+launching a child and was stopped, without host repair. The owner then explicitly
+approved a fresh direct `zai-coding-cn/glm-5.3-flash` reviewer at medium effort for
+that missing single-file criterion. Its one-read review met the actual test's
+entry-count, version, default-registry, integrity and path assertions with no
+blockers (`ci-invariant-direct-report.md`). This was an approved route change.
+
+Commit `6944c1ebb1ad926a03a48a48255ef99c729bad9e` delivers the CI fix.
+[Run 37283214499](https://github.com/azusachino/felicia/actions/runs/37283214499)
+completed successfully on all three jobs, including frozen installs on Linux and
+macOS. This supplies the default-registry CI evidence absent from local probes.
+Local validation now passes 111 admin and 18 reader tests; precommit checks and
+docs build pass (`ci-font-validate.log`, `ci-font-precommit-check.log`).
+
+After those gates and the missing review passed, the owner-approved bundle was
+repackaged, ad-hoc signed and strictly verified, then launched through
+LaunchServices with `--sample` only (observed PID 72078). Full process arguments
+confirmed one Sample instance; an initial observer assertion used the truncated
+macOS `ps comm` column and was corrected without restarting the app. Evidence:
+`rework-native-package-ci-green.log`, `rework-native-launch.json`. The owner now
+reports it is basically working and will review the PR. Launch and that general
+feedback do not establish every native criterion or authorize a normal workspace
+file picker. No broader native/S1/S2 closure, merge, release or deployment is
 claimed.
 
 ## Evidence and closeout

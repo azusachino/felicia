@@ -117,8 +117,8 @@ projection:
   checkpoint passed 46/46 desktop-composition checks plus 14/14 real web-authoring
   checks; updated full-page creation evidence belongs to the owning PR. Browser
   checks do not establish native Wails or source-review/apply acceptance. See the ordered
-  plan for independent review and the remaining boundaries. The next verified
-  candidate adds same-window isolated sample switching, journey Edit/Add memento
+  plan for independent review and the remaining boundaries. The draft
+  PR #160 candidate adds same-window isolated sample switching, journey Edit/Add memento
   authoring, shared Bits UI controls/dialogs and fixed date/time segments, in-app
   last-built preview, and locally bundled original reader fonts. Its full
   desktop-composition checkpoint passed 150/150; web authoring passed 14/14.
@@ -133,12 +133,19 @@ projection:
   asynchronous dirty-Return dialog. Fresh independent source review meets these
   four bounded criteria; native file-picker/appearance acceptance and normal
   external-source review/apply remain open. Lead checks include 111 admin tests,
-  17 reader tests, 14 sequential web-authoring cases and a completed 158/158
+  18 reader tests, 14 sequential web-authoring cases and a completed 158/158
   desktop-composition gate. A final independent provider-error mapping review
   confirms safe failed-upload compensation. Historical interrupted-run boundaries
-  and the unproven transient web failure are retained in the execution plan. Canonical Asobi
-  connectivity recovered and the stale branch/next-action records were corrected,
-  retaining blocked S1/native status. The proposed clearer temporary-workspace
+  and the unproven transient web failure are retained in the execution plan.
+  A CI-only font registry leak was corrected at `6944c1e` without changing pins or
+  integrity; [run 37283214499](https://github.com/azusachino/felicia/actions/runs/37283214499)
+  passed backend, frontend and desktop composition. Fresh independent review also
+  verified the portability regression through the owner-approved direct GLM route.
+  Canonical Asobi connectivity and stale branch/next-action records are reconciled.
+  The signed, rebuilt app was launched with `--sample` only after those gates;
+  the owner reports it is basically working and will review PR #160. The PR stays
+  draft and broader S1/native and S2 acceptance remain open; a normal native photo
+  picker was not authorized or tested. The proposed clearer temporary-workspace
   notice remains an unapplied copy follow-up.
 
 - **Google Timeline visits (#81)** — `felicia-cli journey plan --timeline <Timeline.json>` now reads concatenated Timeline JSON and Takeout `timelineObjects`, preserving place names, IDs, coordinates, and visit times as semantic intake visits. Activity segments are not synthesized into route geometry; provide GPX or Dawarich for a route. Timeline input is read-only and stays local.
