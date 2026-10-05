@@ -897,6 +897,29 @@ migration remains open, and this bounded verification does not complete native
 acceptance, S1/S2 or the overall UX. The retained native process has not been
 replaced; no commit or push is approved.
 
+### Dedicated metadata-edit verification follow-up
+
+The #161 follow-up adds dedicated tests for the existing metadata-edit contract.
+Real desktop-handler/SQLite tests seed a nonempty GPS route, source reference and
+authored-field claim, then verify retention, stable journey identity and exactly
+one revision advance after an edit. Invalid dates, slug collisions and stale
+revisions leave the full persisted row unchanged; the collision neighbour is
+also preserved after a valid retry.
+
+The focused desktop-composition browser cases now verify source-reference
+retention, edit-specific date correction and collision retry, plus explicit
+Discard/re-enter recovery from a stale revision. They do not introduce automatic
+conflict merging or change the authoring UI. Parent checks passed two Go tests
+with the race detector and ten Chromium/WebKit cases, together with types, lint,
+formatting, `make check` and `make validate`. Fresh independent source/log review
+found no concrete test defects; commands and runtime hashes were supplied parent
+receipts, not reviewer-run reproductions.
+
+The headless transport embeds the preserved local admin asset; this checkpoint
+is not a newly rebuilt frontend or native-window acceptance. GPS and authored-mask
+retention are handler/SQLite evidence; the browser API cannot seed GPS geometry.
+Native S1/S2 acceptance and concurrent sequence allocation remain open.
+
 ### All-control migration gate checkpoint
 
 The source migration standardizes form controls at physical 40-pixel sizing,
