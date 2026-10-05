@@ -35,16 +35,21 @@ var embeddedAssets embed.FS
 var accentPattern = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
 type HandlerConfig struct {
-	Repo          domain.Repository
-	Registry      *domain.Registry
-	MediaRoot     string
-	PublicDir     string
-	Mode          string // "admin" or "reader"
-	Token         string // optional; tests only. The packaged app runs tokenless on the webview-only scheme.
-	PreviewPort   string
-	PreviewPortFn func() string
-	OnPickFolder  func(title string) (string, error)
-	OnPickFile    func(title string) (string, error)
+	Repo            domain.Repository
+	Registry        *domain.Registry
+	MediaRoot       string
+	PublicDir       string
+	Mode            string // "admin" or "reader"
+	Sample          bool
+	Isolated        bool // Temporary baseline as well as sample: never access author paths.
+	ReturnAvailable bool
+	OnOpenSample    func() error
+	OnCloseSample   func() error
+	Token           string // optional; tests only. The packaged app runs tokenless on the webview-only scheme.
+	PreviewPort     string
+	PreviewPortFn   func() string
+	OnPickFolder    func(title string) (string, error)
+	OnPickFile      func(title string) (string, error)
 }
 
 type DesktopHandler struct {
@@ -111,6 +116,47 @@ func (h *DesktopHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// In admin mode: pre-paint bootstrap script
 	if cleanPath == "/boot.js" {
 		h.handleBoot(w, r)
+		return
+	}
+
+	if cleanPath == "/api/desktop/workspace" && r.Method == http.MethodGet {
+		respondJSON(w, http.StatusOK, map[string]bool{"sample": h.cfg.Sample, "return_available": h.cfg.ReturnAvailable, "isolated": h.cfg.Isolated || h.cfg.Sample})
+		return
+	}
+	if cleanPath == "/api/desktop/sample" || cleanPath == "/api/desktop/sample/close" {
+		if !h.authorizedMutation(w, r) {
+			return
+		}
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if cleanPath == "/api/desktop/sample/close" {
+			if !h.cfg.Sample || h.cfg.OnCloseSample == nil {
+				http.Error(w, "not a sample window", http.StatusBadRequest)
+				return
+			}
+			if err := h.cfg.OnCloseSample(); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			respondJSON(w, http.StatusOK, map[string]string{"status": "returned"})
+		} else {
+			if h.cfg.OnOpenSample == nil || h.cfg.Sample {
+				http.Error(w, "sample launcher unavailable", http.StatusBadRequest)
+				return
+			}
+			if err := h.cfg.OnOpenSample(); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			respondJSON(w, http.StatusOK, map[string]string{"status": "opened"})
+		}
+		return
+	}
+	// Both the sample and its empty temporary baseline forbid author-path access.
+	if (h.cfg.Sample || h.cfg.Isolated) && (strings.HasPrefix(cleanPath, "/api/desktop/pick-") || strings.HasPrefix(cleanPath, "/api/admin/local-journeys/") || cleanPath == "/api/admin/site/output-dir" || strings.HasPrefix(cleanPath, "/api/admin/site/directories")) {
+		http.Error(w, "not available in the isolated sample workspace", http.StatusForbidden)
 		return
 	}
 
@@ -220,6 +266,9 @@ func (h *DesktopHandler) handlePick(w http.ResponseWriter, r *http.Request, dire
 }
 
 func (h *DesktopHandler) routeAdmin(w http.ResponseWriter, r *http.Request, reqPath string) {
+	if h.handleJourneyAction(w, r, reqPath) {
+		return
+	}
 	switch {
 	case reqPath == "/api/admin/journeys":
 		switch r.Method {
@@ -233,8 +282,6 @@ func (h *DesktopHandler) routeAdmin(w http.ResponseWriter, r *http.Request, reqP
 	case strings.HasPrefix(reqPath, "/api/admin/journeys/") && strings.HasSuffix(reqPath, "/mementos"):
 		idStr := strings.TrimSuffix(strings.TrimPrefix(reqPath, "/api/admin/journeys/"), "/mementos")
 		h.handleListJourneyMementos(w, r, idStr)
-	case strings.HasPrefix(reqPath, "/api/admin/journeys/") && strings.HasSuffix(reqPath, "/stop-candidates"):
-		respondJSON(w, http.StatusOK, []any{})
 	case strings.HasPrefix(reqPath, "/api/admin/journeys/") && strings.HasSuffix(reqPath, "/build-status"):
 		idStr := strings.TrimSuffix(strings.TrimPrefix(reqPath, "/api/admin/journeys/"), "/build-status")
 		h.handleBuildStatus(w, r, idStr)
@@ -254,6 +301,12 @@ func (h *DesktopHandler) routeAdmin(w http.ResponseWriter, r *http.Request, reqP
 		} else {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
+	case strings.HasPrefix(reqPath, "/api/admin/mementos/") && strings.HasSuffix(reqPath, "/photos"):
+		h.handleMementoPhotos(w, r)
+	case reqPath == "/api/admin/photos":
+		h.handleUpdatePhoto(w, r)
+	case strings.HasPrefix(reqPath, "/api/admin/photos/") && strings.HasSuffix(reqPath, "/content"):
+		h.handlePhotoContent(w, r)
 	case strings.HasPrefix(reqPath, "/api/admin/mementos/"):
 		idStr := strings.TrimPrefix(reqPath, "/api/admin/mementos/")
 		switch r.Method {
@@ -332,8 +385,7 @@ type desktopUpsertJourneyRequest struct {
 
 func (h *DesktopHandler) handleUpsertJourney(w http.ResponseWriter, r *http.Request) {
 	var req desktopUpsertJourneyRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request JSON")
+	if !decodeDesktopJSON(w, r, &req) {
 		return
 	}
 	start, err := time.Parse("2006-01-02", req.DateStart)
@@ -485,8 +537,7 @@ type desktopUpsertMementoRequest struct {
 
 func (h *DesktopHandler) handleUpsertMemento(w http.ResponseWriter, r *http.Request) {
 	var req desktopUpsertMementoRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondError(w, http.StatusBadRequest, "invalid request JSON")
+	if !decodeDesktopJSON(w, r, &req) {
 		return
 	}
 	if req.ID == uuid.Nil {
@@ -740,6 +791,8 @@ func (h *DesktopHandler) serveStaticUI(w http.ResponseWriter, r *http.Request) {
 		ctype = "image/svg+xml"
 	case ".png":
 		ctype = "image/png"
+	case ".woff2":
+		ctype = "font/woff2"
 	}
 	w.Header().Set("Content-Type", ctype)
 	_, _ = w.Write(data)

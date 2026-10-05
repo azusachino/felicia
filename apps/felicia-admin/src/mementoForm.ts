@@ -21,19 +21,19 @@ import { message, type AdminMessageKey, type Locale } from "./i18n"
 
 // --- Date/time -------------------------------------------------------------
 
-// occurred_at is an RFC3339 instant server-side. The editor uses a plain
-// <input type="datetime-local"> (no seconds/offset), so we treat its value as
-// UTC — the simplest thing that works without pulling in a timezone library;
-// occurred_tz (an IANA name) carries the display zone separately.
+// occurred_at is an RFC3339 instant server-side. The editor renders UTC
+// explicitly as yyyy-MM-dd HH:mm:ss, independent of the OS input locale.
+// occurred_tz remains separate metadata; do not reinterpret the instant.
 export function toRFC3339(localValue: string): string {
   if (!localValue) return ""
+  localValue = localValue.trim().replace(" ", "T")
   if (localValue.endsWith("Z") || /[+-]\d{2}:\d{2}$/.test(localValue)) return localValue
   return localValue.length === 16 ? `${localValue}:00Z` : `${localValue}Z`
 }
 
 export function fromRFC3339(value: string | undefined): string {
   if (!value) return ""
-  return value.slice(0, 16)
+  return new Date(value).toISOString().slice(0, 19).replace("T", " ")
 }
 
 // --- Price (the memento's own price_amount/price_currency, not kind_data) --
@@ -195,7 +195,7 @@ export function buildKindData(fields: AdminTemplateField[], state: KindFormState
 export interface CommonFormFields {
   title: string
   place: string
-  occurredAtLocal: string // <input type="datetime-local"> value, or ""
+  occurredAtLocal: string // yyyy-MM-dd HH:mm:ss in UTC, or ""
   occurredTz: string
   essay: string
   vendor: string

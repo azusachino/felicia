@@ -10,14 +10,19 @@ const scratch = fileURLToPath(new URL("../../../../../.tmp/felicia-desktop-redes
 
 type Studio = { url: string; root: string; token: string }
 
-export const test = base.extend<{ studio: Studio }>({
-  studio: async ({ browserName }, use) => {
+export const test = base.extend<{ studio: Studio; sampleMode: boolean }>({
+  sampleMode: [false, { option: true }],
+  studio: async ({ browserName, sampleMode }, use) => {
     mkdirSync(scratch, { recursive: true })
     const root = mkdtempSync(join(scratch, `studio-${browserName}-`))
     const token = randomBytes(32).toString("hex")
     const child = spawn(
       join(repo, "bin/felicia-desktop-e2e"),
-      ["--e2e-addr", "127.0.0.1:0", "--db", join(root, "felicia.sqlite"), "--media-root", join(root, "media"), "--public-dir", join(root, "site"), "--preview-addr", "127.0.0.1:0"],
+      [
+        "--e2e-addr",
+        "127.0.0.1:0",
+        ...(sampleMode ? ["--sample"] : ["--db", join(root, "felicia.sqlite"), "--media-root", join(root, "media"), "--public-dir", join(root, "site"), "--preview-addr", "127.0.0.1:0"]),
+      ],
       { env: { ...process.env, FELICIA_E2E_TOKEN: token }, stdio: ["ignore", "pipe", "pipe"] },
     )
     child.stderr.on("data", (data: Buffer) => appendFileSync(join(root, "stderr.log"), data))

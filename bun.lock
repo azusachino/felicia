@@ -19,6 +19,7 @@
       },
       "devDependencies": {
         "@eslint/js": "^10.0.1",
+        "@internationalized/date": "3.12.4",
         "@lucide/svelte": "1.51.0",
         "@playwright/test": "1.62.1",
         "@sveltejs/adapter-static": "3.0.10",
@@ -47,6 +48,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@felicia/reader": "workspace:*",
+        "@lucide/svelte": "1.51.0",
         "maplibre-gl": "^5.24.0",
         "svelte": "^5.56.10",
       },

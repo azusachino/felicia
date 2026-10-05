@@ -4,6 +4,14 @@ export function journeyDetailPath(id: string): `/journey/${string}` {
   return `/journey/${encodeURIComponent(id)}`
 }
 
+export function journeyEditPath(id: string): `/journey/${string}/edit` {
+  return `/journey/${encodeURIComponent(id)}/edit`
+}
+
+export function mementoCreatePath(id: string): `/journey/${string}/memento/new` {
+  return `/journey/${encodeURIComponent(id)}/memento/new`
+}
+
 export function mementoEditPath(journeyId: string, mementoId: string): `/journey/${string}/memento/${string}` {
   return `/journey/${encodeURIComponent(journeyId)}/memento/${encodeURIComponent(mementoId)}`
 }

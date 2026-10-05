@@ -1,8 +1,13 @@
 <script lang="ts">
   import { beforeNavigate, goto } from "$app/navigation"
   import { resolve } from "$app/paths"
+  import { getStudio } from "$lib/studio"
+  const studio = getStudio()
+  import { Input } from "$lib/components/ui/input"
+  import { Textarea } from "$lib/components/ui/textarea"
   import { Button } from "$lib/components/ui/button"
   import IconButton from "$lib/components/IconButton.svelte"
+  import DateTimeInput from "$lib/components/DateTimeInput.svelte"
   import { ArrowLeft, ArrowUp, ArrowDown, Save, Undo2, Upload, Check } from "@lucide/svelte"
   import { message, statusMessage, type Locale } from "../i18n"
   import {
@@ -254,6 +259,9 @@
       expectedRevision: memento.revision,
     })
 
+    // Preserve the original instant (including fractions) when its displayed
+    // seconds have not changed; formatting must not rewrite stored timestamps.
+    if (common.occurredAtLocal === fromRFC3339(memento.occurred_at)) payload.occurred_at = memento.occurred_at
     const submittedSnapshot = formSnapshot()
     saveState = { status: "pending", message: message(locale, "admin.common.saving"), fieldErrors: {} }
     try {
@@ -401,6 +409,7 @@
 
   // --- Original photo upload and curation -----------------
   // Originals stay private in the media store; publication emits sanitized copies.
+  let photoFileInput = $state<HTMLInputElement | null>(null)
   let photoUploadStatus = $state("")
   let photoUploadError = $state(false)
 
@@ -486,7 +495,9 @@
 
 <section class="editor">
   <div class="back-link">
-    <IconButton variant="ghost" href={resolve(journeyDetailPath(journeyId))} label={message(locale, "admin.mementos.back_to_journey")}><ArrowLeft size={16} aria-hidden="true" /></IconButton>
+    <Button type="button" variant="outline" class="min-h-[36px]" aria-label={message(locale, "admin.mementos.back_to_journey")} onclick={() => goto(resolve(journeyDetailPath(journeyId)))}
+      ><ArrowLeft size={16} aria-hidden="true" />{message(locale, "admin.common.return")}</Button
+    >
   </div>
 
   {#if loading}
@@ -503,8 +514,8 @@
     {#if saveState.status === "conflict"}
       <div class="conflict-banner" role="alert">
         <p>{saveState.message}</p>
-        <button type="button" onclick={retryKeepingDraft}>{message(locale, "admin.mementos.conflict.save_mine")}</button>
-        <button type="button" class="secondary" onclick={discardDraftAndReload}>{message(locale, "admin.mementos.conflict.discard_mine")}</button>
+        <Button type="button" onclick={retryKeepingDraft}>{message(locale, "admin.mementos.conflict.save_mine")}</Button>
+        <Button type="button" variant="outline" onclick={discardDraftAndReload}>{message(locale, "admin.mementos.conflict.discard_mine")}</Button>
       </div>
     {/if}
 
@@ -518,48 +529,66 @@
       <p class="trigger-status trigger-status--error" role="alert">{saveState.message}</p>
     {/if}
 
-    {#if saveState.status === "success"}
-      <p class="trigger-status trigger-status--success" role="status">{saveState.message}</p>
-    {/if}
+    <section class="actions" aria-label={message(locale, "admin.mementos.actions_label")}>
+      <Button type="button" onclick={() => saveEditor()} disabled={saveState.status === "pending" || photoRows.some((row) => row.status === "pending")}>
+        <Save size={16} aria-hidden="true" />{saveState.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.mementos.save")}
+      </Button>
+      <Button type="button" variant="outline" onclick={saveAndBack} disabled={saveState.status === "pending"}>
+        <ArrowLeft size={16} aria-hidden="true" />{saveState.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.mementos.save_back")}
+      </Button>
+      {#if unpublishActionLabel(memento.state) && previousLifecycleState(memento.state)}
+        <Button type="button" variant="outline" onclick={retreatLifecycle} disabled={saveState.status === "pending"}
+          ><Undo2 size={16} aria-hidden="true" />{message(locale, "admin.mementos.unpublish")}</Button
+        >
+      {/if}
+      {#if lifecycleActionLabel(memento.state) && nextLifecycleState(memento.state)}
+        <Button type="button" variant="outline" onclick={advanceLifecycle} disabled={saveState.status === "pending"}>
+          {#if memento.state === "draft"}<Check size={16} aria-hidden="true" />{:else}<Upload size={16} aria-hidden="true" />{/if}
+          {memento.state === "draft" ? message(locale, "admin.mementos.mark_authored") : message(locale, "admin.mementos.publish")}
+        </Button>
+      {/if}
+      <span class="save-feedback" role="status">
+        {#if saveState.status === "pending"}{message(locale, "admin.common.saving")}
+        {:else if unsaved}{message(locale, "admin.mementos.unsaved")}
+        {:else if saveState.status === "success"}{saveState.message}{/if}
+      </span>
+    </section>
 
     <section class="fields" aria-label={message(locale, "admin.mementos.details_heading")}>
       <h2>{message(locale, "admin.mementos.details_heading")}</h2>
       <div class="field-grid">
         <label class="field">
           {message(locale, "admin.common.title")}
-          <input type="text" bind:value={common.title} />
+          <Input type="text" bind:value={common.title} />
         </label>
         <label class="field">
           {message(locale, "admin.common.place")}
-          <input type="text" bind:value={common.place} />
+          <Input type="text" bind:value={common.place} />
         </label>
-        <label class="field">
-          {message(locale, "admin.mementos.occurred_at")}
-          <input type="datetime-local" bind:value={common.occurredAtLocal} />
-        </label>
+        <DateTimeInput label={message(locale, "admin.mementos.occurred_at")} {locale} bind:value={common.occurredAtLocal} />
         <label class="field">
           {message(locale, "admin.mementos.timezone")}
-          <input type="text" placeholder="Asia/Tokyo" bind:value={common.occurredTz} />
+          <Input type="text" placeholder="Asia/Tokyo" bind:value={common.occurredTz} />
           {#if issuesFor("occurred_tz").length > 0}
             <span class="field-error">{issuesFor("occurred_tz").join(" ")}</span>
           {/if}
         </label>
         <label class="field">
           {message(locale, "admin.mementos.vendor")}
-          <input type="text" bind:value={common.vendor} />
+          <Input type="text" bind:value={common.vendor} />
         </label>
         <label class="field">
           {message(locale, "admin.mementos.price_amount")}
-          <input type="text" inputmode="decimal" bind:value={common.price.amount} />
+          <Input type="text" inputmode="decimal" bind:value={common.price.amount} />
         </label>
         <label class="field">
           {message(locale, "admin.mementos.price_currency")}
-          <input type="text" placeholder="JPY" maxlength="3" bind:value={common.price.currency} />
+          <Input type="text" placeholder="JPY" maxlength={3} bind:value={common.price.currency} />
         </label>
       </div>
       <label class="field field--wide">
         {message(locale, "admin.mementos.essay")}
-        <textarea rows="6" bind:value={common.essay}></textarea>
+        <Textarea rows={6} bind:value={common.essay} />
       </label>
     </section>
 
@@ -580,15 +609,15 @@
             >
             <label class="field">
               {message(locale, "admin.mementos.latitude")}
-              <input type="text" bind:value={point.lat} />
+              <Input type="text" bind:value={point.lat} />
             </label>
             <label class="field">
               {message(locale, "admin.mementos.longitude")}
-              <input type="text" bind:value={point.lng} />
+              <Input type="text" bind:value={point.lng} />
             </label>
-            <button type="button" class="secondary" onclick={() => snapPoint(index)} disabled={snapStatus[index] === "pending"}>
+            <Button type="button" variant="outline" onclick={() => snapPoint(index)} disabled={snapStatus[index] === "pending"}>
               {snapStatus[index] === "pending" ? message(locale, "admin.mementos.snapping") : message(locale, "admin.mementos.snap_action")}
-            </button>
+            </Button>
             {#if snapStatus[index] === "error"}
               <span class="field-error">{message(locale, "admin.mementos.snap_error")}</span>
             {/if}
@@ -606,44 +635,49 @@
               {tplField.Name}{tplField.Required ? " *" : ""}
               {#if tplField.Type === "money"}
                 <span class="money-inputs">
-                  <input
+                  <Input
                     type="text"
                     inputmode="decimal"
+                    aria-label={`${tplField.Name} ${message(locale, "admin.common.amount")}`}
                     placeholder={message(locale, "admin.common.amount")}
                     value={moneyField(tplField.Name).amount}
                     oninput={(e) => setMoneyField(tplField.Name, "amount", (e.currentTarget as HTMLInputElement).value)}
                   />
-                  <input
+                  <Input
                     type="text"
+                    aria-label={`${tplField.Name} ${message(locale, "admin.common.currency")}`}
                     placeholder={message(locale, "admin.common.currency")}
-                    maxlength="3"
+                    maxlength={3}
                     value={moneyField(tplField.Name).currency}
                     oninput={(e) => setMoneyField(tplField.Name, "currency", (e.currentTarget as HTMLInputElement).value)}
                   />
                 </span>
               {:else if tplField.Type === "station" || tplField.Type === "venue"}
                 <span class="place-inputs">
-                  <input
+                  <Input
                     type="text"
+                    aria-label={`${tplField.Name} ${message(locale, "admin.common.name")}`}
                     placeholder={message(locale, "admin.common.name")}
                     value={placeField(tplField.Name).name}
                     oninput={(e) => setPlaceField(tplField.Name, "name", (e.currentTarget as HTMLInputElement).value)}
                   />
-                  <input
+                  <Input
                     type="text"
+                    aria-label={`${tplField.Name} ${message(locale, "admin.mementos.latitude")}`}
                     placeholder={message(locale, "admin.mementos.latitude")}
                     value={placeField(tplField.Name).lat}
                     oninput={(e) => setPlaceField(tplField.Name, "lat", (e.currentTarget as HTMLInputElement).value)}
                   />
-                  <input
+                  <Input
                     type="text"
+                    aria-label={`${tplField.Name} ${message(locale, "admin.mementos.longitude")}`}
                     placeholder={message(locale, "admin.mementos.longitude")}
                     value={placeField(tplField.Name).lng}
                     oninput={(e) => setPlaceField(tplField.Name, "lng", (e.currentTarget as HTMLInputElement).value)}
                   />
                 </span>
               {:else}
-                <input type="text" value={textFieldValue(tplField.Name)} oninput={(e) => setTextField(tplField.Name, (e.currentTarget as HTMLInputElement).value)} />
+                <Input type="text" value={textFieldValue(tplField.Name)} oninput={(e) => setTextField(tplField.Name, (e.currentTarget as HTMLInputElement).value)} />
               {/if}
             </label>
             {#if issuesFor(tplField.Name).length > 0}
@@ -662,12 +696,25 @@
     <section class="fields" aria-label={message(locale, "admin.mementos.photos_heading")}>
       <div class="inbox-head">
         <h2>{message(locale, "admin.mementos.photos_heading")}</h2>
-        <label class="photo-upload">
-          {message(locale, "admin.mementos.add_photos")}
-          <input type="file" accept="image/jpeg,image/png,image/webp" multiple onchange={handlePhotoUpload} />
-        </label>
+        {#if !studio.desktop}
+          <Button type="button" variant="outline" onclick={() => photoFileInput?.click()} disabled={saveState.status === "pending"}
+            ><Upload size={16} aria-hidden="true" />{message(locale, "admin.mementos.add_photos")}</Button
+          >
+          <Input
+            type="file"
+            class="sr-only"
+            tabindex={-1}
+            aria-label={message(locale, "admin.mementos.add_photos")}
+            bind:ref={photoFileInput}
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            onchange={handlePhotoUpload}
+          />
+        {:else}
+          <p class="trigger-note">{message(locale, "admin.mementos.photo_upload_desktop_unavailable")}</p>
+        {/if}
       </div>
-      <p class="trigger-note">{message(locale, "admin.mementos.photo_upload_note")}</p>
+      {#if !studio.desktop}<p class="trigger-note">{message(locale, "admin.mementos.photo_upload_note")}</p>{/if}
       {#if photoUploadStatus}
         <p class={photoUploadError ? "trigger-status trigger-status--error" : "trigger-status"} role={photoUploadError ? "alert" : "status"}>{photoUploadStatus}</p>
       {/if}
@@ -677,14 +724,7 @@
         <ul class="photo-list">
           {#each photoRows as row (row.id)}
             <li class="photo-row">
-              <img class="photo-preview" src={photoContentURL(row.id)} alt={row.fields.caption || message(locale, "admin.mementos.photo_alt", { number: Number(row.fields.seq) + 1 })} loading="lazy" />
-              <div class="field-grid">
-                <label class="field">
-                  {message(locale, "admin.mementos.photo_caption")}
-                  <input type="text" bind:value={row.fields.caption} />
-                </label>
-              </div>
-              <div class="photo-actions">
+              <div class="photo-order">
                 <IconButton
                   label={message(locale, "admin.mementos.move_photo_up")}
                   onclick={() => movePhoto(photoRows.indexOf(row), -1)}
@@ -695,10 +735,20 @@
                   onclick={() => movePhoto(photoRows.indexOf(row), 1)}
                   disabled={photoRows.indexOf(row) === photoRows.length - 1 || row.status === "pending"}><ArrowDown size={16} aria-hidden="true" /></IconButton
                 >
+              </div>
+              <img class="photo-preview" src={photoContentURL(row.id)} alt={row.fields.caption || message(locale, "admin.mementos.photo_alt", { number: Number(row.fields.seq) + 1 })} loading="lazy" />
+              <div class="field-grid">
+                <label class="field">
+                  {message(locale, "admin.mementos.photo_caption")}
+                  <Input type="text" bind:value={row.fields.caption} />
+                </label>
+              </div>
+              <div class="photo-actions">
                 <Button
                   type="button"
                   onclick={() => savePhotoRow(row)}
                   disabled={row.status === "pending"}
+                  variant="outline"
                   aria-label={row.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.mementos.photo_save_caption")}
                   ><Save size={16} aria-hidden="true" />{row.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.common.save")}</Button
                 >
@@ -714,44 +764,24 @@
       {/if}
     </section>
 
-    <section class="actions" aria-label={message(locale, "admin.mementos.actions_label")}>
-      <Button type="button" onclick={() => saveEditor()} disabled={saveState.status === "pending" || photoRows.some((row) => row.status === "pending")}>
-        <Save size={16} aria-hidden="true" />{saveState.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.mementos.save")}
-      </Button>
-      <Button type="button" variant="outline" onclick={saveAndBack} disabled={saveState.status === "pending"}>
-        <ArrowLeft size={16} aria-hidden="true" />{saveState.status === "pending" ? message(locale, "admin.common.saving") : message(locale, "admin.mementos.save_back")}
-      </Button>
-      {#if unpublishActionLabel(memento.state) && previousLifecycleState(memento.state)}
-        <Button type="button" variant="outline" onclick={retreatLifecycle} disabled={saveState.status === "pending"}>
-          <Undo2 size={16} aria-hidden="true" />{message(locale, "admin.mementos.unpublish")}
-        </Button>
-      {/if}
-      {#if lifecycleActionLabel(memento.state) && nextLifecycleState(memento.state)}
-        <Button type="button" onclick={advanceLifecycle} disabled={saveState.status === "pending"}>
-          {#if memento.state === "draft"}<Check size={16} aria-hidden="true" />{:else}<Upload size={16} aria-hidden="true" />{/if}
-          {memento.state === "draft" ? message(locale, "admin.mementos.mark_authored") : message(locale, "admin.mementos.publish")}
-        </Button>
-      {/if}
-    </section>
-
     <section class="danger-zone" aria-label={message(locale, "admin.mementos.delete_heading")}>
       <h2>{message(locale, "admin.mementos.delete_heading")}</h2>
       <p class="trigger-note">{message(locale, "admin.mementos.delete_note")}</p>
       {#if deleteBlockedByPublishedState()}
         <p class="hint">{message(locale, "admin.mementos.unpublish_first")}</p>
-        <button type="button" class="danger" disabled title={message(locale, "admin.mementos.unpublish_first")}>{message(locale, "admin.common.delete")}</button>
+        <Button type="button" variant="destructive" disabled title={message(locale, "admin.mementos.unpublish_first")}>{message(locale, "admin.common.delete")}</Button>
       {:else if deleteState.status === "confirming" || deleteState.status === "pending"}
         <div class="confirm-strip" role="alert">
           <p>{message(locale, "admin.mementos.delete_confirmation")}</p>
           <div class="confirm-actions">
-            <button type="button" class="danger" onclick={confirmDelete} disabled={deleteState.status === "pending"}>
+            <Button type="button" variant="destructive" onclick={confirmDelete} disabled={deleteState.status === "pending"}>
               {deleteState.status === "pending" ? message(locale, "admin.common.deleting") : message(locale, "admin.common.confirm_delete")}
-            </button>
-            <button type="button" class="secondary" onclick={cancelDelete} disabled={deleteState.status === "pending"}>{message(locale, "admin.common.cancel")}</button>
+            </Button>
+            <Button type="button" variant="outline" onclick={cancelDelete} disabled={deleteState.status === "pending"}>{message(locale, "admin.common.cancel")}</Button>
           </div>
         </div>
       {:else}
-        <button type="button" class="danger" onclick={requestDelete}>{message(locale, "admin.common.delete")}</button>
+        <Button type="button" variant="destructive" onclick={requestDelete}>{message(locale, "admin.common.delete")}</Button>
       {/if}
       {#if deleteState.status === "error"}
         <p class="trigger-status trigger-status--error" role="alert">{deleteState.message}</p>
@@ -764,12 +794,12 @@
   .back-link {
     display: inline-block;
     margin-bottom: 18px;
-    color: #9f522d;
+    color: var(--accent);
     font-size: 13px;
     text-decoration: none;
   }
   .hint {
-    color: #766956;
+    color: var(--muted);
   }
   .editor-header {
     display: flex;
@@ -787,27 +817,18 @@
     gap: 12px;
     margin-top: 20px;
     padding: 14px 16px;
-    border: 1px solid #d8b28a;
+    border: 1px solid var(--line);
     border-radius: 10px;
-    background: rgb(231 162 96 / 16%);
-    color: #7a3f1d;
-  }
-  .conflict-banner button {
-    border: 0;
-    border-radius: 7px;
-    padding: 8px 12px;
-    color: #fffaf2;
-    background: #9f522d;
-    font-size: 13px;
-    white-space: nowrap;
+    background: var(--accent-soft);
+    color: var(--text);
   }
   .form-errors {
     margin-top: 16px;
     padding: 12px 16px;
-    border: 1px solid #e0a598;
+    border: 1px solid var(--danger);
     border-radius: 10px;
-    background: rgb(168 74 52 / 10%);
-    color: #a84a34;
+    background: var(--surface-raised);
+    color: var(--danger);
     font-size: 13px;
   }
   .form-errors p {
@@ -818,9 +839,8 @@
   }
   .fields h2 {
     margin: 0 0 14px;
-    font-family: Georgia, serif;
-    font-size: 20px;
-    font-weight: 500;
+    font-size: 16px;
+    font-weight: 600;
   }
   .field-grid {
     display: grid;
@@ -830,7 +850,7 @@
   .field {
     display: grid;
     gap: 6px;
-    color: #766956;
+    color: var(--muted);
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -838,20 +858,8 @@
   .field--wide {
     margin-top: 14px;
   }
-  .field input,
-  .field textarea {
-    padding: 9px 11px;
-    border: 1px solid #d8cdbb;
-    border-radius: 7px;
-    color: #342a1e;
-    background: #fffaf2;
-    font-size: 14px;
-    text-transform: none;
-    letter-spacing: normal;
-    font-family: inherit;
-  }
   .field-error {
-    color: #a84a34;
+    color: var(--danger);
     font-size: 12px;
     text-transform: none;
     letter-spacing: normal;
@@ -870,8 +878,8 @@
   /* Without this, each sub-input keeps its browser-default intrinsic width
      (~180px) and the row overflows the ~200px field-grid column — two or
      three of them spill visibly into the next field over. */
-  .money-inputs input,
-  .place-inputs input {
+  .money-inputs :global(input),
+  .place-inputs :global(input) {
     flex: 1;
     min-width: 0;
   }
@@ -886,44 +894,25 @@
     gap: 12px;
     flex-wrap: wrap;
     padding: 14px;
-    border: 1px solid #dfd4c1;
+    border: 1px solid var(--line);
     border-radius: 10px;
-    background: rgb(255 250 242 / 55%);
+    background: var(--surface-raised);
   }
   .point-label {
-    color: #9f522d;
+    color: var(--muted);
     font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
     min-width: 40px;
   }
-  .point-row button,
-  .danger-zone button {
-    border: 0;
-    border-radius: 7px;
-    padding: 9px 14px;
-    color: #fffaf2;
-    background: #9f522d;
-    font-size: 13px;
-    white-space: nowrap;
-  }
-  .point-row button.secondary,
-  .danger-zone button.secondary {
-    color: #6b5137;
-    background: transparent;
-    border: 1px solid #d8cdbb;
-  }
-  .danger-zone button.danger {
-    color: #fffaf2;
-    background: #a84a34;
-  }
   .kind-data-json {
     margin: 0;
     padding: 14px;
-    border: 1px solid #dfd4c1;
+    border: 1px solid var(--line);
     border-radius: 10px;
-    background: rgb(255 250 242 / 55%);
+    background: var(--surface-raised);
+    color: var(--text);
     font-size: 12px;
     overflow-x: auto;
   }
@@ -943,36 +932,24 @@
     padding: 0;
     list-style: none;
   }
-  .photo-upload {
-    display: inline-flex;
-    align-items: center;
-    border: 0;
-    border-radius: 7px;
-    padding: 9px 14px;
-    color: #fffaf2;
-    background: #9f522d;
-    font-size: 13px;
-    cursor: pointer;
-  }
-  .photo-upload:focus-within {
-    outline: 2px solid #6b5137;
-    outline-offset: 2px;
-  }
-  .photo-upload input {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-  }
   .photo-row {
     display: grid;
+    grid-template-columns: 32px minmax(0, 1fr);
     gap: 10px;
     padding: 14px 16px;
-    border: 1px solid #dfd4c1;
+    border: 1px solid var(--line);
     border-radius: 10px;
-    background: rgb(255 250 242 / 55%);
+    background: var(--surface-raised);
+  }
+  .photo-order {
+    grid-column: 1;
+    grid-row: 1 / span 3;
+    display: grid;
+    align-content: start;
+    gap: 8px;
+  }
+  .photo-row > :not(.photo-order) {
+    grid-column: 2;
   }
   .photo-preview {
     display: block;
@@ -980,7 +957,7 @@
     max-height: 320px;
     object-fit: contain;
     border-radius: 6px;
-    background: #eee5d7;
+    background: var(--surface-muted);
   }
   .photo-actions {
     display: flex;
@@ -990,45 +967,50 @@
   .trigger-status {
     font-size: 13px;
   }
-  /* #3f7a52 measured 4.45:1 on this background — just under the 4.5:1 AA
-     floor (axe color-contrast, serious). */
   .trigger-status--success {
-    color: #2f5e40;
+    color: var(--success);
   }
   .trigger-status--error {
-    color: #a84a34;
+    color: var(--danger);
   }
   .trigger-note {
     margin: 0 0 8px;
-    color: #766956;
+    color: var(--muted);
     font-size: 12px;
   }
   .actions {
+    position: sticky;
+    top: 0;
+    z-index: 3;
     display: flex;
+    align-items: center;
     flex-wrap: wrap;
-    gap: 12px;
-    margin: 32px 0 8px;
+    gap: 8px;
+    margin: 16px 0 8px;
+    padding: 12px 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+  }
+  .save-feedback {
+    margin-inline-start: auto;
+    color: var(--muted);
+    font-size: 12px;
   }
   .danger-zone {
     margin: 36px 0 8px;
     padding: 18px 20px;
-    border: 1px solid rgb(168 74 52 / 35%);
+    border: 1px solid var(--line);
     border-radius: 10px;
-    background: rgb(168 74 52 / 6%);
+    background: var(--surface-raised);
   }
   .danger-zone h2 {
     margin: 0 0 8px;
-    color: #a84a34;
-    font-family: Georgia, serif;
+    color: var(--danger);
     font-size: 16px;
     font-weight: 600;
   }
-  /* .trigger-note's shared #766956 measures 4.3:1 against this section's
-     reddish tint — just under the 4.5:1 AA floor (axe color-contrast,
-     serious). Plain cream backgrounds elsewhere are light enough that the
-     shared color already passes there. */
   .danger-zone > .trigger-note {
-    color: #5c4f3d;
+    color: var(--muted);
   }
   .confirm-strip {
     display: flex;
@@ -1038,42 +1020,18 @@
     gap: 12px;
     margin-top: 12px;
     padding: 12px 14px;
-    border: 1px solid rgb(168 74 52 / 45%);
+    border: 1px solid var(--danger);
     border-radius: 8px;
-    background: rgb(168 74 52 / 10%);
+    background: var(--surface-raised);
   }
   .confirm-strip p {
     margin: 0;
-    color: #7a3524;
+    color: var(--text);
     font-size: 13px;
   }
   .confirm-actions {
     display: flex;
     gap: 8px;
     flex-shrink: 0;
-  }
-  button:disabled {
-    opacity: 0.6;
-    cursor: default;
-  }
-  /* Darkened from the original tones (axe color-contrast, serious): those
-     landed 4.15-4.27:1 against these translucent tinted backgrounds, under
-     the 4.5:1 AA floor. */
-  .badge--draft {
-    color: #8a431f;
-    background: rgb(231 162 96 / 24%);
-  }
-  .badge--authored {
-    color: #5f5116;
-    background: rgb(214 188 84 / 24%);
-  }
-  .badge--published {
-    color: #2f5e40;
-    background: rgb(120 184 135 / 24%);
-  }
-  .badge--candidate,
-  .badge--archived {
-    color: #5c5142;
-    background: rgb(166 154 137 / 20%);
   }
 </style>

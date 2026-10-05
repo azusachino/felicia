@@ -1,8 +1,14 @@
 <script lang="ts">
   import { onMount } from "svelte"
+  import { beforeNavigate } from "$app/navigation"
   import { Button } from "$lib/components/ui/button"
+  import { Input } from "$lib/components/ui/input"
+  import { Textarea } from "$lib/components/ui/textarea"
+  import SelectField from "$lib/components/SelectField.svelte"
   import IconButton from "$lib/components/IconButton.svelte"
-  import { FolderOpen, Folder, ArrowUp, X, Save, Hammer, Check } from "@lucide/svelte"
+  import { getStudio } from "$lib/studio"
+  const studio = getStudio()
+  import { FolderOpen, Folder, ArrowUp, X, Save, Hammer, Check, Eye } from "@lucide/svelte"
   import { message, type Locale } from "../i18n"
 
   let { locale }: { locale: Locale } = $props()
@@ -68,6 +74,15 @@
     message: string
   }
   let save = $state<SaveState>({ status: "idle", message: "" })
+
+  beforeNavigate((navigation) => {
+    if (save.status === "pending" || build.status === "pending") {
+      navigation.cancel()
+      return
+    }
+    const dirty = settings && draft && JSON.stringify(draft) !== JSON.stringify(draftFromSettings(settings))
+    if (dirty && (navigation.willUnload || !confirm(message(locale, "admin.site.unsaved_leave")))) navigation.cancel()
+  })
 
   async function loadSettings() {
     settings = await getSiteSettings()
@@ -214,16 +229,20 @@
     <p class="api-error" role="alert">{error}</p>
   {:else if info}
     <section class="site-info" aria-label={message(locale, "admin.site.output_directory")}>
-      <div class="info-row">
+      <div class="info-row output-path">
+        <IconButton bind:ref={pickerTrigger} label={message(locale, "admin.site.change_location")} onclick={openPicker}><FolderOpen size={16} aria-hidden="true" /></IconButton>
         <span class="info-label">{message(locale, "admin.site.output_directory")}</span>
         <code class="info-value">{info.out_dir}</code>
-        <IconButton bind:ref={pickerTrigger} label={message(locale, "admin.site.change_location")} onclick={openPicker}><FolderOpen size={16} aria-hidden="true" /></IconButton>
       </div>
 
       {#if info.artifact_ready}
         <div class="info-row">
           <span class="info-label">{message(locale, "admin.site.preview")}</span>
-          <a class="preview-link" href={previewUrl(info.preview_port)} target="_blank" rel="external noreferrer">{previewUrl(info.preview_port)}</a>
+          {#if studio.desktop}
+            <Button variant="outline" size="sm" onclick={() => studio.openPreview()}><Eye size={16} aria-hidden="true" />{message(locale, "admin.preview.open")}</Button>
+          {:else}
+            <a class="preview-link" href={previewUrl(info.preview_port)} target="_blank" rel="external noreferrer">{previewUrl(info.preview_port)}</a>
+          {/if}
         </div>
       {/if}
 
@@ -288,43 +307,57 @@
         <p class="trigger-note">{message(locale, "admin.site.identity_note")}</p>
 
         <div class="design-cards">
-          <button type="button" class="design-card" class:selected={d.design === "atlas"} onclick={() => (d.design = "atlas")}>
+          <Button
+            type="button"
+            variant="outline"
+            class={`design-card h-auto block w-full whitespace-normal text-left ${d.design === "atlas" ? "selected" : ""}`}
+            aria-pressed={d.design === "atlas"}
+            onclick={() => (d.design = "atlas")}
+          >
             <span class="design-card-id">atlas</span>
             <span class="design-card-label">{message(locale, "admin.site.design_atlas")}</span>
-          </button>
+          </Button>
         </div>
 
         <div class="identity-fields">
           <label class="field field-wide">
             <span class="field-label">{message(locale, "admin.site.title")}</span>
-            <input type="text" bind:value={d.title} placeholder={message(locale, "admin.site.title")} />
+            <Input type="text" bind:value={d.title} placeholder={message(locale, "admin.site.title")} />
           </label>
 
           <label class="field field-wide">
             <span class="field-label">{message(locale, "admin.site.description")}</span>
-            <textarea bind:value={d.description} placeholder={message(locale, "admin.site.description")} rows="3"></textarea>
+            <Textarea bind:value={d.description} placeholder={message(locale, "admin.site.description")} rows={3} />
           </label>
 
           <label class="field">
             <span class="field-label">{message(locale, "admin.site.default_language")}</span>
-            <select bind:value={d.default_language}>
-              <option value="ja">{message(locale, "admin.common.language_japanese")}</option>
-              <option value="en">{message(locale, "admin.common.language_english")}</option>
-              <option value="zh">{message(locale, "admin.common.language_chinese")}</option>
-            </select>
+            <SelectField
+              label={message(locale, "admin.site.default_language")}
+              bind:value={d.default_language}
+              items={[
+                { value: "ja", label: message(locale, "admin.common.language_japanese") },
+                { value: "en", label: message(locale, "admin.common.language_english") },
+                { value: "zh", label: message(locale, "admin.common.language_chinese") },
+              ]}
+            />
           </label>
 
           <label class="field">
             <span class="field-label">{message(locale, "admin.site.default_theme")}</span>
-            <select bind:value={d.default_theme}>
-              <option value="dark">{message(locale, "admin.common.theme_dark")}</option>
-              <option value="light">{message(locale, "admin.common.theme_light")}</option>
-            </select>
+            <SelectField
+              label={message(locale, "admin.site.default_theme")}
+              bind:value={d.default_theme}
+              items={[
+                { value: "dark", label: message(locale, "admin.common.theme_dark") },
+                { value: "light", label: message(locale, "admin.common.theme_light") },
+              ]}
+            />
           </label>
 
           <label class="field field-accent">
             <span class="field-label">{message(locale, "admin.site.accent_color")}</span>
-            <input type="color" bind:value={d.accent} />
+            <Input type="color" bind:value={d.accent} />
           </label>
         </div>
 
@@ -422,6 +455,9 @@
     align-items: center;
     gap: 12px;
   }
+  .info-row.output-path {
+    grid-template-columns: auto minmax(112px, auto) minmax(0, 1fr);
+  }
   .info-row + .info-row {
     margin-top: 12px;
   }
@@ -490,7 +526,7 @@
     gap: 8px;
     margin-top: 16px;
   }
-  .design-card {
+  :global(.design-card) {
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -501,7 +537,7 @@
     background: var(--surface);
     text-align: left;
   }
-  .design-card.selected {
+  :global(.design-card.selected) {
     border-color: var(--accent);
   }
   .design-card-id {
@@ -526,27 +562,6 @@
   }
   .field-wide {
     grid-column: 1 / -1;
-  }
-  .field input[type="text"],
-  .field textarea,
-  .field select {
-    padding: 8px 10px;
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    background: var(--surface);
-    color: var(--text);
-    font: inherit;
-  }
-  .field textarea {
-    resize: vertical;
-  }
-  .field-accent input[type="color"] {
-    width: 56px;
-    height: 32px;
-    padding: 2px;
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    background: var(--surface);
   }
   .trigger-note {
     margin: 8px 0 0;
@@ -592,6 +607,13 @@
     }
     .info-label {
       grid-column: 1 / -1;
+    }
+    .info-row.output-path {
+      grid-template-columns: auto minmax(0, 1fr);
+    }
+    .output-path .info-label,
+    .output-path .info-value {
+      grid-column: 2;
     }
   }
 </style>

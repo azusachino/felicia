@@ -23,11 +23,11 @@ for (const viewport of [
       expect(Math.abs(title!.y + title!.height / 2 - (brand!.y + brand!.height / 2))).toBeLessThanOrEqual(1)
       expect(Math.abs(action!.y + action!.height / 2 - (brand!.y + brand!.height / 2))).toBeLessThanOrEqual(1)
     }
-    await expect(page.getByRole("combobox", { name: "Language", exact: true })).toBeHidden()
+    await expect(page.getByRole("button", { name: "Language", exact: true })).toBeHidden()
     const settingsTrigger = page.getByRole("button", { name: "Settings", exact: true })
     await settingsTrigger.click()
     const settings = page.getByRole("dialog", { name: "Settings", exact: true })
-    await expect(settings.getByRole("combobox", { name: "Language", exact: true })).toBeVisible()
+    await expect(settings.getByRole("button", { name: "Language", exact: true })).toBeVisible()
     await expect(settingsTrigger).toHaveAttribute("aria-expanded", "true")
     await page.keyboard.press("Escape")
     await expect(settings).toBeHidden()

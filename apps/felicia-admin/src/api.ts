@@ -9,6 +9,8 @@ export interface AdminJourney {
   date_start: string
   date_end: string
   authored_fields: string[]
+  source_ref?: string
+  revision?: number
 }
 
 export interface LocalJourneyPlan {
@@ -390,6 +392,10 @@ export async function getJourney(journeyId: string): Promise<AdminJourney> {
 }
 
 export interface CreateJourneyPayload {
+  id?: string
+  journal_id?: string
+  source_ref?: string
+  expected_revision?: number
   slug: string
   title: string
   place: string
@@ -401,6 +407,16 @@ export interface CreateJourneyPayload {
 
 export async function createJourney(payload: CreateJourneyPayload): Promise<{ status: string; id: string }> {
   return postJSON<{ status: string; id: string }>("/api/admin/journeys", payload)
+}
+
+export function getDesktopWorkspace(): Promise<{ sample: boolean; return_available: boolean; isolated: boolean }> {
+  return getJSON<{ sample: boolean; return_available: boolean; isolated: boolean }>("/api/desktop/workspace")
+}
+export function openDesktopSample(): Promise<{ status: string }> {
+  return postJSON<{ status: string }>("/api/desktop/sample", {})
+}
+export function closeDesktopSample(): Promise<{ status: string }> {
+  return postJSON<{ status: string }>("/api/desktop/sample/close", {})
 }
 
 // Desktop-only: opens the native folder picker and returns the chosen path.

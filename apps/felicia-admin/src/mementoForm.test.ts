@@ -55,8 +55,10 @@ describe("toRFC3339 / fromRFC3339", () => {
     expect(fromRFC3339("")).toBe("")
   })
 
-  test("fromRFC3339 truncates to datetime-local precision", () => {
-    expect(fromRFC3339("2026-03-21T09:00:00Z")).toBe("2026-03-21T09:00")
+  test("fromRFC3339 renders fixed-order date and time including seconds", () => {
+    expect(fromRFC3339("2026-03-21T09:00:07Z")).toBe("2026-03-21 09:00:07")
+    expect(toRFC3339("2026-03-21 09:00:07")).toBe("2026-03-21T09:00:07Z")
+    expect(toRFC3339(fromRFC3339("2026-03-21T09:00:07+09:00"))).toBe("2026-03-21T00:00:07Z")
   })
 })
 

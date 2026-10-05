@@ -34,7 +34,7 @@
   </Tooltip.Trigger>
   {#if open}
     <!-- Mount after the trigger ref exists so native dialog hints stay in its top layer. -->
-    <Tooltip.Portal to={ref?.closest("dialog[open]") ?? undefined}>
+    <Tooltip.Portal to={ref?.closest('dialog[open], [role="dialog"]') ?? undefined}>
       <Tooltip.Content role="tooltip" side="top" sideOffset={6} class="studio-tooltip">
         {label}
       </Tooltip.Content>

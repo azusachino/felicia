@@ -617,6 +617,301 @@ false and its capture fails; this does not establish remote permission state or
 whether Felicia rendered. Native appearance remains unverified. S1 remains open;
 S2 is not dispatched.
 
+## Sample and theme polish — working slice
+
+On `feat/desktop-sample-polish`, the uncommitted studio adds explicit **Open
+sample trip** actions in Library and Settings. `--sample` selects a fresh
+temporary database, generated media and compiled output before resolving an
+author workspace. Native pickers and imports are unavailable in this sample.
+The launcher switches the current window, not a second process. **Return to my
+workspace** restores the original handler and cleans up the sample's database,
+media and preview server; reopening creates a fresh sample. A standalone
+`--sample` diagnostic launch has no original workspace and closes on exit.
+
+The first implementation spawned a second process for isolation. The owner
+rejected that interaction. The replacement keeps separate immutable workspace
+handlers, waits for in-flight authoring requests before switching, and preserves
+the original workspace. The frontend leaves through dirty/pending navigation
+guards before switching the backend, so cancellation cannot leave an editor
+pointing at a different repository.
+
+Blank journey creation and folder import are distinct actions. The sample does
+not expose unsupported folder scanning. Creation and Scan offer validation
+feedback instead of silently disabling actions for empty fields. Synthetic
+browser checks cover Library → New journey → validation → create → reload;
+these checks do not establish native Wails acceptance.
+
+Journey dates initialize to the actual local calendar day, not empty values that
+WebKit may render as apparent defaults. Untouched defaults do not make a draft
+dirty. The creation regression includes submitting without editing either date
+and a local-day/UTC boundary. Pending creation blocks anchor clicks before
+WebKit queues hash navigation, while route guards continue to protect history
+and programmatic navigation. Sample exit labels are simply **Close** or
+**Return**, with the banner explaining the workspace boundary.
+
+Creation, journey, and editor return controls are outlined shared `Button`
+components with an arrow and visible Return label, not bare ghost arrows.
+The editor datetime uses a reusable Bits UI `DateField` with library-managed
+segments, fixed year-month-day / 24-hour / seconds presentation, and localized
+accessible segment labels. Formatting is the control's responsibility; users
+are not shown a format instruction. Storage remains RFC3339, with the existing
+UTC edit convention and separate timezone metadata; unchanged instants retain
+subsecond precision. New Journey reuses that field in date-only mode with
+`yyyy-MM-DD` presentation, required local-day defaults, and the existing range,
+collision, dirty, and pending protections.
+
+The owner exposed a missing desktop API seam: source-action URLs fell through
+the generic journey-UUID route and returned 405 or misleading UUID errors. The
+sample now composes isolated synthetic route/visit/media sources into the same
+importer and intake services used by the server. Sync actually updates the
+private route; visit/tray previews are read-only; intake persists stable stop
+candidates without creating public mementos. Candidate listing reads that
+store rather than returning an empty stub. Route snapping uses the repository's
+composed route and validates coordinates. No sample source reads credentials,
+contacts external providers, or opens the original workspace.
+
+External providers in normal desktop workspaces and native candidate
+promotion/review remain deferred S2 capabilities. The action-matrix audit also
+found no desktop photo-upload endpoint: Add photos and its file chooser are now
+hidden in the native editor with a localized capability explanation. Existing
+photo curation still works; the web host keeps its actual upload workflow.
+This is capability gating, not native upload implementation or S2 parity.
+A fresh read-only peer `felicia-safe-launch-verify` (`wV:p5W`, actual
+`gpt-6-luna`, medium) verified the final candidate: validation (105 admin tests,
+zero Svelte diagnostics), 140/140 Chromium/WebKit, 14/14 web authoring, docs and
+native packaging/strict signature all passed. Its source walkthrough found no new
+defect and confirmed sample isolation before real-workspace resolution. Six
+locale/runtime cases verify the unavailable chooser and persistent existing-photo
+captions. Only generated admin `index.html` drifted during packaging; authored
+source and the retained reader index stayed stable. This clears the source-only
+safe-launch gate; native Wails appearance, Dock/controls and S1/S2 owner acceptance
+remain open. Source control foundations, Settings/left-form polish and isolated
+demo slices are reconciled as verified; native acceptance is not batch-closed.
+
+A later all-widget sweep found two native dialogs omitted from the original AST
+control inventory: the scan surface and compiled preview. That means the earlier
+safe-launch review did not establish full library-first compliance. Both are now
+Bits UI Dialog compositions (Title/Description, portal, overlay and focus scope),
+and the AST guard rejects native `dialog` outside shared primitives as well.
+Scan preserves first-field focus, Escape/close focus return and the import-pending
+close guard; pending inputs and Scan are disabled rather than allowing a second
+request to disturb that guard. Preview retains native titlebar inset and drafts.
+The migration exposed that iframe Escape does not cross origin boundaries into
+Bits UI: Chromium/WebKit reproductions failed before an explicit reader Escape
+message bridge. The receiver requires the current iframe window and checked
+loopback reader origin; wrong-window/wrong-origin messages are rejected, and the
+message carries no data or authoring command. The reader respects already-handled
+Escape events. Four browser regressions now pass, including focus return and pending guards.
+The full suite then found the shared IconButton tooltip still targeted native
+dialogs; its portal now targets the closest native or library dialog, matching
+Select. A fresh read-only `felicia-dialog-final-verify` peer (`wV:p5Y`, actual
+`gpt-6-luna`, medium observed in its UI footer) independently passed validation
+(105 admin tests, zero Svelte diagnostics; 17 public tests), 144/144 desktop
+Chromium/WebKit, 14/14 web authoring, docs and native package/strict signature.
+Earlier runner stalls did not reproduce in this pass; no cause is asserted and no
+check was weakened. All authored source stayed frozen. Only expected generated
+admin index bytes changed; direct comparisons confirm both embedded indexes match
+the current admin/reader builds, and generated outputs were retained.
+
+This supersedes the prior safe-launch review and clears the current source-only
+launch gate for the already-approved isolated synthetic `--sample` invocation.
+The canonical Asobi graph is temporarily unreachable (DNS/request failure), so
+live task/claim reconciliation remains blocked; no fallback graph or networking
+change was made. Verified results are promoted here while that update waits.
+Native Wails acceptance remains owner-only, with no real-workspace launch,
+permissions, real photo/folder selection, commits or pushes authorized.
+
+After the fresh pass, the lead launched the signed bundle with `--sample` only
+(no path overrides): native PID **56042** was observed running the packaged
+`FeliciaStudio.app/Contents/MacOS/felicia-desktop --sample`. This is startup/process
+evidence, not native UI acceptance. No pre-existing packaged native process was
+replaced. The sample window is retained for owner checks; native controls, fonts,
+Dock, dragging, authoring and preview appearance still require that feedback.
+Live-record reconciliation remains blocked by Asobi DNS, independently of the
+source/test pass.
+
+### Owner feedback: standalone Close must keep the studio open
+
+The owner clicked Close in the reviewed native sample and the application quit.
+The old standalone composition explicitly called `app.Quit()` because it had no
+original workspace. The owner chose returning to an **empty isolated studio**,
+not opening a real journal or merely renaming the action Quit. The `--sample`
+startup now creates a separate empty temporary baseline before any default
+workspace resolution, then opens its disposable sample through WorkspaceRouter.
+Close restores the empty handler, closes/deletes sample resources and reloads the
+library in the same window; reopening creates fresh sample data. The baseline
+survives until application exit, when its own resources are cleaned up.
+
+Isolation is independent of the visible Sample state: both temporary workspaces
+reject author-path pickers/imports/output-root changes. The empty studio explains
+that the journal is not connected and hides Scan; no native file dialog is opened.
+Normal studio-to-sample Return preserves its original semantics. Go tests cover
+empty return, fresh reopen, cleanup and forbidden baseline endpoints; six browser
+locale/engine cases cover continued live transport and empty UI after Close,
+with cancelled dirty navigation preserving the English sample draft. These are
+source/headless evidence. Fresh read-only `felicia-close-verify` (`wV:p61`,
+actual `gpt-6-luna`, medium observed in its UI footer) independently passed
+10 focused Chromium/WebKit cases, standalone/workspace Go tests, admin checks
+(105 tests, zero Svelte diagnostics) and current signature verification. Frozen
+source, both binaries and full-checkpoint log SHA-256s matched before/after;
+the passing 150-case full suite, 14-case web suite, validation, docs and package
+results were inspected and reused rather than needlessly rerun. No findings
+warranted another full suite. This owner-approved verification-efficiency choice
+keeps the final quality bar and assertions unchanged. The initial native UI remains
+the seeded sample; only Close shows the empty baseline, in the same process.
+The signed, reviewed isolated sample was relaunched and the owner confirmed that
+Close now leaves the application open in the empty temporary studio. This accepts
+the bounded native Close fix, not the rest of S1/S2. The owner asked about the
+“your journal is not connected” notice; it explains the isolated launch, rather
+than a connection failure. The clearer proposed wording (“Temporary workspace —
+changes are cleared when you quit”) has not yet been applied to the catalogs.
+Asobi DNS continues to block live-record reconciliation. Unsupported actions are not
+shown as enabled controls; the UI explains the boundary. These changes and
+focused browser checks do not establish complete desktop/native UX parity.
+
+The owner made library-first controls a hard rule after native selects/color
+controls remained undersized and inconsistent despite earlier component work.
+`AGENTS.md` records the rule: reuse shared UI components and Bits UI primitives;
+any native/custom fallback needs a demonstrated failure and recorded evidence.
+The independent control inventory found remaining view-level native inputs,
+selects, textareas, and buttons, including Site, Settings, Editor, connectors,
+and the scan dialog. The subsequent source migration replaces those widgets with shared Input,
+Textarea and Button components and a reusable Bits UI Select. Native elements
+inside shared primitives and ordinary form/label semantics remain intentional;
+there is no demonstrated-failure fallback for a view-level widget. More options
+uses Bits UI Collapsible, and photo upload has a shared visible button and hidden
+shared file input. A Svelte-AST unit gate rejects raw view-level input, textarea,
+select, button, details and summary elements. The overall UX is not yet accepted.
+
+The native preview embeds the existing Go-served, last-built reader. It does not
+start a JavaScript server, open an external browser or save unsaved input.
+Returning from preview keeps the authoring page mounted. On macOS, the preview
+starts below the shared native title-bar height; DOM top-layer dialogs cannot
+cover native traffic lights safely. The sample-return control wraps within its
+sidebar card instead of relying on a fixed single-line label width. Published appearance
+starts from the built site's settings, independently of studio appearance. The
+reader exposes labelled Sun/Moon controls for a local viewing override; these
+controls do not save or republish site settings. The desktop journey-detail
+shortcut uses this same in-app last-built preview, not the web-only external
+browser link. Library header actions and the preview header button have a
+36-pixel minimum height.
+
+Both the packaged `.icns` metadata and Wails' runtime `Icon` option use the
+existing default Felicia artwork. The runtime option is needed for executable
+launches that do not obtain their Dock icon from bundle metadata.
+
+The owner confirmed dragging and normal-looking fonts in one isolated native
+sample. The CoreText warning was not reproduced; its cause is not established.
+The owner then rejected the color treatment and requested further UI polish.
+Do not treat the drag/font check as visual acceptance or revised S1 completion.
+
+Rendered inspection found hard-coded warm authoring styles mixing with the
+neutral studio palette, including unreadable dark-mode labels and badges.
+Journey and Editor now reuse the shared semantic surfaces/status colors rather
+than maintaining their own palette. Save is a sticky, visible action with a
+dirty-state cue; preview has an explicit return action. Reader accent text uses
+a separate readable ink role rather than borrowing the selected-fill color,
+and its index collapses earlier to avoid covering content in compact previews.
+The public paper-memento material remains intentional.
+
+Targeted browser checks and rendered contrast measurements cover this slice;
+final owning gates, fresh independent verification and renewed native visual
+acceptance are still required. No commit, publication or release is approved.
+
+### Bounded verification: authoring a newly created journey
+
+The owner found that creation led to an empty detail page with no metadata edit
+or first-memento action. Journey detail now exposes **Edit journey** and **Add
+memento**. Editing reuses the full-page shared journey form and carries the
+existing id, journal, source reference and revision; changing the title does not
+silently rename its slug. The desktop handler retains the stored GPS route and
+authored-field mask. A stale save is rejected without discarding input.
+
+Add memento opens a full-page shared Input/Label/Button form with a Bits UI Select
+for the registered kind. It creates a stable-id private draft, then opens the
+existing editor for essay and other authoring. Failed creation retains input and
+reuses the same id on retry. Return is guarded navigation; the journey footer's
+Cancel is an explicit discard. Default shared inputs, buttons, date fields and
+the new Select use physical 40-pixel sizing rather than short rem-based heights.
+The existing SQLite create contract omits the existing-row revision constraint;
+metadata updates continue to carry `expected_revision`.
+
+At `feat/desktop-sample-polish` / `848aca80cb54e86ba38ceb871358806fd8d714db` plus
+this uncommitted slice, fresh read-only Herdr peer `felicia-authoring-verify`
+(`wV:p5Q`, Sonnet 5.5, startup `--model sonnet --effort medium`) independently ran
+`e2e-desktop/authoring-entry.spec.ts` (6/6 Chromium/WebKit) and `make admin-check`
+(104/104 unit tests, zero Svelte errors/warnings, formatting clean), all exit 0.
+The runtime footer confirmed the model, not the effort setting. Browser evidence
+covers create/edit/save identity, stale-writer rejection and cancellation,
+first-memento essay save/reload, keyboard Select, input/button/Select sizing,
+dirty Return, held-POST navigation and a 503 retry producing exactly one draft.
+The initial review was corrected to cite the desktop handler, not the web server,
+and to claim only new controls, not every control in changed views.
+
+The new-memento next-sequence value remains a load-time snapshot; concurrent
+adds are not verified. GPS/source retention, date-range/collision behavior in
+metadata editing and date-field physical height have source evidence or existing
+creation coverage, not new dedicated edit-browser acceptance. The all-control
+migration remains open, and this bounded verification does not complete native
+acceptance, S1/S2 or the overall UX. The retained native process has not been
+replaced; no commit or push is approved.
+
+### All-control migration gate checkpoint
+
+The source migration standardizes form controls at physical 40-pixel sizing,
+keeps entered text in its original case, and supplies foreground/surface colors
+in shared primitives instead of inheriting muted label colors. Select exposes
+its selected value as an accessible description and uses a dialog-aware portal.
+Single-choice design controls report `aria-pressed`. WebKit skipped implicit
+button tab stops; explicit default `tabindex=0` in shared Button restores the
+verified Settings-to-Return keyboard path without changing OS preferences.
+
+On the uncommitted polish candidate, lead gates passed: all 132 real-composition
+Chromium/WebKit cases (including a 12-case en/ja/zh, light/dark and 1100/720 Site
+control/save matrix), 105 admin unit tests with zero Svelte errors/warnings,
+`make validate`, `make docs-build`, `make desktop-package` and strict bundle
+signature verification. The unchanged web-host authoring loop passed 14/14,
+including photo upload/curation, candidate promotion, publication and saved site
+identity in real compiled output. The initial full-browser run failed on stale
+Scan/Create assertions, inherited input contrast and WebKit keyboard focus;
+those were addressed without lowering contrast thresholds or deleting checks.
+The first web run overlapped packaging and lost transient saved feedback;
+its serialized rerun passed. Do not run dev-server browser verification while
+packaging regenerates the same SvelteKit outputs.
+
+Fresh expanded-candidate independent verification and owner-native acceptance
+remain required. No native process was replaced and no commit/push is approved.
+
+### Review findings: fonts and bounded JSON
+
+Fresh Luna-medium source review found that the embedded reader still fetched its
+existing typefaces from Google Fonts. The owner chose bundling those same fonts,
+not replacing the paper-memento typography with system fonts. The public reader
+now links a base-aware local stylesheet. Its five families, styles, weights and
+425 Unicode-subset font-face rules are retained, with 396 original WOFF2 assets
+(approximately 8.7 MB), content-hash provenance and all five SIL OFL licenses in
+`apps/felicia-public-site/public/fonts/`. No runtime font download or package
+dependency is added. Existing map tiles remain an online ArcGIS dependency;
+self-hosted typography is not a claim that the complete map is network-free.
+Browser verification blocks external traffic and explicitly loads the original
+Latin and Japanese faces while published stories remain readable.
+
+Journey/memento upserts and photo metadata now decode one JSON object through an
+8 MiB limit, including unknown-length request bodies; oversized JSON returns
+413 before repository access and trailing objects return 400. This bounds the
+local availability issue without changing binary-upload handling or persistence.
+Fresh Luna-medium peer `felicia-final-verify` (`wV:p5R`, actual
+`openai-codex/gpt-6-luna`, medium) independently rechecked validation, 134/134
+Chromium/WebKit, 14/14 web authoring, docs and desktop Go gates, all exit 0. Its
+source review verified local font coverage/licenses/hashes, unchanged reader
+style declarations and bounded JSON; subpath behavior has structural evidence,
+not a separate subpath-font browser run. It found missing embedded-reader WOFF2
+MIME mapping. The handler now returns `font/woff2`, with a direct reader-mode
+response test independently rerun in the desktop Go gate (exit 0). Native
+WKWebView rendering remains unverified. Generated indexes are retained; expected
+SvelteKit regeneration changes their hashes rather than authored-source behavior.
+The approved isolated sample launch follows final safe-affordance verification.
+
 ## Evidence and closeout
 
 For each slice, record branch/full commit and working-diff ownership, exact commands

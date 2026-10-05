@@ -21,6 +21,7 @@
 // authors directly — so which of the two candidates ("明治神宮" or "道頓堀")
 // ends up promoted is not assumed; the spec reads back whichever it clicked.
 import { test, expect, type Page } from "@playwright/test"
+import { chooseSelect } from "../e2e-desktop/select-field"
 
 function requireEnv(name: string): string {
   const value = process.env[name]
@@ -39,14 +40,8 @@ const JOURNEY_TITLE = "Admin GUI E2E Journey"
 const MEMENTO_TITLE = "Admin GUI E2E Memento"
 const ESSAY_SENTINEL = "Felicia admin GUI E2E authored essay -- sentinel 9f3c2b1a"
 const GOODS_NAME = "E2E Souvenir"
-const CURATION_PNG = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP43+DwHwAHAAK/K9fH4gAAAABJRU5ErkJggg==",
-  "base64",
-)
-const CURATION_PNG_TWO = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNwaPj/HwAFggK/465+UQAAAABJRU5ErkJggg==",
-  "base64",
-)
+const CURATION_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP43+DwHwAHAAK/K9fH4gAAAABJRU5ErkJggg==", "base64")
+const CURATION_PNG_TWO = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNwaPj/HwAFggK/465+UQAAAABJRU5ErkJggg==", "base64")
 
 // ADMIN-02 M2: site identity constants, kept identical to the constants of
 // the same name in scripts/e2e_admin_gui.py for the same reason as above —
@@ -76,16 +71,16 @@ test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
   test("selects and persists an admin language", async () => {
     await page.goto("/")
     await page.getByRole("button", { name: "Settings", exact: true }).click()
-    const language = page.getByRole("combobox", { name: /^(Language|言語)$/ })
+    const language = page.getByRole("button", { name: /^(Language|言語)$/ })
     await expect(language).toHaveAttribute("aria-label", "Language")
-    await language.selectOption("ja")
+    await chooseSelect(page, language, "ja")
     await expect(language).toHaveAttribute("aria-label", "言語")
     await page.keyboard.press("Escape")
     await expect(page.getByRole("heading", { name: "旅程" })).toBeVisible()
     await page.reload()
     await expect(page.getByRole("heading", { name: "旅程" })).toBeVisible()
     await page.getByRole("button", { name: "設定", exact: true }).click()
-    await language.selectOption("en")
+    await chooseSelect(page, language, "en")
     await page.keyboard.press("Escape")
     await expect(page.getByRole("heading", { name: "Journeys" })).toBeVisible()
   })
@@ -115,7 +110,7 @@ test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
     // dropdown also contains this label as an option text, so a plain
     // hasText filter would match both rows.
     const candidateRow = page.locator(".candidate-row").filter({ has: page.locator(".candidate-main strong", { hasText: candidateLabel }) })
-    await candidateRow.getByLabel(/^Kind for/).selectOption("goods")
+    await chooseSelect(page, candidateRow.getByRole("button", { name: /^Kind for/ }), "goods")
     await candidateRow.getByRole("button", { name: "Promote" }).click()
     await expect(candidateRow.getByText("Promoted to a draft memento.")).toBeVisible()
 
@@ -145,7 +140,7 @@ test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
     const photoInput = page.getByLabel("Add photos")
     await photoInput.setInputFiles([
       { name: "photo-one.png", mimeType: "image/png", buffer: CURATION_PNG },
-      { name: "photo-two.png", mimeType: "image/png", buffer: CURATION_PNG_TWO }
+      { name: "photo-two.png", mimeType: "image/png", buffer: CURATION_PNG_TWO },
     ])
     const photoRows = page.locator(".photo-row")
     await expect(photoRows).toHaveCount(2)
@@ -154,12 +149,12 @@ test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
 
     await page.getByRole("textbox", { name: "Caption", exact: true }).nth(0).fill("Keyboard saved caption")
     const leaveDialog = page.waitForEvent("dialog")
-    const leave = page.getByRole("link", { name: /Back to journey/ }).click()
+    const leave = page.getByRole("button", { name: /Back to journey/ }).click()
     await (await leaveDialog).dismiss()
     await leave
     await expect(page.getByRole("textbox", { name: "Caption", exact: true }).nth(0)).toHaveValue("Keyboard saved caption")
-    const captionSaved = page.waitForResponse((response) =>
-      response.url().endsWith("/api/admin/photos") && response.request().method() === "POST" && response.request().postDataJSON().caption === "Keyboard saved caption"
+    const captionSaved = page.waitForResponse(
+      (response) => response.url().endsWith("/api/admin/photos") && response.request().method() === "POST" && response.request().postDataJSON().caption === "Keyboard saved caption",
     )
     await page.keyboard.press("Control+s")
     expect((await captionSaved).ok()).toBe(true)
@@ -183,11 +178,9 @@ test.describe.serial("admin GUI closed loop (ADMIN-01.8)", () => {
     await expect(page.getByRole("tooltip")).toHaveText("Move up")
 
     // Reordering is optimistic; reload only after both sequence writes persist.
-    const orderSaved = Promise.all([0, 1].map((seq) => page.waitForResponse((response) =>
-      response.url().endsWith("/api/admin/photos") &&
-      response.request().method() === "POST" &&
-      response.request().postDataJSON().seq === seq
-    )))
+    const orderSaved = Promise.all(
+      [0, 1].map((seq) => page.waitForResponse((response) => response.url().endsWith("/api/admin/photos") && response.request().method() === "POST" && response.request().postDataJSON().seq === seq)),
+    )
     await photoRows.nth(1).getByRole("button", { name: "Move up" }).click()
     for (const response of await orderSaved) expect(response.ok()).toBeTruthy()
     await expect(photoRows.nth(0).getByRole("img")).toHaveAttribute("alt", "Second curated photo")

@@ -25,7 +25,7 @@ for (const width of [1100, 720]) {
     await expect(page.getByRole("dialog", { name: "Settings", exact: true })).toBeHidden()
 
     const scan = page.getByRole("button", { name: "Scan trip folder", exact: true })
-    await expect(scan).toHaveText("Scan")
+    await expect(scan).toHaveText("Scan trip folder")
     await expect(scan.locator('svg[aria-hidden="true"]')).toHaveCount(1)
     const create = page.getByRole("button", { name: "New journey", exact: true })
     await expect(create.locator('svg[aria-hidden="true"]')).toHaveCount(1)
@@ -60,7 +60,7 @@ for (const width of [1100, 720]) {
   })
 }
 
-test("journey Back is an icon-only native link with hover and keyboard hints", async ({ page }) => {
+test("journey Return is a visible button supporting keyboard navigation", async ({ page }) => {
   await page.goto("/")
   await expect(page.getByRole("heading", { name: "Journeys", exact: true })).toBeVisible()
   const response = await page.request.post("/api/admin/journeys", {
@@ -69,16 +69,14 @@ test("journey Back is an icon-only native link with hover and keyboard hints", a
   expect(response.ok()).toBe(true)
   const { id } = await response.json()
   await page.goto(`/#/journey/${id}`)
-  const back = page.getByRole("link", { name: "Back to journeys", exact: true })
-  await expect(back).toHaveAttribute("href", "#/")
-  await expect(back).toHaveText("")
+  const back = page.getByRole("button", { name: "Back to journeys", exact: true })
+  await expect(back).toHaveText("Return")
+  expect((await back.boundingBox())!.height).toBeGreaterThanOrEqual(36)
   await expect(back.locator('svg[aria-hidden="true"]')).toHaveCount(1)
-  await back.hover()
-  await expect(page.getByRole("tooltip")).toHaveText("Back to journeys")
+  await expect(page.getByRole("heading", { name: "Icon navigation", exact: true })).toBeVisible()
   await page.getByRole("button", { name: "Settings", exact: true }).focus()
   await page.keyboard.press("Tab")
-  await expect(back).toBeFocused()
-  await expect(page.getByRole("tooltip")).toHaveText("Back to journeys")
+  await expect(back, await page.evaluate(() => `${document.activeElement?.tagName}: ${document.activeElement?.getAttribute("aria-label")}`)).toBeFocused()
   await page.keyboard.press("Enter")
   await expect(page.getByRole("heading", { name: "Journeys", exact: true })).toBeVisible()
 })

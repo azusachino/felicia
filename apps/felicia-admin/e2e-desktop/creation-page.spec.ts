@@ -1,4 +1,5 @@
 import { test, expect } from "./fixtures"
+import { setDate } from "./date-field"
 
 async function openDraft(page: import("@playwright/test").Page) {
   await page.goto("/#/journey/new")
@@ -10,8 +11,8 @@ async function openDraft(page: import("@playwright/test").Page) {
 async function fillDraft(page: import("@playwright/test").Page) {
   await page.getByLabel("Title", { exact: true }).fill("Synthetic page journey")
   await page.getByLabel("Place", { exact: true }).fill("Kyoto")
-  await page.getByLabel("Start date", { exact: true }).fill("2026-05-03")
-  await page.getByLabel("End date", { exact: true }).fill("2026-05-03")
+  await setDate(page.getByRole("group", { name: "Start date", exact: true }), "2026-05-03")
+  await setDate(page.getByRole("group", { name: "End date", exact: true }), "2026-05-03")
 }
 
 test("direct creation route and explicit Cancel discard without a write", async ({ page }) => {
@@ -22,17 +23,20 @@ test("direct creation route and explicit Cancel discard without a write", async 
   expect(await (await page.request.get("/api/admin/journeys")).json()).toEqual([])
   await page.getByRole("button", { name: "New journey", exact: true }).click()
   await expect(page.getByLabel("Title", { exact: true })).toHaveValue("")
-  await expect(page.getByLabel("Start date", { exact: true })).toHaveValue("")
+  const today = await page.evaluate(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
+  })
+  await expect(page.locator('[name="date_start"]')).toHaveValue(today)
+  await expect(page.locator('[name="date_end"]')).toHaveValue(today)
 })
 
-test("Back is a native icon link and protects an unsaved draft", async ({ page }) => {
+test("Return is a visible button and protects an unsaved draft", async ({ page }) => {
   await openDraft(page)
   await page.getByLabel("Title", { exact: true }).fill("Keep this draft")
-  const back = page.getByRole("link", { name: "Back to journeys", exact: true })
-  await expect(back).toHaveAttribute("href", "#/")
-  await expect(back).toHaveText("")
+  const back = page.getByRole("button", { name: "Back to journeys", exact: true })
+  await expect(back).toHaveText("Return")
   await back.focus()
-  await expect(page.getByRole("tooltip")).toHaveText("Back to journeys")
   const dismissed = new Promise<void>((resolve) => {
     page.once("dialog", async (dialog) => {
       expect(dialog.message()).toContain("unsaved journey")
@@ -60,20 +64,20 @@ test("reload cancellation preserves the unsaved creation draft", async ({ page }
   await unload.dismiss()
   await reloadAttempt
   await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Synthetic page journey")
-  await expect(page.getByLabel("End date", { exact: true })).toHaveValue("2026-05-03")
+  await expect(page.locator('[name="date_end"]')).toHaveValue("2026-05-03")
   expect(await (await page.request.get("/api/admin/journeys")).json()).toEqual([])
 })
 
 test("invalid date range is explained without a write; equal dates create once", async ({ page }) => {
   await openDraft(page)
   await fillDraft(page)
-  await page.getByLabel("End date", { exact: true }).fill("2026-05-02")
+  await setDate(page.getByRole("group", { name: "End date", exact: true }), "2026-05-02")
   await expect(page.getByRole("alert")).toHaveText("End date must be on or after the start date.")
-  await expect(page.getByLabel("End date", { exact: true })).toHaveAttribute("aria-invalid", "true")
+  await expect(page.getByRole("group", { name: "End date", exact: true })).toHaveAttribute("aria-invalid", "true")
   await page.getByRole("button", { name: "Create journey", exact: true }).click()
   expect(await (await page.request.get("/api/admin/journeys")).json()).toEqual([])
   await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Synthetic page journey")
-  await page.getByLabel("End date", { exact: true }).fill("2026-05-03")
+  await setDate(page.getByRole("group", { name: "End date", exact: true }), "2026-05-03")
   await expect(page.getByRole("alert")).toHaveCount(0)
   await page.getByRole("button", { name: "Create journey", exact: true }).click()
   await expect(page.getByRole("heading", { name: "Synthetic page journey", exact: true })).toBeVisible()
