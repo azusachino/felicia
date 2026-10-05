@@ -1,4 +1,5 @@
 import { test, expect } from "./fixtures"
+import { chooseSelect } from "./select-field"
 
 for (const [locale, settingsName, journeysName, newName, createName, titleName] of [
   ["ja", "設定", "旅程", "新しい旅程", "旅程を作成", "タイトル"],
@@ -8,7 +9,7 @@ for (const [locale, settingsName, journeysName, newName, createName, titleName] 
     await page.setViewportSize({ width: 900, height: 600 })
     await page.goto("/")
     await page.getByRole("button", { name: "Settings", exact: true }).click()
-    await page.getByRole("combobox", { name: "Language", exact: true }).selectOption(locale)
+    await chooseSelect(page, page.getByRole("button", { name: "Language", exact: true }), locale)
     await page.keyboard.press("Escape")
     await expect(page.getByRole("button", { name: settingsName, exact: true })).toBeFocused()
     await page.reload()
@@ -45,11 +46,12 @@ test("studio appearance persists independently of published settings and follows
   await expect(output).toBeVisible()
   await expect(output).toHaveCSS("background-color", "rgb(41, 44, 49)")
   await page.getByRole("button", { name: "Settings", exact: true }).click()
-  const appearance = page.getByRole("combobox", { name: "Appearance", exact: true })
-  await expect(appearance).toHaveValue("system")
-  await appearance.selectOption("light")
+  const appearance = page.getByRole("group", { name: "Appearance", exact: true })
+  await expect(appearance.getByRole("button", { name: "System", exact: true })).toHaveAttribute("aria-pressed", "true")
+  for (const name of ["System", "Light", "Dark"]) await expect(appearance.getByRole("button", { name, exact: true }).locator("svg")).toBeVisible()
+  await appearance.getByRole("button", { name: "Light", exact: true }).click()
   await expect(output).toHaveCSS("background-color", "rgb(255, 255, 255)")
-  await appearance.selectOption("dark")
+  await appearance.getByRole("button", { name: "Dark", exact: true }).click()
   await expect(output).toHaveCSS("background-color", "rgb(41, 44, 49)")
   await page.keyboard.press("Escape")
   await expect(page.getByRole("button", { name: "Settings", exact: true })).toBeFocused()
@@ -57,8 +59,8 @@ test("studio appearance persists independently of published settings and follows
   await page.reload()
   await expect(output).toHaveCSS("background-color", "rgb(41, 44, 49)")
   await page.getByRole("button", { name: "Settings", exact: true }).click()
-  await expect(appearance).toHaveValue("dark")
-  await appearance.selectOption("system")
+  await expect(appearance.getByRole("button", { name: "Dark", exact: true })).toHaveAttribute("aria-pressed", "true")
+  await appearance.getByRole("button", { name: "System", exact: true }).click()
   await expect(output).toHaveCSS("background-color", "rgb(255, 255, 255)")
   await page.emulateMedia({ colorScheme: "dark" })
   await expect(output).toHaveCSS("background-color", "rgb(41, 44, 49)")

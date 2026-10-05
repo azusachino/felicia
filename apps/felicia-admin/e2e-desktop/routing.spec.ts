@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto"
 import type { Page } from "@playwright/test"
 import type { AdminJourney } from "../src/api"
 import { test, expect } from "./fixtures"
+import { chooseSelect } from "./select-field"
+import { decideDiscard } from "./discard-dialog"
 
 async function createJourney(page: Page, slug: string, title: string): Promise<string> {
   // page.goto('/') returns before the client-only framework has initialized.
@@ -67,22 +69,18 @@ test("memento parameters and live locale updates keep unsaved input", async ({ p
   expect(response.ok(), await response.text()).toBe(true)
   await page.goto(`/#/journey/${encodedId(journeyId)}/memento/${encodedId(id)}/`)
   await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Routing memento")
-  const back = page.getByRole("link", { name: "Back to journey", exact: true })
-  await expect(back).toHaveText("")
+  const back = page.getByRole("button", { name: "Back to journey", exact: true })
+  await expect(back).toHaveText("Return")
   await expect(back.locator('svg[aria-hidden="true"]')).toHaveCount(1)
-  await back.hover()
-  await expect(page.getByRole("tooltip")).toHaveText("Back to journey")
   await page.getByLabel("Essay", { exact: true }).fill("Unsaved synthetic draft")
   await page.getByRole("button", { name: "Settings", exact: true }).click()
-  await page.getByRole("combobox", { name: "Language", exact: true }).selectOption("ja")
+  await chooseSelect(page, page.getByRole("button", { name: "Language", exact: true }), "ja")
   await expect(page.getByLabel("文章", { exact: true })).toHaveValue("Unsaved synthetic draft")
-  await page.getByRole("combobox", { name: "言語", exact: true }).selectOption("en")
+  await chooseSelect(page, page.getByRole("button", { name: "言語", exact: true }), "en")
   await page.keyboard.press("Escape")
   await expect(page.getByLabel("Essay", { exact: true })).toHaveValue("Unsaved synthetic draft")
-  const dismissDialog = page.waitForEvent("dialog")
-  const cancelLeave = page.getByRole("link", { name: /Back to journey/ }).click()
-  await (await dismissDialog).dismiss()
-  await cancelLeave
+  await page.getByRole("button", { name: /Back to journey/ }).click()
+  await decideDiscard(page, false)
   await expect(page.getByLabel("Essay", { exact: true })).toHaveValue("Unsaved synthetic draft")
   const reloadDialog = page.waitForEvent("dialog")
   const reloadAttempt = page.evaluate(() => location.reload())
@@ -91,10 +89,8 @@ test("memento parameters and live locale updates keep unsaved input", async ({ p
   await unload.dismiss()
   await reloadAttempt
   await expect(page.getByLabel("Essay", { exact: true })).toHaveValue("Unsaved synthetic draft")
-  const acceptDialog = page.waitForEvent("dialog")
-  const discardAndLeave = page.getByRole("link", { name: /Back to journey/ }).click()
-  await (await acceptDialog).accept()
-  await discardAndLeave
+  await page.getByRole("button", { name: /Back to journey/ }).click()
+  await decideDiscard(page, true)
   await expect(page.getByRole("heading", { name: "Routing editor journey", exact: true })).toBeVisible()
   const stored = await page.request.get(`/api/admin/mementos/${id}`)
   expect(stored.ok()).toBe(true)
@@ -146,10 +142,8 @@ test("keyboard save preserves edits typed while the submitted draft is in flight
   await expect(page.getByLabel("Essay", { exact: true })).toHaveValue("Later unsaved edit")
   const submitted = await page.request.get(`/api/admin/mementos/${id}`)
   expect((await submitted.json()).essay).toBe("Submitted keyboard draft")
-  const leaveDialog = page.waitForEvent("dialog")
-  const leave = page.getByRole("link", { name: /Back to journey/ }).click()
-  await (await leaveDialog).dismiss()
-  await leave
+  await page.getByRole("button", { name: /Back to journey/ }).click()
+  await decideDiscard(page, false)
   await expect(page.getByLabel("Essay", { exact: true })).toHaveValue("Later unsaved edit")
   await page.unroute("**/api/admin/mementos")
   const saved = page.waitForResponse((response) => response.url().endsWith("/api/admin/mementos") && response.request().method() === "POST")
@@ -158,6 +152,6 @@ test("keyboard save preserves edits typed while the submitted draft is in flight
   await expect(saveButton).toBeEnabled()
   const stored = await page.request.get(`/api/admin/mementos/${id}`)
   expect((await stored.json()).essay).toBe("Later unsaved edit")
-  await page.getByRole("link", { name: /Back to journey/ }).click()
+  await page.getByRole("button", { name: /Back to journey/ }).click()
   await expect(page.getByRole("heading", { name: "Keyboard save journey", exact: true })).toBeVisible()
 })

@@ -1,4 +1,5 @@
 import { test, expect } from "./fixtures"
+import { setDate } from "./date-field"
 import { writeFile } from "node:fs/promises"
 
 test("creates a journey through labeled fields and persists it after reload", async ({ page }, info) => {
@@ -21,13 +22,16 @@ test("creates a journey through labeled fields and persists it after reload", as
   await expect(page).toHaveURL(/#\/journey\/new$/)
   await expect(page.getByRole("dialog")).toHaveCount(0)
   const create = page.getByRole("button", { name: "Create journey", exact: true })
-  await expect(create).toBeDisabled()
+  await expect(create).toBeEnabled()
+  await create.click()
+  expect(await page.getByLabel("Title", { exact: true }).evaluate((element) => (element as HTMLInputElement).validity.valueMissing)).toBe(true)
+  expect(await (await page.request.get("/api/admin/journeys")).json()).toHaveLength(0)
   await page.getByLabel("Title", { exact: true }).fill("Synthetic Kyoto Journey")
   await page.getByLabel("Place", { exact: true }).fill("Kyoto")
   await page.getByText("More options", { exact: true }).click()
   await page.getByLabel("Slug", { exact: true }).fill("synthetic-kyoto")
-  await page.getByLabel("Start date", { exact: true }).fill("2026-05-01")
-  await page.getByLabel("End date", { exact: true }).fill("2026-05-03")
+  await setDate(page.getByRole("group", { name: "Start date", exact: true }), "2026-05-01")
+  await setDate(page.getByRole("group", { name: "End date", exact: true }), "2026-05-03")
   await expect(create).toBeEnabled()
   const createImage = info.outputPath("create-baseline.png")
   await page.screenshot({ path: createImage })

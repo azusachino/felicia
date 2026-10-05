@@ -5,6 +5,42 @@
 > Asobi. Do not dispatch a later slice while an earlier acceptance gate is open.
 > The owner-feedback revision below supersedes the earlier modal-creation direction.
 
+## Delivery checkpoint — PR 160
+
+The owner reviewed and approved merging [PR #160](https://github.com/azusachino/felicia/pull/160).
+Its linked PR is authoritative for current merge state. Remaining execution and
+acceptance are tracked in [#161](https://github.com/azusachino/felicia/issues/161);
+[#158](https://github.com/azusachino/felicia/issues/158) remains the acceptance umbrella.
+Implementation and CI remediation were delivered on `feat/desktop-sample-polish`
+through `6944c1ebb1ad926a03a48a48255ef99c729bad9e`; the later reconciliation at
+`8ac970a` changes documentation only.
+
+- [CI run 37283214499](https://github.com/azusachino/felicia/actions/runs/37283214499)
+  passed all three jobs: backend, frontend and desktop composition. Current local
+  validation has 111 admin and 18 reader tests; complete desktop composition is
+  158/158 and sequential real web authoring is 14/14.
+- Fonts are pinned Fontsource build dependencies, not tracked binaries. Shared
+  desktop/web image upload, generated-only temporary photos, auto-managed
+  temporary output and asynchronous dirty Return passed fresh independent source
+  checks. The SQLite compensation mapping and CI portability regression were
+  separately verified, the latter through an explicitly owner-approved fresh
+  direct GLM Flash/medium reviewer.
+- Canonical Asobi connectivity and stale branch/commit/next-action records are
+  reconciled. The old DNS outage is no longer a current blocker.
+- After green CI, the signed app was launched once with `--sample` only. The owner
+  reports it is basically working and approved the bounded merge. This does not
+  authorize a real workspace, normal file picker or blanket native/S1/S2 closure.
+  Standalone Close has its earlier bounded native acceptance; remaining native
+  criteria and S2 reviewed-input/apply remain open.
+
+The checkpoint narratives below are historical evidence, not current task or
+permission state. Their uncommitted changes, earlier test counts, temporary DNS
+outage, upload gating and launch/review holds are superseded by this delivery and
+its [final rework record](#pr-160-owner-feedback-font-dependencies-and-photo-creation).
+Generated desktop indexes may differ after packaging; that build-only drift is
+preserved outside this documentation update. No hand-authored implementation changes remain
+uncommitted.
+
 ## Goal and constraints
 
 Deliver Felicia as a polished local desktop studio: import → author → preview →
@@ -616,6 +652,465 @@ No remote setting change or reset occurred. The remote requester still reports
 false and its capture fails; this does not establish remote permission state or
 whether Felicia rendered. Native appearance remains unverified. S1 remains open;
 S2 is not dispatched.
+
+## Sample and theme polish — checkpoint history
+
+This records the earlier candidate and its successive fixes. Current upload,
+Close, connectivity, verification and launch state are summarized above.
+
+On `feat/desktop-sample-polish`, the uncommitted studio adds explicit **Open
+sample trip** actions in Library and Settings. `--sample` selects a fresh
+temporary database, generated media and compiled output before resolving an
+author workspace. Native pickers and imports are unavailable in this sample.
+The launcher switches the current window, not a second process. **Return to my
+workspace** restores the original handler and cleans up the sample's database,
+media and preview server; reopening creates a fresh sample. A standalone
+`--sample` diagnostic launch has no original workspace and closes on exit.
+
+The first implementation spawned a second process for isolation. The owner
+rejected that interaction. The replacement keeps separate immutable workspace
+handlers, waits for in-flight authoring requests before switching, and preserves
+the original workspace. The frontend leaves through dirty/pending navigation
+guards before switching the backend, so cancellation cannot leave an editor
+pointing at a different repository.
+
+Blank journey creation and folder import are distinct actions. The sample does
+not expose unsupported folder scanning. Creation and Scan offer validation
+feedback instead of silently disabling actions for empty fields. Synthetic
+browser checks cover Library → New journey → validation → create → reload;
+these checks do not establish native Wails acceptance.
+
+Journey dates initialize to the actual local calendar day, not empty values that
+WebKit may render as apparent defaults. Untouched defaults do not make a draft
+dirty. The creation regression includes submitting without editing either date
+and a local-day/UTC boundary. Pending creation blocks anchor clicks before
+WebKit queues hash navigation, while route guards continue to protect history
+and programmatic navigation. Sample exit labels are simply **Close** or
+**Return**, with the banner explaining the workspace boundary.
+
+Creation, journey, and editor return controls are outlined shared `Button`
+components with an arrow and visible Return label, not bare ghost arrows.
+The editor datetime uses a reusable Bits UI `DateField` with library-managed
+segments, fixed year-month-day / 24-hour / seconds presentation, and localized
+accessible segment labels. Formatting is the control's responsibility; users
+are not shown a format instruction. Storage remains RFC3339, with the existing
+UTC edit convention and separate timezone metadata; unchanged instants retain
+subsecond precision. New Journey reuses that field in date-only mode with
+`yyyy-MM-DD` presentation, required local-day defaults, and the existing range,
+collision, dirty, and pending protections.
+
+The owner exposed a missing desktop API seam: source-action URLs fell through
+the generic journey-UUID route and returned 405 or misleading UUID errors. The
+sample now composes isolated synthetic route/visit/media sources into the same
+importer and intake services used by the server. Sync actually updates the
+private route; visit/tray previews are read-only; intake persists stable stop
+candidates without creating public mementos. Candidate listing reads that
+store rather than returning an empty stub. Route snapping uses the repository's
+composed route and validates coordinates. No sample source reads credentials,
+contacts external providers, or opens the original workspace.
+
+External providers in normal desktop workspaces and native candidate
+promotion/review remain deferred S2 capabilities. The action-matrix audit also
+found no desktop photo-upload endpoint: Add photos and its file chooser are now
+hidden in the native editor with a localized capability explanation. Existing
+photo curation still works; the web host keeps its actual upload workflow.
+This is capability gating, not native upload implementation or S2 parity.
+A fresh read-only peer `felicia-safe-launch-verify` (`wV:p5W`, actual
+`gpt-6-luna`, medium) verified the final candidate: validation (105 admin tests,
+zero Svelte diagnostics), 140/140 Chromium/WebKit, 14/14 web authoring, docs and
+native packaging/strict signature all passed. Its source walkthrough found no new
+defect and confirmed sample isolation before real-workspace resolution. Six
+locale/runtime cases verify the unavailable chooser and persistent existing-photo
+captions. Only generated admin `index.html` drifted during packaging; authored
+source and the retained reader index stayed stable. This clears the source-only
+safe-launch gate; native Wails appearance, Dock/controls and S1/S2 owner acceptance
+remain open. Source control foundations, Settings/left-form polish and isolated
+demo slices are reconciled as verified; native acceptance is not batch-closed.
+
+A later all-widget sweep found two native dialogs omitted from the original AST
+control inventory: the scan surface and compiled preview. That means the earlier
+safe-launch review did not establish full library-first compliance. Both are now
+Bits UI Dialog compositions (Title/Description, portal, overlay and focus scope),
+and the AST guard rejects native `dialog` outside shared primitives as well.
+Scan preserves first-field focus, Escape/close focus return and the import-pending
+close guard; pending inputs and Scan are disabled rather than allowing a second
+request to disturb that guard. Preview retains native titlebar inset and drafts.
+The migration exposed that iframe Escape does not cross origin boundaries into
+Bits UI: Chromium/WebKit reproductions failed before an explicit reader Escape
+message bridge. The receiver requires the current iframe window and checked
+loopback reader origin; wrong-window/wrong-origin messages are rejected, and the
+message carries no data or authoring command. The reader respects already-handled
+Escape events. Four browser regressions now pass, including focus return and pending guards.
+The full suite then found the shared IconButton tooltip still targeted native
+dialogs; its portal now targets the closest native or library dialog, matching
+Select. A fresh read-only `felicia-dialog-final-verify` peer (`wV:p5Y`, actual
+`gpt-6-luna`, medium observed in its UI footer) independently passed validation
+(105 admin tests, zero Svelte diagnostics; 17 public tests), 144/144 desktop
+Chromium/WebKit, 14/14 web authoring, docs and native package/strict signature.
+Earlier runner stalls did not reproduce in this pass; no cause is asserted and no
+check was weakened. All authored source stayed frozen. Only expected generated
+admin index bytes changed; direct comparisons confirm both embedded indexes match
+the current admin/reader builds, and generated outputs were retained.
+
+This supersedes the prior safe-launch review and clears the current source-only
+launch gate for the already-approved isolated synthetic `--sample` invocation.
+At this checkpoint the canonical Asobi graph was temporarily unreachable
+(DNS/request failure), blocking live task/claim reconciliation. No fallback graph
+or networking change was made. Connectivity and records were later reconciled
+as recorded in the current delivery.
+Native Wails acceptance remains owner-only, with no real-workspace launch,
+permissions, real photo/folder selection, commits or pushes authorized.
+
+After the fresh pass, the lead launched the signed bundle with `--sample` only
+(no path overrides): native PID **56042** was observed running the packaged
+`FeliciaStudio.app/Contents/MacOS/felicia-desktop --sample`. This is startup/process
+evidence, not native UI acceptance. No pre-existing packaged native process was
+replaced. The sample window is retained for owner checks; native controls, fonts,
+Dock, dragging, authoring and preview appearance still require that feedback.
+Live-record reconciliation was still blocked by Asobi DNS at that launch,
+independently of the source/test pass; the final delivery resolves that blocker.
+
+### Owner feedback: standalone Close must keep the studio open
+
+The owner clicked Close in the reviewed native sample and the application quit.
+The old standalone composition explicitly called `app.Quit()` because it had no
+original workspace. The owner chose returning to an **empty isolated studio**,
+not opening a real journal or merely renaming the action Quit. The `--sample`
+startup now creates a separate empty temporary baseline before any default
+workspace resolution, then opens its disposable sample through WorkspaceRouter.
+Close restores the empty handler, closes/deletes sample resources and reloads the
+library in the same window; reopening creates fresh sample data. The baseline
+survives until application exit, when its own resources are cleaned up.
+
+Isolation is independent of the visible Sample state: both temporary workspaces
+reject author-path pickers/imports/output-root changes. The empty studio explains
+that the journal is not connected and hides Scan; no native file dialog is opened.
+Normal studio-to-sample Return preserves its original semantics. Go tests cover
+empty return, fresh reopen, cleanup and forbidden baseline endpoints; six browser
+locale/engine cases cover continued live transport and empty UI after Close,
+with cancelled dirty navigation preserving the English sample draft. These are
+source/headless evidence. Fresh read-only `felicia-close-verify` (`wV:p61`,
+actual `gpt-6-luna`, medium observed in its UI footer) independently passed
+10 focused Chromium/WebKit cases, standalone/workspace Go tests, admin checks
+(105 tests, zero Svelte diagnostics) and current signature verification. Frozen
+source, both binaries and full-checkpoint log SHA-256s matched before/after;
+the passing 150-case full suite, 14-case web suite, validation, docs and package
+results were inspected and reused rather than needlessly rerun. No findings
+warranted another full suite. This owner-approved verification-efficiency choice
+keeps the final quality bar and assertions unchanged. The initial native UI remains
+the seeded sample; only Close shows the empty baseline, in the same process.
+The signed, reviewed isolated sample was relaunched and the owner confirmed that
+Close now leaves the application open in the empty temporary studio. This accepts
+the bounded native Close fix, not the rest of S1/S2. The owner asked about the
+“your journal is not connected” notice; it explains the isolated launch, rather
+than a connection failure. The clearer proposed wording (“Temporary workspace —
+changes are cleared when you quit”) has not yet been applied to the catalogs.
+Asobi DNS still blocked live-record reconciliation at this Close checkpoint.
+Unsupported actions were not
+shown as enabled controls; the UI explains the boundary. These changes and
+focused browser checks do not establish complete desktop/native UX parity.
+
+The owner made library-first controls a hard rule after native selects/color
+controls remained undersized and inconsistent despite earlier component work.
+`AGENTS.md` records the rule: reuse shared UI components and Bits UI primitives;
+any native/custom fallback needs a demonstrated failure and recorded evidence.
+The independent control inventory found remaining view-level native inputs,
+selects, textareas, and buttons, including Site, Settings, Editor, connectors,
+and the scan dialog. The subsequent source migration replaces those widgets with shared Input,
+Textarea and Button components and a reusable Bits UI Select. Native elements
+inside shared primitives and ordinary form/label semantics remain intentional;
+there is no demonstrated-failure fallback for a view-level widget. More options
+uses Bits UI Collapsible, and photo upload has a shared visible button and hidden
+shared file input. A Svelte-AST unit gate rejects raw view-level input, textarea,
+select, button, details and summary elements. The overall UX is not yet accepted.
+
+The native preview embeds the existing Go-served, last-built reader. It does not
+start a JavaScript server, open an external browser or save unsaved input.
+Returning from preview keeps the authoring page mounted. On macOS, the preview
+starts below the shared native title-bar height; DOM top-layer dialogs cannot
+cover native traffic lights safely. The sample-return control wraps within its
+sidebar card instead of relying on a fixed single-line label width. Published appearance
+starts from the built site's settings, independently of studio appearance. The
+reader exposes labelled Sun/Moon controls for a local viewing override; these
+controls do not save or republish site settings. The desktop journey-detail
+shortcut uses this same in-app last-built preview, not the web-only external
+browser link. Library header actions and the preview header button have a
+36-pixel minimum height.
+
+Both the packaged `.icns` metadata and Wails' runtime `Icon` option use the
+existing default Felicia artwork. The runtime option is needed for executable
+launches that do not obtain their Dock icon from bundle metadata.
+
+The owner confirmed dragging and normal-looking fonts in one isolated native
+sample. The CoreText warning was not reproduced; its cause is not established.
+The owner then rejected the color treatment and requested further UI polish.
+Do not treat the drag/font check as visual acceptance or revised S1 completion.
+
+Rendered inspection found hard-coded warm authoring styles mixing with the
+neutral studio palette, including unreadable dark-mode labels and badges.
+Journey and Editor now reuse the shared semantic surfaces/status colors rather
+than maintaining their own palette. Save is a sticky, visible action with a
+dirty-state cue; preview has an explicit return action. Reader accent text uses
+a separate readable ink role rather than borrowing the selected-fill color,
+and its index collapses earlier to avoid covering content in compact previews.
+The public paper-memento material remains intentional.
+
+Targeted browser checks and rendered contrast measurements cover this slice;
+final owning gates, fresh independent verification and renewed native visual
+acceptance are still required. No commit, publication or release is approved.
+
+### Bounded verification: authoring a newly created journey
+
+The owner found that creation led to an empty detail page with no metadata edit
+or first-memento action. Journey detail now exposes **Edit journey** and **Add
+memento**. Editing reuses the full-page shared journey form and carries the
+existing id, journal, source reference and revision; changing the title does not
+silently rename its slug. The desktop handler retains the stored GPS route and
+authored-field mask. A stale save is rejected without discarding input.
+
+Add memento opens a full-page shared Input/Label/Button form with a Bits UI Select
+for the registered kind. It creates a stable-id private draft, then opens the
+existing editor for essay and other authoring. Failed creation retains input and
+reuses the same id on retry. Return is guarded navigation; the journey footer's
+Cancel is an explicit discard. Default shared inputs, buttons, date fields and
+the new Select use physical 40-pixel sizing rather than short rem-based heights.
+The existing SQLite create contract omits the existing-row revision constraint;
+metadata updates continue to carry `expected_revision`.
+
+At `feat/desktop-sample-polish` / `848aca80cb54e86ba38ceb871358806fd8d714db` plus
+this uncommitted slice, fresh read-only Herdr peer `felicia-authoring-verify`
+(`wV:p5Q`, Sonnet 5.5, startup `--model sonnet --effort medium`) independently ran
+`e2e-desktop/authoring-entry.spec.ts` (6/6 Chromium/WebKit) and `make admin-check`
+(104/104 unit tests, zero Svelte errors/warnings, formatting clean), all exit 0.
+The runtime footer confirmed the model, not the effort setting. Browser evidence
+covers create/edit/save identity, stale-writer rejection and cancellation,
+first-memento essay save/reload, keyboard Select, input/button/Select sizing,
+dirty Return, held-POST navigation and a 503 retry producing exactly one draft.
+The initial review was corrected to cite the desktop handler, not the web server,
+and to claim only new controls, not every control in changed views.
+
+The new-memento next-sequence value remains a load-time snapshot; concurrent
+adds are not verified. GPS/source retention, date-range/collision behavior in
+metadata editing and date-field physical height have source evidence or existing
+creation coverage, not new dedicated edit-browser acceptance. The all-control
+migration remains open, and this bounded verification does not complete native
+acceptance, S1/S2 or the overall UX. The retained native process has not been
+replaced; no commit or push is approved.
+
+### All-control migration gate checkpoint
+
+The source migration standardizes form controls at physical 40-pixel sizing,
+keeps entered text in its original case, and supplies foreground/surface colors
+in shared primitives instead of inheriting muted label colors. Select exposes
+its selected value as an accessible description and uses a dialog-aware portal.
+Single-choice design controls report `aria-pressed`. WebKit skipped implicit
+button tab stops; explicit default `tabindex=0` in shared Button restores the
+verified Settings-to-Return keyboard path without changing OS preferences.
+
+On the uncommitted polish candidate, lead gates passed: all 132 real-composition
+Chromium/WebKit cases (including a 12-case en/ja/zh, light/dark and 1100/720 Site
+control/save matrix), 105 admin unit tests with zero Svelte errors/warnings,
+`make validate`, `make docs-build`, `make desktop-package` and strict bundle
+signature verification. The unchanged web-host authoring loop passed 14/14,
+including photo upload/curation, candidate promotion, publication and saved site
+identity in real compiled output. The initial full-browser run failed on stale
+Scan/Create assertions, inherited input contrast and WebKit keyboard focus;
+those were addressed without lowering contrast thresholds or deleting checks.
+The first web run overlapped packaging and lost transient saved feedback;
+its serialized rerun passed. Do not run dev-server browser verification while
+packaging regenerates the same SvelteKit outputs.
+
+Fresh expanded-candidate independent verification and owner-native acceptance
+remain required. No native process was replaced and no commit/push is approved.
+
+### Review findings: fonts and bounded JSON
+
+Fresh Luna-medium source review found that the embedded reader still fetched its
+existing typefaces from Google Fonts. The owner chose bundling those same fonts,
+not replacing the paper-memento typography with system fonts. The public reader
+now links a base-aware local stylesheet. Its five families, styles, weights and
+425 Unicode-subset font-face rules are retained, with 396 original WOFF2 assets
+(approximately 8.7 MB), content-hash provenance and all five SIL OFL licenses in
+`apps/felicia-public-site/public/fonts/`. No runtime font download or package
+dependency is added. Existing map tiles remain an online ArcGIS dependency;
+self-hosted typography is not a claim that the complete map is network-free.
+Browser verification blocks external traffic and explicitly loads the original
+Latin and Japanese faces while published stories remain readable.
+
+Journey/memento upserts and photo metadata now decode one JSON object through an
+8 MiB limit, including unknown-length request bodies; oversized JSON returns
+413 before repository access and trailing objects return 400. This bounds the
+local availability issue without changing binary-upload handling or persistence.
+Fresh Luna-medium peer `felicia-final-verify` (`wV:p5R`, actual
+`openai-codex/gpt-6-luna`, medium) independently rechecked validation, 134/134
+Chromium/WebKit, 14/14 web authoring, docs and desktop Go gates, all exit 0. Its
+source review verified local font coverage/licenses/hashes, unchanged reader
+style declarations and bounded JSON; subpath behavior has structural evidence,
+not a separate subpath-font browser run. It found missing embedded-reader WOFF2
+MIME mapping. The handler now returns `font/woff2`, with a direct reader-mode
+response test independently rerun in the desktop Go gate (exit 0). Native
+WKWebView rendering remains unverified. Generated indexes are retained; expected
+SvelteKit regeneration changes their hashes rather than authored-source behavior.
+The approved isolated sample launch follows final safe-affordance verification.
+
+### PR 160 owner feedback: dirty-page Return
+
+The owner reported that Return from Add memento appeared frozen. The source
+used synchronous browser `confirm()` for dirty navigation; the pinned Wails
+macOS delegate has no JavaScript-confirm handler. A browser repro with
+`window.confirm` returning false reproduced the blocked Return. This is not
+proof of the full native failure's origin.
+
+Internal dirty navigation now uses a shared Bits UI AlertDialog with localized
+Keep editing / Discard changes actions. Journey creation/editing, Add memento,
+the memento editor and Site share the guard. Pending writes and unload
+cancellation remain protected; browser unload retains its browser-owned prompt.
+Workspace switches await the actual discard decision before touching the
+backend. Focused tests caught an additional SvelteKit boundary: a cancelled
+`goto()` can resolve before that decision. The continuation now handles that
+case, including standalone Close from a dirty editor.
+
+Lead verification of this uncommitted slice:
+
+- `make admin-check`: 110 tests pass, zero Svelte diagnostics, lint/format pass.
+- Headless desktop rebuild plus 38 affected Chromium/WebKit cases pass:
+  Return, draft retention/discard, pending creation, keyboard saves, reload
+  cancellation, routing and same-window workspace/standalone Close behavior.
+- `make test-admin-e2e`: 14 real web authoring cases pass.
+- Source tests cover resolved cancellation, refusing discard, a write becoming
+  pending while confirming, and pending/unload refusal. The Svelte AST control
+  guard now also rejects view-level native `alert()`, `confirm()` and `prompt()`.
+
+Evidence: workstation scratch `.tmp/felicia-desktop-polish/return-*.log`.
+At this Return-only checkpoint, fresh independent verification and actual native
+retesting were still open; the bundle was not replaced or relaunched. Font
+packaging, native image upload and temporary output remediation were not included
+in that gate. The combined rework below subsequently implements and verifies
+those source criteria. This historical checkpoint closes no native/S1/S2 issue.
+
+### PR 160 owner feedback: font dependencies and photo creation
+
+The owner rejected tracked font binaries. Reader typography now comes from five
+pinned `@fontsource` 5.3.0 dependencies (Inter, Outfit, Share Tech Mono, Spectral,
+Zen Old Mincho). The same 17 family/weight/style combinations and the packages'
+Unicode subsets remain locally served, bundled by Vite and embedded in desktop
+assets. Public/desktop copies of font binaries and the hand-maintained face/hash
+manifests are removed from the delivered tree; licenses and provenance remain.
+The npm mirror was used temporarily for these packages; leaked lockfile URLs
+were later corrected in the CI follow-up below. The
+existing dependency versions were preserved and an offline frozen install passed.
+Earlier branch commits still contain font binaries: no history rewrite or
+force-push has been performed.
+
+The old desktop upload notice was a capability gate for a missing backend, not a
+macOS permission problem. Ordinary desktop image creation now uses the same
+runtime photo service as web multipart uploads. JPEG, PNG and WebP are accepted;
+HEIC/HEIF requires conversion. The service checks actual image bytes, a 20 MiB
+limit, dimensions up to 50,000 per side and 50 million pixels. Generated keys
+contain the content digest and a new photo UUID, never client filenames or source
+paths. Existing photo identities remain unchanged. Sequence allocation is
+serialized within each service instance, not across processes.
+
+Private filesystem reads, writes and deletion use `os.OpenRoot`; writes use
+owner-only temporary objects and atomic rename. Rejected metadata writes remove
+only the new upload's original after a fresh lookup confirms that its identity is
+absent. An uncertain committed write retains its original; an unavailable lookup
+also retains bytes rather than risk deleting committed data. Such an uncertain
+failure can leave a private orphan and must not be automatically retried.
+
+Sample and empty temporary workspaces expose Add sample photo, generating PNG
+bytes internally. They never expose a file input or invoke a native file picker;
+ordinary file uploads are forbidden at the backend. Pending upload controls and
+navigation remain guarded. Temporary output is automatically managed: the folder
+picker is hidden, and backend browsing/output mutations return 403 instead of a
+misleading 404 or touching author roots.
+
+Focused lead checks cover format/size/dimension rejection, symlink confinement,
+compensation and uncertain outcomes, photo sequencing, generated-only isolation,
+three-locale generated-photo curation and ordinary desktop upload/curation in
+Chromium and WebKit. These are source/headless checks, not Wails file-picker
+acceptance. The initial lead rework checkpoint passed `make validate` (111 admin
+and 17 public-reader tests before the portability regression), focused runtime/provider/server race tests, desktop
+Go tests, Markdown checks and the documentation build. Web authoring passed all
+14 cases in a sequential run. Desktop coverage comprises 158 distinct cases:
+120 passed before the harness's 120-second deadline interrupted the full run;
+a bounded WebKit remainder passed 39 cases with one overlap. No test failure was
+reported in that interrupted desktop run. This is not a single completed
+`make e2e` receipt. A first concurrent web attempt lost a caption draft; its cause
+is unproven. The sequential rerun passed without source or assertion changes.
+Build-producing gates should not share the checkout concurrently. After the
+review correction below, a serialized final `make e2e` completed successfully:
+**158/158, exit 0** (`rework-desktop-complete.log` and `.exit`). That replaces the
+interrupted-run receipt as the final desktop gate, without diagnosing the earlier
+web failure or weakening assertions. Final `make validate`, Markdown checks and
+docs build also passed (`rework-postreview-validate.log`).
+
+Evidence is in workstation scratch `.tmp/felicia-desktop-polish/`:
+`rework-validate-final.log`, `photo-go-final.log`, `rework-desktop-final.log`,
+`rework-desktop-remainder.log`, `rework-web-sequential.log` and
+`rework-docs-final.log`. Fresh read-only pi-subagents review completed on the
+owner-selected `zai-coding-cn/glm-5.3-flash` at observed medium effort, run
+`d22c2b70-05f8-4fbd-a722-2b03763c2ad6`. It met all four source criteria with no
+proven blocking findings, inspected exact source/test copies and matched their
+SHA-256s to frozen working state
+`f4c7a8e89f3fa6adee8c64f125f8efb50b57ef0a8cc1fe08b34d02cdf9a3dbc6`, and reused
+owner-permitted matching gate evidence. Report: workstation scratch
+`rework-independent-review.md`. This is source verification, not native acceptance.
+
+A review coverage note exposed a real provider gap: SQLite `GetPhoto` returned
+raw `sql.ErrNoRows`, so compensation's domain-not-found check could not remove a
+rejected upload's new original. A regression first failed on that exact error;
+the provider now maps only missing rows to `domain.ErrNotFound`. Focused
+SQLite/runtime/provider/server race and desktop tests pass, with the actual
+`-race` command retained in `photo-mapping-green.log`. A final fresh, narrowly
+scoped pi-subagents GLM Flash/medium review met the mapping, regression and safe
+compensation criteria with no findings (`rework-mapping-review-result.md`). It
+inspected the actual provider/test/service files and reused the focused gate;
+the initial broader review alone does not verify the changed provider.
+
+Canonical Asobi connectivity recovered on the verified remote graph. The owning
+S1 task's stale branch, commit and next action were reconciled while retaining
+`BLOCKED_ON owner-native-acceptance`. Tracker-only duplicate implementation todos
+were superseded, not counted as native completion.
+
+After delivery commit `24cc847`, CI run `37277657567` failed all three jobs before
+checks: frozen installs used Fontsource tarball URLs pointing at the local mirror,
+which GitHub runners could not reach (`ConnectionRefused`). The transient mirror
+had leaked into shared lockfile provenance. Only those five registry fields are
+returned to Bun's default-registry form; versions, package metadata and SHA-512
+hashes remain identical. A new font test rejects non-default registry fields.
+The empty-cache, five-package frozen probe passed using an explicitly temporary,
+Fontsource-scoped local mirror; full-repo offline frozen install and 18 reader
+tests pass. Local official-npm TLS verification still fails; no TLS bypass or
+trust/network repair was made. These local results do not replace the rerun CI
+gate. Fresh GLM Flash/medium review verified the root cause, default-registry
+mapping, pinned-package continuity and unchanged CI gates with no proven blockers.
+Its tool budget stopped before inspecting the new portability test; that criterion
+was initially unverified. A narrowly scoped follow-up dispatcher stalled before
+launching a child and was stopped, without host repair. The owner then explicitly
+approved a fresh direct `zai-coding-cn/glm-5.3-flash` reviewer at medium effort for
+that missing single-file criterion. Its one-read review met the actual test's
+entry-count, version, default-registry, integrity and path assertions with no
+blockers (`ci-invariant-direct-report.md`). This was an approved route change.
+
+Commit `6944c1ebb1ad926a03a48a48255ef99c729bad9e` delivers the CI fix.
+[Run 37283214499](https://github.com/azusachino/felicia/actions/runs/37283214499)
+completed successfully on all three jobs, including frozen installs on Linux and
+macOS. This supplies the default-registry CI evidence absent from local probes.
+Local validation now passes 111 admin and 18 reader tests; precommit checks and
+docs build pass (`ci-font-validate.log`, `ci-font-precommit-check.log`).
+
+After those gates and the missing review passed, the owner-approved bundle was
+repackaged, ad-hoc signed and strictly verified, then launched through
+LaunchServices with `--sample` only (observed PID 72078). Full process arguments
+confirmed one Sample instance; an initial observer assertion used the truncated
+macOS `ps comm` column and was corrected without restarting the app. Evidence:
+`rework-native-package-ci-green.log`, `rework-native-launch.json`. The owner now
+reports it is basically working and subsequently approved the bounded merge.
+Remaining work is linked from #161. Launch and that general
+feedback do not establish every native criterion or authorize a normal workspace
+file picker. No broader native/S1/S2 closure, merge, release or deployment is
+claimed.
 
 ## Evidence and closeout
 

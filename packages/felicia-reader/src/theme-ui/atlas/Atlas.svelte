@@ -147,10 +147,10 @@
     activeJourneyId = journeyId
     activeMementoId = memento.id
     selectedMementoId = memento.id
-    // The index and detail panels overlap below 640px -- the detail panel
+    // The index and detail panels overlap below 900px -- the detail panel
     // takes over the role the index was playing, so close it rather than
     // stack both fixed-position panels on a narrow viewport.
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 640px)").matches) {
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 900px)").matches) {
       indexOpen = false
     }
   }
@@ -284,6 +284,7 @@
     --ink: #f1f7f5;
     --muted: #a2b8bb;
     --orange: var(--accent, #ff9b72);
+    --orange-ink: #ffad8b;
     --route: #7fd8cb;
     --waypoints-bg: #07131f;
     min-height: 100%;
@@ -297,8 +298,9 @@
 
   .waypoints.light {
     --ink: #102832;
-    --muted: #527078;
+    --muted: #405960;
     --orange: var(--accent, #d9674c);
+    --orange-ink: #8e3d26;
     --route: #2c9e9a;
     --waypoints-bg: #eaf3f1;
     background: radial-gradient(circle at 72% 8%, rgba(44, 158, 154, 0.14), transparent 28%), #eaf3f1;
@@ -409,7 +411,7 @@
 
   .index-kicker {
     margin: 0;
-    color: var(--orange);
+    color: var(--orange-ink);
     font-size: 0.62rem;
     font-weight: 700;
     letter-spacing: 0.16em;
@@ -423,7 +425,7 @@
     place-items: center;
     border: 1px solid color-mix(in srgb, var(--ink) 24%, transparent);
     border-radius: 50%;
-    color: var(--orange);
+    color: var(--orange-ink);
     font:
       700 0.75rem/1 ui-monospace,
       monospace;
@@ -490,7 +492,7 @@
   }
 
   .atlas-index-mementos button > span {
-    color: var(--orange);
+    color: var(--orange-ink);
     font:
       700 0.68rem/1 ui-monospace,
       monospace;
@@ -508,7 +510,10 @@
   .brand,
   .journey-number {
     margin: 0 0 0.8rem;
-    color: var(--orange);
+    color: var(--orange-ink);
+    background: color-mix(in srgb, var(--waypoints-bg) 95%, transparent);
+    border-radius: 4px;
+    padding: 4px 8px;
     font-size: 0.68rem;
     letter-spacing: 0.18em;
   }
@@ -518,7 +523,7 @@
     font-size: clamp(2.8rem, 5vw, 5rem);
     font-weight: 800;
     letter-spacing: -0.06em;
-    text-shadow: 0 5px 18px #000;
+    text-shadow: 0 5px 18px var(--waypoints-bg);
   }
 
   .hero h1:lang(ja),
@@ -529,7 +534,10 @@
   .hero > p:not(.brand),
   .journey-heading > p:last-child {
     margin: 1rem 0 0;
-    color: var(--muted);
+    color: var(--ink);
+    background: color-mix(in srgb, var(--waypoints-bg) 95%, transparent);
+    border-radius: 4px;
+    padding: 4px 8px;
     font-size: clamp(1rem, 1.7vw, 1.35rem);
   }
 
@@ -593,7 +601,7 @@
   .journey-heading h2 {
     margin: 0;
     font-size: clamp(2.2rem, 4vw, 4rem);
-    text-shadow: 0 4px 15px #000;
+    text-shadow: 0 4px 15px var(--waypoints-bg);
   }
 
   .journey-heading p:last-child {
@@ -640,7 +648,7 @@
     background: transparent;
   }
 
-  @media (max-width: 640px) {
+  @media (max-width: 900px) {
     .atlas-index {
       top: auto;
       right: 0.75rem;

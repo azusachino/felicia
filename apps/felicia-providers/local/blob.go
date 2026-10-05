@@ -2,10 +2,13 @@ package local
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/google/uuid"
 
 	"github.com/azusachino/felicia/apps/felicia-core/ports"
 )
@@ -27,19 +30,27 @@ func (store FileBlobStore) Put(ctx context.Context, key string, data []byte) err
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	filename, err := store.path(key)
-	if err != nil {
+	if _, err := store.path(key); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(filename), 0o700); err != nil {
+	if err := os.MkdirAll(store.root, 0o700); err != nil {
+		return fmt.Errorf("create media root: %w", err)
+	}
+	root, err := os.OpenRoot(store.root)
+	if err != nil {
+		return fmt.Errorf("open media root: %w", err)
+	}
+	defer func() { _ = root.Close() }()
+	key = filepath.FromSlash(key)
+	if err := root.MkdirAll(filepath.Dir(key), 0o700); err != nil {
 		return fmt.Errorf("create media directory: %w", err)
 	}
-	temporary, err := os.CreateTemp(filepath.Dir(filename), ".felicia-media-*")
+	temporaryName := filepath.Join(filepath.Dir(key), ".felicia-media-"+uuid.NewString())
+	temporary, err := root.OpenFile(temporaryName, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		return fmt.Errorf("create temporary media object: %w", err)
 	}
-	temporaryName := temporary.Name()
-	defer func() { _ = os.Remove(temporaryName) }()
+	defer func() { _ = root.Remove(temporaryName) }()
 	if _, err := temporary.Write(data); err != nil {
 		_ = temporary.Close()
 		return fmt.Errorf("write media object: %w", err)
@@ -51,8 +62,27 @@ func (store FileBlobStore) Put(ctx context.Context, key string, data []byte) err
 	if err := temporary.Close(); err != nil {
 		return fmt.Errorf("close media object: %w", err)
 	}
-	if err := os.Rename(temporaryName, filename); err != nil {
+	if err := root.Rename(temporaryName, key); err != nil {
 		return fmt.Errorf("install media object: %w", err)
+	}
+	return nil
+}
+
+// Delete removes only a confined object; an already absent object is harmless.
+func (store FileBlobStore) Delete(ctx context.Context, key string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if _, err := store.path(key); err != nil {
+		return err
+	}
+	root, err := os.OpenRoot(store.root)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = root.Close() }()
+	if err := root.Remove(filepath.FromSlash(key)); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
 	}
 	return nil
 }
@@ -62,11 +92,15 @@ func (store FileBlobStore) Open(ctx context.Context, key string) (io.ReadCloser,
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	filename, err := store.path(key)
-	if err != nil {
+	if _, err := store.path(key); err != nil {
 		return nil, err
 	}
-	file, err := os.Open(filename)
+	root, err := os.OpenRoot(store.root)
+	if err != nil {
+		return nil, fmt.Errorf("open media root: %w", err)
+	}
+	defer func() { _ = root.Close() }()
+	file, err := root.Open(filepath.FromSlash(key))
 	if err != nil {
 		return nil, fmt.Errorf("open media object: %w", err)
 	}

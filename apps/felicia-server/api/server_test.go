@@ -91,6 +91,11 @@ func (store *memoryBlobStore) Put(_ context.Context, key string, data []byte) er
 	return nil
 }
 
+func (store *memoryBlobStore) Delete(_ context.Context, key string) error {
+	delete(store.objects, key)
+	return nil
+}
+
 func (store *memoryBlobStore) Open(_ context.Context, key string) (io.ReadCloser, error) {
 	data, ok := store.objects[key]
 	if !ok {

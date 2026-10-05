@@ -4,6 +4,11 @@ import type { Locale } from "../i18n"
 export interface StudioState {
   readonly locale: Locale
   readonly desktop: boolean
+  readonly sample: boolean
+  readonly isolated: boolean
+  readonly workspaceReady: boolean
+  confirmDiscard(prompt: string): Promise<boolean>
+  openPreview(): void
 }
 
 export const STUDIO_CONTEXT = Symbol("studio")

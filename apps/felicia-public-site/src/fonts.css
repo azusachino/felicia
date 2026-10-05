@@ -1,0 +1,19 @@
+/* Fixed faces preserve the reader's existing family/weight/style contract.
+   Fontsource CSS supplies local assets and all Unicode subsets through Vite. */
+@import "@fontsource/inter/300.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/outfit/400.css";
+@import "@fontsource/outfit/500.css";
+@import "@fontsource/outfit/600.css";
+@import "@fontsource/outfit/700.css";
+@import "@fontsource/outfit/800.css";
+@import "@fontsource/share-tech-mono/400.css";
+@import "@fontsource/spectral/400.css";
+@import "@fontsource/spectral/600.css";
+@import "@fontsource/spectral/400-italic.css";
+@import "@fontsource/spectral/500-italic.css";
+@import "@fontsource/zen-old-mincho/400.css";
+@import "@fontsource/zen-old-mincho/700.css";
+@import "@fontsource/zen-old-mincho/900.css";

@@ -100,6 +100,12 @@ closed loop. The ordered redesign plan is
 - 2-space indent for config files (YAML/TOML/JSON).
 - Test-first for the importer core; pure functions + fixtures, no network in unit tests.
 - Keep it simple — avoid speculative abstraction.
+- **UI library first (hard rule):** use the existing shared UI components and
+  Bits UI primitives for studio controls before native or custom alternatives.
+  Extend shared components rather than styling one-off controls in a view.
+  A fallback requires a demonstrated library limitation or failure, recorded
+  with the attempted component, reproducer, and verification evidence. Convenience
+  or incomplete wiring is not a reason to bypass the library.
 
 ## Key Files & Entry Points
 

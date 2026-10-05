@@ -1,7 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte"
+  import { Dialog } from "bits-ui"
   import { Button } from "$lib/components/ui/button"
+  import { Input } from "$lib/components/ui/input"
   import IconButton from "$lib/components/IconButton.svelte"
+  import SampleButton from "$lib/components/SampleButton.svelte"
+  import { getStudio } from "$lib/studio"
+  const studio = getStudio()
   import { FolderOpen, FolderSearch, Plus, Hammer, Download, X } from "@lucide/svelte"
   import { goto } from "$app/navigation"
   import { resolve } from "$app/paths"
@@ -30,28 +35,13 @@
   let loading = $state(true)
   let error = $state("")
   let showNewJourney = $state(false)
-  let creationDialog = $state<HTMLDialogElement>()
+  let folderInput = $state<HTMLInputElement | null>(null)
   let creationOpener: HTMLButtonElement | null = null
 
   function openCreation(event: MouseEvent) {
     creationOpener = event.currentTarget as HTMLButtonElement
     showNewJourney = true
   }
-
-  function creationClosed() {
-    showNewJourney = false
-    creationOpener?.focus()
-  }
-
-  $effect(() => {
-    if (!creationDialog) return
-    if (showNewJourney && !creationDialog.open) {
-      creationDialog.showModal()
-      creationDialog.querySelector("input")?.focus()
-    } else if (!showNewJourney && creationDialog.open) {
-      creationDialog.close()
-    }
-  })
 
   function cancelCreation(event?: Event) {
     if (scanState === "importing") {
@@ -136,6 +126,7 @@
       // One compile builds every journey, so this clears every pending
       // count/highlight, not just the ones visible on this page.
       await loadBuildStatus()
+      if (desktop) studio.openPreview()
     } catch (cause) {
       buildState = { status: "error", message: actionErrorMessage(cause) }
     }
@@ -147,6 +138,10 @@
   }
 
   async function scanWorkspace() {
+    if (!workspace.trim()) {
+      scanError = message(locale, "admin.connectors.folder_required")
+      return
+    }
     scanState = "scanning"
     scanError = ""
     scanned = null
@@ -186,66 +181,92 @@
   <header class="journeys-header">
     <h1>{message(locale, "admin.journeys.title")}</h1>
     <div class="header-actions">
-      <Button variant="outline" size="sm" type="button" onclick={openCreation} aria-label={message(locale, "admin.connectors.scan_trip_folder")}
-        ><FolderSearch size={16} aria-hidden="true" />{message(locale, "admin.common.scan")}</Button
-      >
+      <SampleButton />
+      {#if !desktop || (studio.workspaceReady && !studio.isolated)}
+        <Button variant="outline" size="sm" type="button" onclick={openCreation} aria-label={message(locale, "admin.connectors.scan_trip_folder")}
+          ><FolderSearch size={16} aria-hidden="true" />{message(locale, "admin.connectors.scan_trip_folder")}</Button
+        >
+      {/if}
       <Button size="sm" type="button" onclick={() => goto(resolve("/journey/new"))}><Plus size={16} aria-hidden="true" />{message(locale, "admin.journeys.new_action")}</Button>
     </div>
   </header>
 
-  <dialog class="studio-dialog new-journey" bind:this={creationDialog} aria-labelledby="scan-journey-title" oncancel={cancelCreation} onclose={creationClosed}>
-    <header class="sheet-header">
-      <h2 id="scan-journey-title">{message(locale, "admin.connectors.scan_heading")}</h2>
-      <IconButton variant="ghost" label={message(locale, "admin.common.close")} onclick={() => cancelCreation()} disabled={scanState === "importing"}><X size={16} aria-hidden="true" /></IconButton>
-    </header>
-    <div class="sheet-body">
-      <p class="hint">
-        {message(locale, "admin.connectors.scan_note")}
-      </p>
-      <div class="new-journey-form">
-        <div class="source-folder">
-          <label for="source-folder-path">{message(locale, "admin.connectors.folder_path")}</label>
-          <div class="path-control">
-            <input id="source-folder-path" bind:value={workspace} placeholder="/Users/you/trips/izu-trip-2026-08-01" />
-            {#if desktop}<IconButton label={message(locale, "admin.connectors.browse")} onclick={browseWorkspace} disabled={browseState === "pending"}
-                ><FolderOpen size={16} aria-hidden="true" /></IconButton
-              >{/if}
-          </div>
-        </div>
-        <label>{message(locale, "admin.journeys.slug")}<input bind:value={slug} placeholder="izu-trip-2026-08-01" /></label>
-        <label>{message(locale, "admin.common.title")}<input bind:value={title} placeholder="Izu · 2026-08-01 – 2026-08-02" /></label>
-        <label>{message(locale, "admin.common.place")}<input bind:value={place} placeholder="Izu" /></label>
-      </div>
-      {#if scanError}<p class="api-error" role="alert">{scanError}</p>{/if}
-      {#if scanned}
-        <div class="scan-result">
-          <strong>{message(locale, "admin.connectors.dry_run_result")}</strong>
-          <span>{scanned.plan.date_start ? formatJourneyDate(scanned.plan.date_start) : "?"} – {scanned.plan.date_end ? formatJourneyDate(scanned.plan.date_end) : "?"}</span>
-          <span>{message(locale, "admin.connectors.scan_counts", { routes: scanned.plan.routes.length, stops: scanned.plan.stops.length, mementos: scanned.plan.mementos.length })}</span>
-          {#if scanned.plan.issues.length > 0}<span class="scan-warning">{message(locale, "admin.connectors.review_notes", { count: scanned.plan.issues.length })}</span>{/if}
-        </div>
-      {/if}
-    </div>
-    <footer class="sheet-actions">
-      <button class="secondary" type="button" onclick={() => cancelCreation()} disabled={scanState === "importing"}>{message(locale, "admin.common.cancel")}</button>
-      <Button
-        variant="outline"
-        type="button"
-        onclick={scanWorkspace}
-        disabled={!workspace || scanState === "scanning"}
-        aria-label={scanState === "scanning" ? message(locale, "admin.connectors.scanning") : message(locale, "admin.connectors.scan_preview")}
-        ><FolderSearch size={16} aria-hidden="true" />{scanState === "scanning" ? message(locale, "admin.connectors.scanning") : message(locale, "admin.common.scan")}</Button
+  <Dialog.Root
+    open={showNewJourney}
+    onOpenChange={(value) => {
+      if (scanState !== "importing") showNewJourney = value
+    }}
+  >
+    <Dialog.Portal>
+      <Dialog.Overlay class="studio-dialog-overlay" />
+      <Dialog.Content
+        class="studio-dialog new-journey"
+        onInteractOutside={(event) => event.preventDefault()}
+        onEscapeKeydown={(event) => {
+          if (scanState === "importing") event.preventDefault()
+        }}
+        onOpenAutoFocus={(event) => {
+          event.preventDefault()
+          folderInput?.focus()
+        }}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault()
+          creationOpener?.focus()
+        }}
       >
-      {#if scanned}<Button
-          type="button"
-          onclick={importWorkspace}
-          disabled={!slug || !title || scanState === "importing"}
-          aria-label={scanState === "importing" ? message(locale, "admin.connectors.importing") : message(locale, "admin.connectors.confirm_import")}
-        >
-          <Download size={16} aria-hidden="true" />{scanState === "importing" ? message(locale, "admin.connectors.importing") : message(locale, "admin.common.import")}</Button
-        >{/if}
-    </footer>
-  </dialog>
+        <header class="sheet-header">
+          <Dialog.Title>{message(locale, "admin.connectors.scan_heading")}</Dialog.Title>
+          <IconButton variant="ghost" label={message(locale, "admin.common.close")} onclick={() => cancelCreation()} disabled={scanState === "importing"}><X size={16} aria-hidden="true" /></IconButton
+          >
+        </header>
+        <div class="sheet-body">
+          <Dialog.Description class="hint">{message(locale, "admin.connectors.scan_note")}</Dialog.Description>
+          <div class="new-journey-form">
+            <div class="source-folder">
+              <label for="source-folder-path">{message(locale, "admin.connectors.folder_path")}</label>
+              <div class="path-control">
+                {#if desktop}<IconButton label={message(locale, "admin.connectors.browse")} onclick={browseWorkspace} disabled={browseState === "pending" || scanState === "importing"}
+                    ><FolderOpen size={16} aria-hidden="true" /></IconButton
+                  >{/if}
+                <Input id="source-folder-path" bind:ref={folderInput} bind:value={workspace} disabled={scanState === "importing"} placeholder="/Users/you/trips/izu-trip-2026-08-01" />
+              </div>
+            </div>
+            <label>{message(locale, "admin.journeys.slug")}<Input bind:value={slug} disabled={scanState === "importing"} placeholder="izu-trip-2026-08-01" /></label>
+            <label>{message(locale, "admin.common.title")}<Input bind:value={title} disabled={scanState === "importing"} placeholder="Izu · 2026-08-01 – 2026-08-02" /></label>
+            <label>{message(locale, "admin.common.place")}<Input bind:value={place} disabled={scanState === "importing"} placeholder="Izu" /></label>
+          </div>
+          {#if scanError}<p class="api-error" role="alert">{scanError}</p>{/if}
+          {#if scanned}
+            <div class="scan-result">
+              <strong>{message(locale, "admin.connectors.dry_run_result")}</strong>
+              <span>{scanned.plan.date_start ? formatJourneyDate(scanned.plan.date_start) : "?"} – {scanned.plan.date_end ? formatJourneyDate(scanned.plan.date_end) : "?"}</span>
+              <span>{message(locale, "admin.connectors.scan_counts", { routes: scanned.plan.routes.length, stops: scanned.plan.stops.length, mementos: scanned.plan.mementos.length })}</span>
+              {#if scanned.plan.issues.length > 0}<span class="scan-warning">{message(locale, "admin.connectors.review_notes", { count: scanned.plan.issues.length })}</span>{/if}
+            </div>
+          {/if}
+        </div>
+        <footer class="sheet-actions">
+          <Button variant="outline" type="button" onclick={() => cancelCreation()} disabled={scanState === "importing"}>{message(locale, "admin.common.cancel")}</Button>
+          <Button
+            variant="outline"
+            type="button"
+            onclick={scanWorkspace}
+            disabled={scanState === "scanning" || scanState === "importing"}
+            aria-label={scanState === "scanning" ? message(locale, "admin.connectors.scanning") : message(locale, "admin.connectors.scan_preview")}
+            ><FolderSearch size={16} aria-hidden="true" />{scanState === "scanning" ? message(locale, "admin.connectors.scanning") : message(locale, "admin.common.scan")}</Button
+          >
+          {#if scanned}<Button
+              type="button"
+              onclick={importWorkspace}
+              disabled={!slug || !title || scanState === "importing"}
+              aria-label={scanState === "importing" ? message(locale, "admin.connectors.importing") : message(locale, "admin.connectors.confirm_import")}
+            >
+              <Download size={16} aria-hidden="true" />{scanState === "importing" ? message(locale, "admin.connectors.importing") : message(locale, "admin.common.import")}</Button
+            >{/if}
+        </footer>
+      </Dialog.Content>
+    </Dialog.Portal>
+  </Dialog.Root>
 
   {#if loading}
     <p class="hint">{message(locale, "admin.journeys.loading")}</p>
@@ -323,12 +344,12 @@
     min-width: 0;
   }
   .path-control {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    display: flex;
     align-items: center;
     gap: 8px;
   }
-  .path-control input {
+  .path-control :global(input) {
+    flex: 1;
     min-width: 0;
     width: 100%;
   }
@@ -360,6 +381,10 @@
     flex-wrap: wrap;
     gap: 8px;
   }
+  .header-actions :global(button) {
+    min-height: 36px;
+    font-size: 13px;
+  }
   .new-journey-form {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -372,15 +397,6 @@
     color: var(--muted);
     font-size: 13px;
     font-weight: 500;
-  }
-  .new-journey-form input {
-    min-width: 0;
-    padding: 9px 10px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    color: var(--text);
-    background: var(--surface);
-    font: inherit;
   }
   .scan-result {
     display: flex;
@@ -401,7 +417,7 @@
     color: var(--muted);
     line-height: 1.5;
   }
-  .sheet-body .hint {
+  .sheet-body :global(.hint) {
     margin-top: 0;
   }
   .journey-cards {

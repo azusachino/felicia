@@ -32,6 +32,7 @@ func main() {
 
 func run() error {
 	mode := flag.String("mode", "admin", "desktop mode: admin or reader")
+	sample := flag.Bool("sample", false, "open a fresh isolated synthetic sample trip")
 	dbPath := flag.String("db", "", "path to SQLite database (default ~/.felicia/felicia.sqlite)")
 	mediaPath := flag.String("media-root", "", "path to media root (default ~/.felicia/media)")
 	publicPath := flag.String("public-dir", "", "path to public static site output (default ~/.felicia/site)")
@@ -42,13 +43,30 @@ func run() error {
 		return fmt.Errorf("invalid mode %q: must be 'admin' or 'reader'", *mode)
 	}
 
+	if *sample {
+		if *mode != "admin" || *dbPath != "" || *mediaPath != "" || *publicPath != "" {
+			return fmt.Errorf("sample mode cannot be combined with reader mode or workspace paths")
+		}
+		root, err := os.MkdirTemp("", "felicia-empty-")
+		if err != nil {
+			return fmt.Errorf("create isolated empty workspace: %w", err)
+		}
+		defer func() { _ = os.RemoveAll(root) }()
+		*dbPath, *mediaPath, *publicPath = filepath.Join(root, "felicia.sqlite"), filepath.Join(root, "media"), filepath.Join(root, "site")
+		*previewAddr = "127.0.0.1:0"
+	}
+
 	if err := validateE2EPaths(*dbPath, *mediaPath, *publicPath); err != nil {
 		return err
 	}
 
-	workspace, err := resolveDefaultWorkspace()
-	if err != nil {
-		return fmt.Errorf("resolve workspace: %w", err)
+	workspace := ""
+	if !*sample {
+		var err error
+		workspace, err = resolveDefaultWorkspace()
+		if err != nil {
+			return fmt.Errorf("resolve workspace: %w", err)
+		}
 	}
 
 	actualDB := *dbPath
@@ -127,6 +145,7 @@ func run() error {
 		MediaRoot: actualMedia,
 		PublicDir: actualPublic,
 		Mode:      *mode,
+		Isolated:  *sample,
 		PreviewPortFn: func() string {
 			if previewServer != nil {
 				return previewServer.Port()
@@ -140,15 +159,32 @@ func run() error {
 		return fmt.Errorf("initialize handler: %w", err)
 	}
 
-	if handled, err := serveE2E(handler); handled {
+	workspaces := NewWorkspaceRouter(handler, func(sample bool) {
+		if window != nil {
+			title := "Felicia Studio"
+			if sample {
+				title += " — Sample trip"
+			}
+			window.SetTitle(title)
+		}
+	})
+	defer workspaces.Close()
+	if *sample {
+		if err := workspaces.openSample(); err != nil {
+			return fmt.Errorf("open isolated sample workspace: %w", err)
+		}
+	}
+
+	if handled, err := serveE2E(workspaces); handled {
 		return err
 	}
 
 	app = application.New(application.Options{
 		Name:        "Felicia Studio",
+		Icon:        defaultAppIcon,
 		Description: "Map-based travel journal studio",
 		Assets: application.AssetOptions{
-			Handler: handler,
+			Handler: workspaces,
 		},
 		Mac: application.MacOptions{
 			ActivationPolicy: application.ActivationPolicyRegular,
@@ -156,6 +192,9 @@ func run() error {
 	})
 
 	title := "Felicia Studio"
+	if *sample {
+		title = "Felicia Studio — Sample trip"
+	}
 	if *mode == "reader" {
 		title = "Felicia — Public Reader"
 	}

@@ -52,6 +52,9 @@ __pycache__/
 apps/felicia-desktop/assets/admin/assets/
 apps/felicia-desktop/assets/admin/_app/
 apps/felicia-desktop/assets/reader/assets/
+# Fonts are pinned Fontsource dependencies; never track generated binaries.
+apps/felicia-public-site/public/fonts/*.woff*
+apps/felicia-desktop/assets/reader/fonts/*.woff*
 apps/felicia-desktop/assets/reader/*.jpg
 apps/felicia-desktop/assets/reader/*.svg
 

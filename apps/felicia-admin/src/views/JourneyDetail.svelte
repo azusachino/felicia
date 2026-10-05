@@ -2,8 +2,9 @@
   import { goto } from "$app/navigation"
   import { resolve } from "$app/paths"
   import { Button } from "$lib/components/ui/button"
-  import IconButton from "$lib/components/IconButton.svelte"
-  import { ArrowLeft, Hammer } from "@lucide/svelte"
+  import { getStudio } from "$lib/studio"
+  const studio = getStudio()
+  import { ArrowLeft, Hammer, Eye, Pencil, Plus } from "@lucide/svelte"
   import { message, statusMessage, type Locale } from "../i18n"
   import {
     compileSite,
@@ -35,7 +36,8 @@
     type CompileReport,
     type PlanIntakeResult,
   } from "../api"
-  import { mementoEditPath } from "../router"
+  import SelectField from "$lib/components/SelectField.svelte"
+  import { mementoEditPath, journeyEditPath, mementoCreatePath } from "../router"
 
   let { id, locale }: { id: string; locale: Locale } = $props()
 
@@ -357,7 +359,11 @@
 </script>
 
 <section class="detail">
-  <div class="back-link"><IconButton variant="ghost" href={resolve("/")} label={message(locale, "admin.journeys.back")}><ArrowLeft size={16} aria-hidden="true" /></IconButton></div>
+  <div class="back-link">
+    <Button type="button" variant="outline" class="min-h-[36px]" aria-label={message(locale, "admin.journeys.back")} onclick={() => goto(resolve("/"))}
+      ><ArrowLeft size={16} aria-hidden="true" />{message(locale, "admin.common.return")}</Button
+    >
+  </div>
 
   {#if loading}
     <p class="hint">{message(locale, "admin.journeys.loading")}</p>
@@ -366,176 +372,182 @@
   {:else if journey}
     <header class="detail-header">
       <p class="eyebrow">{journey.slug}</p>
-      <h1>{journey.title}</h1>
+      <div class="detail-title-row">
+        <h1>{journey.title}</h1>
+        <Button variant="outline" onclick={() => goto(resolve(journeyEditPath(id)))}><Pencil size={16} aria-hidden="true" />{message(locale, "admin.journeys.edit")}</Button>
+      </div>
       <p class="detail-meta">{journey.place} · {formatJourneyDate(journey.date_start)} – {formatJourneyDate(journey.date_end)}</p>
     </header>
 
-    <section class="triggers" aria-label={message(locale, "admin.connectors.import_preview")}>
-      <h2>{message(locale, "admin.connectors.import_preview")}</h2>
-      <div class="trigger-grid">
-        <article class="trigger">
-          <div class="trigger-head">
-            <h3>{message(locale, "admin.connectors.route.title")}</h3>
-            <button type="button" onclick={triggerSyncRoute} disabled={routeAction.status === "pending"}
-              >{routeAction.status === "pending" ? message(locale, "admin.connectors.route.pending") : message(locale, "admin.connectors.route.title")}</button
-            >
-          </div>
-          <p class="trigger-note">{message(locale, "admin.connectors.route.description")}</p>
-          {#if routeAction.status === "success"}
-            <p class="trigger-status trigger-status--success" role="status">{routeAction.message}</p>
-          {:else if routeAction.status === "error"}
-            <p class="trigger-status trigger-status--error" role="alert">{routeAction.message}</p>
-          {/if}
-        </article>
-
-        <article class="trigger">
-          <div class="trigger-head">
-            <h3>{message(locale, "admin.connectors.visits.title")}</h3>
-            <button type="button" onclick={triggerSyncVisits} disabled={visitsAction.status === "pending"}
-              >{visitsAction.status === "pending" ? message(locale, "admin.common.loading") : message(locale, "admin.connectors.visits.title")}</button
-            >
-          </div>
-          <p class="trigger-note">{message(locale, "admin.connectors.visits.description")}</p>
-          {#if visitsAction.status === "success"}
-            <p class="trigger-status trigger-status--success" role="status">{visitsAction.message}</p>
-            {#if visitsAction.data && visitsAction.data.length > 0}
-              <ul class="preview-list">
-                {#each visitsAction.data as visit, index (index)}
-                  <li>
-                    <strong>{visit.label || message(locale, "admin.connectors.visits.unlabeled")}</strong>
-                    <span class="preview-meta">{visit.arrive} → {visit.depart} · {message(locale, "admin.connectors.candidate.confidence", { percent: Math.round(visit.confidence * 100) })}</span>
-                  </li>
-                {/each}
-              </ul>
+    {#if !studio.desktop || studio.sample}
+      <section class="triggers" aria-label={message(locale, "admin.connectors.import_preview")}>
+        <h2>{message(locale, "admin.connectors.import_preview")}</h2>
+        <div class="trigger-grid">
+          <article class="trigger">
+            <div class="trigger-head">
+              <h3>{message(locale, "admin.connectors.route.title")}</h3>
+              <Button type="button" variant="outline" onclick={triggerSyncRoute} disabled={routeAction.status === "pending"}
+                >{routeAction.status === "pending" ? message(locale, "admin.connectors.route.pending") : message(locale, "admin.connectors.route.title")}</Button
+              >
+            </div>
+            <p class="trigger-note">{message(locale, "admin.connectors.route.description")}</p>
+            {#if routeAction.status === "success"}
+              <p class="trigger-status trigger-status--success" role="status">{routeAction.message}</p>
+            {:else if routeAction.status === "error"}
+              <p class="trigger-status trigger-status--error" role="alert">{routeAction.message}</p>
             {/if}
-          {:else if visitsAction.status === "error"}
-            <p class="trigger-status trigger-status--error" role="alert">{visitsAction.message}</p>
-          {/if}
-        </article>
+          </article>
 
-        <article class="trigger">
-          <div class="trigger-head">
-            <h3>{message(locale, "admin.connectors.photos.title")}</h3>
-            <button type="button" onclick={triggerPhotoTray} disabled={trayAction.status === "pending"}
-              >{trayAction.status === "pending" ? message(locale, "admin.common.loading") : message(locale, "admin.connectors.photos.title")}</button
-            >
-          </div>
-          <p class="trigger-note">{message(locale, "admin.connectors.photos.description")}</p>
-          {#if trayAction.status === "success"}
-            <p class="trigger-status trigger-status--success" role="status">{trayAction.message}</p>
-            {#if trayAction.data && trayAction.data.length > 0}
-              <ul class="preview-list">
-                {#each trayAction.data as asset (asset.id)}
-                  <li>
-                    <strong>{asset.at}</strong>
-                    <span class="preview-meta"
-                      >{asset.coord ? `${asset.coord[1].toFixed(4)}, ${asset.coord[0].toFixed(4)}` : message(locale, "admin.connectors.photos.no_gps")} · {asset.checksum.slice(0, 10)}</span
-                    >
-                  </li>
-                {/each}
-              </ul>
+          <article class="trigger">
+            <div class="trigger-head">
+              <h3>{message(locale, "admin.connectors.visits.title")}</h3>
+              <Button type="button" variant="outline" onclick={triggerSyncVisits} disabled={visitsAction.status === "pending"}
+                >{visitsAction.status === "pending" ? message(locale, "admin.common.loading") : message(locale, "admin.connectors.visits.title")}</Button
+              >
+            </div>
+            <p class="trigger-note">{message(locale, "admin.connectors.visits.description")}</p>
+            {#if visitsAction.status === "success"}
+              <p class="trigger-status trigger-status--success" role="status">{visitsAction.message}</p>
+              {#if visitsAction.data && visitsAction.data.length > 0}
+                <ul class="preview-list">
+                  {#each visitsAction.data as visit, index (index)}
+                    <li>
+                      <strong>{visit.label || message(locale, "admin.connectors.visits.unlabeled")}</strong>
+                      <span class="preview-meta">{visit.arrive} → {visit.depart} · {message(locale, "admin.connectors.candidate.confidence", { percent: Math.round(visit.confidence * 100) })}</span>
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
+            {:else if visitsAction.status === "error"}
+              <p class="trigger-status trigger-status--error" role="alert">{visitsAction.message}</p>
             {/if}
-          {:else if trayAction.status === "error"}
-            <p class="trigger-status trigger-status--error" role="alert">{trayAction.message}</p>
-          {/if}
-        </article>
-      </div>
-    </section>
+          </article>
 
-    <section class="inbox" aria-label={message(locale, "admin.connectors.inbox.title")}>
-      <div class="inbox-head">
-        <h2>{message(locale, "admin.connectors.inbox.title")}</h2>
-        <button type="button" onclick={triggerPlanIntake} disabled={planAction.status === "pending"}
-          >{planAction.status === "pending" ? message(locale, "admin.connectors.inbox.pending") : message(locale, "admin.connectors.inbox.action")}</button
-        >
-      </div>
-      <p class="trigger-note">{message(locale, "admin.connectors.inbox.description")}</p>
-      {#if planAction.status === "success"}
-        <p class="trigger-status trigger-status--success" role="status">{planAction.message}</p>
-      {:else if planAction.status === "error"}
-        <p class="trigger-status trigger-status--error" role="alert">{planAction.message}</p>
-      {/if}
-
-      {#if templatesError}
-        <p class="trigger-status trigger-status--error" role="alert">{message(locale, "admin.connectors.registry_unavailable", { error: templatesError })}</p>
-      {/if}
-
-      {#if stopCandidatesError}
-        <p class="trigger-status trigger-status--error" role="alert">{stopCandidatesError}</p>
-      {:else if stopCandidates.length === 0}
-        <p class="hint">{message(locale, "admin.connectors.inbox.empty")}</p>
-      {:else}
-        <ul class="candidate-list">
-          {#each stopCandidates as candidate (candidate.id)}
-            <li class="candidate-row">
-              <div class="candidate-summary">
-                <div class="candidate-main">
-                  <strong>{candidate.label || message(locale, "admin.connectors.unlabeled_stop")}</strong>
-                  <span class="candidate-meta"
-                    >{candidate.arrive} → {candidate.depart} · {message(locale, "admin.connectors.candidate.confidence", { percent: Math.round(candidate.confidence * 100) })}</span
-                  >
-                </div>
-                <span class={`badge badge--${candidate.state}`}>{statusMessage(locale, candidate.state)}</span>
-              </div>
-
-              {#if candidate.state === "proposed"}
-                <div class="candidate-actions">
-                  <label class="candidate-field">
-                    {message(locale, "admin.connectors.kind_label")}
-                    <select
-                      aria-label={message(locale, "admin.connectors.candidate.kind_for", { label: candidate.label || message(locale, "admin.connectors.unlabeled_stop") })}
-                      value={kindFor(candidate.id)}
-                      onchange={(event) => (selectedKind[candidate.id] = (event.currentTarget as HTMLSelectElement).value)}
-                      disabled={!templates}
-                    >
-                      {#if templates}
-                        {#each Object.keys(templates) as kind (kind)}
-                          <option value={kind}>{kind}</option>
-                        {/each}
-                      {/if}
-                    </select>
-                  </label>
-                  <button type="button" onclick={() => promoteCandidate(candidate)} disabled={candidateAction(candidate.id).status === "pending" || !templates}
-                    >{message(locale, "admin.connectors.promote")}</button
-                  >
-                  <button type="button" class="secondary" onclick={() => reviewCandidate(candidate, "ignored")} disabled={candidateAction(candidate.id).status === "pending"}
-                    >{message(locale, "admin.connectors.discard")}</button
-                  >
-                  <label class="candidate-field">
-                    {message(locale, "admin.connectors.merge_into")}
-                    <select
-                      aria-label={message(locale, "admin.connectors.candidate.merge_target_for", { label: candidate.label || message(locale, "admin.connectors.unlabeled_stop") })}
-                      bind:value={mergeTarget[candidate.id]}
-                    >
-                      <option value="">{message(locale, "admin.connectors.merge_target_prompt")}</option>
-                      {#each stopCandidates.filter((other) => other.id !== candidate.id) as other (other.id)}
-                        <option value={other.id}>{other.label || message(locale, "admin.connectors.unlabeled_stop")} ({statusMessage(locale, other.state)})</option>
-                      {/each}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    class="secondary"
-                    onclick={() => reviewCandidate(candidate, "merged", mergeTarget[candidate.id])}
-                    disabled={candidateAction(candidate.id).status === "pending" || !mergeTarget[candidate.id]}>{message(locale, "admin.connectors.merge")}</button
-                  >
-                </div>
-                <p class="trigger-note candidate-discard-hint">{message(locale, "admin.connectors.discard_note")}</p>
+          <article class="trigger">
+            <div class="trigger-head">
+              <h3>{message(locale, "admin.connectors.photos.title")}</h3>
+              <Button type="button" variant="outline" onclick={triggerPhotoTray} disabled={trayAction.status === "pending"}
+                >{trayAction.status === "pending" ? message(locale, "admin.common.loading") : message(locale, "admin.connectors.photos.title")}</Button
+              >
+            </div>
+            <p class="trigger-note">{message(locale, "admin.connectors.photos.description")}</p>
+            {#if trayAction.status === "success"}
+              <p class="trigger-status trigger-status--success" role="status">{trayAction.message}</p>
+              {#if trayAction.data && trayAction.data.length > 0}
+                <ul class="preview-list">
+                  {#each trayAction.data as asset (asset.id)}
+                    <li>
+                      <strong>{asset.at}</strong>
+                      <span class="preview-meta"
+                        >{asset.coord ? `${asset.coord[1].toFixed(4)}, ${asset.coord[0].toFixed(4)}` : message(locale, "admin.connectors.photos.no_gps")} · {asset.checksum.slice(0, 10)}</span
+                      >
+                    </li>
+                  {/each}
+                </ul>
               {/if}
+            {:else if trayAction.status === "error"}
+              <p class="trigger-status trigger-status--error" role="alert">{trayAction.message}</p>
+            {/if}
+          </article>
+        </div>
+      </section>
 
-              {#if candidateAction(candidate.id).status === "error" || candidateAction(candidate.id).status === "conflict"}
-                <p class="trigger-status trigger-status--error" role="alert">{candidateAction(candidate.id).message}</p>
-              {:else if candidateAction(candidate.id).status === "success"}
-                <p class="trigger-status trigger-status--success" role="status">{candidateAction(candidate.id).message}</p>
-              {/if}
-            </li>
-          {/each}
-        </ul>
-      {/if}
-    </section>
+      <section class="inbox" aria-label={message(locale, "admin.connectors.inbox.title")}>
+        <div class="inbox-head">
+          <h2>{message(locale, "admin.connectors.inbox.title")}</h2>
+          <Button type="button" variant="outline" onclick={triggerPlanIntake} disabled={planAction.status === "pending"}
+            >{planAction.status === "pending" ? message(locale, "admin.connectors.inbox.pending") : message(locale, "admin.connectors.inbox.action")}</Button
+          >
+        </div>
+        <p class="trigger-note">{message(locale, "admin.connectors.inbox.description")}</p>
+        {#if planAction.status === "success"}
+          <p class="trigger-status trigger-status--success" role="status">{planAction.message}</p>
+        {:else if planAction.status === "error"}
+          <p class="trigger-status trigger-status--error" role="alert">{planAction.message}</p>
+        {/if}
 
+        {#if templatesError}
+          <p class="trigger-status trigger-status--error" role="alert">{message(locale, "admin.connectors.registry_unavailable", { error: templatesError })}</p>
+        {/if}
+
+        {#if stopCandidatesError}
+          <p class="trigger-status trigger-status--error" role="alert">{stopCandidatesError}</p>
+        {:else if stopCandidates.length === 0}
+          <p class="hint">{message(locale, "admin.connectors.inbox.empty")}</p>
+        {:else}
+          <ul class="candidate-list">
+            {#each stopCandidates as candidate (candidate.id)}
+              <li class="candidate-row">
+                <div class="candidate-summary">
+                  <div class="candidate-main">
+                    <strong>{candidate.label || message(locale, "admin.connectors.unlabeled_stop")}</strong>
+                    <span class="candidate-meta"
+                      >{candidate.arrive} → {candidate.depart} · {message(locale, "admin.connectors.candidate.confidence", { percent: Math.round(candidate.confidence * 100) })}</span
+                    >
+                  </div>
+                  <span class={`badge badge--${candidate.state}`}>{statusMessage(locale, candidate.state)}</span>
+                </div>
+
+                {#if candidate.state === "proposed" && !studio.desktop}
+                  <div class="candidate-actions">
+                    <label class="candidate-field">
+                      {message(locale, "admin.connectors.kind_label")}
+                      <SelectField
+                        label={message(locale, "admin.connectors.candidate.kind_for", { label: candidate.label || message(locale, "admin.connectors.unlabeled_stop") })}
+                        value={kindFor(candidate.id)}
+                        onValueChange={(value) => (selectedKind[candidate.id] = value)}
+                        disabled={!templates}
+                        items={Object.keys(templates ?? {}).map((value) => ({ value, label: value }))}
+                      />
+                    </label>
+                    <Button type="button" onclick={() => promoteCandidate(candidate)} disabled={candidateAction(candidate.id).status === "pending" || !templates}
+                      >{message(locale, "admin.connectors.promote")}</Button
+                    >
+                    <Button type="button" variant="outline" onclick={() => reviewCandidate(candidate, "ignored")} disabled={candidateAction(candidate.id).status === "pending"}
+                      >{message(locale, "admin.connectors.discard")}</Button
+                    >
+                    <label class="candidate-field">
+                      {message(locale, "admin.connectors.merge_into")}
+                      <SelectField
+                        label={message(locale, "admin.connectors.candidate.merge_target_for", { label: candidate.label || message(locale, "admin.connectors.unlabeled_stop") })}
+                        bind:value={mergeTarget[candidate.id]}
+                        placeholder={message(locale, "admin.connectors.merge_target_prompt")}
+                        items={stopCandidates
+                          .filter((other) => other.id !== candidate.id)
+                          .map((other) => ({ value: other.id, label: `${other.label || message(locale, "admin.connectors.unlabeled_stop")} (${statusMessage(locale, other.state)})` }))}
+                      />
+                    </label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onclick={() => reviewCandidate(candidate, "merged", mergeTarget[candidate.id])}
+                      disabled={candidateAction(candidate.id).status === "pending" || !mergeTarget[candidate.id]}>{message(locale, "admin.connectors.merge")}</Button
+                    >
+                  </div>
+                  <p class="trigger-note candidate-discard-hint">{message(locale, "admin.connectors.discard_note")}</p>
+                {/if}
+
+                {#if candidate.state === "proposed" && studio.desktop}
+                  <p class="trigger-note">{message(locale, "admin.connectors.review_unavailable")}</p>
+                {/if}
+                {#if candidateAction(candidate.id).status === "error" || candidateAction(candidate.id).status === "conflict"}
+                  <p class="trigger-status trigger-status--error" role="alert">{candidateAction(candidate.id).message}</p>
+                {:else if candidateAction(candidate.id).status === "success"}
+                  <p class="trigger-status trigger-status--success" role="status">{candidateAction(candidate.id).message}</p>
+                {/if}
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </section>
+    {:else}
+      <p class="hint">{message(locale, "admin.connectors.desktop_unavailable")}</p>
+    {/if}
     <section class="mementos" aria-label={message(locale, "admin.mementos.title")}>
-      <h2>{message(locale, "admin.mementos.title")}</h2>
+      <div class="detail-title-row">
+        <h2>{message(locale, "admin.mementos.title")}</h2>
+        <Button onclick={() => goto(resolve(mementoCreatePath(id)))}><Plus size={16} aria-hidden="true" />{message(locale, "admin.mementos.add")}</Button>
+      </div>
       {#if mementos.length === 0}
         <p class="hint">{message(locale, "admin.mementos.empty")}</p>
       {:else}
@@ -582,7 +594,11 @@
           <span class="trigger-status trigger-status--error">{buildState.message}</span>
         {/if}
         {#if siteInfo?.artifact_ready}
-          <a class="preview-link" href={previewUrl(siteInfo.preview_port)} target="_blank" rel="external noreferrer">{message(locale, "admin.site.open_preview")}</a>
+          {#if studio.desktop}
+            <Button variant="outline" onclick={() => studio.openPreview()}><Eye size={16} aria-hidden="true" />{message(locale, "admin.preview.open")}</Button>
+          {:else}
+            <a class="preview-link" href={previewUrl(siteInfo.preview_port)} target="_blank" rel="external noreferrer">{message(locale, "admin.site.open_preview")}</a>
+          {/if}
         {/if}
       </div>
       <p class="trigger-note">{message(locale, "admin.build.detail_note")}</p>
@@ -595,14 +611,14 @@
         <div class="confirm-strip" role="alert">
           <p>{message(locale, "admin.journeys.delete_confirmation", { title: journey.title })}</p>
           <div class="confirm-actions">
-            <button type="button" class="danger" onclick={confirmDeleteJourney} disabled={deleteState.status === "pending"}>
+            <Button type="button" variant="destructive" onclick={confirmDeleteJourney} disabled={deleteState.status === "pending"}>
               {deleteState.status === "pending" ? message(locale, "admin.common.deleting") : message(locale, "admin.journeys.delete_confirm_action")}
-            </button>
-            <button type="button" class="secondary" onclick={cancelDeleteJourney} disabled={deleteState.status === "pending"}>{message(locale, "admin.common.cancel")}</button>
+            </Button>
+            <Button type="button" variant="outline" onclick={cancelDeleteJourney} disabled={deleteState.status === "pending"}>{message(locale, "admin.common.cancel")}</Button>
           </div>
         </div>
       {:else}
-        <button type="button" class="danger" onclick={startDeleteJourney}>{message(locale, "admin.journeys.delete_action")}</button>
+        <Button type="button" variant="destructive" onclick={startDeleteJourney}>{message(locale, "admin.journeys.delete_action")}</Button>
       {/if}
       {#if deleteState.status === "error"}
         <p class="api-error" role="alert">{deleteState.message}</p>
@@ -612,22 +628,29 @@
 </section>
 
 <style>
+  .detail-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
   .back-link {
     display: inline-block;
     margin-bottom: 18px;
-    color: #9f522d;
+    color: var(--accent);
     font-size: 13px;
     text-decoration: none;
   }
   .hint {
-    color: #766956;
+    color: var(--muted);
   }
   .detail-header h1 {
     margin-top: 4px;
   }
   .detail-meta {
     margin: 8px 0 0;
-    color: #766956;
+    color: var(--muted);
   }
   .triggers,
   .inbox,
@@ -638,19 +661,16 @@
   .inbox h2,
   .mementos h2 {
     margin: 0 0 16px;
-    font-family: Georgia, serif;
-    font-size: 22px;
-    font-weight: 500;
+    font-size: 16px;
+    font-weight: 600;
   }
-  /* Deliberately lighter than the sections above (no Georgia display
-     heading) — this is a shortcut to the Site page's build action, not a
-     second home for it (ADMIN-02 M1 02.1d). */
+  /* Shortcut to Site's build action, not a second home for it. */
   .build-shortcut {
     margin-top: 24px;
     padding: 14px 18px;
-    border: 1px solid #dfd4c1;
+    border: 1px solid var(--line);
     border-radius: 10px;
-    background: rgb(255 250 242 / 55%);
+    background: var(--surface-raised);
   }
   .build-row {
     display: flex;
@@ -659,7 +679,7 @@
     gap: 14px;
   }
   .build-label {
-    color: #6b5137;
+    color: var(--text);
     font-weight: 600;
     font-size: 14px;
   }
@@ -667,7 +687,7 @@
     margin: 0;
   }
   .preview-link {
-    color: #9f522d;
+    color: var(--accent);
     font-weight: 500;
     font-size: 13px;
     text-decoration: none;
@@ -687,19 +707,6 @@
   .inbox-head h2 {
     margin: 0;
   }
-  .inbox-head button {
-    border: 0;
-    border-radius: 7px;
-    padding: 8px 12px;
-    color: #fffaf2;
-    background: #9f522d;
-    font-size: 13px;
-    white-space: nowrap;
-  }
-  .inbox-head button:disabled {
-    opacity: 0.6;
-    cursor: default;
-  }
   .trigger-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -707,50 +714,39 @@
   }
   .trigger {
     padding: 18px;
-    border: 1px solid #dfd4c1;
+    border: 1px solid var(--line);
     border-radius: 12px;
-    background: rgb(255 250 242 / 55%);
+    background: var(--surface-raised);
   }
   .trigger-head {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    flex-wrap: wrap;
+    align-items: flex-start;
     gap: 12px;
   }
+  .trigger-head :global(button) {
+    min-height: 36px;
+  }
   .trigger-head h3 {
+    flex-basis: 100%;
     margin: 0;
     font-size: 15px;
     font-weight: 600;
   }
-  .trigger-head button {
-    border: 0;
-    border-radius: 7px;
-    padding: 8px 12px;
-    color: #fffaf2;
-    background: #9f522d;
-    font-size: 13px;
-    white-space: nowrap;
-  }
-  .trigger-head button:disabled {
-    opacity: 0.6;
-    cursor: default;
-  }
   .trigger-note {
     margin: 8px 0 0;
-    color: #766956;
+    color: var(--muted);
     font-size: 12px;
   }
   .trigger-status {
     margin: 10px 0 0;
     font-size: 13px;
   }
-  /* #3f7a52 measured 4.45:1 on this background — just under the 4.5:1 AA
-     floor (axe color-contrast, serious). */
   .trigger-status--success {
-    color: #2f5e40;
+    color: var(--success);
   }
   .trigger-status--error {
-    color: #a84a34;
+    color: var(--danger);
   }
   .preview-list {
     display: grid;
@@ -766,11 +762,11 @@
     gap: 2px;
     padding: 6px 8px;
     border-radius: 6px;
-    background: rgb(255 255 255 / 50%);
+    background: var(--surface-muted);
     font-size: 12px;
   }
   .preview-meta {
-    color: #766956;
+    color: var(--muted);
   }
   .memento-list {
     display: grid;
@@ -780,27 +776,27 @@
     list-style: none;
   }
   .memento-row {
-    border: 1px solid #dfd4c1;
+    border: 1px solid var(--line);
     border-radius: 10px;
-    background: rgb(255 250 242 / 55%);
+    background: var(--surface-raised);
     transition: border-color 0.15s ease;
   }
   .memento-row:hover {
-    border-color: #b3673a;
+    border-color: var(--accent);
   }
   /* Pending-build highlight (memento-lifecycle staged rebuild, ADMIN-02
      §6): a distinct left border + subtle background, plus the "pending
      build" label inline — not color alone, so it doesn't depend on the
      badge's hue to read. */
   .memento-row--pending {
-    border-left: 3px solid #b3673a;
-    background: rgb(231 162 96 / 14%);
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
   }
   .pending-dot {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    color: #9f522d;
+    color: var(--accent);
     font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
@@ -813,7 +809,7 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #b3673a;
+    background: var(--accent);
   }
   .memento-link {
     display: flex;
@@ -824,9 +820,7 @@
     text-decoration: none;
   }
   .memento-seq {
-    /* #a69a89 measured 2.54:1 on the memento row's card background — well
-       under the 4.5:1 AA floor (axe color-contrast, serious). */
-    color: #766956;
+    color: var(--muted);
     font-size: 12px;
     min-width: 28px;
   }
@@ -835,7 +829,7 @@
     font-weight: 500;
   }
   .memento-kind {
-    color: #766956;
+    color: var(--muted);
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -849,9 +843,9 @@
   }
   .candidate-row {
     padding: 14px 16px;
-    border: 1px solid #dfd4c1;
+    border: 1px solid var(--line);
     border-radius: 10px;
-    background: rgb(255 250 242 / 55%);
+    background: var(--surface-raised);
   }
   .candidate-summary {
     display: flex;
@@ -864,7 +858,7 @@
     gap: 2px;
   }
   .candidate-meta {
-    color: #766956;
+    color: var(--muted);
     font-size: 12px;
   }
   .candidate-actions {
@@ -877,89 +871,39 @@
   .candidate-field {
     display: grid;
     gap: 4px;
-    color: #766956;
+    color: var(--muted);
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
-  .candidate-field select {
-    padding: 7px 9px;
-    border: 1px solid #d8cdbb;
-    border-radius: 7px;
-    color: #342a1e;
-    background: #fffaf2;
-    font-size: 13px;
-    text-transform: none;
-    letter-spacing: normal;
-  }
-  .candidate-actions button {
-    border: 0;
-    border-radius: 7px;
-    padding: 8px 12px;
-    color: #fffaf2;
-    background: #9f522d;
-    font-size: 13px;
-    white-space: nowrap;
-  }
-  .candidate-actions button.secondary {
-    color: #6b5137;
-    background: transparent;
-    border: 1px solid #d8cdbb;
-  }
-  .candidate-actions button:disabled {
-    opacity: 0.6;
-    cursor: default;
-  }
-  /* Darkened from the original tones (axe color-contrast, serious): those
-     landed 3.77-4.27:1 against these translucent tinted backgrounds, under
-     the 4.5:1 AA floor — same fix as the shared badges in app.css. */
   .badge--proposed {
-    color: #8a431f;
-    background: rgb(231 162 96 / 24%);
+    color: var(--accent);
+    background: var(--accent-soft);
   }
   .badge--kept {
-    color: #2f5e40;
-    background: rgb(120 184 135 / 24%);
+    color: var(--success);
+    background: var(--success-soft);
   }
   .badge--ignored,
   .badge--merged {
-    color: #5c5142;
-    background: rgb(166 154 137 / 20%);
+    color: var(--muted);
+    background: var(--surface-muted);
   }
   .danger-zone {
     margin: 36px 0 8px;
     padding: 18px 20px;
-    border: 1px solid rgb(168 74 52 / 35%);
+    border: 1px solid var(--line);
     border-radius: 10px;
-    background: rgb(168 74 52 / 6%);
+    background: var(--surface-raised);
   }
   .danger-zone h2 {
     margin: 0 0 8px;
-    color: #a84a34;
-    font-family: Georgia, serif;
+    color: var(--danger);
     font-size: 16px;
     font-weight: 600;
   }
   .danger-zone > .trigger-note {
-    color: #5c4f3d;
-  }
-  .danger-zone button {
-    border: 0;
-    border-radius: 7px;
-    padding: 9px 14px;
-    color: #fffaf2;
-    background: #9f522d;
-    font-size: 13px;
-    white-space: nowrap;
-  }
-  .danger-zone button.secondary {
-    color: #6b5137;
-    background: transparent;
-    border: 1px solid #d8cdbb;
-  }
-  .danger-zone button.danger {
-    color: #fffaf2;
-    background: #a84a34;
+    color: var(--muted);
   }
   .confirm-strip {
     display: flex;
@@ -970,13 +914,13 @@
     margin-top: 12px;
     padding: 12px 14px;
     border-radius: 8px;
-    background: #fffaf2;
-    border: 1px solid #dfd4c1;
+    background: var(--surface-raised);
+    border: 1px solid var(--danger);
   }
   .confirm-strip p {
     margin: 0;
     font-size: 13px;
-    color: #6b5137;
+    color: var(--text);
   }
   .confirm-actions {
     display: flex;

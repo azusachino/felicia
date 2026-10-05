@@ -274,6 +274,7 @@
   :global(.atlas-marker.is-active) {
     z-index: 2;
     background: #ff9b72;
+    color: #07131f;
     transform: scale(1.16);
   }
 

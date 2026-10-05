@@ -2,15 +2,11 @@
 package api
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"image"
-	_ "image/jpeg" // Register JPEG decoding for upload validation.
-	_ "image/png"  // Register PNG decoding for upload validation.
 	"io"
 	"log/slog"
 	"math"
@@ -25,7 +21,6 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 	"github.com/paulmach/orb"
-	_ "golang.org/x/image/webp" // Register WebP decoding for upload validation.
 
 	"github.com/azusachino/felicia/apps/felicia-core/domain"
 	"github.com/azusachino/felicia/apps/felicia-core/ports"
@@ -34,6 +29,7 @@ import (
 	"github.com/azusachino/felicia/apps/felicia-runtime/intake"
 	journeyruntime "github.com/azusachino/felicia/apps/felicia-runtime/journey"
 	mementoruntime "github.com/azusachino/felicia/apps/felicia-runtime/memento"
+	photoruntime "github.com/azusachino/felicia/apps/felicia-runtime/photos"
 	"github.com/azusachino/felicia/apps/felicia-runtime/timezone"
 )
 
@@ -42,6 +38,7 @@ type Server struct {
 	repo                  domain.Repository
 	journeyWriter         *journeyruntime.Service
 	mementoWriter         *mementoruntime.Service
+	photoWriter           *photoruntime.Service
 	registry              *domain.Registry
 	cache                 *CacheManager
 	logger                *slog.Logger
@@ -83,7 +80,7 @@ const defaultTransitSegmentLengthM = 100000
 const (
 	defaultRequestTimeout = 30 * time.Second
 	defaultMaxBodyBytes   = 2 << 20
-	maxPhotoUploadBytes   = 20 << 20
+	maxPhotoUploadBytes   = photoruntime.MaxUploadBytes
 	defaultRatePerSecond  = 1
 	defaultRateBurst      = 20
 	defaultMediaRoot      = ".felicia/media"
@@ -152,6 +149,7 @@ func NewServer(repo domain.Repository, registry *domain.Registry, cache *CacheMa
 		repo:                  repo,
 		journeyWriter:         journeyruntime.New(repo),
 		mementoWriter:         mementoruntime.New(repo),
+		photoWriter:           photoruntime.New(repo, routeConfig.BlobStore),
 		registry:              registry,
 		cache:                 cache,
 		logger:                logger,
@@ -1345,6 +1343,9 @@ func (s *Server) handleUploadPhoto(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	if r.MultipartForm != nil {
+		defer func() { _ = r.MultipartForm.RemoveAll() }()
+	}
 	file, _, err := r.FormFile("file")
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "photo file is required")
@@ -1364,69 +1365,24 @@ func (s *Server) handleUploadPhoto(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusRequestEntityTooLarge, "photo upload is too large (maximum 20 MiB)")
 		return
 	}
-	format, err := uploadedImageFormat(data)
+	photo, err := s.photoWriter.Upload(r.Context(), mementoID, data)
 	if err != nil {
-		respondError(w, http.StatusUnsupportedMediaType, err.Error())
-		return
-	}
-
-	extension := map[string]string{"jpeg": ".jpg", "png": ".png", "webp": ".webp"}[format]
-	digest := importer.MediaDigest(data)
-	objectKey := importer.MediaObjectKey("original"+extension, digest)
-	if err := s.blobStore.Put(r.Context(), objectKey, data); err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	photos, err := s.repo.ListPhotosByMemento(r.Context(), mementoID)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	seq := 0
-	for _, photo := range photos {
-		if photo.Seq >= seq {
-			seq = photo.Seq + 1
+		var invalid *photoruntime.InvalidImageError
+		switch {
+		case errors.As(err, &invalid):
+			respondError(w, http.StatusUnsupportedMediaType, err.Error())
+		case errors.Is(err, photoruntime.ErrTooLarge):
+			respondError(w, http.StatusRequestEntityTooLarge, err.Error())
+		case errors.Is(err, domain.ErrNotFound), errors.Is(err, sql.ErrNoRows):
+			respondError(w, http.StatusNotFound, "memento not found")
+		default:
+			s.logger.Error("store uploaded photo", "err", err)
+			respondError(w, http.StatusInternalServerError, "could not store photo")
 		}
-	}
-	photo := &domain.MementoPhoto{
-		ID:          uuid.Must(uuid.NewV7()),
-		MementoID:   mementoID,
-		ObjectKey:   objectKey,
-		ContentHash: "sha256:" + digest,
-		Seq:         seq,
-		CreatedAt:   time.Now().UTC(),
-	}
-	if err := s.repo.UpsertPhoto(r.Context(), photo); err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	s.cache.InvalidateAll(r.Context())
 	respondJSON(w, http.StatusCreated, photo)
-}
-
-func uploadedImageFormat(data []byte) (string, error) {
-	if isHEIC(data) {
-		return "", fmt.Errorf("HEIC/HEIF photos are not supported yet; convert to JPEG before uploading")
-	}
-	config, format, err := image.DecodeConfig(bytes.NewReader(data))
-	if err != nil {
-		return "", fmt.Errorf("uploaded file is not a supported JPEG, PNG, or WebP image")
-	}
-	if format != "jpeg" && format != "png" && format != "webp" {
-		return "", fmt.Errorf("unsupported image format %q; use JPEG, PNG, or WebP", format)
-	}
-	if config.Width <= 0 || config.Height <= 0 || config.Width > 50_000 || config.Height > 50_000 || int64(config.Width)*int64(config.Height) > 50_000_000 {
-		return "", fmt.Errorf("image dimensions are too large")
-	}
-	return format, nil
-}
-
-func isHEIC(data []byte) bool {
-	if len(data) < 12 || string(data[4:8]) != "ftyp" {
-		return false
-	}
-	brand := string(data[8:12])
-	return brand == "heic" || brand == "heix" || brand == "hevc" || brand == "hevx" || brand == "mif1" || brand == "msf1"
 }
 
 func (s *Server) handlePhotoContent(w http.ResponseWriter, r *http.Request) {

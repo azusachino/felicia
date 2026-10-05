@@ -1,4 +1,5 @@
 import { test, expect } from "./fixtures"
+import { setDate } from "./date-field"
 
 test("slug collision retains input and retry creates a separate journey", async ({ page }) => {
   const errors: string[] = []
@@ -13,8 +14,8 @@ test("slug collision retains input and retry creates a separate journey", async 
   const sheet = page.getByRole("region", { name: "Create a new journey", exact: true })
   await sheet.getByLabel("Title", { exact: true }).fill("New synthetic trip")
   await sheet.getByLabel("Place", { exact: true }).fill("Osaka")
-  await sheet.getByLabel("Start date", { exact: true }).fill("2026-05-01")
-  await sheet.getByLabel("End date", { exact: true }).fill("2026-05-03")
+  await setDate(sheet.getByRole("group", { name: "Start date", exact: true }), "2026-05-01")
+  await setDate(sheet.getByRole("group", { name: "End date", exact: true }), "2026-05-03")
   await sheet.getByText("More options", { exact: true }).click()
   await sheet.getByLabel("Slug", { exact: true }).fill("reserved-slug")
   const rejected = page.waitForResponse((response) => response.url().endsWith("/api/admin/journeys") && response.request().method() === "POST")
@@ -23,7 +24,7 @@ test("slug collision retains input and retry creates a separate journey", async 
   await expect(sheet.getByRole("alert")).toContainText("Choose another slug")
   await expect(sheet.getByLabel("Title", { exact: true })).toHaveValue("New synthetic trip")
   await expect(sheet.getByLabel("Place", { exact: true })).toHaveValue("Osaka")
-  await expect(sheet.getByLabel("Start date", { exact: true })).toHaveValue("2026-05-01")
+  await expect(sheet.locator('[name="date_start"]')).toHaveValue("2026-05-01")
   const rows = await (await page.request.get("/api/admin/journeys")).json()
   expect(rows).toHaveLength(1)
   expect(rows[0].title).toBe(original.title)

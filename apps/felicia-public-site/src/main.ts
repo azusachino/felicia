@@ -1,3 +1,4 @@
+import "./fonts.css"
 import "maplibre-gl/dist/maplibre-gl.css"
 import "@felicia/reader/public.css"
 import App from "./App.svelte"
