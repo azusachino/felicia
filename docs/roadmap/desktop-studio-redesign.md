@@ -5,11 +5,15 @@
 > Asobi. Do not dispatch a later slice while an earlier acceptance gate is open.
 > The owner-feedback revision below supersedes the earlier modal-creation direction.
 
-## Current delivery — PR 160
+## Delivery checkpoint — PR 160
 
-[PR #160](https://github.com/azusachino/felicia/pull/160) is draft for owner review.
-Implementation and CI remediation are delivered on `feat/desktop-sample-polish`
-through `6944c1ebb1ad926a03a48a48255ef99c729bad9e`.
+The owner reviewed and approved merging [PR #160](https://github.com/azusachino/felicia/pull/160).
+Its linked PR is authoritative for current merge state. Remaining execution and
+acceptance are tracked in [#161](https://github.com/azusachino/felicia/issues/161);
+[#158](https://github.com/azusachino/felicia/issues/158) remains the acceptance umbrella.
+Implementation and CI remediation were delivered on `feat/desktop-sample-polish`
+through `6944c1ebb1ad926a03a48a48255ef99c729bad9e`; the later reconciliation at
+`8ac970a` changes documentation only.
 
 - [CI run 37283214499](https://github.com/azusachino/felicia/actions/runs/37283214499)
   passed all three jobs: backend, frontend and desktop composition. Current local
@@ -24,7 +28,7 @@ through `6944c1ebb1ad926a03a48a48255ef99c729bad9e`.
 - Canonical Asobi connectivity and stale branch/commit/next-action records are
   reconciled. The old DNS outage is no longer a current blocker.
 - After green CI, the signed app was launched once with `--sample` only. The owner
-  reports it is basically working and will review this PR next. This does not
+  reports it is basically working and approved the bounded merge. This does not
   authorize a real workspace, normal file picker or blanket native/S1/S2 closure.
   Standalone Close has its earlier bounded native acceptance; remaining native
   criteria and S2 reviewed-input/apply remain open.
@@ -1102,7 +1106,8 @@ LaunchServices with `--sample` only (observed PID 72078). Full process arguments
 confirmed one Sample instance; an initial observer assertion used the truncated
 macOS `ps comm` column and was corrected without restarting the app. Evidence:
 `rework-native-package-ci-green.log`, `rework-native-launch.json`. The owner now
-reports it is basically working and will review the PR. Launch and that general
+reports it is basically working and subsequently approved the bounded merge.
+Remaining work is linked from #161. Launch and that general
 feedback do not establish every native criterion or authorize a normal workspace
 file picker. No broader native/S1/S2 closure, merge, release or deployment is
 claimed.

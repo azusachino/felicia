@@ -117,8 +117,8 @@ projection:
   checkpoint passed 46/46 desktop-composition checks plus 14/14 real web-authoring
   checks; updated full-page creation evidence belongs to the owning PR. Browser
   checks do not establish native Wails or source-review/apply acceptance. See the ordered
-  plan for independent review and the remaining boundaries. The draft
-  PR #160 candidate adds same-window isolated sample switching, journey Edit/Add memento
+  plan for independent review and the remaining boundaries. The owner-approved
+  PR #160 delivery adds same-window isolated sample switching, journey Edit/Add memento
   authoring, shared Bits UI controls/dialogs and fixed date/time segments, in-app
   last-built preview, and locally bundled original reader fonts. Its full
   desktop-composition checkpoint passed 150/150; web authoring passed 14/14.
@@ -143,10 +143,12 @@ projection:
   verified the portability regression through the owner-approved direct GLM route.
   Canonical Asobi connectivity and stale branch/next-action records are reconciled.
   The signed, rebuilt app was launched with `--sample` only after those gates;
-  the owner reports it is basically working and will review PR #160. The PR stays
-  draft and broader S1/native and S2 acceptance remain open; a normal native photo
-  picker was not authorized or tested. The proposed clearer temporary-workspace
-  notice remains an unapplied copy follow-up.
+  the owner reports it is basically working and approved merging PR #160. Follow-up
+  [#161](https://github.com/azusachino/felicia/issues/161) tracks remaining native
+  acceptance, reviewed S2 intake, deeper S3/S4 work and verification gaps. #158
+  remains the acceptance umbrella; merge approval does not close its full scope.
+  A normal native photo picker was not authorized or tested. The proposed clearer
+  temporary-workspace notice remains an unapplied copy follow-up.
 
 - **Google Timeline visits (#81)** — `felicia-cli journey plan --timeline <Timeline.json>` now reads concatenated Timeline JSON and Takeout `timelineObjects`, preserving place names, IDs, coordinates, and visit times as semantic intake visits. Activity segments are not synthesized into route geometry; provide GPX or Dawarich for a route. Timeline input is read-only and stays local.
 

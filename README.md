@@ -94,11 +94,12 @@ journey and memento authoring, shared library controls and an in-app last-built
 preview with reader fonts bundled from pinned Fontsource dependencies. Ordinary
 desktop image upload shares web validation/storage; temporary workspaces add
 only generated photos and manage output automatically. Internal dirty Return
-uses a shared confirmation dialog. Draft [PR #160](https://github.com/azusachino/felicia/pull/160)
-has green backend, frontend and desktop-composition CI. The rebuilt isolated
-Sample is running; the owner reports it is basically working and will review the
-PR. Standalone Close has bounded native acceptance; broader native S1 acceptance,
-normal file-picker testing and S2 reviewed imports remain open.
+uses a shared confirmation dialog. The owner reviewed and approved
+[PR #160](https://github.com/azusachino/felicia/pull/160), with green backend,
+frontend and desktop-composition CI. The rebuilt isolated Sample is basically
+working according to owner feedback. Standalone Close has bounded native
+acceptance; broader native S1 acceptance, normal file-picker testing and S2
+reviewed imports remain open under [#161](https://github.com/azusachino/felicia/issues/161).
 See the [desktop execution plan](docs/roadmap/desktop-studio-redesign.md) for the
 verified slices and explicit capability limits.
 
