@@ -23,7 +23,7 @@
   "admin.sample.title": "Sample workspace",
   "admin.sample.note": "Fictional trip, generated pictures. Your real trips are untouched. Reopen for a fresh sample.",
   "admin.sample.close": "Close",
-  "admin.sample.empty_studio": "Temporary studio — your journal is not connected.",
+  "admin.sample.empty_studio": "Temporary studio — your journal is not connected. Changes are temporary and discarded when you quit the app.",
   "admin.mementos.unsaved_leave": "Discard unsaved changes and leave this memento?",
   "admin.shell.page_title": "Felicia Admin · Journeys",
   "admin.shell.workspace_label": "Authoring workspace",

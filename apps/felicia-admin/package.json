@@ -10,6 +10,7 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.e2e.json && eslint . && prettier --check . && bun run test",
     "test": "bun --bun ../../node_modules/vitest/vitest.mjs run --config ../../vitest.config.ts apps/felicia-admin/src",
     "e2e": "playwright test --config playwright.desktop.config.ts",
+    "e2e:reader-fonts": "playwright test --config playwright.reader-fonts.config.ts",
     "e2e:install": "playwright install chromium webkit",
     "lint": "eslint .",
     "format": "prettier --write .",

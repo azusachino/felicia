@@ -16,7 +16,7 @@ COMPOSE ?= $(shell \
 	elif command -v docker >/dev/null 2>&1; then echo docker compose; \
 	else echo ''; fi)
 
-.PHONY: help fmt fmt-check fmt-docs fmt-docs-check vet lint test test-api test-features layout-check test-sqlite check check-ci build cli-build desktop-assets desktop-build desktop-package desktop experiment-intake journey-local validate deps-check tidy db-up db-down seed admin dev dev-sqlite test-workflow test-admin-e2e mock-up mock-down browser-mock web-install web-check web-build admin-check admin-build site-build site-verify pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down e2e e2e-install desktop-e2e-build
+.PHONY: help fmt fmt-check fmt-docs fmt-docs-check vet lint test test-api test-features layout-check test-sqlite check check-ci build cli-build desktop-assets desktop-build desktop-package desktop experiment-intake journey-local validate deps-check tidy db-up db-down seed admin dev dev-sqlite test-workflow test-admin-e2e mock-up mock-down browser-mock web-install web-check web-build admin-check admin-build site-build site-verify pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down e2e e2e-install desktop-e2e-build test-reader-fonts-e2e
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -77,6 +77,9 @@ e2e: desktop-e2e-build ## Run integrated desktop Chromium/WebKit specs on synthe
 
 e2e-install: ## Install browsers for the project's pinned Playwright version
 	$(BUN) --bun run --filter @felicia/admin e2e:install $(E2E_INSTALL_FLAGS)
+
+test-reader-fonts-e2e: ## Run standalone built-reader font/static-subpath browser check (isolated build under .tmp; not part of validate)
+	$(BUN) --bun run --filter @felicia/admin e2e:reader-fonts
 
 desktop-build: desktop-assets ## Build native desktop binary into bin/felicia-desktop
 	@mkdir -p bin
