@@ -542,6 +542,27 @@ export async function upsertMemento(payload: UpsertMementoRequest): Promise<{ st
   return postJSON<{ status: string }>("/api/admin/mementos", payload)
 }
 
+// Request body for POST /api/admin/mementos/create — the automatic
+// new-memento creation path (docs/contracts/automatic-sequence-allocation.md).
+// This is the minimal accepted payload, not an upsert subset: seq and
+// expected_revision have no field at all (positions are allocated
+// server-side; edit revisions belong to the editor's upsert path), and the
+// authorship mask is server-derived — a client-sent authored_fields would be
+// rejected, so it has no type here either.
+export type CreateMementoRequest = Pick<UpsertMementoRequest, "id" | "journey_id" | "kind" | "title" | "place" | "occurred_at" | "occurred_tz" | "kind_data"> & { state?: "draft" }
+
+// The created row (same shape as GET /api/admin/mementos/{id}'s record):
+// callers must navigate from the returned identity rather than assuming the
+// server accepted any client-side assumption about position or revision.
+export type CreatedMemento = Pick<AdminMemento, "id" | "journey_id" | "kind" | "seq"> & { revision: number }
+
+// Automatic creation: never updates an existing row. A same-ID retry with
+// matching creation values returns the stored row unchanged; an incompatible
+// retry (different journey, edited values) surfaces as a 409 ApiError.
+export async function createMemento(payload: CreateMementoRequest): Promise<CreatedMemento> {
+  return postJSON<CreatedMemento>("/api/admin/mementos/create", payload)
+}
+
 // Projects a proposed point onto the journey's composed route (GPS track +
 // authored transit legs). Used by the editor's per-point "snap" helper,
 // since non-draft saves must pass the kind's anchor geometry validation.

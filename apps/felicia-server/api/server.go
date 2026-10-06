@@ -260,6 +260,7 @@ func (s *Server) Handler() http.Handler {
 		r.Get("/mementos/{id}/photos", s.handleListMementoPhotos)
 		r.Post("/mementos/{id}/photos/upload", s.handleUploadPhoto)
 		r.Post("/mementos", s.handleUpsertMemento)
+		r.Post("/mementos/create", s.handleCreateMemento)
 		r.Delete("/mementos/{id}", s.handleDeleteMemento)
 		r.Post("/photos", s.handleUpsertPhoto)
 		r.Get("/photos/{id}/content", s.handlePhotoContent)

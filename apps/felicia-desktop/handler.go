@@ -299,6 +299,12 @@ func (h *DesktopHandler) routeAdmin(w http.ResponseWriter, r *http.Request, reqP
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
+	case reqPath == "/api/admin/mementos/create":
+		if r.Method == http.MethodPost {
+			h.handleCreateMemento(w, r)
+		} else {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
 	case reqPath == "/api/admin/mementos":
 		if r.Method == http.MethodPost {
 			h.handleUpsertMemento(w, r)

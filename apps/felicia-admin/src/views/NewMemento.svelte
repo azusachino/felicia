@@ -8,7 +8,7 @@
   import { Label } from "$lib/components/ui/label"
   import SelectField from "$lib/components/SelectField.svelte"
   import { ArrowLeft, Plus } from "@lucide/svelte"
-  import { getJourney, getTemplates, listMementos, upsertMemento, type AdminJourney, type AdminTemplateRegistry } from "../api"
+  import { createMemento, getJourney, getTemplates, type AdminJourney, type AdminTemplateRegistry } from "../api"
   import { message, type Locale } from "../i18n"
   import { journeyDetailPath, mementoEditPath } from "../router"
 
@@ -18,7 +18,6 @@
   let title = $state("")
   let kind = $state("")
   let initialKind = $state("")
-  let seq = $state(0)
   let pending = $state(false)
   let saved = $state(false)
   let error = $state("")
@@ -28,14 +27,13 @@
   $effect(() => {
     const currentId = journeyId
     let active = true
-    Promise.all([getJourney(currentId), getTemplates(), listMementos(currentId)])
-      .then(([value, registry, mementos]) => {
+    Promise.all([getJourney(currentId), getTemplates()])
+      .then(([value, registry]) => {
         if (!active) return
         journey = value
         templates = registry
         kind = registry.goods ? "goods" : (Object.keys(registry)[0] ?? "")
         initialKind = kind
-        seq = mementos.reduce((max, item) => Math.max(max, item.seq + 1), 0)
       })
       .catch((cause) => {
         if (active) error = cause instanceof Error ? cause.message : message(locale, "admin.common.request_failed")
@@ -56,11 +54,14 @@
     pending = true
     error = ""
     try {
-      await upsertMemento({
+      // Automatic creation allocates the position server-side: the form
+      // sends no seq, keeps its one generated id, and navigates only from
+      // the persisted row that comes back. A failed or lost response leaves
+      // the form and id untouched so the retry stays stable.
+      const created = await createMemento({
         id,
         journey_id: journeyId,
         kind,
-        seq,
         title: title.trim(),
         place: journey.place,
         occurred_at: `${journey.date_start.slice(0, 10)}T00:00:00Z`,
@@ -69,7 +70,7 @@
         state: "draft",
       })
       saved = true
-      await goto(resolve(mementoEditPath(journeyId, id)))
+      await goto(resolve(mementoEditPath(journeyId, created.id)))
     } catch (cause) {
       error = cause instanceof Error ? cause.message : message(locale, "admin.common.request_failed")
     } finally {
