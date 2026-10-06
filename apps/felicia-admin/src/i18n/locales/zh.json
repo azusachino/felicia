@@ -23,7 +23,7 @@
   "admin.sample.title": "示例工作区",
   "admin.sample.note": "虚构旅程与生成图片，不影响真实旅程。重新打开即可恢复初始示例。",
   "admin.sample.close": "关闭",
-  "admin.sample.empty_studio": "临时工作区 — 未连接您的个人日记。",
+  "admin.sample.empty_studio": "临时工作区 — 未连接您的个人日记。更改是临时的，退出应用后将被丢弃。",
   "admin.mementos.unsaved_leave": "放弃未保存的更改并离开这件纪念物？",
   "admin.shell.page_title": "Felicia 管理 · 旅程",
   "admin.shell.workspace_label": "编辑工作区",

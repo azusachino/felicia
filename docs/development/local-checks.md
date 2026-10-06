@@ -47,7 +47,12 @@ After manually altering ignored dependencies/build state, use `--force`.
 This cache is local iteration evidence, not acceptance evidence. `make check`,
 `make validate`, CI, browser suites, builds, packaging and native acceptance remain
 uncached and unchanged. Browser checks still use `make e2e` and
-`make test-admin-e2e`. No per-package Go cache, dependency-integrity cache or
+`make test-admin-e2e`; the standalone built-reader font/static-subpath check is
+`make test-reader-fonts-e2e` (isolated production public-site build under
+`.tmp/felicia-desktop-polish/reader-fonts/`, loopback-only Vite preview,
+Chromium + WebKit; proves the pinned reader typefaces download and load under a
+non-root base path — not native Wails visual acceptance and no publication
+content coverage). No per-package Go cache, dependency-integrity cache or
 browser-result cache is added; the native Go build/test cache remains in use.
 
 The runner is adapted from Iroha's `scripts/local_checks.py` at

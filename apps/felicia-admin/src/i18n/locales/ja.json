@@ -23,7 +23,7 @@
   "admin.sample.title": "サンプルワークスペース",
   "admin.sample.note": "架空の旅程と生成した画像です。実際の旅程には影響しません。開き直すと初期状態に戻ります。",
   "admin.sample.close": "閉じる",
-  "admin.sample.empty_studio": "一時スタジオ — 個人の日誌には接続していません。",
+  "admin.sample.empty_studio": "一時スタジオ — 個人の日誌には接続していません。変更は一時的なもので、アプリを終了すると破棄されます。",
   "admin.mementos.unsaved_leave": "未保存の変更を破棄して、このメメントから移動しますか？",
   "admin.shell.page_title": "Felicia 管理 · 旅程",
   "admin.shell.workspace_label": "編集ワークスペース",
