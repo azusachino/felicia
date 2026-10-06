@@ -21,6 +21,7 @@ import (
 	"github.com/azusachino/felicia/apps/felicia-core/domain"
 	"github.com/azusachino/felicia/apps/felicia-providers/sqlite"
 	publication "github.com/azusachino/felicia/apps/felicia-publication"
+	"github.com/azusachino/felicia/apps/felicia-runtime/workspace"
 )
 
 func main() {
@@ -212,9 +213,9 @@ func run() error {
 }
 
 func resolveDefaultWorkspace() (string, error) {
-	home, err := os.UserHomeDir()
+	ws, err := workspace.Resolve("")
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".felicia"), nil
+	return ws.Root, nil
 }

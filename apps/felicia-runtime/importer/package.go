@@ -41,6 +41,8 @@ type PackageStore interface {
 
 // ImportReport summarizes one applied package.
 type ImportReport struct {
+	JourneyID  uuid.UUID
+	Slug       string
 	Journeys   int
 	Candidates int
 	Mementos   int
@@ -185,7 +187,15 @@ func applyPackage(ctx context.Context, document *PackageDocument, store PackageS
 			}
 		}
 	}
-	return ImportReport{Journeys: 1, Candidates: len(document.Stops), Mementos: len(document.Mementos), Photos: len(document.Photos), Conflicts: conflicts}, nil
+	return ImportReport{
+		JourneyID:  document.Journey.ID,
+		Slug:       document.Journey.Slug,
+		Journeys:   1,
+		Candidates: len(document.Stops),
+		Mementos:   len(document.Mementos),
+		Photos:     len(document.Photos),
+		Conflicts:  conflicts,
+	}, nil
 }
 
 type journeyFile struct {

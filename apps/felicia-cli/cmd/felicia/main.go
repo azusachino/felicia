@@ -23,6 +23,7 @@ import (
 	publication "github.com/azusachino/felicia/apps/felicia-publication"
 	"github.com/azusachino/felicia/apps/felicia-runtime/importer"
 	"github.com/azusachino/felicia/apps/felicia-runtime/intake"
+	"github.com/azusachino/felicia/apps/felicia-runtime/workspace"
 )
 
 func main() {
@@ -55,9 +56,11 @@ func execute(args []string, output io.Writer) error {
 
 func journeyCommand(args []string, output io.Writer) error {
 	if len(args) == 0 {
-		return errors.New("usage: felicia-cli journey plan|apply|review|delete")
+		return errors.New("usage: felicia-cli journey ingest|plan|apply|review|delete")
 	}
 	switch args[0] {
+	case "ingest":
+		return journeyIngestCommand(args[1:], output)
 	case "plan":
 		return journeyPlanCommand(args[1:], output)
 	case "apply":
@@ -69,6 +72,110 @@ func journeyCommand(args []string, output io.Writer) error {
 	default:
 		return fmt.Errorf("unknown journey command %q", args[0])
 	}
+}
+
+func journeyIngestCommand(args []string, output io.Writer) error {
+	flags := flag.NewFlagSet("journey ingest", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	dir := flags.String("dir", "", "path to trip folder")
+	wsPath := flags.String("workspace", "", "workspace root directory")
+	database := flags.String("db", "", "SQLite database path")
+	mediaRoot := flags.String("media-root", "", "private local media root")
+	slug := flags.String("slug", "", "journey slug")
+	title := flags.String("title", "", "journey title")
+	place := flags.String("place", "", "journey place")
+	from := flags.String("from", "", "RFC3339 range start")
+	to := flags.String("to", "", "RFC3339 range end")
+	var flagArgs []string
+	var positional []string
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if strings.HasPrefix(arg, "-") {
+			flagArgs = append(flagArgs, arg)
+			if !strings.Contains(arg, "=") && i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+				i++
+				flagArgs = append(flagArgs, args[i])
+			}
+		} else {
+			positional = append(positional, arg)
+		}
+	}
+	if err := flags.Parse(flagArgs); err != nil {
+		return err
+	}
+	if *dir == "" && len(positional) > 0 {
+		*dir = positional[0]
+	}
+	if *dir == "" {
+		return errors.New("usage: felicia-cli journey ingest [--dir] <path> [options]")
+	}
+
+	ws, err := workspace.Resolve(*wsPath)
+	if err != nil {
+		return fmt.Errorf("resolve workspace: %w", err)
+	}
+	if err := ws.EnsureDirs(); err != nil {
+		return err
+	}
+	if *database == "" {
+		*database = ws.Database
+	}
+	if *mediaRoot == "" {
+		*mediaRoot = ws.MediaRoot
+	}
+	if err := os.MkdirAll(filepath.Dir(*database), 0o755); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(*mediaRoot, 0o755); err != nil {
+		return err
+	}
+
+	repo, err := sqlite.Open(*database)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = repo.Close() }()
+
+	startTime, err := parseOptionalTime(*from)
+	if err != nil {
+		return fmt.Errorf("--from: %w", err)
+	}
+	endTime, err := parseOptionalTime(*to)
+	if err != nil {
+		return fmt.Errorf("--to: %w", err)
+	}
+
+	cfg := TripFolderConfig{
+		Dir:           *dir,
+		Slug:          *slug,
+		Title:         *title,
+		Place:         *place,
+		WorkspaceRoot: ws.Root,
+		Database:      *database,
+		MediaRoot:     *mediaRoot,
+		From:          startTime,
+		To:            endTime,
+	}
+
+	report, err := IngestTripFolder(context.Background(), cfg, repo, *mediaRoot)
+	if err != nil {
+		return err
+	}
+
+	conflicts := report.Conflicts
+	if conflicts == nil {
+		conflicts = []string{}
+	}
+
+	return writeJSON(output, map[string]any{
+		"mode":       "ingest",
+		"journey_id": report.JourneyID.String(),
+		"slug":       report.Slug,
+		"candidates": report.Candidates,
+		"mementos":   report.Mementos,
+		"photos":     report.Photos,
+		"conflicts":  conflicts,
+	})
 }
 
 func journeyPlanCommand(args []string, output io.Writer) error {
@@ -136,8 +243,11 @@ func journeyApplyCommand(args []string, output io.Writer) error {
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
-	if *database == "" || flags.NArg() != 1 {
-		return errors.New("usage: felicia-cli journey apply --db <path> <plan.json>")
+	if flags.NArg() != 1 {
+		return errors.New("usage: felicia-cli journey apply [--db <path>] <plan.json>")
+	}
+	if err := resolveWorkspaceDefaults(database, nil); err != nil {
+		return err
 	}
 	data, err := os.ReadFile(flags.Arg(0))
 	if err != nil {
@@ -173,8 +283,11 @@ func journeyReviewCommand(args []string, output io.Writer) error {
 	if err != nil {
 		return errors.New("--candidate must be a valid UUID")
 	}
-	if *database == "" || *state == "" {
-		return errors.New("--db and --state are required")
+	if *state == "" {
+		return errors.New("--state is required")
+	}
+	if err := resolveWorkspaceDefaults(database, nil); err != nil {
+		return err
 	}
 	repo, err := sqlite.Open(*database)
 	if err != nil {
@@ -206,8 +319,11 @@ func journeyDeleteCommand(args []string, output io.Writer) error {
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
-	if *database == "" || *journeyID == "" {
-		return errors.New("usage: felicia-cli journey delete --db <path> --journey <uuid>")
+	if *journeyID == "" {
+		return errors.New("usage: felicia-cli journey delete [--db <path>] --journey <uuid>")
+	}
+	if err := resolveWorkspaceDefaults(database, nil); err != nil {
+		return err
 	}
 	id, err := uuid.Parse(*journeyID)
 	if err != nil {
@@ -293,7 +409,7 @@ func importCommand(args []string, output io.Writer) error {
 	flags := flag.NewFlagSet("import", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	database := flags.String("db", "", "SQLite database path")
-	mediaRoot := flags.String("media-root", ".felicia/media", "private local media root")
+	mediaRoot := flags.String("media-root", "", "private local media root")
 	apply := flags.Bool("apply", false, "write the package to SQLite and copy media")
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -319,8 +435,8 @@ func importCommand(args []string, output io.Writer) error {
 	if !*apply {
 		return writeJSON(output, map[string]any{"mode": "dry-run", "package_id": pkg.Manifest.PackageID, "journeys": 1, "candidates": len(document.Stops), "mementos": len(document.Mementos), "photos": len(document.Photos)})
 	}
-	if *database == "" {
-		return errors.New("--db is required with --apply")
+	if err := resolveWorkspaceDefaults(database, mediaRoot); err != nil {
+		return err
 	}
 	repo, err := sqlite.Open(*database)
 	if err != nil {
@@ -397,13 +513,13 @@ func compileCommand(args []string, output io.Writer) error {
 	flags := flag.NewFlagSet("static compile", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	database := flags.String("db", "", "SQLite database path")
-	mediaRoot := flags.String("media-root", ".felicia/media", "private local media root")
+	mediaRoot := flags.String("media-root", "", "private local media root")
 	out := flags.String("out", "site", "static output directory")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
-	if *database == "" {
-		return errors.New("--db is required")
+	if err := resolveWorkspaceDefaults(database, mediaRoot); err != nil {
+		return err
 	}
 	repo, err := sqlite.Open(*database)
 	if err != nil {
@@ -431,4 +547,23 @@ func writeJSON(output io.Writer, value any) error {
 	encoder := json.NewEncoder(output)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(value)
+}
+
+func resolveWorkspaceDefaults(database, mediaRoot *string) error {
+	if (database != nil && *database == "") || (mediaRoot != nil && *mediaRoot == "") {
+		ws, err := workspace.Resolve("")
+		if err != nil {
+			return fmt.Errorf("resolve workspace: %w", err)
+		}
+		if err := ws.EnsureDirs(); err != nil {
+			return err
+		}
+		if database != nil && *database == "" {
+			*database = ws.Database
+		}
+		if mediaRoot != nil && *mediaRoot == "" {
+			*mediaRoot = ws.MediaRoot
+		}
+	}
+	return nil
 }
