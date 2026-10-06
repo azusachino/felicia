@@ -23,9 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **CLI Modularization**:
+  - Split `apps/felicia-cli/cmd/felicia/main.go` into dedicated single-responsibility command modules (`journey.go`, `package.go`, `import.go`, `static.go`, `helpers.go`, and minimal `main.go`).
 - **CLI Framework Migration to `spf13/cobra`**:
   - Replaced standard library `flag` in `apps/felicia-cli` with `github.com/spf13/cobra` and `pflag`.
   - Structured command hierarchy around `felicia-cli` with `journey`, `package`, `import`, and `static` subcommands, preserving POSIX flag compatibility, help generation, and JSON/JSONL output contracts.
+- **Desktop Studio Featured in Core Documentation**:
+  - Restructured `README.md` to highlight **Felicia Desktop Studio** as the primary human visual authoring environment alongside `felicia-cli`, detailing the asymmetric workflow, interactive MapLibre track inspection, stop candidate triage, memento essay authoring, and in-app publication preview.
 - **Decoupled `felicia-cli` from Makefile**:
   - `felicia-cli` is positioned as a standalone CLI tool (`go install ./apps/felicia-cli/cmd/felicia` or `go build`).
   - Removed internal `cli-build` make target and makefile prerequisites; `make site-build` now executes via `go run`.
