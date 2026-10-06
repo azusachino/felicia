@@ -26,12 +26,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Decoupled `felicia-cli` from Makefile**:
   - `felicia-cli` is positioned as a standalone CLI tool (`go install ./apps/felicia-cli/cmd/felicia` or `go build`).
   - Removed internal `cli-build` make target and makefile prerequisites; `make site-build` now executes via `go run`.
+- **Server Default Workspace Alignment**:
+  - `apps/felicia-server` now defaults its database and media root paths to `workspace.Resolve("")`, guaranteeing that headless server authoring opens the exact same SQLite store as CLI and Desktop Studio.
 - **Documentation & Agent Boundary**:
   - Updated `README.md`, `AGENTS.md`, and `docs/publish.md` to establish `felicia-cli` as the sole intake tool for agents.
   - Marked legacy manual YAML and Postgres references in `docs/research/ingestion-workflows.md` as superseded by SQLite and the trip folder intake contract.
 
 ### Removed
 
-- **Legacy Python wrappers and Makefile targets**:
-  - Removed `make journey-local` target from `Makefile`.
-  - Removed legacy lower-level Python wrapper instructions from `docs/publish.md`, eliminating ambiguous intake paths.
+- **Dead Provider Spike**:
+  - Removed unused `apps/felicia-providers/manualyaml` package.
+- **Zombie PostgreSQL Scaffolding**:
+  - Purged dead PostgreSQL provisioning and database lifecycle code from `scripts/test_journey_workflow.py`.
+- **Legacy Python Wrappers and Redundant Targets**:
+  - Removed `scripts/local_journey_author.py` (legacy terminal authoring prompt wizard superseded by Desktop Studio).
+  - Removed `make journey-local` target from `Makefile` and obsolete wrapper documentation from `docs/publish.md`.
+  - Pruned redundant `make dev-sqlite` and `make test-sqlite` aliases from `Makefile`, and corrected `make db-up` descriptions.

@@ -16,7 +16,7 @@ COMPOSE ?= $(shell \
 	elif command -v docker >/dev/null 2>&1; then echo docker compose; \
 	else echo ''; fi)
 
-.PHONY: help fmt fmt-check fmt-docs fmt-docs-check vet lint test test-api test-features layout-check test-sqlite check check-ci build desktop-assets desktop-build desktop-package desktop experiment-intake validate deps-check tidy db-up db-down seed admin dev dev-sqlite test-workflow test-admin-e2e mock-up mock-down browser-mock web-install web-check web-build admin-check admin-build site-build site-verify pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down e2e e2e-install desktop-e2e-build test-reader-fonts-e2e
+.PHONY: help fmt fmt-check fmt-docs fmt-docs-check vet lint test test-api test-features layout-check check check-ci build desktop-assets desktop-build desktop-package desktop experiment-intake validate deps-check tidy db-up db-down seed admin dev test-workflow test-admin-e2e mock-up mock-down browser-mock web-install web-check web-build admin-check admin-build site-build site-verify pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down e2e e2e-install desktop-e2e-build test-reader-fonts-e2e
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -105,18 +105,15 @@ deps-check: ## Check lockfile consistency and report available frontend upgrades
 tidy: ## Tidy go modules
 	$(GO) mod tidy
 
-db-up: ## Start local Postgres+PostGIS and Valkey (ops/compose.yaml)
+db-up: ## Start local cache service (Valkey, ops/compose.yaml)
 	@test -n "$(COMPOSE)" || (echo "No container compose command found (install podman-compose or Docker Compose)" >&2; exit 1)
 	$(COMPOSE) -f ops/compose.yaml up -d
 
-db-down: ## Stop the local dev containers (keeps the pgdata volume)
+db-down: ## Stop local dev containers (ops/compose.yaml)
 	@test -n "$(COMPOSE)" || (echo "No container compose command found (install podman-compose or Docker Compose)" >&2; exit 1)
 	$(COMPOSE) -f ops/compose.yaml down
 
 dev: ## Start the local API with SQLite
-	$(MAKE) dev-sqlite
-
-dev-sqlite: ## Start the API locally with the default SQLite provider
 	$(UV_RUN) run python scripts/dev.py --driver sqlite
 
 mock-up: ## Start the mock Dawarich+Immich upstream in the background (:8099)
@@ -136,9 +133,6 @@ test-workflow: ## Run full journey workflow against disposable SQLite
 
 test-admin-e2e: ## Run the admin GUI closed-loop E2E pass (disposable server + Bun dev + Playwright/chromium) — ADMIN-01.8, local-only (not part of validate)
 	$(UV_RUN) run python scripts/e2e_admin_gui.py
-
-test-sqlite: ## Run all tests with SQLite as the only enabled provider
-	$(MAKE) test
 
 test-features: ## Run offline Python feature-contract tests
 	$(UV_RUN) run --group dev ruff check --config pyproject.toml scripts tests
