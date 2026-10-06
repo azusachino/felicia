@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	modsqlite "modernc.org/sqlite"
+	sqlite3 "modernc.org/sqlite/lib"
 
 	"github.com/azusachino/felicia/apps/felicia-core/domain"
 )
@@ -113,6 +115,171 @@ func sourceValues(memento *domain.Memento) (any, any, any) {
 		return memento.SourceIdentity.System, memento.SourceIdentity.ExternalID, nullableString(ref)
 	}
 	return nil, nil, nullableString(memento.SourceRef)
+}
+
+// CreateMementoWithNextSequence inserts a new draft memento and allocates
+// its display position atomically: the row and its journey-local seq
+// (COALESCE(MAX(seq), -1) + 1) are written by a single INSERT, so concurrent
+// creators across processes cannot share a position (docs/contracts/
+// automatic-sequence-allocation.md). The caller-chosen ID makes a retry
+// idempotent: when the ID already exists and the stored row still matches
+// the supplied authored creation values, the stored row is returned without
+// an insert, an update, a reallocation or a revision bump. A different
+// journey, or stored values that no longer match (including intervening
+// edits), is domain.ErrWriteConflict and never overwrites the stored row.
+// The supplied Seq is ignored — positions are server-allocated on this
+// path; explicit authored ordering stays on the existing patch/upsert path.
+func (r *Repository) CreateMementoWithNextSequence(ctx context.Context, memento *domain.Memento) (*domain.Memento, error) {
+	if memento == nil {
+		return nil, errors.New("create memento: memento is required")
+	}
+	if memento.ID == uuid.Nil {
+		return nil, errors.New("create memento: id is required")
+	}
+	if memento.JourneyID == uuid.Nil {
+		return nil, errors.New("create memento: journey id is required")
+	}
+	if memento.Kind == "" {
+		return nil, fmt.Errorf("create memento %s: kind is required", memento.ID)
+	}
+	// The new-draft form only ever creates drafts; a non-draft lifecycle
+	// state must go through the edit path, never through creation.
+	if memento.State != "" && memento.State != domain.MementoDraft {
+		return nil, fmt.Errorf("create memento %s: state %q is not a draft", memento.ID, memento.State)
+	}
+	if memento.SourceIdentity != nil && !memento.SourceIdentity.Valid() {
+		return nil, fmt.Errorf("create memento %s: invalid source identity", memento.ID)
+	}
+	values, err := mementoCreateValues(memento)
+	if err != nil {
+		return nil, fmt.Errorf("create memento %s: %w", memento.ID, err)
+	}
+	// One statement: the MAX(seq) subquery, the row insert and the returned
+	// persisted row all run inside the same write transaction. The incoming
+	// Seq is deliberately not part of the insert.
+	query := `INSERT INTO tb_mementos(` + mementoColumns + `) SELECT ?, ?, ?, COALESCE(MAX(seq), -1) + 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM tb_mementos WHERE journey_id = ? RETURNING ` + mementoColumns
+	args := make([]any, 0, len(values)+1)
+	args = append(args, values[:3]...)               // id, journey_id, kind
+	args = append(args, values[4:]...)               // remaining columns in stored order
+	args = append(args, idString(memento.JourneyID)) // aggregate filter
+	row := r.db.QueryRowContext(ctx, query, args...)
+	created, err := r.scanMemento(row)
+	if err == nil {
+		domain.LogMementoStateChange(ctx, nil, created, "", created.State)
+		return created, nil
+	}
+	// Recover only a genuine identity duplicate (primary-key or unique
+	// constraint): the ID already exists, so decide between a matching retry
+	// and a conflict. Any other failure (IO, lock, FK) propagates unchanged.
+	if !isSQLiteIdentityDuplicate(err) {
+		return nil, fmt.Errorf("create memento %s: %w", memento.ID, err)
+	}
+	stored, fetchErr := r.GetMemento(ctx, memento.ID)
+	if errors.Is(fetchErr, sql.ErrNoRows) {
+		// The duplicate is on another identity (e.g. source identity), not ours.
+		return nil, fmt.Errorf("create memento %s: %w", memento.ID, domain.ErrWriteConflict)
+	}
+	if fetchErr != nil {
+		return nil, fmt.Errorf("create memento %s: fetch stored row: %w", memento.ID, fetchErr)
+	}
+	match, err := mementoStoredRowMatches(stored, values)
+	if err != nil {
+		return nil, fmt.Errorf("create memento %s: compare stored row: %w", memento.ID, err)
+	}
+	if !match {
+		return nil, fmt.Errorf("create memento %s: %w", memento.ID, domain.ErrWriteConflict)
+	}
+	return stored, nil
+}
+
+// mementoCreateValues encodes the authored creation values of a memento in
+// stored form: id, journey_id, kind, seq, the remaining authored columns,
+// then revision 1 and the created/updated timestamps. Indices 20..22 are
+// server-assigned defaults and are excluded from retry comparison; index 3
+// (seq) is likewise excluded by the create statement and comparison.
+func mementoCreateValues(memento *domain.Memento) ([]any, error) {
+	geom, err := encodeGeometry(memento.Geom)
+	if err != nil {
+		return nil, err
+	}
+	fields, err := stringsJSON(memento.AuthoredFields)
+	if err != nil {
+		return nil, err
+	}
+	data := string(memento.KindData)
+	if data == "" {
+		data = "{}"
+	}
+	system, externalID, sourceRef := sourceValues(memento)
+	state := string(memento.State)
+	if state == "" {
+		state = string(domain.MementoDraft)
+	}
+	return []any{idString(memento.ID), idString(memento.JourneyID), memento.Kind, memento.Seq, nullableTime(memento.OccurredAt), nullableStringValue(memento.OccurredTZ), geom, nullableStringValue(memento.Title), nullableStringValue(memento.Place), nullableString(memento.Vendor), nullableString(memento.Essay), nullableInt(memento.PriceAmount), nullableString(memento.PriceCurrency), data, system, externalID, sourceRef, fields, nullableTimePtr(memento.OrphanedAt), state, 1, timeOrNow(memento.CreatedAt), timeOrNow(memento.UpdatedAt)}, nil
+}
+
+// mementoStoredRowMatches reports whether the stored row still matches the
+// normalized authored creation values, ignoring server-assigned fields
+// (seq, revision, created_at, updated_at).
+func mementoStoredRowMatches(stored *domain.Memento, values []any) (bool, error) {
+	storedValues, err := mementoCreateValues(stored)
+	if err != nil {
+		return false, err
+	}
+	for i := range values {
+		if i == 3 || i >= 20 { // seq, revision and timestamps are server-assigned
+			continue
+		}
+		if !mementoValueMatches(values[i], storedValues[i]) {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+// mementoValueMatches compares two stored-form values. Both sides run
+// through the same encoding, so driver types are flattened before compare.
+func mementoValueMatches(incoming, stored any) bool {
+	incomingText, incomingOK := mementoValueText(incoming)
+	storedText, storedOK := mementoValueText(stored)
+	if incomingOK != storedOK {
+		return false
+	}
+	return !incomingOK || incomingText == storedText
+}
+
+// mementoValueText renders one stored-form value as (text, present).
+func mementoValueText(value any) (string, bool) {
+	switch v := value.(type) {
+	case nil:
+		return "", false
+	case string:
+		return v, true
+	case int:
+		return fmt.Sprint(v), true
+	case int64:
+		return fmt.Sprint(v), true
+	default:
+		text, err := marshalJSON(value)
+		if err != nil {
+			return fmt.Sprint(value), true
+		}
+		return text, true
+	}
+}
+
+// isSQLiteIdentityDuplicate reports whether the error is a SQLite UNIQUE
+// constraint failure (primary key or unique index), as opposed to IO,
+// locking, cancellation, NOT NULL or foreign-key failures. A rowid
+// constraint (SQLITE_CONSTRAINT_ROWID) cannot fire here: the identity
+// column is a TEXT primary key, not an integer alias.
+func isSQLiteIdentityDuplicate(err error) bool {
+	var sqliteErr *modsqlite.Error
+	if !errors.As(err, &sqliteErr) {
+		return false
+	}
+	code := sqliteErr.Code()
+	return code == sqlite3.SQLITE_CONSTRAINT_UNIQUE || code == sqlite3.SQLITE_CONSTRAINT_PRIMARYKEY
 }
 
 // UpsertMemento inserts or updates a memento.
