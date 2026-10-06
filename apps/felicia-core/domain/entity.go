@@ -230,6 +230,12 @@ type Repository interface {
 	GetPhoto(ctx context.Context, id uuid.UUID) (*MementoPhoto, error)
 	ListPhotosByMemento(ctx context.Context, mementoID uuid.UUID) ([]*MementoPhoto, error)
 	UpsertPhoto(ctx context.Context, photo *MementoPhoto) error
+	// CreatePhotoWithNextSequence inserts a new photo row and assigns the
+	// next sequence position for its memento in one atomic persistence
+	// operation, returning the assigned position. The supplied Seq is
+	// ignored. Creation never updates an existing row and must not skip:
+	// a duplicate identity or duplicate (memento, content hash) fails.
+	CreatePhotoWithNextSequence(ctx context.Context, photo *MementoPhoto) (int, error)
 }
 
 // TransactionalRepository runs a callback against one database transaction.

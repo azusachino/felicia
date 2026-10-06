@@ -889,8 +889,9 @@ dirty Return, held-POST navigation and a 503 retry producing exactly one draft.
 The initial review was corrected to cite the desktop handler, not the web server,
 and to claim only new controls, not every control in changed views.
 
-The new-memento next-sequence value remains a load-time snapshot; concurrent
-adds are not verified. GPS/source retention, date-range/collision behavior in
+At this checkpoint, the new-memento next-sequence value remained a load-time
+snapshot and concurrent adds were unverified; the automatic-allocation follow-up
+below supersedes that source/headless limitation. GPS/source retention, date-range/collision behavior in
 metadata editing and date-field physical height have source evidence or existing
 creation coverage, not new dedicated edit-browser acceptance. The all-control
 migration remains open, and this bounded verification does not complete native
@@ -918,7 +919,49 @@ receipts, not reviewer-run reproductions.
 The headless transport embeds the preserved local admin asset; this checkpoint
 is not a newly rebuilt frontend or native-window acceptance. GPS and authored-mask
 retention are handler/SQLite evidence; the browser API cannot seed GPS geometry.
-Native S1/S2 acceptance and concurrent sequence allocation remain open.
+Native S1/S2 acceptance remains open. Concurrent allocation was still open at
+this metadata-only checkpoint; the follow-up below records its separate evidence.
+
+### Automatic sequence allocation follow-up
+
+The remaining #161 concurrency criterion now has a locally verified source and
+headless implementation on `feat/desktop-followup-auto-sequences`, based on
+`c2181ff`. The owner selected distinct automatic positions, not stable tied
+ordering. The [automatic allocation contract](../contracts/automatic-sequence-allocation.md)
+records the decision, creation boundary, reproductions and verification limits.
+
+Photo uploads allocate through one SQLite insert rather than a service mutex and
+read-max/write pair. Real independent connections and helper processes verify
+exact next positions, retained identities and original bytes; conservative
+failed-write compensation remains intact. Manual new-memento creation has a
+distinct endpoint on both desktop and server. The form sends its stable ID but no
+client sequence; matching retries return the stored row without reallocating or
+advancing its revision. Explicit upserts and existing tied ordering are unchanged.
+
+The shared runtime derives manual ownership rather than trusting a client mask.
+Both-host HTTP/SQLite regressions reproduce and prevent ingest overwriting newly
+authored values. Request tests reject client ordering/revision/mask fields,
+including nulls, malformed kind data and blank titles without creating rows.
+
+Final lead checks passed affected packages with the race detector, 40 repeated
+photo/memento provider cases, `make check`, `make validate`, 115 admin unit tests
+and 14 Chromium/WebKit cases. Browser evidence includes two forms opened above
+the same position-4 seed obtaining `{5,6}`, and a real committed-but-lost response
+retried with the same ID/body, one stored row and an unchanged revision. The
+existing new-form retry test changed only its interception path to the dedicated
+create endpoint; its keyboard, pending-navigation and failure assertions remain.
+
+Fresh independent source/log review accepted the corrected photo, provider and
+integration slices. Command exits and hashes are lead/writer receipts, not
+reviewer re-executions. Browser tests use a newly built admin bundle embedded via
+a temporary Go overlay. The original owner index hash was preserved; physical
+asset-tree stability was checked across the lead's final overlay build and
+validation, not against an invented pre-task whole-tree baseline.
+Normal/native embedded delivery and native interaction are not accepted by this
+headless evidence. The owner approved sequence source-only commit, push and
+draft-PR publication, not normal/native delivery.
+Native S1/S2 acceptance, importer/transit-leg ordering, curation lost updates and
+overall issue closure remain open.
 
 ### All-control migration gate checkpoint
 

@@ -12,7 +12,6 @@ import (
 	_ "image/jpeg" // Register JPEG decoding for image.DecodeConfig.
 	_ "image/png"  // Register PNG decoding for image.DecodeConfig.
 	"path"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -61,53 +60,41 @@ func ImageFormat(data []byte) (string, error) {
 type photoStore interface {
 	GetMemento(context.Context, uuid.UUID) (*domain.Memento, error)
 	GetPhoto(context.Context, uuid.UUID) (*domain.MementoPhoto, error)
-	ListPhotosByMemento(context.Context, uuid.UUID) ([]*domain.MementoPhoto, error)
-	UpsertPhoto(context.Context, *domain.MementoPhoto) error
+	CreatePhotoWithNextSequence(context.Context, *domain.MementoPhoto) (int, error)
 }
 
 // Service creates photo identities and stores their private original bytes.
 type Service struct {
 	repo photoStore
 	blob ports.BlobStore
-	mu   sync.Mutex
 }
 
 // New binds photo creation to the workspace's metadata and private blob stores.
 func New(repo photoStore, blob ports.BlobStore) *Service { return &Service{repo: repo, blob: blob} }
 
 // Upload stores bytes under a digest-derived key. It accepts no filenames or
-// source paths. Sequence assignment is serialized within this service instance.
+// source paths. Sequence assignment is one atomic persistence operation, so
+// distinct service instances and processes always receive distinct positions.
 func (s *Service) Upload(ctx context.Context, mementoID uuid.UUID, data []byte) (*domain.MementoPhoto, error) {
 	format, err := ImageFormat(data)
 	if err != nil {
 		return nil, err
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	if _, err := s.repo.GetMemento(ctx, mementoID); err != nil {
 		return nil, fmt.Errorf("get memento: %w", err)
-	}
-	existing, err := s.repo.ListPhotosByMemento(ctx, mementoID)
-	if err != nil {
-		return nil, fmt.Errorf("list photos: %w", err)
-	}
-	seq := 0
-	for _, photo := range existing {
-		if photo.Seq >= seq {
-			seq = photo.Seq + 1
-		}
 	}
 	digest := importer.MediaDigest(data)
 	extension := map[string]string{"jpeg": ".jpg", "png": ".png", "webp": ".webp"}[format]
 	photo := &domain.MementoPhoto{ID: uuid.Must(uuid.NewV7()), MementoID: mementoID,
-		ContentHash: "sha256:" + digest, Seq: seq, CreatedAt: time.Now().UTC()}
+		ContentHash: "sha256:" + digest, CreatedAt: time.Now().UTC()}
 	// A per-photo key makes compensation safe: never delete an original shared
 	// with an existing photo or another process uploading identical bytes.
 	photo.ObjectKey = path.Join("media", digest, photo.ID.String(), "original"+extension)
 	if err := s.blob.Put(ctx, photo.ObjectKey, data); err != nil {
 		return nil, fmt.Errorf("store original: %w", err)
 	}
-	if err := s.repo.UpsertPhoto(ctx, photo); err != nil {
+	assigned, err := s.repo.CreatePhotoWithNextSequence(ctx, photo)
+	if err != nil {
 		// Cancellation can race a committed write. Only compensate when the
 		// repository positively confirms that this new identity is absent.
 		cleanupCtx := context.WithoutCancel(ctx)
@@ -118,5 +105,6 @@ func (s *Service) Upload(ctx context.Context, mementoID uuid.UUID, data []byte) 
 		}
 		return nil, fmt.Errorf("save photo: %w", err)
 	}
+	photo.Seq = assigned
 	return photo, nil
 }

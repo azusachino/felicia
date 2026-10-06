@@ -199,7 +199,7 @@ test("new memento keyboard choice, dirty return, pending navigation and retry re
     release = resolve
   })
   const ids: string[] = []
-  await page.route("**/api/admin/mementos", async (route) => {
+  await page.route("**/api/admin/mementos/create", async (route) => {
     ids.push(route.request().postDataJSON().id)
     if (ids.length === 1) {
       await held
