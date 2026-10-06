@@ -11,6 +11,8 @@ import (
 	"github.com/knadh/koanf/providers/confmap"
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
+
+	"github.com/azusachino/felicia/apps/felicia-runtime/workspace"
 )
 
 const (
@@ -185,17 +187,25 @@ func (c Config) Validate() error {
 }
 
 func defaults() map[string]any {
+	dbPath := defaultDatabasePath
+	mediaRoot := defaultMediaRoot
+	siteOutDir := defaultSiteOutDir
+	if ws, err := workspace.Resolve(""); err == nil {
+		dbPath = ws.Database
+		mediaRoot = ws.MediaRoot
+		siteOutDir = ws.PublicDir
+	}
 	return map[string]any{
-		"database": map[string]any{"driver": defaultDatabaseDriver, "path": defaultDatabasePath},
+		"database": map[string]any{"driver": defaultDatabaseDriver, "path": dbPath},
 		"server":   map[string]any{"host": defaultHost, "port": defaultPort},
 		"cache":    map[string]any{"addr": defaultCacheAddr},
 		"ingest": map[string]any{
 			"rdp_epsilon":              defaultRDPEpsilon,
 			"transit_segment_length_m": defaultTransitSegmentLenM,
 		},
-		"media": map[string]any{"root": defaultMediaRoot},
+		"media": map[string]any{"root": mediaRoot},
 		"site": map[string]any{
-			"out_dir":      defaultSiteOutDir,
+			"out_dir":      siteOutDir,
 			"preview_port": defaultSitePreviewPort,
 			"spa_dist":     defaultSiteSpaDist,
 		},

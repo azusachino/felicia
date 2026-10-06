@@ -12,7 +12,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 try:
-    from .local_journey_author import interactive_author
     from .local_journey_common import (
         CLI,
         DEFAULT_WORKSPACE_ROOT,
@@ -28,7 +27,6 @@ try:
     )
     from .local_journey_package import build_package
 except ImportError:
-    from local_journey_author import interactive_author
     from local_journey_common import (
         CLI,
         DEFAULT_WORKSPACE_ROOT,
@@ -271,7 +269,6 @@ def main() -> None:
             raise SystemExit(f"{args.command} requires --gpx and --photos")
         preprocess(args)
         if args.command == "run":
-            interactive_author(args)
             preview(args)
     elif args.workspace is None:
         raise SystemExit(

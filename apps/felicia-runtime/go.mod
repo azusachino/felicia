@@ -8,6 +8,7 @@ require (
 	github.com/paulmach/orb v0.13.0
 	github.com/ringsaturn/tzf/v2 v2.1.2
 	gopkg.in/yaml.v3 v3.0.1
+	github.com/azusachino/felicia/apps/felicia-providers v0.1.0
 )
 
 require (
@@ -16,3 +17,5 @@ require (
 )
 
 replace github.com/azusachino/felicia/apps/felicia-core => ../felicia-core
+
+replace github.com/azusachino/felicia/apps/felicia-providers => ../felicia-providers

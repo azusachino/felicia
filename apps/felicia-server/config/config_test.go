@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/azusachino/felicia/apps/felicia-runtime/workspace"
 )
 
 func TestLoadAppliesTOMLThenEnvironment(t *testing.T) {
@@ -50,7 +52,13 @@ func TestLoadUsesSQLiteDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if cfg.DatabaseDriver != defaultDatabaseDriver || cfg.DatabasePath != defaultDatabasePath || cfg.Host != defaultHost || cfg.Port != defaultPort || cfg.CacheAddr != defaultCacheAddr || cfg.RDPEpsilon != defaultRDPEpsilon || cfg.TransitSegmentLenM != defaultTransitSegmentLenM {
+	expectedDB := defaultDatabasePath
+	expectedMedia := defaultMediaRoot
+	if ws, err := workspace.Resolve(""); err == nil {
+		expectedDB = ws.Database
+		expectedMedia = ws.MediaRoot
+	}
+	if cfg.DatabaseDriver != defaultDatabaseDriver || cfg.DatabasePath != expectedDB || cfg.MediaRoot != expectedMedia || cfg.Host != defaultHost || cfg.Port != defaultPort || cfg.CacheAddr != defaultCacheAddr || cfg.RDPEpsilon != defaultRDPEpsilon || cfg.TransitSegmentLenM != defaultTransitSegmentLenM {
 		t.Errorf("unexpected defaults: %+v", cfg)
 	}
 

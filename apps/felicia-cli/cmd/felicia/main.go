@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/spf13/cobra"
 
 	"github.com/azusachino/felicia/apps/felicia-core/domain"
 	journeypackage "github.com/azusachino/felicia/apps/felicia-core/journeypackage"
@@ -23,6 +23,7 @@ import (
 	publication "github.com/azusachino/felicia/apps/felicia-publication"
 	"github.com/azusachino/felicia/apps/felicia-runtime/importer"
 	"github.com/azusachino/felicia/apps/felicia-runtime/intake"
+	"github.com/azusachino/felicia/apps/felicia-runtime/workspace"
 )
 
 func main() {
@@ -33,196 +34,547 @@ func main() {
 }
 
 func execute(args []string, output io.Writer) error {
-	if len(args) == 0 {
-		return errors.New("usage: felicia-cli package|import|journey|static")
+	cmd := newRootCmd(output)
+	cmd.SetArgs(args)
+	return cmd.Execute()
+}
+
+func newRootCmd(output io.Writer) *cobra.Command {
+	rootCmd := &cobra.Command{
+		Use:           "felicia-cli",
+		Short:         "Felicia CLI for travel journal intake, publication, and package management",
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return errors.New("usage: felicia-cli package|import|journey|static")
+		},
 	}
-	switch args[0] {
-	case "package":
-		return packageCommand(args[1:], output)
-	case "import":
-		return importCommand(args[1:], output)
-	case "journey":
-		return journeyCommand(args[1:], output)
-	case "static":
-		if len(args) < 2 || args[1] != "compile" {
+	rootCmd.SetOut(output)
+	rootCmd.SetErr(output)
+
+	rootCmd.AddCommand(newPackageCmd())
+	rootCmd.AddCommand(newImportCmd())
+	rootCmd.AddCommand(newJourneyCmd())
+	rootCmd.AddCommand(newStaticCmd())
+
+	return rootCmd
+}
+
+func newPackageCmd() *cobra.Command {
+	packageCmd := &cobra.Command{
+		Use:   "package",
+		Short: "Validate and inspect journey packages",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return errors.New("usage: felicia-cli package validate <journey.zip>")
+		},
+	}
+
+	validateCmd := &cobra.Command{
+		Use:   "validate <journey.zip>",
+		Short: "Validate a journey package archive and its manifest",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			pkg, err := journeypackage.Read(args[0])
+			if err != nil {
+				return err
+			}
+			document, err := importer.DecodePackage(pkg)
+			if err != nil {
+				return fmt.Errorf("validate package contents: %w", err)
+			}
+			registry, err := importer.DefaultRegistry()
+			if err != nil {
+				return fmt.Errorf("load kind registry: %w", err)
+			}
+			if err := importer.ValidatePackageDocument(document, registry); err != nil {
+				return fmt.Errorf("validate package contents: %w", err)
+			}
+			return writeJSON(cmd.OutOrStdout(), map[string]any{
+				"package_id":     pkg.Manifest.PackageID,
+				"schema_version": pkg.Manifest.SchemaVersion,
+				"files":          len(pkg.Files),
+				"journeys":       1,
+				"candidates":     len(document.Stops),
+				"mementos":       len(document.Mementos),
+				"photos":         len(document.Photos),
+			})
+		},
+	}
+
+	packageCmd.AddCommand(validateCmd)
+	return packageCmd
+}
+
+func newImportCmd() *cobra.Command {
+	var (
+		database  string
+		mediaRoot string
+		apply     bool
+	)
+
+	importCmd := &cobra.Command{
+		Use:   "import [--db <path>] [--media-root <path>] [--apply] <journey.zip>",
+		Short: "Import a journey package archive into SQLite and local media store",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			pkg, err := journeypackage.Read(args[0])
+			if err != nil {
+				return err
+			}
+			document, err := importer.DecodePackage(pkg)
+			if err != nil {
+				return err
+			}
+			registry, err := importer.DefaultRegistry()
+			if err != nil {
+				return err
+			}
+			if err := importer.ValidatePackageDocument(document, registry); err != nil {
+				return err
+			}
+			if !apply {
+				return writeJSON(cmd.OutOrStdout(), map[string]any{
+					"mode":       "dry-run",
+					"package_id": pkg.Manifest.PackageID,
+					"journeys":   1,
+					"candidates": len(document.Stops),
+					"mementos":   len(document.Mementos),
+					"photos":     len(document.Photos),
+				})
+			}
+			if err := resolveWorkspaceDefaults(&database, &mediaRoot); err != nil {
+				return err
+			}
+			repo, err := sqlite.Open(database)
+			if err != nil {
+				return err
+			}
+			defer func() { _ = repo.Close() }()
+
+			if err := installPackageMedia(pkg, mediaRoot); err != nil {
+				return err
+			}
+			report, err := importer.ApplyPackage(context.Background(), document, repo)
+			if err != nil {
+				return err
+			}
+			return writeJSON(cmd.OutOrStdout(), map[string]any{
+				"mode":                 "apply",
+				"package_id":           pkg.Manifest.PackageID,
+				"journeys":             report.Journeys,
+				"candidates":           report.Candidates,
+				"mementos":             report.Mementos,
+				"photos":               report.Photos,
+				"authorship_conflicts": report.Conflicts,
+			})
+		},
+	}
+
+	importCmd.Flags().StringVar(&database, "db", "", "SQLite database path")
+	importCmd.Flags().StringVar(&mediaRoot, "media-root", "", "private local media root")
+	importCmd.Flags().BoolVar(&apply, "apply", false, "write the package to SQLite and copy media")
+
+	return importCmd
+}
+
+func newJourneyCmd() *cobra.Command {
+	journeyCmd := &cobra.Command{
+		Use:   "journey",
+		Short: "Manage journey intake, planning, review, and authoring",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return errors.New("usage: felicia-cli journey ingest|plan|apply|review|delete")
+		},
+	}
+
+	journeyCmd.AddCommand(newJourneyIngestCmd())
+	journeyCmd.AddCommand(newJourneyPlanCmd())
+	journeyCmd.AddCommand(newJourneyApplyCmd())
+	journeyCmd.AddCommand(newJourneyReviewCmd())
+	journeyCmd.AddCommand(newJourneyDeleteCmd())
+
+	return journeyCmd
+}
+
+func newJourneyIngestCmd() *cobra.Command {
+	var (
+		dir       string
+		wsPath    string
+		database  string
+		mediaRoot string
+		slug      string
+		title     string
+		place     string
+		from      string
+		to        string
+	)
+
+	cmd := &cobra.Command{
+		Use:   "ingest [--dir <path>] [options] [<path>]",
+		Short: "Single-step trip folder ingestion and draft staging",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			targetDir := dir
+			if targetDir == "" && len(args) > 0 {
+				targetDir = args[0]
+			}
+			if targetDir == "" {
+				return errors.New("usage: felicia-cli journey ingest [--dir] <path> [options]")
+			}
+
+			ws, err := workspace.Resolve(wsPath)
+			if err != nil {
+				return fmt.Errorf("resolve workspace: %w", err)
+			}
+			if err := ws.EnsureDirs(); err != nil {
+				return err
+			}
+			if database == "" {
+				database = ws.Database
+			}
+			if mediaRoot == "" {
+				mediaRoot = ws.MediaRoot
+			}
+			if err := os.MkdirAll(filepath.Dir(database), 0o755); err != nil {
+				return err
+			}
+			if err := os.MkdirAll(mediaRoot, 0o755); err != nil {
+				return err
+			}
+
+			repo, err := sqlite.Open(database)
+			if err != nil {
+				return err
+			}
+			defer func() { _ = repo.Close() }()
+
+			startTime, err := parseOptionalTime(from)
+			if err != nil {
+				return fmt.Errorf("--from: %w", err)
+			}
+			endTime, err := parseOptionalTime(to)
+			if err != nil {
+				return fmt.Errorf("--to: %w", err)
+			}
+
+			cfg := TripFolderConfig{
+				Dir:           targetDir,
+				Slug:          slug,
+				Title:         title,
+				Place:         place,
+				WorkspaceRoot: ws.Root,
+				Database:      database,
+				MediaRoot:     mediaRoot,
+				From:          startTime,
+				To:            endTime,
+			}
+
+			report, err := IngestTripFolder(context.Background(), cfg, repo, mediaRoot)
+			if err != nil {
+				return err
+			}
+
+			conflicts := report.Conflicts
+			if conflicts == nil {
+				conflicts = []string{}
+			}
+
+			return writeJSON(cmd.OutOrStdout(), map[string]any{
+				"mode":       "ingest",
+				"journey_id": report.JourneyID.String(),
+				"slug":       report.Slug,
+				"candidates": report.Candidates,
+				"mementos":   report.Mementos,
+				"photos":     report.Photos,
+				"conflicts":  conflicts,
+			})
+		},
+	}
+
+	cmd.Flags().StringVar(&dir, "dir", "", "path to trip folder")
+	cmd.Flags().StringVar(&wsPath, "workspace", "", "workspace root directory")
+	cmd.Flags().StringVar(&database, "db", "", "SQLite database path")
+	cmd.Flags().StringVar(&mediaRoot, "media-root", "", "private local media root")
+	cmd.Flags().StringVar(&slug, "slug", "", "journey slug")
+	cmd.Flags().StringVar(&title, "title", "", "journey title")
+	cmd.Flags().StringVar(&place, "place", "", "journey place")
+	cmd.Flags().StringVar(&from, "from", "", "RFC3339 range start")
+	cmd.Flags().StringVar(&to, "to", "", "RFC3339 range end")
+
+	return cmd
+}
+
+func newJourneyPlanCmd() *cobra.Command {
+	var (
+		journeyID string
+		gpxPath   string
+		timeline  string
+		photos    string
+		sidecar   string
+		from      string
+		to        string
+		format    string
+	)
+
+	cmd := &cobra.Command{
+		Use:   "plan --journey <uuid> [--gpx <path>] [--timeline <path>] [options]",
+		Short: "Plan journey stops and draft mementos from route or timeline sources",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			id, err := uuid.Parse(journeyID)
+			if err != nil {
+				return errors.New("--journey must be a valid UUID")
+			}
+			if gpxPath == "" && timeline == "" {
+				return errors.New("--gpx or --timeline is required")
+			}
+			start, err := parseOptionalTime(from)
+			if err != nil {
+				return fmt.Errorf("--from: %w", err)
+			}
+			end, err := parseOptionalTime(to)
+			if err != nil {
+				return fmt.Errorf("--to: %w", err)
+			}
+			var media domain.PhotoSource
+			if photos != "" {
+				media = local.NewPhotoSourceWithSidecar(photos, sidecar)
+			}
+			var routes domain.RouteSource
+			if gpxPath != "" {
+				routes = local.NewGPXSource(gpxPath)
+			}
+			var visits domain.VisitSource
+			if timeline != "" {
+				visits = local.NewTimelineSource(timeline)
+			}
+			fingerprint, err := sourceFingerprint(gpxPath, timeline)
+			if err != nil {
+				return err
+			}
+			plan, err := intake.NewService(nil, nil).Plan(context.Background(), intake.PlanRequest{
+				JourneyID:         id,
+				From:              start,
+				To:                end,
+				SourceFingerprint: fingerprint,
+				Sources:           intake.SourceSet{Routes: routes, Visits: visits, Media: media},
+			})
+			if err != nil {
+				return err
+			}
+			if format == "jsonl" {
+				return writePlanJSONL(cmd.OutOrStdout(), plan)
+			}
+			if format != "json" {
+				return errors.New("--format must be json or jsonl")
+			}
+			return writeJSON(cmd.OutOrStdout(), plan)
+		},
+	}
+
+	cmd.Flags().StringVar(&journeyID, "journey", "", "journey UUID")
+	cmd.Flags().StringVar(&gpxPath, "gpx", "", "local GPX path")
+	cmd.Flags().StringVar(&timeline, "timeline", "", "Google Timeline JSON export")
+	cmd.Flags().StringVar(&photos, "photos", "", "local media directory")
+	cmd.Flags().StringVar(&sidecar, "sidecar", "", "local photo JSONL sidecar")
+	cmd.Flags().StringVar(&from, "from", "", "RFC3339 range start")
+	cmd.Flags().StringVar(&to, "to", "", "RFC3339 range end")
+	cmd.Flags().StringVar(&format, "format", "json", "json or jsonl")
+
+	return cmd
+}
+
+func newJourneyApplyCmd() *cobra.Command {
+	var database string
+
+	cmd := &cobra.Command{
+		Use:   "apply [--db <path>] <plan.json>",
+		Short: "Apply a drafted journey plan to SQLite",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := resolveWorkspaceDefaults(&database, nil); err != nil {
+				return err
+			}
+			data, err := os.ReadFile(args[0])
+			if err != nil {
+				return err
+			}
+			var plan intake.DraftPlan
+			if err := json.Unmarshal(data, &plan); err != nil {
+				return fmt.Errorf("decode plan: %w", err)
+			}
+			repo, err := sqlite.Open(database)
+			if err != nil {
+				return err
+			}
+			defer func() { _ = repo.Close() }()
+			if err := intake.NewService(repo, repo).Apply(context.Background(), plan); err != nil {
+				return err
+			}
+			return writeJSON(cmd.OutOrStdout(), map[string]any{
+				"schema":     intake.PlanSchema,
+				"mode":       "apply",
+				"journey_id": plan.JourneyID,
+				"stops":      len(plan.Stops),
+			})
+		},
+	}
+
+	cmd.Flags().StringVar(&database, "db", "", "SQLite database path")
+	return cmd
+}
+
+func newJourneyReviewCmd() *cobra.Command {
+	var (
+		database    string
+		candidateID string
+		state       string
+		label       string
+		expected    int64
+	)
+
+	cmd := &cobra.Command{
+		Use:   "review",
+		Short: "Review and curate a stop candidate",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			id, err := uuid.Parse(candidateID)
+			if err != nil {
+				return errors.New("--candidate must be a valid UUID")
+			}
+			if state == "" {
+				return errors.New("--state is required")
+			}
+			if err := resolveWorkspaceDefaults(&database, nil); err != nil {
+				return err
+			}
+			repo, err := sqlite.Open(database)
+			if err != nil {
+				return err
+			}
+			defer func() { _ = repo.Close() }()
+			patch := &domain.StopReviewPatch{CandidateID: id, State: domain.CandidateState(state)}
+			if cmd.Flags().Changed("label") {
+				patch.Label = &label
+			}
+			if expected > 0 {
+				patch.ExpectedRevision = &expected
+			}
+			if err := intake.NewService(repo, repo).Review(context.Background(), patch); err != nil {
+				return err
+			}
+			candidate, err := repo.GetStopCandidate(context.Background(), id)
+			if err != nil {
+				return err
+			}
+			return writeJSON(cmd.OutOrStdout(), candidate)
+		},
+	}
+
+	cmd.Flags().StringVar(&database, "db", "", "SQLite database path")
+	cmd.Flags().StringVar(&candidateID, "candidate", "", "candidate UUID")
+	cmd.Flags().StringVar(&state, "state", "", "proposed, kept, ignored, or merged")
+	cmd.Flags().StringVar(&label, "label", "", "review label")
+	cmd.Flags().Int64Var(&expected, "expected-revision", 0, "expected candidate revision")
+
+	return cmd
+}
+
+func newJourneyDeleteCmd() *cobra.Command {
+	var (
+		database  string
+		journeyID string
+	)
+
+	cmd := &cobra.Command{
+		Use:   "delete [--db <path>] --journey <uuid>",
+		Short: "Delete a journey and its cascaded entities from SQLite",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if journeyID == "" {
+				return errors.New("usage: felicia-cli journey delete [--db <path>] --journey <uuid>")
+			}
+			if err := resolveWorkspaceDefaults(&database, nil); err != nil {
+				return err
+			}
+			id, err := uuid.Parse(journeyID)
+			if err != nil {
+				return fmt.Errorf("invalid journey UUID %q: %w", journeyID, err)
+			}
+			repo, err := sqlite.Open(database)
+			if err != nil {
+				return err
+			}
+			defer func() { _ = repo.Close() }()
+			if err := repo.DeleteJourney(context.Background(), id); err != nil {
+				return err
+			}
+			_, err = fmt.Fprintf(cmd.OutOrStdout(), "deleted journey %s\n", id)
+			return err
+		},
+	}
+
+	cmd.Flags().StringVar(&database, "db", "", "SQLite database path")
+	cmd.Flags().StringVar(&journeyID, "journey", "", "journey UUID")
+
+	return cmd
+}
+
+func newStaticCmd() *cobra.Command {
+	staticCmd := &cobra.Command{
+		Use:   "static",
+		Short: "Static site compilation",
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return errors.New("usage: felicia-cli static compile [options]")
-		}
-		return compileCommand(args[2:], output)
-	default:
-		return fmt.Errorf("unknown command %q", args[0])
+		},
 	}
-}
 
-func journeyCommand(args []string, output io.Writer) error {
-	if len(args) == 0 {
-		return errors.New("usage: felicia-cli journey plan|apply|review|delete")
-	}
-	switch args[0] {
-	case "plan":
-		return journeyPlanCommand(args[1:], output)
-	case "apply":
-		return journeyApplyCommand(args[1:], output)
-	case "review":
-		return journeyReviewCommand(args[1:], output)
-	case "delete":
-		return journeyDeleteCommand(args[1:], output)
-	default:
-		return fmt.Errorf("unknown journey command %q", args[0])
-	}
-}
+	var (
+		database  string
+		mediaRoot string
+		out       string
+	)
 
-func journeyPlanCommand(args []string, output io.Writer) error {
-	flags := flag.NewFlagSet("journey plan", flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
-	journeyID := flags.String("journey", "", "journey UUID")
-	gpxPath := flags.String("gpx", "", "local GPX path")
-	timelinePath := flags.String("timeline", "", "Google Timeline JSON export")
-	photosPath := flags.String("photos", "", "local media directory")
-	sidecarPath := flags.String("sidecar", "", "local photo JSONL sidecar")
-	from := flags.String("from", "", "RFC3339 range start")
-	to := flags.String("to", "", "RFC3339 range end")
-	format := flags.String("format", "json", "json or jsonl")
-	if err := flags.Parse(args); err != nil {
-		return err
+	compileCmd := &cobra.Command{
+		Use:   "compile",
+		Short: "Compile static site publication from SQLite and media root",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if err := resolveWorkspaceDefaults(&database, &mediaRoot); err != nil {
+				return err
+			}
+			repo, err := sqlite.Open(database)
+			if err != nil {
+				return err
+			}
+			defer func() { _ = repo.Close() }()
+			writer := &publication.FileArtifactWriter{Root: out}
+			report, err := (publication.StaticCompiler{}).Compile(
+				context.Background(),
+				publication.Input{},
+				repo,
+				publication.FileMediaSource{Root: mediaRoot},
+				writer,
+			)
+			if err != nil {
+				_ = writer.Abort()
+				return err
+			}
+			removed, err := writer.Finalize()
+			if err != nil {
+				_ = writer.Abort()
+				return err
+			}
+			report.Removed = len(removed)
+			return writeJSON(cmd.OutOrStdout(), report)
+		},
 	}
-	id, err := uuid.Parse(*journeyID)
-	if err != nil {
-		return errors.New("--journey must be a valid UUID")
-	}
-	if *gpxPath == "" && *timelinePath == "" {
-		return errors.New("--gpx or --timeline is required")
-	}
-	start, err := parseOptionalTime(*from)
-	if err != nil {
-		return fmt.Errorf("--from: %w", err)
-	}
-	end, err := parseOptionalTime(*to)
-	if err != nil {
-		return fmt.Errorf("--to: %w", err)
-	}
-	var media domain.PhotoSource
-	if *photosPath != "" {
-		media = local.NewPhotoSourceWithSidecar(*photosPath, *sidecarPath)
-	}
-	var routes domain.RouteSource
-	if *gpxPath != "" {
-		routes = local.NewGPXSource(*gpxPath)
-	}
-	var visits domain.VisitSource
-	if *timelinePath != "" {
-		visits = local.NewTimelineSource(*timelinePath)
-	}
-	fingerprint, err := sourceFingerprint(*gpxPath, *timelinePath)
-	if err != nil {
-		return err
-	}
-	plan, err := intake.NewService(nil, nil).Plan(context.Background(), intake.PlanRequest{JourneyID: id, From: start, To: end, SourceFingerprint: fingerprint, Sources: intake.SourceSet{Routes: routes, Visits: visits, Media: media}})
-	if err != nil {
-		return err
-	}
-	if *format == "jsonl" {
-		return writePlanJSONL(output, plan)
-	}
-	if *format != "json" {
-		return errors.New("--format must be json or jsonl")
-	}
-	return writeJSON(output, plan)
-}
 
-func journeyApplyCommand(args []string, output io.Writer) error {
-	flags := flag.NewFlagSet("journey apply", flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
-	database := flags.String("db", "", "SQLite database path")
-	if err := flags.Parse(args); err != nil {
-		return err
-	}
-	if *database == "" || flags.NArg() != 1 {
-		return errors.New("usage: felicia-cli journey apply --db <path> <plan.json>")
-	}
-	data, err := os.ReadFile(flags.Arg(0))
-	if err != nil {
-		return err
-	}
-	var plan intake.DraftPlan
-	if err := json.Unmarshal(data, &plan); err != nil {
-		return fmt.Errorf("decode plan: %w", err)
-	}
-	repo, err := sqlite.Open(*database)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = repo.Close() }()
-	if err := intake.NewService(repo, repo).Apply(context.Background(), plan); err != nil {
-		return err
-	}
-	return writeJSON(output, map[string]any{"schema": intake.PlanSchema, "mode": "apply", "journey_id": plan.JourneyID, "stops": len(plan.Stops)})
-}
+	compileCmd.Flags().StringVar(&database, "db", "", "SQLite database path")
+	compileCmd.Flags().StringVar(&mediaRoot, "media-root", "", "private local media root")
+	compileCmd.Flags().StringVar(&out, "out", "site", "static output directory")
 
-func journeyReviewCommand(args []string, output io.Writer) error {
-	flags := flag.NewFlagSet("journey review", flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
-	database := flags.String("db", "", "SQLite database path")
-	candidateID := flags.String("candidate", "", "candidate UUID")
-	state := flags.String("state", "", "proposed, kept, ignored, or merged")
-	label := flags.String("label", "", "review label")
-	expected := flags.Int64("expected-revision", 0, "expected candidate revision")
-	if err := flags.Parse(args); err != nil {
-		return err
-	}
-	id, err := uuid.Parse(*candidateID)
-	if err != nil {
-		return errors.New("--candidate must be a valid UUID")
-	}
-	if *database == "" || *state == "" {
-		return errors.New("--db and --state are required")
-	}
-	repo, err := sqlite.Open(*database)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = repo.Close() }()
-	patch := &domain.StopReviewPatch{CandidateID: id, State: domain.CandidateState(*state)}
-	if flags.Lookup("label").Value.String() != "" {
-		patch.Label = label
-	}
-	if *expected > 0 {
-		patch.ExpectedRevision = expected
-	}
-	if err := intake.NewService(repo, repo).Review(context.Background(), patch); err != nil {
-		return err
-	}
-	candidate, err := repo.GetStopCandidate(context.Background(), id)
-	if err != nil {
-		return err
-	}
-	return writeJSON(output, candidate)
-}
-
-func journeyDeleteCommand(args []string, output io.Writer) error {
-	flags := flag.NewFlagSet("journey delete", flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
-	database := flags.String("db", "", "SQLite database path")
-	journeyID := flags.String("journey", "", "journey UUID")
-	if err := flags.Parse(args); err != nil {
-		return err
-	}
-	if *database == "" || *journeyID == "" {
-		return errors.New("usage: felicia-cli journey delete --db <path> --journey <uuid>")
-	}
-	id, err := uuid.Parse(*journeyID)
-	if err != nil {
-		return fmt.Errorf("invalid journey UUID %q: %w", *journeyID, err)
-	}
-	repo, err := sqlite.Open(*database)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = repo.Close() }()
-	if err := repo.DeleteJourney(context.Background(), id); err != nil {
-		return err
-	}
-	_, err = fmt.Fprintf(output, "deleted journey %s\n", id)
-	return err
+	staticCmd.AddCommand(compileCmd)
+	return staticCmd
 }
 
 func parseOptionalTime(value string) (time.Time, error) {
@@ -265,83 +617,6 @@ func writePlanJSONL(output io.Writer, plan intake.DraftPlan) error {
 		}
 	}
 	return encoder.Encode(map[string]any{"type": "summary", "schema": plan.Schema, "version": plan.Version, "source_fingerprint": plan.SourceFingerprint, "stops": len(plan.Stops), "mementos": len(plan.Mementos), "issues": len(plan.Issues)})
-}
-
-func packageCommand(args []string, output io.Writer) error {
-	if len(args) != 2 || args[0] != "validate" {
-		return errors.New("usage: felicia-cli package validate <journey.zip>")
-	}
-	pkg, err := journeypackage.Read(args[1])
-	if err != nil {
-		return err
-	}
-	document, err := importer.DecodePackage(pkg)
-	if err != nil {
-		return fmt.Errorf("validate package contents: %w", err)
-	}
-	registry, err := importer.DefaultRegistry()
-	if err != nil {
-		return fmt.Errorf("load kind registry: %w", err)
-	}
-	if err := importer.ValidatePackageDocument(document, registry); err != nil {
-		return fmt.Errorf("validate package contents: %w", err)
-	}
-	return writeJSON(output, map[string]any{"package_id": pkg.Manifest.PackageID, "schema_version": pkg.Manifest.SchemaVersion, "files": len(pkg.Files), "journeys": 1, "candidates": len(document.Stops), "mementos": len(document.Mementos), "photos": len(document.Photos)})
-}
-
-func importCommand(args []string, output io.Writer) error {
-	flags := flag.NewFlagSet("import", flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
-	database := flags.String("db", "", "SQLite database path")
-	mediaRoot := flags.String("media-root", ".felicia/media", "private local media root")
-	apply := flags.Bool("apply", false, "write the package to SQLite and copy media")
-	if err := flags.Parse(args); err != nil {
-		return err
-	}
-	if flags.NArg() != 1 {
-		return errors.New("usage: felicia-cli import [--db path] [--media-root path] [--apply] <journey.zip>")
-	}
-	pkg, err := journeypackage.Read(flags.Arg(0))
-	if err != nil {
-		return err
-	}
-	document, err := importer.DecodePackage(pkg)
-	if err != nil {
-		return err
-	}
-	registry, err := importer.DefaultRegistry()
-	if err != nil {
-		return err
-	}
-	if err := importer.ValidatePackageDocument(document, registry); err != nil {
-		return err
-	}
-	if !*apply {
-		return writeJSON(output, map[string]any{"mode": "dry-run", "package_id": pkg.Manifest.PackageID, "journeys": 1, "candidates": len(document.Stops), "mementos": len(document.Mementos), "photos": len(document.Photos)})
-	}
-	if *database == "" {
-		return errors.New("--db is required with --apply")
-	}
-	repo, err := sqlite.Open(*database)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = repo.Close() }()
-	// Originals are installed before the transaction that references them.
-	// A failed import may leave unreferenced blobs, which are inert and
-	// recoverable; it must never leave committed rows pointing at bytes that
-	// are absent or truncated, which nothing detects and no retry repairs.
-	if err := installPackageMedia(pkg, *mediaRoot); err != nil {
-		return err
-	}
-	report, err := importer.ApplyPackage(context.Background(), document, repo)
-	if err != nil {
-		return err
-	}
-	// Conflicts are the author's to resolve, so they are named in the report
-	// rather than counted. An import that silently "succeeded" while declining
-	// to apply half a package is not a success the author can act on.
-	return writeJSON(output, map[string]any{"mode": "apply", "package_id": pkg.Manifest.PackageID, "journeys": report.Journeys, "candidates": report.Candidates, "mementos": report.Mementos, "photos": report.Photos, "authorship_conflicts": report.Conflicts})
 }
 
 // installPackageMedia writes every media member into the media root under its
@@ -393,42 +668,27 @@ func writeOriginalAtomically(destination string, data []byte) error {
 	return os.Rename(temp.Name(), destination)
 }
 
-func compileCommand(args []string, output io.Writer) error {
-	flags := flag.NewFlagSet("static compile", flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
-	database := flags.String("db", "", "SQLite database path")
-	mediaRoot := flags.String("media-root", ".felicia/media", "private local media root")
-	out := flags.String("out", "site", "static output directory")
-	if err := flags.Parse(args); err != nil {
-		return err
-	}
-	if *database == "" {
-		return errors.New("--db is required")
-	}
-	repo, err := sqlite.Open(*database)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = repo.Close() }()
-	writer := &publication.FileArtifactWriter{Root: *out}
-	report, err := (publication.StaticCompiler{}).Compile(context.Background(), publication.Input{}, repo, publication.FileMediaSource{Root: *mediaRoot}, writer)
-	if err != nil {
-		_ = writer.Abort()
-		return err
-	}
-	// Reconcile a reused output directory: unpublished or deleted content
-	// from a previous compile must not stay publicly reachable.
-	removed, err := writer.Finalize()
-	if err != nil {
-		_ = writer.Abort()
-		return err
-	}
-	report.Removed = len(removed)
-	return writeJSON(output, report)
-}
-
 func writeJSON(output io.Writer, value any) error {
 	encoder := json.NewEncoder(output)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(value)
+}
+
+func resolveWorkspaceDefaults(database, mediaRoot *string) error {
+	if (database != nil && *database == "") || (mediaRoot != nil && *mediaRoot == "") {
+		ws, err := workspace.Resolve("")
+		if err != nil {
+			return fmt.Errorf("resolve workspace: %w", err)
+		}
+		if err := ws.EnsureDirs(); err != nil {
+			return err
+		}
+		if database != nil && *database == "" {
+			*database = ws.Database
+		}
+		if mediaRoot != nil && *mediaRoot == "" {
+			*mediaRoot = ws.MediaRoot
+		}
+	}
+	return nil
 }

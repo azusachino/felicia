@@ -1,5 +1,12 @@
 # Ingestion Workflows — comparing approaches
 
+> [!NOTE]
+> **Superseded Architecture Context**: Legacy references throughout this document to PostgreSQL / PostGIS databases, external object storage services, and manual YAML authoring workflows represent earlier research spikes and are superseded by:
+>
+> - **[ADR 0005](../adr/0005-sqlite-storage-and-content-addressed-media.md)**: Pure SQLite local storage and content-addressed `BlobStore` for private media originals.
+> - **[ADR 0004](../adr/0004-authorship-protection-and-intake-seam.md)**: Authorship protection masks (`authored_fields`) and intake seams.
+> - **[Agent and Desktop Workflow](agent-and-desktop-workflow.md)**: The modern collaborative architecture pairing headless AI agent CLI intake (`felicia-cli journey ingest`) with the native Desktop Studio visual authoring environment on a unified `~/.felicia` workspace.
+
 > The question this doc helps you answer: **"After a trip, what do _I_ actually do to
 > get it onto the map — and what does the system do for me?"**
 >

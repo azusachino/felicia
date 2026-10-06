@@ -8,16 +8,21 @@ require (
 	github.com/azusachino/felicia/apps/felicia-publication v0.1.0
 	github.com/azusachino/felicia/apps/felicia-runtime v0.1.0
 	github.com/google/uuid v1.6.0
+	github.com/paulmach/orb v0.13.0
+	github.com/spf13/cobra v1.10.2
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
-	github.com/paulmach/orb v0.13.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	github.com/ringsaturn/tzf-dist v0.0.2026-d // indirect
+	github.com/ringsaturn/tzf/v2 v2.1.2 // indirect
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd // indirect
+	github.com/spf13/pflag v1.0.9 // indirect
 	golang.org/x/image v0.45.0 // indirect
 	golang.org/x/mod v0.40.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect

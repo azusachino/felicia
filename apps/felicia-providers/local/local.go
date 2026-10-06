@@ -146,10 +146,14 @@ func (s *PhotoSource) FetchAssets(ctx context.Context, _, _ time.Time) ([]domain
 
 type sidecarRecord struct {
 	Path      string    `json:"path"`
+	Filename  string    `json:"filename"`
 	At        string    `json:"at"`
 	Timestamp string    `json:"timestamp"`
 	Coord     []float64 `json:"coord"`
+	Lat       *float64  `json:"lat"`
+	Lon       *float64  `json:"lon"`
 	Title     string    `json:"title"`
+	Caption   string    `json:"caption"`
 	Kind      string    `json:"kind"`
 }
 
@@ -166,10 +170,28 @@ func readSidecar(filename string) (map[string]sidecarRecord, error) {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		var record sidecarRecord
-		if json.Unmarshal(scanner.Bytes(), &record) != nil || !safeRelativePath(record.Path) {
+		if json.Unmarshal(scanner.Bytes(), &record) != nil {
 			continue
 		}
-		metadata[filepath.ToSlash(record.Path)] = record
+		if record.Path == "" && record.Filename != "" {
+			record.Path = record.Filename
+		}
+		if record.Title == "" && record.Caption != "" {
+			record.Title = record.Caption
+		}
+		if len(record.Coord) == 0 && record.Lat != nil && record.Lon != nil {
+			record.Coord = []float64{*record.Lon, *record.Lat}
+		}
+		if !safeRelativePath(record.Path) {
+			continue
+		}
+		cleanPath := filepath.ToSlash(record.Path)
+		metadata[cleanPath] = record
+		if strings.HasPrefix(cleanPath, "photos/") {
+			metadata[strings.TrimPrefix(cleanPath, "photos/")] = record
+		} else {
+			metadata["photos/"+cleanPath] = record
+		}
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, fmt.Errorf("read photo sidecar %s: %w", filename, err)

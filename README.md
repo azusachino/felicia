@@ -26,18 +26,40 @@ Felicia is a personal travel journal. Journeys appear on a map; visits give plac
 ## Current shape
 
 ```text
-Dawarich / Google Timeline / GPX ─┐
-Immich / local photos ────────────┴─> intake plan -> review in felicia-admin
-                                           -> author -> publish -> static site
+Trip folder / GPX / Google Timeline ─┐
+Photos / sidecar (photos.jsonl) ─────┴─> felicia-cli journey ingest
+                                             -> unified workspace (~/.felicia)
+                                             -> visual review & authoring in Desktop / Admin
+                                             -> publish -> static site
 ```
 
 Go modules under `apps/` own the domain, runtime, providers, server, CLI, desktop studio, and publication compiler. `packages/felicia-model` holds frontend contracts; `packages/felicia-reader` is the Atlas reader. The two web hosts are `apps/felicia-admin` and `apps/felicia-public-site`. SQLite is the only persistence implementation for v1.
 
-Google Timeline imports named place visits from local `Timeline.json` and Takeout monthly JSON exports. It does not turn activity segments into invented route lines: supply GPX or Dawarich when route geometry is needed. Import is a local, read-only planning step until you explicitly apply/review it.
-
 ## Quick start
 
-Install the checked-in toolchain with `mise install`, then use the Make targets:
+Install the checked-in toolchain with `mise install`.
+
+### 1. Trip intake with `felicia-cli`
+
+Install or build the standalone CLI:
+
+```sh
+go install ./apps/felicia-cli/cmd/felicia
+# or build into bin/:
+go build -o bin/felicia-cli ./apps/felicia-cli/cmd/felicia
+```
+
+Ingest a trip folder directly into your unified workspace (`~/.felicia` or `$FELICIA_WORKSPACE`):
+
+```sh
+felicia-cli journey ingest --dir /path/to/trip-folder
+```
+
+A trip folder contains `route.gpx` (or `timeline.json`), a `photos/` folder, and an optional `photos.jsonl` sidecar. The CLI stages candidate stops and installs photos into the content-addressed blob store with full authorship protection (subsequent re-ingests never overwrite human-curated titles or essays).
+
+### 2. Studio authoring & verification
+
+Use the Make targets for authoring studios and quality gates:
 
 ```sh
 make help
@@ -48,18 +70,6 @@ make local-check # reuse unchanged local check groups while iterating
 make check       # uncached pre-commit gate
 make validate    # uncached pre-PR gate
 ```
-
-Plan intake from a Google Timeline export without a GPX track:
-
-```sh
-make cli-build
-./bin/felicia-cli journey plan \
-  --journey <journey-uuid> \
-  --timeline /path/to/Timeline.json \
-  --format json > plan.json
-```
-
-Add `--gpx /path/to/route.gpx` for route geometry and `--photos /path/to/photos` (optionally `--sidecar`) for local media. Use an existing journey UUID. Planning only reads the export; it does not write to the database. Apply the reviewed plan to that journey with `./bin/felicia-cli journey apply --db .felicia/felicia.sqlite plan.json`, then review candidates in the admin studio. The local journey workflow explains the surrounding authoring steps.
 
 `make admin` binds the authoring stack to `0.0.0.0` for tailnet access; the admin API has no authentication. Use only on a trusted host/network, or set `FELICIA_HOST=127.0.0.1` for host-only access.
 

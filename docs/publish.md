@@ -59,9 +59,11 @@ JSON object per line; `at` is the capture timestamp and `coord` is
 
 The GPX and original photos remain private source evidence. Scan and preview
 derive editable draft records from them; they do not rewrite the files. The
-admin scan/import surface is planned; until it lands, `make journey-local`
-performs the scan and writes the editable workspace under
-`.felicia/workspaces/<slug>`:
+single-step CLI command `felicia-cli journey ingest --dir <trip-folder>`
+performs the scan, installs media, and stages draft records directly into the
+workspace (see [Trip folder contract](contracts/trip-folder-contract.md)).
+Alternatively, `make journey-local` performs the scan and writes an intermediate
+editable workspace under `.felicia/workspaces/<slug>`:
 
 ```bash
 make journey-local GPX=~/my-trip/route.gpx PHOTOS=~/my-trip/photos \
@@ -89,50 +91,56 @@ Prerequisite: **mise**. Run `mise install` once; `make` runs repository tools th
 
 ### 2. Bring in a trip
 
-The admin GUI has no journey-creation or file-upload control yet (its Import
-buttons talk to Dawarich and Immich, not to your disk), so a trip enters through
-the CLI. This step also creates the journey:
+The primary, streamlined way to ingest a trip into Felicia is the single-step CLI intake command:
 
 ```bash
-make journey-local GPX=~/trip/route.gpx PHOTOS=~/trip/photos
+./bin/felicia-cli journey ingest --dir ~/my-trip
 ```
 
-Each trip gets its own identity by default: the journey id and slug are
-derived from the GPX track's own bytes, so re-running the same trip lands on
-the same journey (idempotent — no duplicate) while a different trip always
-gets a distinct id, slug, and workspace directory. Name the trip yourself with
-`SLUG=` / `TITLE=`, or pin the id/journal/workspace explicitly with `JOURNEY=`
-/ `JOURNAL=` / `WORKSPACE=`:
+(Build the binary first with `make cli-build` if not yet built.)
+
+This command executes the entire intake pipeline in one step:
+
+1. **Scans** `~/my-trip` for `route.gpx` (or `timeline.json`), photos (in `photos/` or top-level, up to 20 MiB each), and optional `photos.jsonl` sidecar overrides.
+2. **Extracts metadata**: reads track coordinates and photo EXIF timestamps/locations, merging any sidecar overrides.
+3. **Plans candidates**: clusters dwell times (20+ minutes within 250 m) into stop candidates and matches photos to stops.
+4. **Installs media**: hashes photos with SHA-256 and installs unique files atomically into the workspace media store (`~/.felicia/media/`).
+5. **Stages draft records**: creates or updates the journey, stop candidates, and photos in the local database (`~/.felicia/felicia.sqlite`), respecting existing human-authored edits (`authored_fields`).
+
+You can customize identity and workspace parameters:
 
 ```bash
-make journey-local GPX=~/trip/route.gpx PHOTOS=~/trip/photos SLUG=kyoto-2026 TITLE="Kyoto 2026"
+./bin/felicia-cli journey ingest --dir ~/my-trip \
+  --slug kyoto-2026 \
+  --title "Kyoto 2026" \
+  --place "Kyoto, Japan"
 ```
 
-That writes an editable workspace to `.felicia/workspaces/<slug>` (printed
-by the command): `journey.json`, `stops.json`, `mementos.json`, plus the
-planner's `plan.json`. Pointing a workspace that already holds a _different_
-journey at a new trip is a loud error, never a silent overwrite. Edit the
-titles and selections, then package and import it — reuse the workspace path
-the command printed:
+The command emits structured JSON to stdout upon completion:
 
-```bash
-uv run python scripts/local_journey.py package --workspace .felicia/workspaces/kyoto-2026
-./bin/felicia-cli import --db .felicia/felicia.sqlite --media-root .felicia/media \
-  --apply .felicia/workspaces/kyoto-2026/journey.zip
+```json
+{
+  "mode": "ingest",
+  "journey_id": "0192634e-8f2c-7431-b842-749e7cf93d8b",
+  "slug": "kyoto-2026",
+  "candidates": 5,
+  "mementos": 4,
+  "photos": 12,
+  "conflicts": []
+}
 ```
 
-Repeat with a different GPX/`SLUG` for a second trip — it imports alongside
-the first rather than replacing it.
+See [Contract: Trip folder intake and agent workflows](contracts/trip-folder-contract.md) for full details on directory layout, sidecar fields, and agent automation patterns.
 
-Two things decide whether this produces anything:
+Two things decide whether intake produces anything:
 
 - **Stops need dwell.** A stop candidate is 20+ minutes within 250 m. A track
   that never stops — a train ride, a drive — yields no stops, and therefore no
-  mementos. `preprocess` reports success either way, so check the counts in
-  `stops.json` rather than trusting the exit code.
-- **Local photos have no timestamps.** EXIF is only read through Immich; a photo
-  folder is timestamp-less to felicia and cannot be attached to the track. Supply
-  a JSONL sidecar and pass it as `SIDECAR=`:
+  mementos. `preprocess` reports success either way, so check the candidate
+  counts rather than trusting the exit code alone.
+- **Photos without EXIF.** Photos without EXIF capture timestamps or GPS tags cannot
+  be attached to the track automatically. Supply a `photos.jsonl` sidecar in the trip
+  directory with explicit `at` timestamps and/or `coord` coordinates:
 
   ```jsonl
   {

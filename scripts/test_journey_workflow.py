@@ -12,7 +12,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
-from contextlib import contextmanager, nullcontext
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from uuid import NAMESPACE_URL, uuid4, uuid5
@@ -69,14 +69,7 @@ def parse_args() -> argparse.Namespace:
         help="build and run the API against the selected database",
     )
     parser.add_argument("--port", type=int, default=0, help="server port; 0 reserves a free port")
-    parser.add_argument("--database-driver", choices=("sqlite", "postgres"), default="sqlite")
     parser.add_argument("--database-path", default="", help="SQLite database path")
-    parser.add_argument("--database-dsn", default="", help="PostgreSQL test database DSN")
-    parser.add_argument(
-        "--postgres-admin-dsn",
-        default="",
-        help="create and drop a disposable PostgreSQL database using this admin DSN",
-    )
     return parser.parse_args()
 
 
@@ -519,139 +512,75 @@ def find_free_port() -> int:
         return int(sock.getsockname()[1])
 
 
-def create_postgres_database(admin_dsn: str, database_name: str) -> str:
-    import psycopg
-    from psycopg import sql
-    from psycopg.conninfo import make_conninfo
-
-    with psycopg.connect(admin_dsn, autocommit=True) as connection:
-        connection.execute(sql.SQL("CREATE DATABASE {} ").format(sql.Identifier(database_name)))
-    return make_conninfo(admin_dsn, dbname=database_name)
-
-
-def drop_postgres_database(admin_dsn: str, database_name: str) -> None:
-    import psycopg
-    from psycopg import sql
-
-    with psycopg.connect(admin_dsn, autocommit=True) as connection:
-        connection.execute(
-            sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(sql.Identifier(database_name))
-        )
-
-
-@contextmanager
-def disposable_postgres_database(admin_dsn: str):
-    database_name = f"felicia_workflow_{uuid4().hex[:16]}"
-    database_dsn = create_postgres_database(admin_dsn, database_name)
-    try:
-        yield database_dsn
-    finally:
-        drop_postgres_database(admin_dsn, database_name)
-
 
 @contextmanager
 def disposable_server(
     port: int,
-    driver: str,
-    database_path: str,
-    database_dsn: str,
-    postgres_admin_dsn: str,
+    database_path: str = "",
     extra_env: dict[str, str] | None = None,
 ):
     global BASE_URL
     ids = workflow_ids()
     with tempfile.TemporaryDirectory(prefix="felicia-workflow-") as temp_dir:
         api_bin = os.path.join(temp_dir, "felicia-api")
-        if driver == "sqlite":
-            database_path = database_path or os.path.join(temp_dir, "felicia.db")
-        elif not database_dsn and not postgres_admin_dsn:
-            raise RuntimeError(
-                "--database-dsn, FELICIA_TEST_DATABASE_DSN, or "
-                "--postgres-admin-dsn is required for postgres"
-            )
-        database_context = (
-            disposable_postgres_database(postgres_admin_dsn)
-            if driver == "postgres" and postgres_admin_dsn
-            else nullcontext(database_dsn)
+        database_path = database_path or os.path.join(temp_dir, "felicia.db")
+        subprocess.run(["go", "build", "-o", api_bin, "./apps/felicia-server/cmd/api"], check=True)
+        selected_port = port or find_free_port()
+        environment = {
+            **os.environ,
+            "DATABASE_DRIVER": "sqlite",
+            "DATABASE_PATH": database_path,
+            "CACHE_ADDR": "",
+            "PORT": str(selected_port),
+            **(extra_env or {}),
+        }
+        server = subprocess.Popen(
+            [api_bin],
+            env=environment,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
         )
-        with database_context as selected_database_dsn:
-            subprocess.run(["go", "build", "-o", api_bin, "./apps/felicia-server/cmd/api"], check=True)
-            if driver == "postgres" and postgres_admin_dsn:
-                subprocess.run(
-                    ["make", "migrate"],
-                    check=True,
-                    env={**os.environ, "DATABASE_DSN": selected_database_dsn},
-                )
-            selected_port = port or find_free_port()
-            environment = {
-                **os.environ,
-                "DATABASE_DRIVER": driver,
-                "CACHE_ADDR": "",
-                "PORT": str(selected_port),
-                # Lets a caller wire optional ingest sources (DAWARICH_URL/
-                # IMMICH_URL/etc. — see apps/felicia-server/config/config.go) or override
-                # MEDIA_ROOT without this function needing to know about
-                # every one of them. Unused by the workflow test itself.
-                **(extra_env or {}),
-            }
-            if driver == "sqlite":
-                environment["DATABASE_PATH"] = database_path
-            else:
-                environment["DATABASE_DSN"] = selected_database_dsn
-            server = subprocess.Popen(
-                [api_bin],
-                env=environment,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
-            try:
-                BASE_URL = f"http://127.0.0.1:{selected_port}"
-                for _ in range(30):
-                    if server.poll() is not None:
-                        stderr = server.stderr.read() if server.stderr else ""
-                        raise RuntimeError(f"API exited before readiness ({server.returncode}):\n{stderr}")
-                    try:
-                        status, body = request("/readyz")
-                        if status != 200:
-                            raise RuntimeError(f"API readiness failed ({status}): {body!r}")
-                        break
-                    except (OSError, urllib.error.URLError, ConnectionError):
-                        time.sleep(0.2)
-                else:
+        try:
+            BASE_URL = f"http://127.0.0.1:{selected_port}"
+            for _ in range(30):
+                if server.poll() is not None:
                     stderr = server.stderr.read() if server.stderr else ""
-                    raise RuntimeError(f"API did not become ready:\n{stderr}")
-                yield ServerContext(
-                    ids=ids,
-                    driver=driver,
-                    database_path=database_path if driver == "sqlite" else "",
-                )
-            finally:
-                server.terminate()
+                    raise RuntimeError(f"API exited before readiness ({server.returncode}):\n{stderr}")
                 try:
-                    server.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    server.kill()
-                    server.wait()
+                    status, body = request("/readyz")
+                    if status != 200:
+                        raise RuntimeError(f"API readiness failed ({status}): {body!r}")
+                    break
+                except (OSError, urllib.error.URLError, ConnectionError):
+                    time.sleep(0.2)
+            else:
+                stderr = server.stderr.read() if server.stderr else ""
+                raise RuntimeError(f"API did not become ready:\n{stderr}")
+            yield ServerContext(
+                ids=ids,
+                driver="sqlite",
+                database_path=database_path,
+            )
+        finally:
+            server.terminate()
+            try:
+                server.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                server.kill()
+                server.wait()
 
 
 if __name__ == "__main__":
     try:
         arguments = parse_args()
         if arguments.start_server:
-            database_dsn = arguments.database_dsn or os.getenv("FELICIA_TEST_DATABASE_DSN", "")
             with disposable_server(
                 arguments.port,
-                arguments.database_driver,
                 arguments.database_path,
-                database_dsn,
-                arguments.postgres_admin_dsn or os.getenv("FELICIA_TEST_POSTGRES_ADMIN_DSN", ""),
             ) as context:
                 run_workflow(context.ids)
-                if context.database_path:
-                    run_static_parity_check(context)
-                else:
-                    print("static/live parity check skipped (requires --database-driver sqlite)")
+                run_static_parity_check(context)
         else:
             run_workflow(workflow_ids())
     except (

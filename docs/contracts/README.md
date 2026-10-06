@@ -40,6 +40,15 @@ Before implementing a new entity or endpoint, add or update:
 4. compatibility and migration rules;
 5. contract tests for CLI, HTTP, providers, and static output.
 
+## Contract catalog
+
+| Contract | Purpose |
+| -------- | ------- |
+| [`canonical-v1.md`](canonical-v1.md) | Stable semantic model, record ownership, and offline timezone defaults |
+| [`memento-lifecycle.md`](memento-lifecycle.md) | Memento lifecycle state machine, transitions, and event view |
+| [`automatic-sequence-allocation.md`](automatic-sequence-allocation.md) | Atomic multi-process position allocation for photos and mementos |
+| [`trip-folder-contract.md`](trip-folder-contract.md) | Trip folder directory layout, single-step CLI ingest, and agent toolbelt workflows |
+
 The Go interfaces in `apps/felicia-core/ports` remain implementation seams. The versioned
 behavioral traits are declared in `apps/felicia-core/contracts`; neither replaces the JSON
 contract or its projection tests.

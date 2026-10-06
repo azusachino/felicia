@@ -16,7 +16,7 @@ COMPOSE ?= $(shell \
 	elif command -v docker >/dev/null 2>&1; then echo docker compose; \
 	else echo ''; fi)
 
-.PHONY: help fmt fmt-check fmt-docs fmt-docs-check vet lint test test-api test-features layout-check test-sqlite check check-ci build cli-build desktop-assets desktop-build desktop-package desktop experiment-intake journey-local validate deps-check tidy db-up db-down seed admin dev dev-sqlite test-workflow test-admin-e2e mock-up mock-down browser-mock web-install web-check web-build admin-check admin-build site-build site-verify pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down e2e e2e-install desktop-e2e-build test-reader-fonts-e2e
+.PHONY: help fmt fmt-check fmt-docs fmt-docs-check vet lint test test-api test-features layout-check check check-ci build desktop-assets desktop-build desktop-package desktop experiment-intake validate deps-check tidy db-up db-down seed admin dev test-workflow test-admin-e2e mock-up mock-down browser-mock web-install web-check web-build admin-check admin-build site-build site-verify pages-workflow-validate fork-smoke pages-preview pages-down docs docs-build share share-down e2e e2e-install desktop-e2e-build test-reader-fonts-e2e
 
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -57,10 +57,6 @@ check-ci: vet lint test test-features ## CI checks without local formatting tool
 build: ## Build all binaries
 	$(UV_RUN) run python scripts/go_tasks.py build
 
-cli-build: ## Build the felicia-cli executable into bin/
-	@mkdir -p bin
-	$(GO) build -o bin/felicia-cli ./apps/felicia-cli/cmd/felicia
-
 desktop-assets: admin-build web-build ## Prepare built admin and reader assets for embedding
 	mkdir -p apps/felicia-desktop/assets/admin apps/felicia-desktop/assets/reader
 	cp -R apps/felicia-admin/dist/. apps/felicia-desktop/assets/admin/
@@ -96,19 +92,8 @@ desktop-package: desktop-build ## Package the macOS app bundle with the native a
 desktop: desktop-package ## Run local desktop studio (macOS app)
 	./bin/FeliciaStudio.app/Contents/MacOS/felicia-desktop
 
-experiment-intake: cli-build ## Run the offline intake experiment matrix
+experiment-intake: ## Run the offline intake experiment matrix
 	$(UV_RUN) run python scripts/run_intake_experiments.py --out .felicia/experiments/intake/report.json
-
-journey-local: cli-build ## Preprocess raw local sources into an editable journey workspace
-	@test -n "$(GPX)" || (echo 'usage: make journey-local GPX=path/to/route.gpx PHOTOS=path/to/photos [SIDECAR=path] [SLUG=name] [TITLE="Trip name"] [JOURNEY=uuid] [JOURNAL=uuid] [WORKSPACE=path]' >&2; exit 1)
-	@test -n "$(PHOTOS)" || (echo 'usage: make journey-local GPX=path/to/route.gpx PHOTOS=path/to/photos [SIDECAR=path] [SLUG=name] [TITLE="Trip name"] [JOURNEY=uuid] [JOURNAL=uuid] [WORKSPACE=path]' >&2; exit 1)
-	$(UV_RUN) run python scripts/local_journey.py preprocess --gpx "$(GPX)" --photos "$(PHOTOS)" \
-		$(if $(SIDECAR),--sidecar "$(SIDECAR)",) \
-		$(if $(SLUG),--slug "$(SLUG)",) \
-		$(if $(TITLE),--title "$(TITLE)",) \
-		$(if $(JOURNEY),--journey "$(JOURNEY)",) \
-		$(if $(JOURNAL),--journal "$(JOURNAL)",) \
-		$(if $(WORKSPACE),--workspace "$(WORKSPACE)",)
 
 # Pre-PR gate. Deterministic frontend checks belong in this gate.
 validate: check build web-check admin-check ## Pre-PR gate
@@ -120,18 +105,15 @@ deps-check: ## Check lockfile consistency and report available frontend upgrades
 tidy: ## Tidy go modules
 	$(GO) mod tidy
 
-db-up: ## Start local Postgres+PostGIS and Valkey (ops/compose.yaml)
+db-up: ## Start local cache service (Valkey, ops/compose.yaml)
 	@test -n "$(COMPOSE)" || (echo "No container compose command found (install podman-compose or Docker Compose)" >&2; exit 1)
 	$(COMPOSE) -f ops/compose.yaml up -d
 
-db-down: ## Stop the local dev containers (keeps the pgdata volume)
+db-down: ## Stop local dev containers (ops/compose.yaml)
 	@test -n "$(COMPOSE)" || (echo "No container compose command found (install podman-compose or Docker Compose)" >&2; exit 1)
 	$(COMPOSE) -f ops/compose.yaml down
 
 dev: ## Start the local API with SQLite
-	$(MAKE) dev-sqlite
-
-dev-sqlite: ## Start the API locally with the default SQLite provider
 	$(UV_RUN) run python scripts/dev.py --driver sqlite
 
 mock-up: ## Start the mock Dawarich+Immich upstream in the background (:8099)
@@ -151,9 +133,6 @@ test-workflow: ## Run full journey workflow against disposable SQLite
 
 test-admin-e2e: ## Run the admin GUI closed-loop E2E pass (disposable server + Bun dev + Playwright/chromium) — ADMIN-01.8, local-only (not part of validate)
 	$(UV_RUN) run python scripts/e2e_admin_gui.py
-
-test-sqlite: ## Run all tests with SQLite as the only enabled provider
-	$(MAKE) test
 
 test-features: ## Run offline Python feature-contract tests
 	$(UV_RUN) run --group dev ruff check --config pyproject.toml scripts tests
@@ -178,9 +157,9 @@ admin-build: ## Build static studio frontend (Bun + SvelteKit)
 # author's own journal compiled into the same directory. The compiler only
 # removes files its previous manifest listed, so the co-located SPA survives.
 # `site-build` below is the compiler-backed publication path, not this.
-site-build: cli-build ## Build the deployable site (SPA + your journal) into apps/felicia-public-site/dist
+site-build: ## Build the deployable site (SPA + your journal) into apps/felicia-public-site/dist
 	BASE_PATH="$${BASE_PATH:-/}" $(BUN) run web:public:build
-	./bin/felicia-cli static compile \
+	$(GO) run ./apps/felicia-cli/cmd/felicia static compile \
 		--db "$${DATABASE_PATH:-.felicia/felicia.sqlite}" \
 		--media-root "$${MEDIA_ROOT:-.felicia/media}" \
 		--out "$${SITE_DIST:-apps/felicia-public-site/dist}"

@@ -82,7 +82,9 @@ def main() -> None:
     parser.add_argument("--out", type=Path, help="write the report JSON to this path")
     args = parser.parse_args()
     if not CLI.exists():
-        raise SystemExit("bin/felicia-cli is missing; run `make cli-build` first")
+        raise SystemExit(
+            "bin/felicia-cli is missing; build it with `go build -o bin/felicia-cli ./apps/felicia-cli/cmd/felicia` first"
+        )
     results: list[dict[str, object]] = []
     with tempfile.TemporaryDirectory(prefix="felicia-intake-") as temp:
         workspace = Path(temp)

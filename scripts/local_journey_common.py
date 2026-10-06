@@ -43,7 +43,8 @@ def run(command: list[str]) -> None:
 
 def ensure_cli() -> None:
     # An existing binary can embed an older SQLite schema than the current server.
-    run(["make", "cli-build"])
+    CLI.parent.mkdir(parents=True, exist_ok=True)
+    run(["go", "build", "-o", str(CLI), "./apps/felicia-cli/cmd/felicia"])
 
 
 def as_coord(value: Any) -> list[float] | None:
