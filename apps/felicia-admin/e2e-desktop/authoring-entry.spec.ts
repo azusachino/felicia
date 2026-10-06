@@ -1,5 +1,6 @@
 import { test, expect } from "./fixtures"
 import { decideDiscard } from "./discard-dialog"
+import { setDate } from "./date-field"
 
 async function createEmptyJourney(page: import("@playwright/test").Page) {
   await page.goto("/#/journey/new")
@@ -12,7 +13,16 @@ async function createEmptyJourney(page: import("@playwright/test").Page) {
 test("a freshly created journey can be edited and its first memento authored", async ({ page }) => {
   await createEmptyJourney(page)
   const id = page.url().split("/").pop()!
+  const created = await (await page.request.get(`/api/admin/journeys/${id}`)).json()
+  // Seed a synthetic source reference through the normal journey API; the
+  // edit form passes source_ref through unchanged and the handler must
+  // retain it across a metadata-only edit.
+  const seededSource = await page.request.post("/api/admin/journeys", {
+    data: { ...created, source_ref: "synthetic:trip-42", date_start: created.date_start.slice(0, 10), date_end: created.date_end.slice(0, 10), expected_revision: created.revision },
+  })
+  expect(seededSource.status()).toBe(200)
   const original = await (await page.request.get(`/api/admin/journeys/${id}`)).json()
+  expect(original.source_ref).toBe("synthetic:trip-42")
   await page.getByRole("button", { name: "Edit journey", exact: true }).click()
   await expect(page.getByLabel("Title", { exact: true })).toHaveValue("My new journey")
   await page.getByLabel("Title", { exact: true }).fill("My edited journey")
@@ -24,6 +34,7 @@ test("a freshly created journey can be edited and its first memento authored", a
   expect(edited.journal_id).toBe(original.journal_id)
   expect(edited.slug).toBe(original.slug)
   expect(edited.date_start).toBe(original.date_start)
+  expect(edited.source_ref).toBe("synthetic:trip-42")
   expect(edited.revision).toBeGreaterThan(original.revision)
   await page.getByRole("button", { name: "Add memento", exact: true }).click()
   const kind = page.getByRole("button", { name: "Kind", exact: true })
@@ -66,6 +77,104 @@ test("journey edit cancellation and conflicting save preserve input and the othe
   await expect(page.getByRole("alert")).toContainText("another writer")
   await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Unsaved owner title")
   expect((await (await page.request.get(`/api/admin/journeys/${id}`)).json()).title).toBe("Other writer title")
+
+  // The explicit recovery path: discard the stale edit, re-enter the form
+  // (which reloads the observed revision), and save on top of the other
+  // writer's change. The stale input is not silently retried.
+  const competingSaved = await competing.json()
+  await page.getByRole("button", { name: "Back to journey", exact: true }).click()
+  await decideDiscard(page, true)
+  await expect(page.getByRole("heading", { name: "Other writer title", exact: true })).toBeVisible()
+  await page.getByRole("button", { name: "Edit journey", exact: true }).click()
+  await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Other writer title")
+  await page.getByLabel("Title", { exact: true }).fill("Reconciled title")
+  await page.getByRole("button", { name: "Save journey", exact: true }).click()
+  await expect(page.getByRole("heading", { name: "Reconciled title", exact: true })).toBeVisible()
+  const reconciled = await (await page.request.get(`/api/admin/journeys/${id}`)).json()
+  expect(reconciled.revision).toBe(competingSaved.revision + 1)
+  expect(reconciled.title).toBe("Reconciled title")
+})
+
+test("journey edit rejects an inverted date range without submitting, then a valid correction saves once", async ({ page }) => {
+  await createEmptyJourney(page)
+  const id = page.url().split("/").pop()!
+  const original = await (await page.request.get(`/api/admin/journeys/${id}`)).json()
+  await page.getByRole("button", { name: "Edit journey", exact: true }).click()
+  await setDate(page.getByRole("group", { name: "Start date", exact: true }), "2026-05-01")
+  await setDate(page.getByRole("group", { name: "End date", exact: true }), "2026-05-03")
+
+  let journeyPosts = 0
+  page.on("request", (request) => {
+    if (request.method() === "POST" && new URL(request.url()).pathname === "/api/admin/journeys") journeyPosts += 1
+  })
+
+  await setDate(page.getByRole("group", { name: "End date", exact: true }), "2026-04-01")
+  await expect(page.locator("#date-range-error")).toContainText("End date must be on or after the start date.")
+  await expect(page.locator('[name="date_start"]')).toHaveValue("2026-05-01")
+  await expect(page.locator('[name="date_end"]')).toHaveValue("2026-04-01")
+  await expect(page.getByLabel("Title", { exact: true })).toHaveValue("My new journey")
+  await page.getByRole("button", { name: "Save journey", exact: true }).click()
+  // Deterministic no-submit evidence: the click leaves the editor open with
+  // the range error still shown (submit() returns before any request).
+  await expect(page).toHaveURL(/#\/journey\/[^/]+\/edit$/)
+  await expect(page.locator("#date-range-error")).toContainText("End date must be on or after the start date.")
+
+  await setDate(page.getByRole("group", { name: "End date", exact: true }), "2026-05-10")
+  await expect(page.locator("#date-range-error")).toHaveCount(0)
+  const corrected = page.waitForResponse((response) => response.url().endsWith("/api/admin/journeys") && response.request().method() === "POST")
+  await page.getByRole("button", { name: "Save journey", exact: true }).click()
+  expect((await corrected).status()).toBe(200)
+  // The listener spanned the invalid click too: exactly one journey POST in
+  // total proves the rejected click never reached the network.
+  expect(journeyPosts).toBe(1)
+  const saved = await (await page.request.get(`/api/admin/journeys/${id}`)).json()
+  expect(saved.revision).toBe(original.revision + 1)
+  expect(saved.date_start.slice(0, 10)).toBe("2026-05-01")
+  expect(saved.date_end.slice(0, 10)).toBe("2026-05-10")
+  expect(saved.slug).toBe(original.slug)
+})
+
+test("journey edit slug collision retains inputs and both rows, then a corrected retry saves", async ({ page }) => {
+  await createEmptyJourney(page)
+  const id = page.url().split("/").pop()!
+  const seeded = await page.request.post("/api/admin/journeys", {
+    data: { title: "Collision neighbour", place: "Nara", slug: "taken-slug", date_start: "2026-05-01", date_end: "2026-05-02" },
+  })
+  expect(seeded.status()).toBe(200)
+  const original = await (await page.request.get(`/api/admin/journeys/${id}`)).json()
+
+  await page.getByRole("button", { name: "Edit journey", exact: true }).click()
+  await page.getByText("More options", { exact: true }).click()
+  await page.getByLabel("Slug", { exact: true }).fill("taken-slug")
+  const rejected = page.waitForResponse((response) => response.url().endsWith("/api/admin/journeys") && response.request().method() === "POST")
+  await page.getByRole("button", { name: "Save journey", exact: true }).click()
+  expect((await rejected).status()).toBe(409)
+  await expect(page.getByRole("alert")).toContainText("Choose another slug")
+  await expect(page.getByLabel("Title", { exact: true })).toHaveValue("My new journey")
+  await expect(page.getByLabel("Place", { exact: true })).toHaveValue("Fictional city")
+  await expect(page.getByLabel("Slug", { exact: true })).toHaveValue("taken-slug")
+
+  const rows = await (await page.request.get("/api/admin/journeys")).json()
+  expect(rows).toHaveLength(2)
+  const editedRow = rows.find((row: { id: string }) => row.id === id)
+  const neighbourRow = rows.find((row: { id: string }) => row.id !== id)
+  expect(editedRow.title).toBe("My new journey")
+  expect(editedRow.slug).toBe(original.slug)
+  expect(editedRow.revision).toBe(original.revision)
+  expect(neighbourRow.slug).toBe("taken-slug")
+  expect(neighbourRow.title).toBe("Collision neighbour")
+
+  await page.getByLabel("Slug", { exact: true }).fill("unique-edited-slug")
+  await page.getByRole("button", { name: "Save journey", exact: true }).click()
+  await expect(page.getByRole("heading", { name: "My new journey", exact: true })).toBeVisible()
+  const saved = await (await page.request.get(`/api/admin/journeys/${id}`)).json()
+  expect(saved.slug).toBe("unique-edited-slug")
+  expect(saved.revision).toBe(original.revision + 1)
+  expect(saved.id).toBe(original.id)
+  expect(saved.journal_id).toBe(original.journal_id)
+  const neighbourAfter = await (await page.request.get(`/api/admin/journeys/${neighbourRow.id}`)).json()
+  expect(neighbourAfter.slug).toBe("taken-slug")
+  expect(neighbourAfter.title).toBe("Collision neighbour")
 })
 
 test("new memento keyboard choice, dirty return, pending navigation and retry retain one draft", async ({ page }) => {
