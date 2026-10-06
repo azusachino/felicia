@@ -132,31 +132,7 @@ The command emits structured JSON to stdout upon completion:
 
 See [Contract: Trip folder intake and agent workflows](contracts/trip-folder-contract.md) for full details on directory layout, sidecar fields, and agent automation patterns.
 
-#### Lower-level alternative: `make journey-local`
-
-For workflows that require manual inspection or editing of intermediate JSON plan files (`journey.json`, `stops.json`, `mementos.json`) before committing to the database, `make journey-local` remains available:
-
-```bash
-make journey-local GPX=~/trip/route.gpx PHOTOS=~/trip/photos SLUG=kyoto-2026 TITLE="Kyoto 2026"
-```
-
-That writes an editable workspace to `.felicia/workspaces/<slug>` (printed
-by the command): `journey.json`, `stops.json`, `mementos.json`, plus the
-planner's `plan.json`. Pointing a workspace that already holds a _different_
-journey at a new trip is a loud error, never a silent overwrite. Edit the
-titles and selections, then package and import it — reuse the workspace path
-the command printed:
-
-```bash
-uv run python scripts/local_journey.py package --workspace .felicia/workspaces/kyoto-2026
-./bin/felicia-cli import --db .felicia/felicia.sqlite --media-root .felicia/media \
-  --apply .felicia/workspaces/kyoto-2026/journey.zip
-```
-
-Repeat with a different GPX/`SLUG` for a second trip — it imports alongside
-the first rather than replacing it.
-
-Two things decide whether this produces anything:
+Two things decide whether intake produces anything:
 
 - **Stops need dwell.** A stop candidate is 20+ minutes within 250 m. A track
   that never stops — a train ride, a drive — yields no stops, and therefore no

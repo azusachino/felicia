@@ -36,9 +36,23 @@ journey and its per-stage status live in
   import activity geometry. Inputs create reviewable candidates; automatic vision-based metadata extraction
   is not implemented.
 
-**Authoring model (A+E):** an auto-ingest pipeline seeds _ingested_ fields; an admin UI is
+**Authoring model (A+E):** an auto-ingest pipeline seeds _ingested_ fields; the desktop studio / admin UI is
 where you author _essays / photo curation / animation_. The importer is **field-scoped** and
 **never overwrites authored fields** — re-import is always safe (see design §5).
+
+### Agent Operations & Intake Boundary
+
+- **The CLI is the only intake tool for agents:**
+  - AI agents interact with Felicia intake strictly via `felicia-cli`. Never invoke or look for Python wrappers.
+  - To ingest a trip into the user's unified workspace (`~/.felicia` or `$FELICIA_WORKSPACE`):
+
+    ```sh
+    felicia-cli journey ingest --dir /path/to/trip-folder
+    ```
+
+  - The trip folder contract (`docs/contracts/trip-folder-contract.md`) accepts `route.gpx` (or `timeline.json`), `photos/`, and optional `photos.jsonl` sidecars.
+  - `felicia-cli` performs candidate generation, content-addressed media ingestion into the blob store, and transactional SQLite drafting in a single step with full authorship protection.
+  - Visual review and essay authoring are handled interactively in the Desktop Studio (`make desktop`) or Web Admin (`make admin`).
 
 ### Current layout
 

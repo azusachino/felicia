@@ -22,7 +22,9 @@ class LocalJourneyWorkflowTest(unittest.TestCase):
                 "scripts.local_journey_common.run"
             ) as build:
                 ensure_cli()
-            build.assert_called_once_with(["make", "cli-build"])
+            build.assert_called_once_with(
+                ["go", "build", "-o", str(stale_cli), "./apps/felicia-cli/cmd/felicia"]
+            )
 
     def test_izu_publication_workspace_validates(self):
         root = Path(__file__).resolve().parents[1] / "publication" / "journeys"
