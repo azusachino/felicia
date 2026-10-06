@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **CLI Framework Migration to `spf13/cobra`**:
+  - Replaced standard library `flag` in `apps/felicia-cli` with `github.com/spf13/cobra` and `pflag`.
+  - Structured command hierarchy around `felicia-cli` with `journey`, `package`, `import`, and `static` subcommands, preserving POSIX flag compatibility, help generation, and JSON/JSONL output contracts.
 - **Decoupled `felicia-cli` from Makefile**:
   - `felicia-cli` is positioned as a standalone CLI tool (`go install ./apps/felicia-cli/cmd/felicia` or `go build`).
   - Removed internal `cli-build` make target and makefile prerequisites; `make site-build` now executes via `go run`.
