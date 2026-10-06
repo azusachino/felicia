@@ -4,10 +4,11 @@
 
 **フェリシア** — 琉璃雏菊（蓝费莉菊）
 
-_A map-based travel journal. The map is the index; the mementos are the stories._
+*A map-based travel journal. The map is the index; the mementos are the stories.*
 
 [![status](https://img.shields.io/badge/status-implementation%20stage-e8a33d)](docs/roadmap.md)
 [![backend](https://img.shields.io/badge/backend-Go%20%C2%B7%20SQLite-00add8)](docs/development/layout.md)
+[![desktop](https://img.shields.io/badge/desktop-Wails%20v3%20%C2%B7%20macOS-333333)](apps/felicia-desktop/)
 [![web](https://img.shields.io/badge/web-Svelte%205%20%C2%B7%20Vite-ff3e00)](packages/felicia-reader/)
 [![license](https://img.shields.io/badge/license-AGPL--3.0-3da639)](LICENSE)
 
@@ -19,27 +20,42 @@ _A map-based travel journal. The map is the index; the mementos are the stories.
 
 Felicia is a personal travel journal. Journeys appear on a map; visits give places to memories; mementos open into essays and photo galleries. Import creates private, reviewable data. You author and explicitly publish what belongs on the public site.
 
-- **Local-first:** SQLite, originals, drafts, and authoring data stay on your machine.
-- **Authorship-safe:** re-import updates source-owned fields without overwriting authored fields.
-- **Private by default:** only published content and safe media derivatives enter a static site.
+- **Local-first:** SQLite database, media originals, drafts, and authoring state stay on your machine.
+- **Asymmetric collaboration:** AI agents perform headless intake and spatial clustering via `felicia-cli`; humans visually curate routes, review candidates, and craft personal essays in **Felicia Desktop Studio**.
+- **Authorship-safe:** Re-ingestion updates source-owned GPS tracks and photo timestamps without clobbering human-authored titles, candidate curation, or essays (`authored_fields`).
+- **Private by default:** Only explicitly published content and stripped media derivatives enter the public static site.
 
-## Current shape
+## Architecture and components
 
 ```text
-Trip folder / GPX / Google Timeline ─┐
-Photos / sidecar (photos.jsonl) ─────┴─> felicia-cli journey ingest
-                                             -> unified workspace (~/.felicia)
-                                             -> visual review & authoring in Desktop / Admin
-                                             -> publish -> static site
+Trip folder / GPX / Timeline ─┐
+Photos / sidecar (photos.jsonl) ┴─> felicia-cli journey ingest
+                                         │
+                                         ▼
+                             Unified Workspace (~/.felicia)
+                                   ┌─────┴─────┐
+                                   ▼           ▼
+                           Desktop Studio    Admin Web
+                           (Visual author)   (API/Web)
+                                   └─────┬─────┘
+                                         ▼
+                             felicia-cli static compile
+                                         │
+                                         ▼
+                               Static Reader Site
 ```
 
-Go modules under `apps/` own the domain, runtime, providers, server, CLI, desktop studio, and publication compiler. `packages/felicia-model` holds frontend contracts; `packages/felicia-reader` is the Atlas reader. The two web hosts are `apps/felicia-admin` and `apps/felicia-public-site`. SQLite is the only persistence implementation for v1.
+- **`apps/felicia-desktop`**: Native desktop visual authoring studio (Wails v3 + SvelteKit) with interactive MapLibre map track inspection, stop candidate curation, rich memento essay writing, and in-app publication preview.
+- **`apps/felicia-cli`**: Standalone Go CLI (`spf13/cobra`) providing single-step trip folder ingestion (`journey ingest`), draft planning, review patching, and static compilation.
+- **`apps/felicia-admin`**: Headless web authoring studio alternative sharing components with Desktop Studio.
+- **`apps/felicia-runtime` & `apps/felicia-core`**: Core domain logic, unified workspace resolver (`~/.felicia`), spatial visit clustering, content-addressed media blob store, and SQLite persistence.
+- **`packages/felicia-reader` & `apps/felicia-public-site`**: Read-only, public Atlas reader.
 
 ## Quick start
 
 Install the checked-in toolchain with `mise install`.
 
-### 1. Trip intake with `felicia-cli`
+### 1. Ingest a trip folder with `felicia-cli`
 
 Install or build the standalone CLI:
 
@@ -55,63 +71,56 @@ Ingest a trip folder directly into your unified workspace (`~/.felicia` or `$FEL
 felicia-cli journey ingest --dir /path/to/trip-folder
 ```
 
-A trip folder contains `route.gpx` (or `timeline.json`), a `photos/` folder, and an optional `photos.jsonl` sidecar. The CLI stages candidate stops and installs photos into the content-addressed blob store with full authorship protection (subsequent re-ingests never overwrite human-curated titles or essays).
+A trip folder contains `route.gpx` (or `timeline.json`), a `photos/` folder, and an optional `photos.jsonl` sidecar. The CLI parses GPS tracks, clusters dwell times into candidate stops, installs media into the content-addressed blob store, and stages draft records directly into SQLite with authorship protection.
 
-### 2. Studio authoring & verification
+### 2. Visually curate in Felicia Desktop Studio
 
-Use the Make targets for authoring studios and quality gates:
+Launch Desktop Studio to visually author the ingested journey:
 
 ```sh
-make help
-make desktop     # native desktop studio (macOS 26+ app)
-make admin       # web authoring stack; see network-binding note below
-make web-dev     # public reader
-make local-check # reuse unchanged local check groups while iterating
-make check       # uncached pre-commit gate
-make validate    # uncached pre-PR gate
+make desktop
 ```
 
-`make admin` binds the authoring stack to `0.0.0.0` for tailnet access; the admin API has no authentication. Use only on a trusted host/network, or set `FELICIA_HOST=127.0.0.1` for host-only access.
+In Desktop Studio, you can:
 
-For small changes, select a check group with
-`make local-check ARGS='--groups scripts'` (or `admin`, `public`, `go`, `docs`).
-Use `ARGS='--force'` to bypass local results. See
-[the local-check workflow](docs/development/local-checks.md); full acceptance gates
-never consume this cache.
+- **Inspect routes**: Explore GPS tracks and elevation on the interactive MapLibre map.
+- **Curate stop candidates**: Review detected dwell-time clusters and mark them as *kept*, *merged*, or *ignored*.
+- **Write mementos**: Craft personal travel essays, configure dates and locations, and assign curated photos.
+- **Preview & Publish**: Inspect the compiled static site with reader fonts bundled directly in-app.
 
-## Build and publish
+*(For headless or remote browser setups, `make admin` provides the web authoring interface.)*
 
-The native desktop build targets macOS 26.0 or newer. The Go task runner derives
-compilation/link deployment flags from the bundle's minimum system version;
-SDK version and deployment minimum are distinct. Native visual acceptance remains
-separate from a successful build.
+### 3. Build and publish
 
-The admin studio runs locally. The public site is compiled from published records; deploying that static output is separate from authoring:
+Compile the public static publication from published records:
 
 ```sh
-make admin
 make site-build
+# or using the CLI directly:
+felicia-cli static compile --out dist
 ```
 
-Follow [docs/publish.md](docs/publish.md) for the full local and CI publication flow and privacy boundary.
+Follow [docs/publish.md](docs/publish.md) for the full publication pipeline, CI workflows, and privacy boundaries.
+
+## Development and quality gates
+
+```sh
+make help        # view all available targets
+make local-check # fast iterative check runner across changed groups
+make check       # pre-commit gate (formatters, linters, Go vet, Python tests)
+make validate    # pre-PR gate (full verification across Go, TypeScript, and Python)
+```
+
+The native desktop build targets macOS 26.0 or newer. See [the local-check workflow](docs/development/local-checks.md) for incremental validation.
 
 ## Status and documentation
 
-Felicia is in the implementation stage. The selected end-to-end flow and current stage status are in [the user journey](docs/roadmap/user-journey.md); milestones and remaining work are in [the roadmap](docs/roadmap.md). Read [the project instructions](AGENTS.md) before contributing. Architecture records live in [`docs/adr/`](docs/adr/), and the broader design/research trail in [`docs/research/`](docs/research/).
+Felicia is in active implementation. Detailed documentation:
 
-The desktop follow-up provides isolated sample/empty temporary workspaces,
-journey and memento authoring, shared library controls and an in-app last-built
-preview with reader fonts bundled from pinned Fontsource dependencies. Ordinary
-desktop image upload shares web validation/storage; temporary workspaces add
-only generated photos and manage output automatically. Internal dirty Return
-uses a shared confirmation dialog. The owner reviewed and approved
-[PR #160](https://github.com/azusachino/felicia/pull/160), with green backend,
-frontend and desktop-composition CI. The rebuilt isolated Sample is basically
-working according to owner feedback. Standalone Close has bounded native
-acceptance; broader native S1 acceptance, normal file-picker testing and S2
-reviewed imports remain open under [#161](https://github.com/azusachino/felicia/issues/161).
-See the [desktop execution plan](docs/roadmap/desktop-studio-redesign.md) for the
-verified slices and explicit capability limits.
+- **[Agent & Desktop Collaborative Workflow](docs/research/agent-and-desktop-workflow.md)**: Architecture of the asymmetric intake and authoring loop.
+- **[Trip Folder Contract](docs/contracts/trip-folder-contract.md)**: Normative specification for trip folder layout, sidecars, and CLI options.
+- **[User Journey](docs/roadmap/user-journey.md)** & **[Roadmap](docs/roadmap.md)**: Current development milestones and remaining scope.
+- **[Architecture Decisions (ADRs)](docs/adr/)**: Architectural records and boundary definitions.
 
 ## Acknowledgements
 
