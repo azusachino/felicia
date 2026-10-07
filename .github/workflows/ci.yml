@@ -8,14 +8,85 @@ on:
 env:
   MISE_LOCKED: "1"
 
+permissions:
+  contents: read
+
 # Cancel superseded runs on the same ref.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      global: ${{ steps.filter.outputs.global }}
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      desktop_e2e: ${{ steps.filter.outputs.desktop_e2e }}
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            global: &global
+              - '.github/workflows/ci.yml'
+              - 'Makefile'
+              - 'mise.toml'
+              - 'mise.lock'
+              - 'go.work*'
+            backend:
+              - *global
+              - 'apps/felicia-cli/**'
+              - 'apps/felicia-core/**'
+              - 'apps/felicia-desktop/**'
+              - 'apps/felicia-providers/**'
+              - 'apps/felicia-publication/**'
+              - 'apps/felicia-runtime/**'
+              - 'apps/felicia-server/**'
+              - '**/go.mod'
+              - '**/go.sum'
+              - 'scripts/**'
+              - 'tests/**'
+              - 'contracts/**'
+              - 'schemas/**'
+            frontend:
+              - *global
+              - 'apps/felicia-admin/**'
+              - 'apps/felicia-public-site/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'bun.lock'
+            desktop_e2e:
+              - *global
+              - 'apps/felicia-desktop/**'
+              - 'apps/felicia-admin/**'
+              - 'apps/felicia-public-site/**'
+              - 'packages/**'
+              - 'scripts/go_tasks.py'
+            code:
+              - *global
+              - 'apps/**'
+              - 'packages/**'
+              - 'scripts/**'
+              - 'tests/**'
+              - 'contracts/**'
+              - 'schemas/**'
+              - 'package.json'
+              - 'bun.lock'
+              - '**/go.mod'
+              - '**/go.sum'
+
   desktop-e2e:
     name: Desktop composition (Chromium + WebKit)
+    needs: [changes]
+    if: github.event_name != 'pull_request' || needs.changes.outputs.global == 'true' || needs.changes.outputs.desktop_e2e == 'true'
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
@@ -37,6 +108,8 @@ jobs:
 
   backend:
     name: Backend (make check-ci)
+    needs: [changes]
+    if: github.event_name != 'pull_request' || needs.changes.outputs.global == 'true' || needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     # No PostgreSQL service. SQLite is the only v1 persistence contract
     # (ADR-0032), and the v1 gate must not require a PostgreSQL service, its
@@ -65,6 +138,8 @@ jobs:
 
   frontend:
     name: Frontend (make web-check)
+    needs: [changes]
+    if: github.event_name != 'pull_request' || needs.changes.outputs.global == 'true' || needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -80,3 +155,46 @@ jobs:
 
       - name: Check admin frontend
         run: make admin-check
+
+  docs:
+    name: Documentation (make fmt-docs-check)
+    needs: [changes]
+    if: github.event_name == 'pull_request' && needs.changes.outputs.code != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install mise toolchain
+        uses: jdx/mise-action@v4
+      - name: Check documentation formatting
+        run: make fmt-docs-check
+
+  check:
+    name: make check
+    if: ${{ always() }}
+    needs: [changes, desktop-e2e, backend, frontend, docs]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every gate
+        env:
+          DESKTOP_RESULT: ${{ needs['desktop-e2e'].result }}
+          BACKEND_RESULT: ${{ needs.backend.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+          DOCS_RESULT: ${{ needs.docs.result }}
+        run: |
+          for res in "$DESKTOP_RESULT" "$BACKEND_RESULT" "$FRONTEND_RESULT" "$DOCS_RESULT"; do
+            if [[ "$res" != "success" && "$res" != "skipped" ]]; then
+              echo "Gate failed with state: $res"
+              exit 1
+            fi
+          done
+          ran=0
+          for res in "$DESKTOP_RESULT" "$BACKEND_RESULT" "$FRONTEND_RESULT" "$DOCS_RESULT"; do
+            if [[ "$res" == "success" ]]; then
+              ran=1
+              break
+            fi
+          done
+          if [[ $ran -ne 1 ]]; then
+            echo "No gate was executed"
+            exit 1
+          fi
