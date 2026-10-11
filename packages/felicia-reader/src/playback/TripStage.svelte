@@ -14,7 +14,13 @@
     onClose: () => void
   } = $props()
 
-  const state = $derived(controller.getState())
+  let state = $state(controller.getState())
+
+  $effect(() => {
+    return controller.subscribe((s) => {
+      state = s
+    })
+  })
 </script>
 
 <div class="fixed inset-0 z-50 flex flex-col justify-between overflow-hidden bg-black/90 p-6 text-white backdrop-blur-2xl max-[48rem]:p-4">

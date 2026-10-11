@@ -3,12 +3,19 @@
   import "maplibre-gl/dist/maplibre-gl.css"
   import { onMount } from "svelte"
   import { geoDistance } from "d3-geo"
+  import { timer, type Timer } from "d3-timer"
+  import { lineString, point } from "@turf/helpers"
+  import along from "@turf/along"
+  import length from "@turf/length"
+  import lineSlice from "@turf/line-slice"
   import type { Coordinates, Journey, Memento, Theme } from "@felicia/model"
+  import type { PlaybackStep } from "../../playback/engine"
 
   let {
     journeys,
     activeJourneyId,
     activeMementoId,
+    currentStep = null,
     lang,
     theme,
     onSelect,
@@ -16,6 +23,7 @@
     journeys: Journey[]
     activeJourneyId: string | null
     activeMementoId: string | null
+    currentStep?: PlaybackStep | null
     lang: "ja" | "en" | "zh"
     theme: Theme
     onSelect: (id: string) => void
@@ -28,35 +36,57 @@
   let prefersReducedMotion = $state(false)
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- imperative MapLibre marker cache
   const markers = new Map<string, maplibregl.Marker>()
+  let vehicleMarker: maplibregl.Marker | undefined
+  let activeAnimationTimer: Timer | null = null
 
   const mapStyle: StyleSpecification = {
     version: 8,
     sources: {
-      // CARTO's free basemaps began requiring an API key and now answer 200
-      // with "API KEY REQUIRED" stamped into the PNG itself, so the map broke
-      // without a single failed request, console error or red test. Esri's
-      // Canvas basemaps are keyless. Note the template order: Esri serves
-      // {z}/{y}/{x} -- row before column -- the reverse of the XYZ scheme
-      // CARTO and OSM use, so swapping the host alone silently transposes the
-      // world.
-      dark: {
+      // 1. High-detail Esri Topo Map: contains topographic elevation contours, mountain relief, forest cover, highways and local roads
+      "topo-base": {
+        type: "raster",
+        tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"],
+        tileSize: 256,
+        maxzoom: 19,
+        attribution: "&copy; Esri, HERE, Garmin, Intermap, USGS, METI/NASA",
+      },
+      // 2. High-contrast Esri Dark Canvas Base for sleek dark spatial journal aesthetic
+      "dark-base": {
         type: "raster",
         tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"],
         tileSize: 256,
         maxzoom: 16,
-        attribution: "&copy; OpenStreetMap contributors, Esri, HERE, Garmin",
       },
-      light: {
+      // 3. Transportation reference overlay: roads, highways, rail labels
+      "transport-ref": {
         type: "raster",
-        tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"],
+        tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}"],
+        tileSize: 256,
+        maxzoom: 19,
+      },
+      // 4. Boundaries and places reference overlay: cities, towns, administrative boundaries, coastal place names
+      "places-ref": {
+        type: "raster",
+        tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"],
+        tileSize: 256,
+        maxzoom: 19,
+      },
+      // 5. Dark Canvas reference overlay
+      "dark-canvas-ref": {
+        type: "raster",
+        tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"],
         tileSize: 256,
         maxzoom: 16,
-        attribution: "&copy; OpenStreetMap contributors, Esri, HERE, Garmin",
       },
     },
     layers: [
-      { id: "base-dark", type: "raster", source: "dark" },
-      { id: "base-light", type: "raster", source: "light", layout: { visibility: "none" } },
+      // Light theme: Rich Topo Map with transport and place names
+      { id: "layer-topo-base", type: "raster", source: "topo-base", layout: { visibility: "none" } },
+      // Dark theme: Dark base + Road Transportation network + Boundaries & Places
+      { id: "layer-dark-base", type: "raster", source: "dark-base", layout: { visibility: "visible" } },
+      { id: "layer-dark-ref", type: "raster", source: "dark-canvas-ref", layout: { visibility: "visible" } },
+      { id: "layer-transport-ref", type: "raster", source: "transport-ref", paint: { "raster-opacity": 0.82 } },
+      { id: "layer-places-ref", type: "raster", source: "places-ref", paint: { "raster-opacity": 0.9 } },
     ],
   }
 
@@ -102,7 +132,7 @@
     const bounds = boundsOf(coordinatesFor(journey))
     if (!bounds) return
     const distance = journeyDistance(journey)
-    map.fitBounds(bounds, { padding: 80, maxZoom: 9, duration: prefersReducedMotion ? 0 : Math.min(900, 360 + distance * 180) })
+    map.fitBounds(bounds, { padding: 80, maxZoom: 11, duration: prefersReducedMotion ? 0 : Math.min(900, 360 + distance * 180) })
   }
 
   function journeyDistance(journey: Journey) {
@@ -153,12 +183,71 @@
     if (!map || !id) return
     const m = journeys.flatMap((j) => j.mementos).find((item) => item.id === id)
     if (!m) return
-    map.easeTo({
+    map.flyTo({
       center: m.coords,
-      zoom: 9.5,
-      pitch: 25,
-      duration: prefersReducedMotion ? 0 : 900,
+      zoom: 13.5,
+      pitch: 45,
+      bearing: 20,
+      speed: 1.1,
+      curve: 1.3,
+      essential: true,
+      padding: { top: 60, bottom: 80, left: 340, right: 60 },
     })
+  }
+
+  let lastAnimatedStopIndex = -1
+
+  function animateAlongRoute(fromCoords: Coordinates, toCoords: Coordinates, durationMs = 2600) {
+    if (!map || prefersReducedMotion) return
+    const journey = activeJourney()
+    if (!journey) return
+
+    const allRouteCoords = journey.routeSegments?.length ? journey.routeSegments.flat() : journey.route
+    if (allRouteCoords.length < 2) return
+
+    try {
+      const fullLine = lineString(allRouteCoords)
+      const startPt = point(fromCoords)
+      const stopPt = point(toCoords)
+      const sliced = lineSlice(startPt, stopPt, fullLine)
+      const sliceDistance = length(sliced, { units: "kilometers" })
+      if (sliceDistance <= 0.05) return
+
+      if (activeAnimationTimer) {
+        activeAnimationTimer.stop()
+        activeAnimationTimer = null
+      }
+
+      if (!vehicleMarker) {
+        const el = document.createElement("div")
+        el.className = "atlas-traveling-dot"
+        vehicleMarker = new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat(fromCoords).addTo(map)
+      } else {
+        vehicleMarker.getElement().style.display = "block"
+        vehicleMarker.setLngLat(fromCoords)
+      }
+
+      const startTime = performance.now()
+      activeAnimationTimer = timer(() => {
+        const elapsed = performance.now() - startTime
+        const progress = Math.min(1, elapsed / durationMs)
+        const currentDist = progress * sliceDistance
+        const pt = along(sliced, currentDist, { units: "kilometers" })
+        const [lng, lat] = pt.geometry.coordinates as [number, number]
+
+        vehicleMarker?.setLngLat([lng, lat])
+
+        if (progress >= 1) {
+          activeAnimationTimer?.stop()
+          activeAnimationTimer = null
+          if (vehicleMarker) {
+            vehicleMarker.getElement().style.display = "none"
+          }
+        }
+      })
+    } catch {
+      // Graceful fallback if slice calculation has zero length
+    }
   }
 
   function refresh() {
@@ -178,8 +267,10 @@
 
   function applyTheme() {
     if (!map) return
-    map.setLayoutProperty("base-light", "visibility", theme === "light" ? "visible" : "none")
-    map.setLayoutProperty("base-dark", "visibility", theme === "light" ? "none" : "visible")
+    const isLight = theme === "light"
+    map.setLayoutProperty("layer-topo-base", "visibility", isLight ? "visible" : "none")
+    map.setLayoutProperty("layer-dark-base", "visibility", isLight ? "none" : "visible")
+    map.setLayoutProperty("layer-dark-ref", "visibility", isLight ? "none" : "visible")
   }
 
   onMount(() => {
@@ -214,7 +305,7 @@
         type: "line",
         source: "routes",
         filter: ["==", ["get", "journeyId"], activeJourneyId ?? ""],
-        paint: { "line-color": "#ff9b72", "line-width": 8, "line-opacity": 0.16, "line-blur": 4 },
+        paint: { "line-color": "#ff9b72", "line-width": 9, "line-opacity": 0.25, "line-blur": 4 },
       })
       map.addLayer({
         id: "route-active",
@@ -222,7 +313,7 @@
         source: "routes",
         filter: ["==", ["get", "journeyId"], activeJourneyId ?? ""],
         layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": "#ff9b72", "line-width": 3, "line-opacity": 0.88 },
+        paint: { "line-color": "#ff9b72", "line-width": 3.5, "line-opacity": 0.95 },
       })
       map.addLayer({
         id: "route-active-dashed",
@@ -248,9 +339,13 @@
     })
 
     return () => {
+      activeAnimationTimer?.stop()
+      activeAnimationTimer = null
       resizeObserver?.disconnect()
       motionQuery.removeEventListener("change", onMotionChange)
       resizeObserver = undefined
+      vehicleMarker?.remove()
+      vehicleMarker = undefined
       markers.forEach((marker) => marker.remove())
       markers.clear()
       map?.remove()
@@ -271,6 +366,42 @@
       if (activeMementoId) {
         flyToMemento(activeMementoId)
       }
+    }
+  })
+
+  $effect(() => {
+    if (!loaded || !currentStep) return
+    if (currentStep.type === "intro" || currentStep.type === "summary") {
+      fitActiveJourney()
+      lastAnimatedStopIndex = -1
+    } else if (currentStep.type === "day") {
+      const journey = activeJourney()
+      if (journey) {
+        const dayMementos = journey.mementos.filter((m) => {
+          const d = m.date.en || m.date.zh || m.date.ja || ""
+          return d.startsWith(currentStep.date)
+        })
+        if (dayMementos.length) {
+          const bounds = boundsOf(dayMementos.map((m) => m.coords))
+          if (bounds) {
+            map?.fitBounds(bounds, {
+              padding: { top: 70, bottom: 90, left: 340, right: 60 },
+              maxZoom: 12.5,
+              duration: prefersReducedMotion ? 0 : 800,
+            })
+          }
+        }
+      }
+    } else if (currentStep.type === "stop") {
+      flyToMemento(currentStep.memento.id)
+      const journey = activeJourney()
+      if (journey && lastAnimatedStopIndex >= 0 && lastAnimatedStopIndex !== currentStep.stopIndex) {
+        const prevMemento = journey.mementos[lastAnimatedStopIndex]
+        if (prevMemento) {
+          animateAlongRoute(prevMemento.coords, currentStep.coords)
+        }
+      }
+      lastAnimatedStopIndex = currentStep.stopIndex
     }
   })
 
@@ -332,5 +463,26 @@
     color: #123344;
     font-size: 0.6rem;
     font-style: normal;
+  }
+
+  :global(.atlas-traveling-dot) {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 999px;
+    background: #ff7e47;
+    border: 2.5px solid #ffffff;
+    box-shadow: 0 0 12px #ff7e47, 0 0 24px #ff7e47aa;
+    pointer-events: none;
+    z-index: 10;
+    animation: traveling-pulse 1.2s infinite ease-in-out;
+  }
+
+  @keyframes traveling-pulse {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.3);
+    }
   }
 </style>

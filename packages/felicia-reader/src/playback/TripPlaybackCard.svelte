@@ -20,7 +20,13 @@
     onClose?: () => void
   } = $props()
 
-  const state = $derived(controller.getState())
+  let state = $state(controller.getState())
+
+  $effect(() => {
+    return controller.subscribe((s) => {
+      state = s
+    })
+  })
   const speeds = [1, 1.5, 2]
 
   function nextSpeed() {

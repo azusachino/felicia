@@ -46,12 +46,14 @@
   // Playback engine state
   let playbackController = $state<PlaybackController | null>(null)
   let currentStep = $state<PlaybackStep | null>(null)
+  let lastJourneyId = $state<string | null>(null)
 
   function initPlayback(journey: Journey | null) {
     playbackController?.destroy()
     if (!journey) {
       playbackController = null
       currentStep = null
+      lastJourneyId = null
       return
     }
     const steps = generatePlaybackSteps(journey, lang)
@@ -65,10 +67,11 @@
       }
     })
     playbackController = ctrl
+    lastJourneyId = journey.id
   }
 
   $effect(() => {
-    if (activeJourney) {
+    if (activeJourney && activeJourney.id !== lastJourneyId) {
       initPlayback(activeJourney)
     }
   })
@@ -150,6 +153,7 @@
           {journeys}
           {activeJourneyId}
           {activeMementoId}
+          {currentStep}
           {lang}
           {theme}
           onSelect={(id) => {
