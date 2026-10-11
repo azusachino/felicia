@@ -112,7 +112,11 @@ function adaptMemento(apiMemento: ApiMemento, visitId: string, visitCoords: Coor
     kindData: apiMemento.kind_data,
     photos: (apiMemento.photos ?? []).map((photo) => ({
       src: mediaURL(photo.object_key),
+      video: photo.video_key ? mediaURL(photo.video_key) : undefined,
       caption: authored(photo.caption),
+      alt: photo.alt,
+      width: photo.width,
+      height: photo.height,
     })),
     transit: transitData(apiMemento, title, visitCoords),
   }
@@ -138,13 +142,28 @@ export function adaptJourney(apiJourney: ApiJourney, apiMementos: ApiMemento[], 
     mementos.push(adaptMemento(apiMemento, visit.id, visit.coords, mediaURL))
   }
 
+  const covers = (apiJourney.covers ?? []).map((photo) => ({
+    src: mediaURL(photo.object_key),
+    video: photo.video_key ? mediaURL(photo.video_key) : undefined,
+    caption: authored(photo.caption),
+    alt: photo.alt,
+    width: photo.width,
+    height: photo.height,
+  }))
+
   return {
     id: apiJourney.id,
+    slug: apiJourney.slug,
     title: authored(apiJourney.title),
     dates: authored(`${datePart(apiJourney.date_start)} — ${datePart(apiJourney.date_end)}`),
     place: authored(apiJourney.place),
     route: routeCoordinates(apiJourney.gps_route),
     routeSegments: routeSegments(apiJourney.gps_route),
+    legModes: (apiJourney.leg_modes as any) ?? undefined,
+    covers: covers.length > 0 ? covers : undefined,
+    weather: apiJourney.weather,
+    distanceKm: apiJourney.distance_km,
+    drivingHours: apiJourney.driving_hours,
     visits,
     mementos,
   }

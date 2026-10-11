@@ -70,7 +70,11 @@
           .map((coordinates, index) => ({
             type: "Feature" as const,
             geometry: { type: "LineString" as const, coordinates },
-            properties: { journeyId: journey.id, segment: index },
+            properties: {
+              journeyId: journey.id,
+              segment: index,
+              legMode: journey.legModes?.[index] ?? "car",
+            },
           }))
       }),
     }
@@ -145,11 +149,28 @@
     })
   }
 
+  function flyToMemento(id: string | null) {
+    if (!map || !id) return
+    const m = journeys.flatMap((j) => j.mementos).find((item) => item.id === id)
+    if (!m) return
+    map.easeTo({
+      center: m.coords,
+      zoom: 9.5,
+      pitch: 25,
+      duration: prefersReducedMotion ? 0 : 900,
+    })
+  }
+
   function refresh() {
     if (!loaded || !map) return
     ;(map.getSource("routes") as maplibregl.GeoJSONSource | undefined)?.setData(routeGeoJson())
     map.setFilter("route-active", ["==", ["get", "journeyId"], activeJourneyId ?? ""])
     map.setFilter("route-active-glow", ["==", ["get", "journeyId"], activeJourneyId ?? ""])
+    map.setFilter("route-active-dashed", [
+      "all",
+      ["==", ["get", "journeyId"], activeJourneyId ?? ""],
+      ["in", ["get", "legMode"], ["literal", ["ferry", "train", "plane"]]],
+    ])
     rebuildMarkers()
     syncMarkers()
     fitActiveJourney()
@@ -203,6 +224,23 @@
         layout: { "line-cap": "round", "line-join": "round" },
         paint: { "line-color": "#ff9b72", "line-width": 3, "line-opacity": 0.88 },
       })
+      map.addLayer({
+        id: "route-active-dashed",
+        type: "line",
+        source: "routes",
+        filter: [
+          "all",
+          ["==", ["get", "journeyId"], activeJourneyId ?? ""],
+          ["in", ["get", "legMode"], ["literal", ["ferry", "train", "plane"]]],
+        ],
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: {
+          "line-color": "#ff9b72",
+          "line-width": 3,
+          "line-dasharray": [2, 2],
+          "line-opacity": 0.95,
+        },
+      })
       loaded = true
       refresh()
       applyTheme()
@@ -228,7 +266,12 @@
 
   $effect(() => {
     void activeMementoId
-    if (loaded) syncMarkers()
+    if (loaded) {
+      syncMarkers()
+      if (activeMementoId) {
+        flyToMemento(activeMementoId)
+      }
+    }
   })
 
   $effect(() => {

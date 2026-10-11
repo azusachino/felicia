@@ -17,6 +17,17 @@ export interface Station {
   coords: Coordinates
 }
 
+export interface PhotoAsset {
+  src: string
+  srcset?: string
+  thumbnail?: string
+  video?: string // Live Photo MP4 companion
+  caption: L
+  alt?: string
+  width?: number
+  height?: number
+}
+
 export interface Memento {
   id: string
   kind: MementoKind
@@ -29,7 +40,7 @@ export interface Memento {
   coords: Coordinates
   essay: L
   kindData?: Record<string, unknown>
-  photos: { src: string; caption: L }[]
+  photos: PhotoAsset[]
   transit?: {
     operator: L
     line: L
@@ -45,13 +56,26 @@ export interface Visit {
   coords: Coordinates
 }
 
+export type LegMode = "car" | "ferry" | "train" | "plane" | "walk"
+
+export interface WeatherInfo {
+  icon: string
+  label: string
+}
+
 export interface Journey {
   id: string
+  slug?: string
   title: L
   dates: L
   place: L
   route: Coordinates[]
   routeSegments?: Coordinates[][]
+  legModes?: LegMode[]
+  covers?: PhotoAsset[]
+  weather?: Record<number | string, WeatherInfo>
+  distanceKm?: number
+  drivingHours?: number
   visits: Visit[]
   mementos: Memento[]
   representativeDots?: { coord: Coordinates; label: string }[]
