@@ -4,15 +4,10 @@ Single source of truth for humans and agents working in this repo.
 
 ## Project Overview
 
-**felicia** is a map-based travel journal (modeled on [liuaaron.com](https://liuaaron.com/),
-"Aaron's Waypoints"). Each **journey** is drawn on a dark world map as an orange route line;
-along it sit **mementos** — the objects that anchor a memory (an admission ticket, but equally
-a souvenir, a goods, a receipt, a stamp), each rendered as a collectible **stub**. Clicking a
-memento animates it open into an **essay** and a **photo gallery**. The map is the index; the
-mementos are the stories. (`kind`-tagged; physical tickets are dying, so stubs are rendered
-from data — see `docs/research/mementos-not-tickets.md`.)
+**felicia** is a map-based travel journal (modeled on [hyoban.cc](https://hyoban.cc/trip/2026-national-day-road-trip/),
+following [ADR 0008](docs/adr/0008-pivot-to-hyoban-spatial-journal.md)'s pivot from the initial `liuaaron.com` ticket-stub baseline). Each **journey** is drawn on an edge-to-edge dark map with multimodal route lines; along it sit **mementos** (moments) — narrative essays, place chips, weather badges, and tactile Live Photo Polaroid cards. An automated cinematic playback state machine guides viewers through days and dwell stops. The map is the index; the mementos are the stories.
 
-North star: [`docs/direction.md`](docs/direction.md) (direction: _personal now,
+North star: [`docs/direction.md`](docs/direction.md) and [`docs/adr/0008-pivot-to-hyoban-spatial-journal.md`](docs/adr/0008-pivot-to-hyoban-spatial-journal.md) (direction: _personal now,
 product-ready_). Earlier design/spec drafts are parked in [`docs/archive/`](docs/archive/).
 Status: **implementation stage** (research trail continues), unhurried (~6-month horizon).
 Delivery status lives in [`docs/roadmap.md`](docs/roadmap.md); the selected end-to-end
