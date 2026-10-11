@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source "../src/**/*.svelte";
 
 /* Techo palette as Tailwind theme tokens → bg-paper-1, text-terracotta,
    font-mincho, … (felicia:decision:techo-paper). */

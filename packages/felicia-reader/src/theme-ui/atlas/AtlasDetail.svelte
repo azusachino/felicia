@@ -60,7 +60,7 @@
   .detail-panel {
     display: flex;
     position: absolute;
-    z-index: 4;
+    z-index: 30;
     top: 1rem;
     right: 1rem;
     bottom: 1rem;

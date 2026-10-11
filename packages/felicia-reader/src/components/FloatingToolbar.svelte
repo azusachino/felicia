@@ -26,7 +26,7 @@
   )
 </script>
 
-<header class="calendar-map-toolbar pointer-events-none absolute inset-x-4 top-4 z-20 flex items-center justify-between gap-2 max-[48rem]:inset-x-2">
+<header class="calendar-map-toolbar pointer-events-none absolute inset-x-4 top-4 z-20 flex items-center justify-between gap-2 max-[48rem]:inset-x-2 sm:px-28">
   <!-- Left: Brand / Home Pill -->
   <div class="pointer-events-auto flex items-center">
     <a

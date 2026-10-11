@@ -116,7 +116,7 @@
 
 <svelte:window onkeydown={(event) => event.key === "Escape" && (closeMemento(), (showStage = false), (showExport = false), (lightboxPhoto = null))} />
 
-<main class="felicia-canvas relative isolate h-screen w-full overflow-hidden bg-[#07131f] text-stone-100" class:light={theme === "light"}>
+<main class="felicia-canvas relative z-20 isolate h-screen w-full overflow-hidden bg-[#07131f] text-stone-100" class:light={theme === "light"}>
   {#if isLoading}
     <div class="flex h-screen w-full items-center justify-center text-sm text-stone-400">
       Loading journal...
