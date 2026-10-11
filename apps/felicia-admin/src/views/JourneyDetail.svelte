@@ -374,7 +374,18 @@
       <p class="eyebrow">{journey.slug}</p>
       <div class="detail-title-row">
         <h1>{journey.title}</h1>
-        <Button variant="outline" onclick={() => goto(resolve(journeyEditPath(id)))}><Pencil size={16} aria-hidden="true" />{message(locale, "admin.journeys.edit")}</Button>
+        <div class="header-actions">
+          {#if siteInfo?.artifact_ready}
+            {#if studio.desktop}
+              <Button variant="outline" onclick={() => studio.openPreview()}><Eye size={16} aria-hidden="true" />{message(locale, "admin.preview.open")}</Button>
+            {:else}
+              <a class="preview-btn" href={previewUrl(siteInfo.preview_port)} target="_blank" rel="external noreferrer"
+                ><Eye size={16} aria-hidden="true" />{message(locale, "admin.site.open_preview")}</a
+              >
+            {/if}
+          {/if}
+          <Button variant="outline" onclick={() => goto(resolve(journeyEditPath(id)))}><Pencil size={16} aria-hidden="true" />{message(locale, "admin.journeys.edit")}</Button>
+        </div>
       </div>
       <p class="detail-meta">{journey.place} · {formatJourneyDate(journey.date_start)} – {formatJourneyDate(journey.date_end)}</p>
     </header>
@@ -634,6 +645,31 @@
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 16px;
+  }
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .preview-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    background: var(--surface-raised);
+    text-decoration: none;
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease;
+  }
+  .preview-btn:hover {
+    background: var(--surface-muted);
+    border-color: var(--accent);
   }
   .back-link {
     display: inline-block;

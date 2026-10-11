@@ -286,6 +286,30 @@ func installMediaFiles(ctx context.Context, photosDir, mediaRoot string, assets 
 			}
 		}
 
+		// Apple Live Photo companion check (.mov with identical base stem)
+		ext := filepath.Ext(fp)
+		stem := strings.TrimSuffix(fp, ext)
+		for _, movExt := range []string{".mov", ".MOV", ".mp4", ".MP4"} {
+			movPath := stem + movExt
+			if fileExists(movPath) {
+				movData, err := os.ReadFile(movPath)
+				if err == nil {
+					movDigest := importer.MediaDigest(movData)
+					movRel, err := filepath.Rel(photosDir, movPath)
+					if err != nil {
+						movRel = filepath.Base(movPath)
+					}
+					movKey := importer.MediaObjectKey(filepath.ToSlash(movRel), movDigest)
+					movTarget := filepath.Join(mediaRoot, filepath.FromSlash(movKey))
+					if !fileExists(movTarget) {
+						_ = os.MkdirAll(filepath.Dir(movTarget), 0o700)
+						_ = writeAtomic(movTarget, movData)
+					}
+				}
+				break
+			}
+		}
+
 		asset, ok := assetByRel[filepath.ToSlash(rel)]
 		if !ok {
 			asset, ok = assetByRel[filepath.Base(fp)]
