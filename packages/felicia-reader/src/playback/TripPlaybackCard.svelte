@@ -199,24 +199,39 @@
         <div class="flex items-center justify-between text-xs text-stone-400">
           <span class="inline-flex items-center gap-1.5 font-semibold text-orange-400">
             {#if currentStep.role === "start"}
-              <span>🚗</span>
+              <svg class="size-3.5 fill-current" viewBox="0 0 24 24">
+                <polygon points="6 3 20 12 6 21 6 3"></polygon>
+              </svg>
               <span>{i18n.departure}</span>
             {:else}
-              <span>🏁</span>
+              <svg class="size-3.5 stroke-current" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" fill="currentColor"></path>
+                <line x1="4" y1="22" x2="4" y2="15"></line>
+              </svg>
               <span>{i18n.arrival}</span>
             {/if}
           </span>
           <span class="rounded bg-white/10 px-1.5 py-0.5">{i18n.dayPrefix} {currentStep.day} {i18n.daySuffix}</span>
         </div>
         <h2 class="mt-1 text-base font-bold">{currentStep.title}</h2>
-        <p class="mt-0.5 text-xs text-stone-300">📍 {currentStep.place}</p>
+        <p class="mt-0.5 flex items-center gap-1 text-xs text-stone-300">
+          <svg class="size-3.5 shrink-0 text-stone-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+          </svg>
+          <span>{currentStep.place}</span>
+        </p>
 
         <div class="mt-3 rounded-lg border border-white/15 bg-white/5 p-2.5 text-xs text-stone-300">
           {#if currentStep.time}
             <div class="mb-2 flex items-center justify-between border-b border-white/10 pb-2">
               <span class="text-stone-400">{currentStep.role === "start" ? i18n.departureTime : i18n.arrivalTime}</span>
-              <span class="font-mono font-semibold text-white">
-                🕒 {currentStep.date ? `${currentStep.date} ` : ""}{currentStep.time}
+              <span class="flex items-center gap-1 font-mono font-semibold text-white">
+                <svg class="size-3.5 text-stone-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <span>{currentStep.date ? `${currentStep.date} ` : ""}{currentStep.time}</span>
               </span>
             </div>
           {/if}

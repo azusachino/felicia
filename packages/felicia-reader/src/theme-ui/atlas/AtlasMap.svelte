@@ -132,7 +132,7 @@
     button.type = "button"
     button.className = "atlas-marker"
     button.setAttribute("aria-label", `${index + 1}. ${memento.title[lang]}`)
-    button.innerHTML = `<span>${index + 1}</span>${memento.photos.length ? `<i>${memento.photos.length}</i>` : ""}`
+    button.innerHTML = `<span>${index + 1}</span>`
     button.addEventListener("click", (event) => {
       event.stopPropagation()
       onSelect(memento.id)
@@ -146,10 +146,21 @@
     button.className = `atlas-marker atlas-marker-special atlas-marker-${role}`
     const startText = lang === "ja" ? "出発" : lang === "zh" ? "出发" : "Start"
     const endText = lang === "ja" ? "到着" : lang === "zh" ? "到达" : "Goal"
-    const icon = role === "start" ? "🚗" : "🏁"
-    const label = `${icon} ${role === "start" ? startText : endText}`
-    button.setAttribute("aria-label", label)
-    button.innerHTML = `<span>${icon}</span>`
+    button.setAttribute("aria-label", role === "start" ? startText : endText)
+    if (role === "start") {
+      button.innerHTML = `
+        <svg class="atlas-marker-icon" viewBox="0 0 24 24" fill="currentColor">
+          <polygon points="6 3 20 12 6 21 6 3"></polygon>
+        </svg>
+      `
+    } else {
+      button.innerHTML = `
+        <svg class="atlas-marker-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" fill="currentColor"></path>
+          <line x1="4" y1="22" x2="4" y2="15"></line>
+        </svg>
+      `
+    }
     button.addEventListener("click", (event) => {
       event.stopPropagation()
       if (map?.isMoving()) map.stop()
@@ -347,13 +358,17 @@
     ;(map.getSource("routes-photo-spots") as maplibregl.GeoJSONSource | undefined)?.setData(data.points)
   }
 
-  function ensureVehicleMarker(coord: Coordinates) {
+  function ensureVehicleMarker(coord: Coordinates, bearingDeg: number = 0) {
     if (!vehicleMarker && map) {
       const wrap = document.createElement("div")
       wrap.className = "atlas-vehicle-indicator"
       wrap.innerHTML = `
         <div class="atlas-vehicle-pulse"></div>
-        <div class="atlas-vehicle-body">🚗</div>
+        <div class="atlas-vehicle-body">
+          <svg class="atlas-vehicle-heading" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="12 2 19 21 12 17 5 21 12 2"></polygon>
+          </svg>
+        </div>
       `
       vehicleMarker = new maplibregl.Marker({
         element: wrap,
@@ -361,9 +376,19 @@
       })
         .setLngLat(coord)
         .addTo(map)
+      updateVehicleBearing(bearingDeg)
     } else if (vehicleMarker) {
       vehicleMarker.getElement().style.display = "grid"
       vehicleMarker.setLngLat(coord)
+      updateVehicleBearing(bearingDeg)
+    }
+  }
+
+  function updateVehicleBearing(bearingDeg: number) {
+    if (!vehicleMarker) return
+    const arrow = vehicleMarker.getElement().querySelector(".atlas-vehicle-heading") as HTMLElement | null
+    if (arrow) {
+      arrow.style.transform = `rotate(${Math.round(bearingDeg)}deg)`
     }
   }
 
@@ -471,71 +496,44 @@
         customDurationMs ??
         (isPlaying ? calculatedDuration : Math.min(2200, Math.max(1200, Math.round(calculatedDuration * 0.35))))
 
-      // Pre-frame leg bounds so all map tiles load cleanly with zero request cancellations
-      const legBounds = boundsOf([fromCoords, toCoords])
-      if (legBounds) {
-        map.fitBounds(legBounds, {
-          padding: { top: 90, bottom: 90, left: 370, right: 90 },
-          maxZoom: travelDist > 30 ? 10.5 : 12.2,
-          pitch: 0,
-          bearing: 0,
-          duration: Math.min(800, Math.round(durationMs * 0.25)),
-        })
-      }
+      // Synchronized cinematic transition:
+      // MapLibre's built-in geodesic flight curve (van Wijk & Nuij) smoothly adjusts
+      // altitude and pans across the landscape to arrive at toCoords in perfect unison with the car.
+      map.flyTo({
+        center: toCoords,
+        zoom: 12.2,
+        pitch: 0,
+        bearing: 0,
+        padding: { top: 60, bottom: 80, left: 340, right: 60 },
+        duration: durationMs,
+        curve: travelDist > 30 ? 1.25 : 0.8,
+        speed: 1.0,
+        easing: (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2),
+        essential: true,
+      })
 
       const startTime = performance.now()
-      let cameraFocusedOnArrival = false
 
       activeAnimationTimer = timer(() => {
         const elapsed = performance.now() - startTime
         const rawProgress = Math.min(1, elapsed / durationMs)
 
-        // STATIC SPEED (constant linear velocity km/s, no cubic easing whiplash)
+        // Constant speed along polyline (linear velocity km/s)
         const currentTotalDist = startDist + rawProgress * travelDist
         const fraction = currentTotalDist / timeline.totalDistance
 
-        const { traveled, currentPos } = timeline.sliceAtFraction(fraction)
+        const { traveled, currentPos, bearing } = timeline.sliceAtFraction(fraction)
 
-        // Location indicator smoothly tracks vehicle position along the route
-        ensureVehicleMarker(currentPos)
+        // Location indicator smoothly tracks vehicle position along the route with forward heading
+        ensureVehicleMarker(currentPos, bearing)
         updateTraveledRoute(traveled)
-
-        // Smoothly focus on destination when vehicle approaches (last 15% of travel)
-        if (rawProgress >= 0.85 && !cameraFocusedOnArrival) {
-          cameraFocusedOnArrival = true
-          if (destinationMementoId) {
-            flyToMemento(destinationMementoId)
-          } else {
-            map?.flyTo({
-              center: toCoords,
-              zoom: 12.2,
-              pitch: 0,
-              bearing: 0,
-              padding: { top: 60, bottom: 80, left: 340, right: 60 },
-              duration: 800,
-            })
-          }
-        }
 
         if (rawProgress >= 1) {
           activeAnimationTimer?.stop()
           activeAnimationTimer = null
           const finalState = timeline.sliceAtFraction(targetDist / timeline.totalDistance)
           updateTraveledRoute(finalState.traveled)
-          ensureVehicleMarker(toCoords)
-
-          if (destinationMementoId) {
-            flyToMemento(destinationMementoId)
-          } else {
-            map?.flyTo({
-              center: toCoords,
-              zoom: 12.2,
-              pitch: 0,
-              bearing: 0,
-              padding: { top: 60, bottom: 80, left: 340, right: 60 },
-              duration: 600,
-            })
-          }
+          ensureVehicleMarker(toCoords, finalState.bearing)
         }
       })
     } catch {
@@ -832,21 +830,21 @@
     width: 2rem;
     height: 2rem;
     place-items: center;
-    border: 2px solid #e8f4ef;
+    border: 2px solid #e2e8f0;
     border-radius: 999px;
-    background: #123344;
+    background: #0f172a;
     box-shadow:
-      0 0 0 3px #171412aa,
-      0 4px 12px #0008;
-    color: #fff;
+      0 0 0 2px rgba(15, 23, 42, 0.6),
+      0 4px 12px rgba(0, 0, 0, 0.5);
+    color: #f8fafc;
     font:
-      700 0.75rem/1 ui-sans-serif,
+      700 0.8rem/1 ui-sans-serif,
       system-ui,
       sans-serif;
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   }
 
-  /* Keep the visible marker at 2rem (map density) but grow the actual hit
-     area to the project's 44px touch-target minimum. */
+  /* Keep visible marker at 2rem but grow hit area to touch-target minimum */
   :global(.atlas-marker)::after {
     content: "";
     position: absolute;
@@ -854,34 +852,18 @@
   }
 
   :global(.atlas-marker.is-dimmed) {
-    opacity: 0.28;
+    opacity: 0.32;
   }
 
   :global(.atlas-marker.is-active) {
     z-index: 20;
-    background: #ff9b72;
-    color: #07131f;
+    background: #ff7e47;
+    border-color: #ffffff;
+    color: #ffffff;
     box-shadow:
-      0 0 0 3px #ff9b72,
-      0 0 16px rgba(255, 155, 114, 0.8),
+      0 0 0 3px #ff7e47,
+      0 0 16px rgba(255, 126, 71, 0.8),
       0 4px 14px rgba(0, 0, 0, 0.7);
-  }
-
-  :global(.atlas-marker i) {
-    position: absolute;
-    top: -0.45rem;
-    right: -0.45rem;
-    min-width: 1rem;
-    padding: 0.15rem;
-    border-radius: 999px;
-    background: #e8f4ef;
-    color: #123344;
-    font-size: 0.6rem;
-    font-style: normal;
-  }
-
-  :global(.atlas-marker-special) {
-    border-width: 2.5px;
   }
 
   :global(.atlas-marker-start) {
@@ -890,22 +872,41 @@
     color: #ffffff;
   }
 
+  :global(.atlas-marker-start.is-active) {
+    background: #059669;
+    border-color: #6ee7b7;
+    box-shadow:
+      0 0 0 3px #059669,
+      0 0 16px rgba(52, 211, 153, 0.8),
+      0 4px 14px rgba(0, 0, 0, 0.7);
+  }
+
   :global(.atlas-marker-end) {
     background: #78350f;
     border-color: #fbbf24;
     color: #ffffff;
   }
 
-  :global(.atlas-marker-special span) {
-    font-size: 0.85rem;
-    line-height: 1;
+  :global(.atlas-marker-end.is-active) {
+    background: #d97706;
+    border-color: #fde68a;
+    box-shadow:
+      0 0 0 3px #d97706,
+      0 0 16px rgba(251, 191, 36, 0.8),
+      0 4px 14px rgba(0, 0, 0, 0.7);
+  }
+
+  :global(.atlas-marker-icon) {
+    display: block;
+    width: 0.85rem;
+    height: 0.85rem;
   }
 
   :global(.atlas-vehicle-indicator) {
     display: grid;
     place-items: center;
-    width: 2.4rem;
-    height: 2.4rem;
+    width: 2.5rem;
+    height: 2.5rem;
     pointer-events: none;
     z-index: 50;
     position: absolute;
@@ -920,12 +921,19 @@
     background: #ff7e47;
     border: 2px solid #ffffff;
     box-shadow:
-      0 0 14px #ff7e47,
+      0 0 14px rgba(255, 126, 71, 0.9),
       0 4px 12px rgba(0, 0, 0, 0.6);
-    font-size: 1rem;
-    line-height: 1;
+    color: #ffffff;
     position: relative;
     z-index: 2;
+  }
+
+  :global(.atlas-vehicle-heading) {
+    display: block;
+    width: 0.9rem;
+    height: 0.9rem;
+    transform-origin: center center;
+    transition: transform 0.1s linear;
   }
 
   :global(.atlas-vehicle-pulse) {
