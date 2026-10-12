@@ -31,6 +31,8 @@ export interface WaypointStep {
   day: number
   coords: Coordinates
   distanceKm?: number
+  time?: string
+  date?: string
 }
 
 export interface StopStep {
@@ -102,6 +104,10 @@ export function resolveWaypointPlace(
   lang: "ja" | "en" | "zh" = "ja"
 ): string {
   const [lon, lat] = coords
+  // Greater Tokyo / Saitama Border (Kawaguchi / Kita-ku area)
+  if (lat >= 35.78 && lat <= 35.85 && lon >= 139.68 && lon <= 139.75) {
+    return lang === "ja" ? "東京・川口" : lang === "zh" ? "东京・川口" : "Tokyo (Kawaguchi)"
+  }
   // Greater Tokyo / Kanto Area
   if (lat >= 35.3 && lat <= 36.2 && lon >= 139.2 && lon <= 140.2) {
     return lang === "ja" ? "東京" : lang === "zh" ? "东京" : "Tokyo"
@@ -200,6 +206,8 @@ export function generatePlaybackSteps(journey: Journey, lang: "ja" | "en" | "zh"
         title: resolveWaypointTitle("start", lang),
         place: resolveWaypointPlace(originCoord, "start", journeyPlaceName, lang),
         day: 1,
+        date: group.date,
+        time: journey.departureTime || "08:30",
         coords: originCoord,
         distanceKm: 0,
       })
@@ -225,6 +233,8 @@ export function generatePlaybackSteps(journey: Journey, lang: "ja" | "en" | "zh"
         title: resolveWaypointTitle("end", lang),
         place: resolveWaypointPlace(destCoord, "end", journeyPlaceName, lang),
         day: dayNumber,
+        date: group.date,
+        time: journey.arrivalTime || "18:30",
         coords: destCoord,
         distanceKm: journey.distanceKm,
       })
@@ -239,6 +249,7 @@ export function generatePlaybackSteps(journey: Journey, lang: "ja" | "en" | "zh"
       title: resolveWaypointTitle("start", lang),
       place: resolveWaypointPlace(originCoord, "start", journeyPlaceName, lang),
       day: 1,
+      time: journey.departureTime || "08:30",
       coords: originCoord,
       distanceKm: 0,
     })
@@ -248,6 +259,7 @@ export function generatePlaybackSteps(journey: Journey, lang: "ja" | "en" | "zh"
       title: resolveWaypointTitle("end", lang),
       place: resolveWaypointPlace(destCoord, "end", journeyPlaceName, lang),
       day: 1,
+      time: journey.arrivalTime || "18:30",
       coords: destCoord,
       distanceKm: journey.distanceKm,
     })

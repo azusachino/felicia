@@ -176,6 +176,8 @@ export function adaptJourney(apiJourney: ApiJourney, apiMementos: ApiMemento[], 
     weather: apiJourney.weather,
     distanceKm: apiJourney.distance_km,
     drivingHours: apiJourney.driving_hours,
+    departureTime: apiJourney.departure_time ?? apiJourney.timestamps?.start,
+    arrivalTime: apiJourney.arrival_time ?? apiJourney.timestamps?.end,
     visits,
     mementos,
   }

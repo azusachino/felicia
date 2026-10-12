@@ -108,6 +108,8 @@ describe("Playback Engine", () => {
       expect(steps[2].role).toBe("start")
       expect(steps[2].coords).toEqual([121.37, 37.55])
       expect(steps[2].distanceKm).toBe(0)
+      expect(steps[2].date).toBe("2026-10-01")
+      expect(steps[2].time).toBe("08:30")
     }
 
     // Step 3: Stop 1
@@ -137,6 +139,8 @@ describe("Playback Engine", () => {
       expect(steps[6].role).toBe("end")
       expect(steps[6].coords).toEqual([121.65, 38.92])
       expect(steps[6].distanceKm).toBe(2890)
+      expect(steps[6].date).toBe("2026-10-02")
+      expect(steps[6].time).toBe("18:30")
     }
 
     // Step 7: Summary

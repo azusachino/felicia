@@ -154,6 +154,11 @@
         <div class="text-6xl">{currentStep.role === "start" ? "🚗" : "🏁"}</div>
         <h2 class="mt-4 text-3xl font-bold">{currentStep.place}</h2>
         <p class="mt-2 text-base text-stone-300">{currentStep.title}</p>
+        {#if currentStep.time}
+          <p class="mt-2 text-lg font-mono font-semibold text-orange-400">
+            🕒 {currentStep.date ? `${currentStep.date} ` : ""}{currentStep.time}
+          </p>
+        {/if}
         <div class="mt-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-xs font-mono text-stone-200">
           <span>{currentStep.coords[0].toFixed(4)}, {currentStep.coords[1].toFixed(4)}</span>
           {#if currentStep.distanceKm !== undefined}

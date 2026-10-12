@@ -730,7 +730,7 @@
         if (currentStep.day === 1 && originCoord) {
           // Day 1 starts at Tokyo departure origin, NOT at Kujuppama destination!
           updateTraveledRoute([])
-          ensureVehicleMarker(originCoord)
+          hideVehicleMarker()
           map?.flyTo({
             center: originCoord,
             zoom: 12.0,
@@ -767,7 +767,7 @@
           activeAnimationTimer = null
         }
         updateTraveledRoute([currentStep.coords])
-        ensureVehicleMarker(currentStep.coords)
+        hideVehicleMarker()
         map?.flyTo({
           center: currentStep.coords,
           zoom: 12.0,
@@ -839,7 +839,7 @@
     z-index: 2;
     background: #ff9b72;
     color: #07131f;
-    transform: scale(1.16);
+    scale: 1.16;
   }
 
   :global(.atlas-marker i) {

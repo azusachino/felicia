@@ -31,6 +31,9 @@ export interface ApiJourney {
   weather?: Record<string, { icon: string; label: string }>
   distance_km?: number
   driving_hours?: number
+  departure_time?: string
+  arrival_time?: string
+  timestamps?: { start?: string; end?: string }
   authored_fields: string[]
 }
 

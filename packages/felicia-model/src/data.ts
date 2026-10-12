@@ -77,6 +77,8 @@ export interface Journey {
   weather?: Record<number | string, WeatherInfo>
   distanceKm?: number
   drivingHours?: number
+  departureTime?: string
+  arrivalTime?: string
   visits: Visit[]
   mementos: Memento[]
   representativeDots?: { coord: Coordinates; label: string }[]

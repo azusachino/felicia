@@ -57,6 +57,8 @@
         pause: "暂停",
         close: "退出回放",
         readStory: "阅读完整手记 →",
+        departureTime: "出发时间",
+        arrivalTime: "到达时间",
       },
       ja: {
         intro: "旅の再生",
@@ -80,6 +82,8 @@
         pause: "一時停止",
         close: "閉じる",
         readStory: "手記を読む →",
+        departureTime: "出発時刻",
+        arrivalTime: "到着時刻",
       },
       en: {
         intro: "Trip Playback",
@@ -103,6 +107,8 @@
         pause: "Pause",
         close: "Close",
         readStory: "Read full story →",
+        departureTime: "Departure Time",
+        arrivalTime: "Arrival Time",
       },
     }[lang]
   )
@@ -206,6 +212,14 @@
         <p class="mt-0.5 text-xs text-stone-300">📍 {currentStep.place}</p>
 
         <div class="mt-3 rounded-lg border border-white/15 bg-white/5 p-2.5 text-xs text-stone-300">
+          {#if currentStep.time}
+            <div class="mb-2 flex items-center justify-between border-b border-white/10 pb-2">
+              <span class="text-stone-400">{currentStep.role === "start" ? i18n.departureTime : i18n.arrivalTime}</span>
+              <span class="font-mono font-semibold text-white">
+                🕒 {currentStep.date ? `${currentStep.date} ` : ""}{currentStep.time}
+              </span>
+            </div>
+          {/if}
           <div class="flex items-center justify-between">
             <span class="text-stone-400">{currentStep.role === "start" ? i18n.origin : i18n.destination}</span>
             <span class="font-mono text-stone-200">
