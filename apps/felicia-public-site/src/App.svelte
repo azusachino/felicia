@@ -46,11 +46,6 @@
 />
 
 <div class="public-reader-shell" class:theme-light={theme === "light"}>
-  <a class="public-brand" href="/" aria-label="Felicia home">
-    <img src={markUrl} alt="" aria-hidden="true" />
-    <span>felicia</span>
-  </a>
-
   <div class="reader-appearance">
     <button type="button" aria-label={message(lang, "theme.light")} title={message(lang, "theme.light")} aria-pressed={theme === "light"} onclick={() => chooseTheme("light")}
       ><Sun size={18} aria-hidden="true" /></button

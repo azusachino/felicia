@@ -5,7 +5,7 @@
   let {
     controller,
     currentStep,
-    lang = "zh",
+    lang = "ja",
     onClose,
   }: {
     controller: PlaybackController
@@ -21,6 +21,41 @@
       state = s
     })
   })
+
+  const i18n = $derived(
+    {
+      zh: {
+        stage: "旅程放映",
+        summary: "旅程回顾",
+        dayPrefix: "第",
+        daySuffix: "天",
+        days: "天",
+        records: "条记录",
+        photos: "张照片",
+        close: "退出放映",
+      },
+      ja: {
+        stage: "旅の上映",
+        summary: "旅の振り返り",
+        dayPrefix: "第",
+        daySuffix: "日",
+        days: "日",
+        records: "件の記録",
+        photos: "枚の写真",
+        close: "上映を終了",
+      },
+      en: {
+        stage: "Trip Cinema",
+        summary: "Trip Summary",
+        dayPrefix: "Day",
+        daySuffix: "",
+        days: "days",
+        records: "records",
+        photos: "photos",
+        close: "Exit Stage",
+      },
+    }[lang]
+  )
 </script>
 
 <div class="fixed inset-0 z-50 flex flex-col justify-between overflow-hidden bg-black/90 p-6 text-white backdrop-blur-2xl max-[48rem]:p-4">
@@ -28,16 +63,18 @@
   <header class="flex items-center justify-between">
     <div>
       {#if currentStep.type === "intro"}
-        <p class="text-xs tracking-wider text-orange-400 uppercase">旅程放映</p>
+        <p class="text-xs tracking-wider text-orange-400 uppercase">{i18n.stage}</p>
         <h1 class="text-xl font-bold">{currentStep.title}</h1>
       {:else if currentStep.type === "day"}
-        <p class="text-xs tracking-wider text-orange-400 uppercase">第 {currentStep.day} 天</p>
+        <p class="text-xs tracking-wider text-orange-400 uppercase">{i18n.dayPrefix} {currentStep.day} {i18n.daySuffix}</p>
         <h1 class="text-xl font-bold">{currentStep.date}</h1>
       {:else if currentStep.type === "stop"}
-        <p class="text-xs tracking-wider text-orange-400 uppercase">第 {currentStep.day} 天 · {currentStep.memento.place[lang] || currentStep.memento.place.zh}</p>
-        <h1 class="text-xl font-bold">{currentStep.memento.title[lang] || currentStep.memento.title.zh}</h1>
+        <p class="text-xs tracking-wider text-orange-400 uppercase">
+          {i18n.dayPrefix} {currentStep.day} {i18n.daySuffix} · {currentStep.memento.place[lang] || currentStep.memento.place.ja || currentStep.memento.place.en || currentStep.memento.place.zh}
+        </p>
+        <h1 class="text-xl font-bold">{currentStep.memento.title[lang] || currentStep.memento.title.ja || currentStep.memento.title.en || currentStep.memento.title.zh}</h1>
       {:else if currentStep.type === "summary"}
-        <p class="text-xs tracking-wider text-orange-400 uppercase">旅程回顾</p>
+        <p class="text-xs tracking-wider text-orange-400 uppercase">{i18n.summary}</p>
         <h1 class="text-xl font-bold">{currentStep.title}</h1>
       {/if}
     </div>
@@ -46,7 +83,7 @@
       type="button"
       class="flex size-10 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/25"
       onclick={onClose}
-      aria-label="退出放映"
+      aria-label={i18n.close}
     >
       ✕
     </button>
@@ -96,7 +133,7 @@
         </div>
       {:else}
         <div class="max-w-lg text-center text-stone-400">
-          <p class="text-lg">📍 {currentStep.memento.place[lang] || currentStep.memento.place.zh}</p>
+          <p class="text-lg">📍 {currentStep.memento.place[lang] || currentStep.memento.place.ja || currentStep.memento.place.en || currentStep.memento.place.zh}</p>
         </div>
       {/if}
 
@@ -104,15 +141,15 @@
       <div class="grid grid-cols-3 gap-4 text-center max-[48rem]:grid-cols-2">
         <div class="rounded-xl border border-white/10 bg-white/5 p-4">
           <div class="font-mono text-3xl font-bold text-orange-400">{currentStep.dayCount}</div>
-          <div class="mt-1 text-xs text-stone-400">天</div>
+          <div class="mt-1 text-xs text-stone-400">{i18n.days}</div>
         </div>
         <div class="rounded-xl border border-white/10 bg-white/5 p-4">
           <div class="font-mono text-3xl font-bold text-orange-400">{currentStep.stopCount}</div>
-          <div class="mt-1 text-xs text-stone-400">条记录</div>
+          <div class="mt-1 text-xs text-stone-400">{i18n.records}</div>
         </div>
         <div class="rounded-xl border border-white/10 bg-white/5 p-4">
           <div class="font-mono text-3xl font-bold text-orange-400">{currentStep.photoCount}</div>
-          <div class="mt-1 text-xs text-stone-400">张照片</div>
+          <div class="mt-1 text-xs text-stone-400">{i18n.photos}</div>
         </div>
       </div>
     {/if}
@@ -120,9 +157,9 @@
 
   <!-- Bottom Stage HUD -->
   <footer class="flex flex-col items-center gap-3">
-    {#if currentStep.type === "stop" && (currentStep.memento.essay[lang] || currentStep.memento.essay.zh)}
+    {#if currentStep.type === "stop" && (currentStep.memento.essay[lang] || currentStep.memento.essay.ja || currentStep.memento.essay.en || currentStep.memento.essay.zh)}
       <p class="max-w-2xl text-center text-sm leading-relaxed text-stone-300">
-        {currentStep.memento.essay[lang] || currentStep.memento.essay.zh}
+        {currentStep.memento.essay[lang] || currentStep.memento.essay.ja || currentStep.memento.essay.en || currentStep.memento.essay.zh}
       </p>
     {/if}
 

@@ -10,6 +10,7 @@
   import lineSlice from "@turf/line-slice"
   import type { Coordinates, Journey, Memento, Theme } from "@felicia/model"
   import type { PlaybackStep } from "../../playback/engine"
+  import { RouteTimeline, calculateBearing } from "../../playback/timeline"
 
   let {
     journeys,
@@ -179,39 +180,72 @@
     })
   }
 
-  function flyToMemento(id: string | null) {
+  function flyToMemento(id: string | null, customBearing?: number) {
     if (!map || !id) return
     const m = journeys.flatMap((j) => j.mementos).find((item) => item.id === id)
     if (!m) return
     map.flyTo({
       center: m.coords,
-      zoom: 13.5,
+      zoom: 14.5,
       pitch: 45,
-      bearing: 20,
-      speed: 1.1,
-      curve: 1.3,
+      bearing: customBearing ?? 15,
+      speed: 0.95,
+      curve: 1.25,
       essential: true,
       padding: { top: 60, bottom: 80, left: 340, right: 60 },
     })
   }
 
   let lastAnimatedStopIndex = -1
+  let currentTraveledCoords: Coordinates[] = []
 
-  function animateAlongRoute(fromCoords: Coordinates, toCoords: Coordinates, durationMs = 2600) {
+  function emptyFeatureCollection() {
+    return {
+      type: "FeatureCollection" as const,
+      features: [],
+    }
+  }
+
+  function updateTraveledRoute(coords: Coordinates[]) {
+    currentTraveledCoords = coords
+    const source = map?.getSource("routes-traveled") as maplibregl.GeoJSONSource | undefined
+    if (!source) return
+    if (coords.length < 2) {
+      source.setData(emptyFeatureCollection())
+      return
+    }
+    source.setData({
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          geometry: {
+            type: "LineString",
+            coordinates: coords,
+          },
+          properties: {},
+        },
+      ],
+    })
+  }
+
+  function animateAlongRoute(fromCoords: Coordinates, toCoords: Coordinates, durationMs = 2800) {
     if (!map || prefersReducedMotion) return
     const journey = activeJourney()
     if (!journey) return
 
-    const allRouteCoords = journey.routeSegments?.length ? journey.routeSegments.flat() : journey.route
-    if (allRouteCoords.length < 2) return
+    const segments = journey.routeSegments?.length ? journey.routeSegments : [journey.route]
+    const validSegments = segments.filter((s) => s.length >= 2)
+    if (!validSegments.length) return
 
     try {
-      const fullLine = lineString(allRouteCoords)
-      const startPt = point(fromCoords)
-      const stopPt = point(toCoords)
-      const sliced = lineSlice(startPt, stopPt, fullLine)
-      const sliceDistance = length(sliced, { units: "kilometers" })
-      if (sliceDistance <= 0.05) return
+      const timeline = new RouteTimeline(validSegments, true)
+      if (timeline.totalDistance <= 0.05) return
+
+      const startDist = timeline.distanceAtCoordinate(fromCoords)
+      const targetDist = timeline.distanceAtCoordinate(toCoords)
+      const travelDist = targetDist - startDist
+      if (travelDist <= 0.05) return
 
       if (activeAnimationTimer) {
         activeAnimationTimer.stop()
@@ -231,11 +265,24 @@
       activeAnimationTimer = timer(() => {
         const elapsed = performance.now() - startTime
         const progress = Math.min(1, elapsed / durationMs)
-        const currentDist = progress * sliceDistance
-        const pt = along(sliced, currentDist, { units: "kilometers" })
-        const [lng, lat] = pt.geometry.coordinates as [number, number]
+        const currentTotalDist = startDist + progress * travelDist
+        const fraction = currentTotalDist / timeline.totalDistance
 
-        vehicleMarker?.setLngLat([lng, lat])
+        const { traveled, currentPos, bearing } = timeline.sliceAtFraction(fraction)
+
+        vehicleMarker?.setLngLat(currentPos)
+        updateTraveledRoute(traveled)
+
+        // Smooth camera follow tracking with gentle forward heading
+        if (progress < 0.95 && map) {
+          map.easeTo({
+            center: currentPos,
+            bearing: bearing,
+            pitch: 45,
+            duration: 100,
+            essential: true,
+          })
+        }
 
         if (progress >= 1) {
           activeAnimationTimer?.stop()
@@ -243,10 +290,12 @@
           if (vehicleMarker) {
             vehicleMarker.getElement().style.display = "none"
           }
+          const finalState = timeline.sliceAtFraction(targetDist / timeline.totalDistance)
+          updateTraveledRoute(finalState.traveled)
         }
       })
     } catch {
-      // Graceful fallback if slice calculation has zero length
+      // Graceful fallback if timeline fails
     }
   }
 
@@ -293,19 +342,15 @@
     map.on("load", () => {
       if (!map) return
       map.addSource("routes", { type: "geojson", data: routeGeoJson() })
+      map.addSource("routes-traveled", { type: "geojson", data: emptyFeatureCollection() })
+
+      // Planned / Background routes (subtle translucent)
       map.addLayer({
         id: "routes-all",
         type: "line",
         source: "routes",
         layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": "#7fd8cb", "line-width": 2, "line-opacity": 0.3 },
-      })
-      map.addLayer({
-        id: "route-active-glow",
-        type: "line",
-        source: "routes",
-        filter: ["==", ["get", "journeyId"], activeJourneyId ?? ""],
-        paint: { "line-color": "#ff9b72", "line-width": 9, "line-opacity": 0.25, "line-blur": 4 },
+        paint: { "line-color": "#7fd8cb", "line-width": 2, "line-opacity": 0.25 },
       })
       map.addLayer({
         id: "route-active",
@@ -313,7 +358,7 @@
         source: "routes",
         filter: ["==", ["get", "journeyId"], activeJourneyId ?? ""],
         layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": "#ff9b72", "line-width": 3.5, "line-opacity": 0.95 },
+        paint: { "line-color": "#ff9b72", "line-width": 2.5, "line-opacity": 0.35, "line-dasharray": [2, 2] },
       })
       map.addLayer({
         id: "route-active-dashed",
@@ -327,10 +372,26 @@
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
           "line-color": "#ff9b72",
-          "line-width": 3,
-          "line-dasharray": [2, 2],
-          "line-opacity": 0.95,
+          "line-width": 2.5,
+          "line-dasharray": [2, 3],
+          "line-opacity": 0.35,
         },
+      })
+
+      // Traveled route (bold, glowing, progressive path drawing)
+      map.addLayer({
+        id: "route-traveled-glow",
+        type: "line",
+        source: "routes-traveled",
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": "#ff9b72", "line-width": 10, "line-opacity": 0.35, "line-blur": 5 },
+      })
+      map.addLayer({
+        id: "route-traveled",
+        type: "line",
+        source: "routes-traveled",
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": "#ff7e47", "line-width": 4.5, "line-opacity": 0.95 },
       })
       loaded = true
       refresh()
@@ -371,14 +432,23 @@
 
   $effect(() => {
     if (!loaded || !currentStep) return
-    if (currentStep.type === "intro" || currentStep.type === "summary") {
+    const journey = activeJourney()
+
+    if (currentStep.type === "intro") {
       fitActiveJourney()
+      updateTraveledRoute([])
+      lastAnimatedStopIndex = -1
+    } else if (currentStep.type === "summary") {
+      fitActiveJourney()
+      if (journey) {
+        const allRouteCoords = journey.routeSegments?.length ? journey.routeSegments.flat() : journey.route
+        updateTraveledRoute(allRouteCoords)
+      }
       lastAnimatedStopIndex = -1
     } else if (currentStep.type === "day") {
-      const journey = activeJourney()
       if (journey) {
         const dayMementos = journey.mementos.filter((m) => {
-          const d = m.date.en || m.date.zh || m.date.ja || ""
+          const d = m.date.en || m.date.ja || m.date.zh || ""
           return d.startsWith(currentStep.date)
         })
         if (dayMementos.length) {
@@ -393,13 +463,28 @@
         }
       }
     } else if (currentStep.type === "stop") {
-      flyToMemento(currentStep.memento.id)
-      const journey = activeJourney()
-      if (journey && lastAnimatedStopIndex >= 0 && lastAnimatedStopIndex !== currentStep.stopIndex) {
-        const prevMemento = journey.mementos[lastAnimatedStopIndex]
-        if (prevMemento) {
-          animateAlongRoute(prevMemento.coords, currentStep.coords)
+      if (journey) {
+        const segments = journey.routeSegments?.length ? journey.routeSegments : [journey.route]
+        const validSegments = segments.filter((s) => s.length >= 2)
+        const timeline = validSegments.length ? new RouteTimeline(validSegments, true) : null
+
+        if (lastAnimatedStopIndex >= 0 && lastAnimatedStopIndex !== currentStep.stopIndex) {
+          const prevMemento = journey.mementos[lastAnimatedStopIndex]
+          if (prevMemento) {
+            animateAlongRoute(prevMemento.coords, currentStep.coords)
+          }
+        } else if (timeline && timeline.totalDistance > 0) {
+          // Direct jump or first stop in playback: reveal route up to current stop
+          const targetDist = timeline.distanceAtCoordinate(currentStep.coords)
+          const fraction = targetDist / timeline.totalDistance
+          const { traveled, bearing } = timeline.sliceAtFraction(fraction)
+          updateTraveledRoute(traveled)
+          flyToMemento(currentStep.memento.id, bearing)
+        } else {
+          flyToMemento(currentStep.memento.id)
         }
+      } else {
+        flyToMemento(currentStep.memento.id)
       }
       lastAnimatedStopIndex = currentStep.stopIndex
     }

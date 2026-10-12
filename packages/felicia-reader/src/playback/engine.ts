@@ -80,15 +80,15 @@ function parseDateKey(dateStr: string): string {
   return dateStr.slice(0, 10)
 }
 
-export function generatePlaybackSteps(journey: Journey, lang: "ja" | "en" | "zh" = "zh"): PlaybackStep[] {
+export function generatePlaybackSteps(journey: Journey, lang: "ja" | "en" | "zh" = "ja"): PlaybackStep[] {
   const mementos = [...journey.mementos]
   const allPhotos = mementos.flatMap((m) => m.photos)
-  const uniquePlaces = [...new Set(mementos.map((m) => m.place[lang] || m.place.zh || m.place.en))]
+  const uniquePlaces = [...new Set(mementos.map((m) => m.place[lang] || m.place.ja || m.place.en || m.place.zh))]
 
   // Group mementos by distinct date
   const dateGroups: { date: string; mementos: Memento[] }[] = []
   for (const m of mementos) {
-    const d = parseDateKey(m.date.en || m.date.zh || m.date.ja || "")
+    const d = parseDateKey(m.date[lang] || m.date.ja || m.date.en || m.date.zh || "")
     const last = dateGroups.at(-1)
     if (last && last.date === d) {
       last.mementos.push(m)
@@ -102,8 +102,8 @@ export function generatePlaybackSteps(journey: Journey, lang: "ja" | "en" | "zh"
 
   const intro: IntroStep = {
     type: "intro",
-    title: journey.title[lang] || journey.title.zh || journey.title.ja,
-    dateRange: journey.dates[lang] || journey.dates.zh || journey.dates.ja,
+    title: journey.title[lang] || journey.title.ja || journey.title.en || journey.title.zh,
+    dateRange: journey.dates[lang] || journey.dates.ja || journey.dates.en || journey.dates.zh,
     dayCount,
     stopCount: mementos.length,
     photoCount: allPhotos.length,
@@ -117,7 +117,7 @@ export function generatePlaybackSteps(journey: Journey, lang: "ja" | "en" | "zh"
 
   dateGroups.forEach((group, dayIdx) => {
     const dayNumber = dayIdx + 1
-    const dayPlaces = [...new Set(group.mementos.map((m) => m.place[lang] || m.place.zh || m.place.en))]
+    const dayPlaces = [...new Set(group.mementos.map((m) => m.place[lang] || m.place.ja || m.place.en || m.place.zh))]
     const weather = journey.weather?.[dayNumber] ?? journey.weather?.[group.date]
 
     const dayStep: DayStep = {
@@ -145,7 +145,7 @@ export function generatePlaybackSteps(journey: Journey, lang: "ja" | "en" | "zh"
 
   const summary: SummaryStep = {
     type: "summary",
-    title: journey.title[lang] || journey.title.zh || journey.title.ja,
+    title: journey.title[lang] || journey.title.ja || journey.title.en || journey.title.zh,
     dayCount,
     stopCount: mementos.length,
     placeCount: uniquePlaces.length,
@@ -297,8 +297,8 @@ export class PlaybackController {
         step.type === "intro"
           ? step.title
           : step.type === "day"
-            ? `第 ${step.day} 天 · ${step.date}`
-            : "旅程回顾"
+            ? `Day ${step.day} · ${step.date}`
+            : "Summary"
       const last = this.chapters.at(-1)
       if (last && elapsedSec - last.timeSeconds < 5) {
         last.label = label

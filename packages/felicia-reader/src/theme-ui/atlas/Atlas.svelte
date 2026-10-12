@@ -6,7 +6,6 @@
   import PhotoLightbox from "../../components/PhotoLightbox.svelte"
   import TripPlaybackCard from "../../playback/TripPlaybackCard.svelte"
   import TripStage from "../../playback/TripStage.svelte"
-  import ExportDialog from "../../playback/ExportDialog.svelte"
   import {
     generatePlaybackSteps,
     PlaybackController,
@@ -33,7 +32,6 @@
   let activeMementoId = $state<string | null>(null)
   let selectedMementoId = $state<string | null>(null)
   let showStage = $state(false)
-  let showExport = $state(false)
   let lightboxPhoto = $state<{ src: string; video?: string; caption: string } | null>(null)
 
   const activeJourney = $derived(
@@ -117,7 +115,7 @@
   $effect(() => loadData())
 </script>
 
-<svelte:window onkeydown={(event) => event.key === "Escape" && (closeMemento(), (showStage = false), (showExport = false), (lightboxPhoto = null))} />
+<svelte:window onkeydown={(event) => event.key === "Escape" && (closeMemento(), (showStage = false), (lightboxPhoto = null))} />
 
 <main class="felicia-canvas relative z-20 isolate h-screen w-full overflow-hidden bg-[#07131f] text-stone-100" class:light={theme === "light"}>
   {#if isLoading}
@@ -170,7 +168,6 @@
           {currentStep}
           {lang}
           onOpenStage={() => (showStage = true)}
-          onOpenExport={() => (showExport = true)}
           onOpenDetail={(mementoId) => (selectedMementoId = mementoId)}
           onClose={() => {
             playbackController?.pause()
@@ -186,15 +183,6 @@
           {currentStep}
           {lang}
           onClose={() => (showStage = false)}
-        />
-      {/if}
-
-      <!-- Export Video Dialog -->
-      {#if showExport && playbackController && activeJourney}
-        <ExportDialog
-          controller={playbackController}
-          journeyTitle={activeJourney.title[lang] || activeJourney.title.zh || activeJourney.title.ja}
-          onClose={() => (showExport = false)}
         />
       {/if}
 

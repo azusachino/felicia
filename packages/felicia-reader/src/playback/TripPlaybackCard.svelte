@@ -5,9 +5,8 @@
   let {
     controller,
     currentStep,
-    lang = "zh",
+    lang = "ja",
     onOpenStage,
-    onOpenExport,
     onOpenDetail,
     onClose,
   }: {
@@ -15,7 +14,6 @@
     currentStep: PlaybackStep
     lang: Lang
     onOpenStage?: () => void
-    onOpenExport?: () => void
     onOpenDetail?: (mementoId: string) => void
     onClose?: () => void
   } = $props()
@@ -47,12 +45,12 @@
         km: "公里",
         hours: "小时车程",
         present: "放映",
-        export: "导出视频",
         prev: "上一站",
         next: "下一站",
         play: "播放",
         pause: "暂停",
         close: "退出回放",
+        readStory: "阅读完整手记 →",
       },
       ja: {
         intro: "旅の再生",
@@ -65,12 +63,12 @@
         km: "キロ",
         hours: "時間の行程",
         present: "上映",
-        export: "書き出し",
         prev: "前へ",
         next: "次へ",
         play: "再生",
         pause: "一時停止",
         close: "閉じる",
+        readStory: "手記を読む →",
       },
       en: {
         intro: "Trip Playback",
@@ -83,12 +81,12 @@
         km: "km",
         hours: "driving hrs",
         present: "Present",
-        export: "Export",
         prev: "Previous",
         next: "Next",
         play: "Play",
         pause: "Pause",
         close: "Close",
+        readStory: "Read full story →",
       },
     }[lang]
   )
@@ -178,10 +176,10 @@
       <div class="py-1">
         <div class="flex items-center justify-between text-xs text-stone-400">
           <span class="text-orange-400">{i18n.dayPrefix} {currentStep.day} {i18n.daySuffix}</span>
-          <span class="rounded bg-white/10 px-1.5 py-0.5">{currentStep.memento.place[lang] || currentStep.memento.place.zh}</span>
+          <span class="rounded bg-white/10 px-1.5 py-0.5">{currentStep.memento.place[lang] || currentStep.memento.place.ja || currentStep.memento.place.en || currentStep.memento.place.zh}</span>
         </div>
         <h2 class="mt-1 text-base font-bold">
-          {currentStep.memento.title[lang] || currentStep.memento.title.zh}
+          {currentStep.memento.title[lang] || currentStep.memento.title.ja || currentStep.memento.title.en || currentStep.memento.title.zh}
         </h2>
 
         <!-- Photo / Live Photo Polaroid Frame -->
@@ -207,9 +205,9 @@
           </div>
         {/if}
 
-        {#if currentStep.memento.essay[lang] || currentStep.memento.essay.zh}
+        {#if currentStep.memento.essay[lang] || currentStep.memento.essay.ja || currentStep.memento.essay.en || currentStep.memento.essay.zh}
           <p class="mt-1 line-clamp-3 text-xs leading-relaxed text-stone-300">
-            {currentStep.memento.essay[lang] || currentStep.memento.essay.zh}
+            {currentStep.memento.essay[lang] || currentStep.memento.essay.ja || currentStep.memento.essay.en || currentStep.memento.essay.zh}
           </p>
         {/if}
 
@@ -219,7 +217,7 @@
             class="mt-2 text-xs text-orange-400 underline underline-offset-4 hover:text-orange-300"
             onclick={() => onOpenDetail?.(currentStep.memento.id)}
           >
-            阅读完整手记 →
+            {i18n.readStory}
           </button>
         {/if}
       </div>
@@ -310,17 +308,6 @@
           title={i18n.present}
         >
           🎬
-        </button>
-      {/if}
-
-      {#if onOpenExport}
-        <button
-          type="button"
-          class="flex size-8 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent text-stone-300 hover:bg-white/15 hover:text-white"
-          onclick={onOpenExport}
-          title={i18n.export}
-        >
-          📼
         </button>
       {/if}
 
