@@ -1,6 +1,6 @@
 import type { Coordinates, Journey, Memento, PhotoAsset, WeatherInfo } from "@felicia/model"
 
-export type StepType = "intro" | "day" | "stop" | "summary"
+export type StepType = "intro" | "day" | "waypoint" | "stop" | "summary"
 
 export interface IntroStep {
   type: "intro"
@@ -23,6 +23,16 @@ export interface DayStep {
   stopIndex: number
 }
 
+export interface WaypointStep {
+  type: "waypoint"
+  role: "start" | "end"
+  title: string
+  place: string
+  day: number
+  coords: Coordinates
+  distanceKm?: number
+}
+
 export interface StopStep {
   type: "stop"
   day: number
@@ -43,7 +53,7 @@ export interface SummaryStep {
   drivingHours?: number
 }
 
-export type PlaybackStep = IntroStep | DayStep | StopStep | SummaryStep
+export type PlaybackStep = IntroStep | DayStep | WaypointStep | StopStep | SummaryStep
 
 export interface Chapter {
   label: string
@@ -66,6 +76,8 @@ export function getStepDuration(step: PlaybackStep, speed = 1): number {
     baseMs = 3500
   } else if (step.type === "day") {
     baseMs = 2400
+  } else if (step.type === "waypoint") {
+    baseMs = 2800
   } else if (step.type === "stop") {
     const photoCount = step.memento.photos.length
     const textLen = (step.memento.essay.zh || step.memento.essay.ja || step.memento.essay.en || "").length
@@ -80,10 +92,57 @@ function parseDateKey(dateStr: string): string {
   return dateStr.slice(0, 10)
 }
 
+export function resolveWaypointPlace(
+  coords: Coordinates,
+  role: "start" | "end",
+  journeyPlace: string,
+  lang: "ja" | "en" | "zh" = "ja"
+): string {
+  const [lon, lat] = coords
+  // Greater Tokyo / Kanto Area
+  if (lat >= 35.3 && lat <= 36.2 && lon >= 139.2 && lon <= 140.2) {
+    return lang === "ja" ? "東京" : lang === "zh" ? "东京" : "Tokyo"
+  }
+  // Greater Osaka / Kansai Area
+  if (lat >= 34.4 && lat <= 35.0 && lon >= 135.2 && lon <= 135.8) {
+    return lang === "ja" ? "大阪" : lang === "zh" ? "大阪" : "Osaka"
+  }
+  // Kyoto Area
+  if (lat >= 34.9 && lat <= 35.2 && lon >= 135.6 && lon <= 135.9) {
+    return lang === "ja" ? "京都" : lang === "zh" ? "京都" : "Kyoto"
+  }
+  // Nagoya Area
+  if (lat >= 35.0 && lat <= 35.3 && lon >= 136.7 && lon <= 137.1) {
+    return lang === "ja" ? "名古屋" : lang === "zh" ? "名古屋" : "Nagoya"
+  }
+  if (role === "start") {
+    return lang === "ja" ? `${journeyPlace}（出発地）` : lang === "zh" ? `${journeyPlace}（出发地）` : `${journeyPlace} (Origin)`
+  }
+  return lang === "ja" ? `${journeyPlace}（到着地）` : lang === "zh" ? `${journeyPlace}（到达地）` : `${journeyPlace} (Destination)`
+}
+
+export function resolveWaypointTitle(
+  role: "start" | "end",
+  lang: "ja" | "en" | "zh" = "ja"
+): string {
+  if (role === "start") {
+    return lang === "ja" ? "旅の出発" : lang === "zh" ? "旅程出发" : "Journey Departure"
+  }
+  return lang === "ja" ? "帰路・到着" : lang === "zh" ? "归途・到达" : "Return & Arrival"
+}
+
 export function generatePlaybackSteps(journey: Journey, lang: "ja" | "en" | "zh" = "ja"): PlaybackStep[] {
   const mementos = [...journey.mementos]
   const allPhotos = mementos.flatMap((m) => m.photos)
   const uniquePlaces = [...new Set(mementos.map((m) => m.place[lang] || m.place.ja || m.place.en || m.place.zh))]
+
+  // Route bounds / coordinates
+  const segments = journey.routeSegments?.length ? journey.routeSegments : (journey.route?.length ? [journey.route] : [])
+  const validSegments = segments.filter((s) => s.length >= 2)
+  const originCoord = validSegments[0]?.[0]
+  const lastSegment = validSegments.at(-1)
+  const destCoord = lastSegment?.at(-1)
+  const journeyPlaceName = journey.place[lang] || journey.place.ja || journey.place.en || journey.place.zh || ""
 
   // Group mementos by distinct date
   const dateGroups: { date: string; mementos: Memento[] }[] = []
@@ -130,6 +189,19 @@ export function generatePlaybackSteps(journey: Journey, lang: "ja" | "en" | "zh"
     }
     steps.push(dayStep)
 
+    // On Day 1, if we have a departure origin, insert Start Waypoint
+    if (dayIdx === 0 && originCoord) {
+      steps.push({
+        type: "waypoint",
+        role: "start",
+        title: resolveWaypointTitle("start", lang),
+        place: resolveWaypointPlace(originCoord, "start", journeyPlaceName, lang),
+        day: 1,
+        coords: originCoord,
+        distanceKm: 0,
+      })
+    }
+
     for (const memento of group.mementos) {
       steps.push({
         type: "stop",
@@ -141,7 +213,42 @@ export function generatePlaybackSteps(journey: Journey, lang: "ja" | "en" | "zh"
       })
       globalStopIndex++
     }
+
+    // On the final day, after all mementos, if we have a return destination, insert End Waypoint
+    if (dayIdx === dateGroups.length - 1 && destCoord) {
+      steps.push({
+        type: "waypoint",
+        role: "end",
+        title: resolveWaypointTitle("end", lang),
+        place: resolveWaypointPlace(destCoord, "end", journeyPlaceName, lang),
+        day: dayNumber,
+        coords: destCoord,
+        distanceKm: journey.distanceKm,
+      })
+    }
   })
+
+  // If there were no date groups (e.g. empty mementos) but route exists:
+  if (dateGroups.length === 0 && originCoord && destCoord) {
+    steps.push({
+      type: "waypoint",
+      role: "start",
+      title: resolveWaypointTitle("start", lang),
+      place: resolveWaypointPlace(originCoord, "start", journeyPlaceName, lang),
+      day: 1,
+      coords: originCoord,
+      distanceKm: 0,
+    })
+    steps.push({
+      type: "waypoint",
+      role: "end",
+      title: resolveWaypointTitle("end", lang),
+      place: resolveWaypointPlace(destCoord, "end", journeyPlaceName, lang),
+      day: 1,
+      coords: destCoord,
+      distanceKm: journey.distanceKm,
+    })
+  }
 
   const summary: SummaryStep = {
     type: "summary",
@@ -291,14 +398,16 @@ export class PlaybackController {
   }
 
   private recordChapter(step: PlaybackStep): void {
-    if (step.type === "intro" || step.type === "day" || step.type === "summary") {
+    if (step.type === "intro" || step.type === "day" || step.type === "waypoint" || step.type === "summary") {
       const elapsedSec = Math.floor((performance.now() - (this.startTime || performance.now())) / 1000)
       const label =
         step.type === "intro"
           ? step.title
           : step.type === "day"
             ? `Day ${step.day} · ${step.date}`
-            : "Summary"
+            : step.type === "waypoint"
+              ? `${step.title} · ${step.place}`
+              : "Summary"
       const last = this.chapters.at(-1)
       if (last && elapsedSec - last.timeSeconds < 5) {
         last.label = label

@@ -81,9 +81,9 @@ describe("Playback Engine", () => {
     expect(formatChapters(chapters)).toBe("0:00 国庆东北自驾\n0:04 第 1 天 · 2026-10-01\n0:15 烟台港\n")
   })
 
-  it("generates structured playback steps (intro, days, stops, summary)", () => {
+  it("generates structured playback steps (intro, days, start/end waypoints, stops, summary)", () => {
     const steps = generatePlaybackSteps(sampleJourney, "zh")
-    expect(steps.length).toBe(6)
+    expect(steps.length).toBe(8)
 
     // Step 0: Intro
     expect(steps[0].type).toBe("intro")
@@ -102,33 +102,49 @@ describe("Playback Engine", () => {
       expect(steps[1].weather?.label).toBe("阴 · 16–21°C")
     }
 
-    // Step 2: Stop 1
-    expect(steps[2].type).toBe("stop")
-    if (steps[2].type === "stop") {
-      expect(steps[2].memento.id).toBe("memento-1")
+    // Step 2: Start Waypoint (Departure)
+    expect(steps[2].type).toBe("waypoint")
+    if (steps[2].type === "waypoint") {
+      expect(steps[2].role).toBe("start")
       expect(steps[2].coords).toEqual([121.37, 37.55])
+      expect(steps[2].distanceKm).toBe(0)
     }
 
-    // Step 3: Day 2
-    expect(steps[3].type).toBe("day")
-    if (steps[3].type === "day") {
-      expect(steps[3].day).toBe(2)
-      expect(steps[3].date).toBe("2026-10-02")
-      expect(steps[3].weather?.label).toBe("晴 · 12–22°C")
+    // Step 3: Stop 1
+    expect(steps[3].type).toBe("stop")
+    if (steps[3].type === "stop") {
+      expect(steps[3].memento.id).toBe("memento-1")
+      expect(steps[3].coords).toEqual([121.37, 37.55])
     }
 
-    // Step 4: Stop 2
-    expect(steps[4].type).toBe("stop")
-    if (steps[4].type === "stop") {
-      expect(steps[4].memento.id).toBe("memento-2")
+    // Step 4: Day 2
+    expect(steps[4].type).toBe("day")
+    if (steps[4].type === "day") {
+      expect(steps[4].day).toBe(2)
+      expect(steps[4].date).toBe("2026-10-02")
+      expect(steps[4].weather?.label).toBe("晴 · 12–22°C")
     }
 
-    // Step 5: Summary
-    expect(steps[5].type).toBe("summary")
-    if (steps[5].type === "summary") {
-      expect(steps[5].stopCount).toBe(2)
-      expect(steps[5].placeCount).toBe(2)
-      expect(steps[5].drivingHours).toBe(36)
+    // Step 5: Stop 2
+    expect(steps[5].type).toBe("stop")
+    if (steps[5].type === "stop") {
+      expect(steps[5].memento.id).toBe("memento-2")
+    }
+
+    // Step 6: End Waypoint (Arrival/Return)
+    expect(steps[6].type).toBe("waypoint")
+    if (steps[6].type === "waypoint") {
+      expect(steps[6].role).toBe("end")
+      expect(steps[6].coords).toEqual([121.65, 38.92])
+      expect(steps[6].distanceKm).toBe(2890)
+    }
+
+    // Step 7: Summary
+    expect(steps[7].type).toBe("summary")
+    if (steps[7].type === "summary") {
+      expect(steps[7].stopCount).toBe(2)
+      expect(steps[7].placeCount).toBe(2)
+      expect(steps[7].drivingHours).toBe(36)
     }
   })
 
@@ -137,7 +153,10 @@ describe("Playback Engine", () => {
     const introDuration = getStepDuration(steps[0], 1)
     expect(introDuration).toBe(3500)
 
-    const stop1Duration = getStepDuration(steps[2], 1)
+    const waypointDuration = getStepDuration(steps[2], 1)
+    expect(waypointDuration).toBe(2800)
+
+    const stop1Duration = getStepDuration(steps[3], 1)
     // 1 photo (= 2000), 23 chars (= 2760), min 5000 -> 5000
     expect(stop1Duration).toBe(5000)
 

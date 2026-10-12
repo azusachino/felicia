@@ -1,6 +1,7 @@
 <script lang="ts">
+  import { untrack } from "svelte"
   import type { Lang } from "@felicia/model"
-  import type { PlaybackController, PlaybackStep } from "./engine"
+  import type { PlaybackController, PlaybackControllerState, PlaybackStep } from "./engine"
 
   let {
     controller,
@@ -18,7 +19,7 @@
     onClose?: () => void
   } = $props()
 
-  let state = $state(controller.getState())
+  let state = $state<PlaybackControllerState>(untrack(() => controller.getState()))
 
   $effect(() => {
     return controller.subscribe((s) => {
@@ -37,6 +38,11 @@
       zh: {
         intro: "旅程回放",
         summary: "旅程回顾",
+        departure: "旅程出发",
+        arrival: "归途到达",
+        origin: "起点",
+        destination: "终点",
+        cumDist: "累计行程",
         dayPrefix: "第",
         daySuffix: "天",
         records: "条记录",
@@ -55,6 +61,11 @@
       ja: {
         intro: "旅の再生",
         summary: "旅の振り返り",
+        departure: "出発",
+        arrival: "到着・帰路",
+        origin: "起点",
+        destination: "終着点",
+        cumDist: "累計行程",
         dayPrefix: "第",
         daySuffix: "日",
         records: "件の記録",
@@ -73,6 +84,11 @@
       en: {
         intro: "Trip Playback",
         summary: "Trip Summary",
+        departure: "Departure",
+        arrival: "Arrival / Return",
+        origin: "Origin",
+        destination: "Destination",
+        cumDist: "Total Distance",
         dayPrefix: "Day",
         daySuffix: "",
         records: "records",
@@ -169,6 +185,42 @@
             <span class="font-medium text-stone-300">{currentStep.places.join(" → ")}</span>
           </div>
         {/if}
+      </div>
+
+    {:else if currentStep.type === "waypoint"}
+      <!-- WAYPOINT CARD (DEPARTURE OR ARRIVAL) -->
+      <div class="py-2">
+        <div class="flex items-center justify-between text-xs text-stone-400">
+          <span class="inline-flex items-center gap-1.5 font-semibold text-orange-400">
+            {#if currentStep.role === "start"}
+              <span>🚗</span>
+              <span>{i18n.departure}</span>
+            {:else}
+              <span>🏁</span>
+              <span>{i18n.arrival}</span>
+            {/if}
+          </span>
+          <span class="rounded bg-white/10 px-1.5 py-0.5">{i18n.dayPrefix} {currentStep.day} {i18n.daySuffix}</span>
+        </div>
+        <h2 class="mt-1 text-base font-bold">{currentStep.title}</h2>
+        <p class="mt-0.5 text-xs text-stone-300">📍 {currentStep.place}</p>
+
+        <div class="mt-3 rounded-lg border border-white/15 bg-white/5 p-2.5 text-xs text-stone-300">
+          <div class="flex items-center justify-between">
+            <span class="text-stone-400">{currentStep.role === "start" ? i18n.origin : i18n.destination}</span>
+            <span class="font-mono text-stone-200">
+              {currentStep.coords[0].toFixed(4)}, {currentStep.coords[1].toFixed(4)}
+            </span>
+          </div>
+          {#if currentStep.distanceKm !== undefined}
+            <div class="mt-1.5 flex items-center justify-between border-t border-white/10 pt-1.5">
+              <span class="text-stone-400">{i18n.cumDist}</span>
+              <span class="font-mono font-semibold text-orange-300">
+                {currentStep.distanceKm.toLocaleString()} {i18n.km}
+              </span>
+            </div>
+          {/if}
+        </div>
       </div>
 
     {:else if currentStep.type === "stop"}

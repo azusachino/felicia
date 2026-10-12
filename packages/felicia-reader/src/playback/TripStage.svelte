@@ -1,6 +1,7 @@
 <script lang="ts">
+  import { untrack } from "svelte"
   import type { Lang } from "@felicia/model"
-  import type { PlaybackController, PlaybackStep } from "./engine"
+  import type { PlaybackController, PlaybackControllerState, PlaybackStep } from "./engine"
 
   let {
     controller,
@@ -14,7 +15,7 @@
     onClose: () => void
   } = $props()
 
-  let state = $state(controller.getState())
+  let state = $state<PlaybackControllerState>(untrack(() => controller.getState()))
 
   $effect(() => {
     return controller.subscribe((s) => {
@@ -27,6 +28,8 @@
       zh: {
         stage: "旅程放映",
         summary: "旅程回顾",
+        departure: "旅程出发",
+        arrival: "归途到达",
         dayPrefix: "第",
         daySuffix: "天",
         days: "天",
@@ -37,6 +40,8 @@
       ja: {
         stage: "旅の上映",
         summary: "旅の振り返り",
+        departure: "出発",
+        arrival: "到着・帰路",
         dayPrefix: "第",
         daySuffix: "日",
         days: "日",
@@ -47,6 +52,8 @@
       en: {
         stage: "Trip Cinema",
         summary: "Trip Summary",
+        departure: "Departure",
+        arrival: "Arrival / Return",
         dayPrefix: "Day",
         daySuffix: "",
         days: "days",
@@ -68,6 +75,11 @@
       {:else if currentStep.type === "day"}
         <p class="text-xs tracking-wider text-orange-400 uppercase">{i18n.dayPrefix} {currentStep.day} {i18n.daySuffix}</p>
         <h1 class="text-xl font-bold">{currentStep.date}</h1>
+      {:else if currentStep.type === "waypoint"}
+        <p class="text-xs tracking-wider text-orange-400 uppercase">
+          {currentStep.role === "start" ? i18n.departure : i18n.arrival} · {i18n.dayPrefix} {currentStep.day} {i18n.daySuffix}
+        </p>
+        <h1 class="text-xl font-bold">{currentStep.title}</h1>
       {:else if currentStep.type === "stop"}
         <p class="text-xs tracking-wider text-orange-400 uppercase">
           {i18n.dayPrefix} {currentStep.day} {i18n.daySuffix} · {currentStep.memento.place[lang] || currentStep.memento.place.ja || currentStep.memento.place.en || currentStep.memento.place.zh}
@@ -136,6 +148,20 @@
           <p class="text-lg">📍 {currentStep.memento.place[lang] || currentStep.memento.place.ja || currentStep.memento.place.en || currentStep.memento.place.zh}</p>
         </div>
       {/if}
+
+    {:else if currentStep.type === "waypoint"}
+      <div class="text-center">
+        <div class="text-6xl">{currentStep.role === "start" ? "🚗" : "🏁"}</div>
+        <h2 class="mt-4 text-3xl font-bold">{currentStep.place}</h2>
+        <p class="mt-2 text-base text-stone-300">{currentStep.title}</p>
+        <div class="mt-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-xs font-mono text-stone-200">
+          <span>{currentStep.coords[0].toFixed(4)}, {currentStep.coords[1].toFixed(4)}</span>
+          {#if currentStep.distanceKm !== undefined}
+            <span class="text-stone-400">·</span>
+            <span class="text-orange-300">{currentStep.distanceKm.toLocaleString()} km</span>
+          {/if}
+        </div>
+      </div>
 
     {:else if currentStep.type === "summary"}
       <div class="grid grid-cols-3 gap-4 text-center max-[48rem]:grid-cols-2">

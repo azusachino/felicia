@@ -181,7 +181,7 @@
     })
   }
 
-  let lastAnimatedStopIndex = -1
+  let lastAnimatedCoords: Coordinates | null = null
   let currentTraveledCoords: Coordinates[] = []
 
   function emptyFeatureCollection() {
@@ -218,11 +218,12 @@
     fromCoords: Coordinates,
     toCoords: Coordinates,
     destinationMementoId?: string,
-    durationMs = 3200
+    durationMs = 3800
   ) {
     if (!map) return
     if (prefersReducedMotion) {
       if (destinationMementoId) flyToMemento(destinationMementoId)
+      else map.flyTo({ center: toCoords, zoom: 13.5, pitch: 35, padding: { top: 60, bottom: 80, left: 340, right: 60 } })
       return
     }
     const journey = activeJourney()
@@ -241,8 +242,19 @@
       const travelDist = targetDist - startDist
 
       // If already at destination or reverse seek, reveal directly
-      if (Math.abs(travelDist) <= 0.05) {
+      if (travelDist <= 0.05) {
+        const finalState = timeline.sliceAtFraction(targetDist / timeline.totalDistance)
+        updateTraveledRoute(finalState.traveled)
         if (destinationMementoId) flyToMemento(destinationMementoId)
+        else {
+          map.flyTo({
+            center: toCoords,
+            zoom: 13.5,
+            pitch: 35,
+            padding: { top: 60, bottom: 80, left: 340, right: 60 },
+            duration: 800,
+          })
+        }
         return
       }
 
@@ -306,12 +318,22 @@
 
           if (destinationMementoId) {
             flyToMemento(destinationMementoId, currentBearing)
+          } else {
+            map?.flyTo({
+              center: toCoords,
+              zoom: 13.5,
+              pitch: 35,
+              bearing: currentBearing,
+              padding: { top: 60, bottom: 80, left: 340, right: 60 },
+              duration: 800,
+            })
           }
         }
       })
     } catch {
       // Graceful fallback if timeline fails
       if (destinationMementoId) flyToMemento(destinationMementoId)
+      else map?.flyTo({ center: toCoords, zoom: 13.5, pitch: 35 })
     }
   }
 
@@ -452,16 +474,30 @@
     const journey = activeJourney()
 
     if (currentStep.type === "intro") {
+      if (activeAnimationTimer) {
+        activeAnimationTimer.stop()
+        activeAnimationTimer = null
+      }
+      if (vehicleMarker) {
+        vehicleMarker.getElement().style.display = "none"
+      }
       fitActiveJourney()
       updateTraveledRoute([])
-      lastAnimatedStopIndex = -1
+      lastAnimatedCoords = null
     } else if (currentStep.type === "summary") {
+      if (activeAnimationTimer) {
+        activeAnimationTimer.stop()
+        activeAnimationTimer = null
+      }
+      if (vehicleMarker) {
+        vehicleMarker.getElement().style.display = "none"
+      }
       fitActiveJourney()
       if (journey) {
         const allRouteCoords = journey.routeSegments?.length ? journey.routeSegments.flat() : journey.route
         updateTraveledRoute(allRouteCoords)
       }
-      lastAnimatedStopIndex = -1
+      lastAnimatedCoords = null
     } else if (currentStep.type === "day") {
       if (activeAnimationTimer) {
         activeAnimationTimer.stop()
@@ -488,33 +524,69 @@
           }
         }
       }
+    } else if (currentStep.type === "waypoint") {
+      if (currentStep.role === "start") {
+        if (activeAnimationTimer) {
+          activeAnimationTimer.stop()
+          activeAnimationTimer = null
+        }
+        updateTraveledRoute([currentStep.coords])
+        if (!vehicleMarker && map) {
+          const el = document.createElement("div")
+          el.className = "atlas-traveling-dot"
+          vehicleMarker = new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat(currentStep.coords).addTo(map)
+        } else if (vehicleMarker) {
+          vehicleMarker.getElement().style.display = "block"
+          vehicleMarker.setLngLat(currentStep.coords)
+        }
+        map?.flyTo({
+          center: currentStep.coords,
+          zoom: 13.5,
+          pitch: 38,
+          bearing: 0,
+          padding: { top: 60, bottom: 80, left: 340, right: 60 },
+          duration: prefersReducedMotion ? 0 : 1500,
+        })
+        lastAnimatedCoords = currentStep.coords
+      } else if (currentStep.role === "end") {
+        if (lastAnimatedCoords) {
+          animateAlongRoute(lastAnimatedCoords, currentStep.coords, undefined, 4200)
+        } else if (journey) {
+          const allRouteCoords = journey.routeSegments?.length ? journey.routeSegments.flat() : journey.route
+          updateTraveledRoute(allRouteCoords)
+          map?.flyTo({
+            center: currentStep.coords,
+            zoom: 13.5,
+            pitch: 38,
+            bearing: 0,
+            padding: { top: 60, bottom: 80, left: 340, right: 60 },
+            duration: prefersReducedMotion ? 0 : 1200,
+          })
+        }
+        lastAnimatedCoords = currentStep.coords
+      }
     } else if (currentStep.type === "stop") {
       if (journey) {
-        const segments = journey.routeSegments?.length ? journey.routeSegments : [journey.route]
-        const validSegments = segments.filter((s) => s.length >= 2)
-        const timeline = validSegments.length ? new RouteTimeline(validSegments, true) : null
-
-        if (lastAnimatedStopIndex >= 0 && lastAnimatedStopIndex !== currentStep.stopIndex) {
-          const prevMemento = journey.mementos[lastAnimatedStopIndex]
-          if (prevMemento) {
-            animateAlongRoute(prevMemento.coords, currentStep.coords, currentStep.memento.id)
+        if (lastAnimatedCoords) {
+          animateAlongRoute(lastAnimatedCoords, currentStep.coords, currentStep.memento.id, 3800)
+        } else {
+          const segments = journey.routeSegments?.length ? journey.routeSegments : [journey.route]
+          const validSegments = segments.filter((s) => s.length >= 2)
+          const timeline = validSegments.length ? new RouteTimeline(validSegments, true) : null
+          if (timeline && timeline.totalDistance > 0) {
+            const targetDist = timeline.distanceAtCoordinate(currentStep.coords)
+            const fraction = targetDist / timeline.totalDistance
+            const { traveled, bearing } = timeline.sliceAtFraction(fraction)
+            updateTraveledRoute(traveled)
+            flyToMemento(currentStep.memento.id, bearing)
           } else {
             flyToMemento(currentStep.memento.id)
           }
-        } else if (timeline && timeline.totalDistance > 0) {
-          // Direct jump or first stop in playback: reveal route up to current stop
-          const targetDist = timeline.distanceAtCoordinate(currentStep.coords)
-          const fraction = targetDist / timeline.totalDistance
-          const { traveled, bearing } = timeline.sliceAtFraction(fraction)
-          updateTraveledRoute(traveled)
-          flyToMemento(currentStep.memento.id, bearing)
-        } else {
-          flyToMemento(currentStep.memento.id)
         }
       } else {
         flyToMemento(currentStep.memento.id)
       }
-      lastAnimatedStopIndex = currentStep.stopIndex
+      lastAnimatedCoords = currentStep.coords
     }
   })
 
