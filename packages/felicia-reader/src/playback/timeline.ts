@@ -201,6 +201,159 @@ export class RouteTimeline {
     }
     return bestTimelineDist
   }
+
+  /**
+   * Slice route up to a fraction [0, 1] partitioned into distinct days.
+   * Enables rendering different colors per day and setting past days translucent.
+   */
+  public sliceByDays(
+    fraction: number,
+    cutoffs: DayCutoff[]
+  ): {
+    day: number
+    coords: Coordinates[]
+  }[] {
+    if (this.entries.length === 0) return []
+    const clampedF = Math.max(0, Math.min(1, fraction))
+    const currentDist = clampedF * this.totalDistance
+
+    if (cutoffs.length === 0) {
+      return [{ day: 1, coords: this.sliceAtFraction(fraction).traveled }]
+    }
+
+    const slices: { day: number; coords: Coordinates[] }[] = []
+
+    for (const c of cutoffs) {
+      if (currentDist < c.startDist) {
+        // This day has not been reached yet
+        continue
+      }
+
+      const legEndDist = Math.min(currentDist, c.endDist)
+      if (legEndDist <= c.startDist) {
+        continue
+      }
+
+      const dayCoords: Coordinates[] = []
+
+      // Starting coordinate of this day leg
+      if (c.startDist > 0) {
+        const startState = this.sliceAtFraction(c.startDist / this.totalDistance)
+        dayCoords.push(startState.currentPos)
+      } else {
+        dayCoords.push(this.entries[0].coord)
+      }
+
+      // Intermediate entries within this day's distance window
+      for (const e of this.entries) {
+        if (e.dist > c.startDist && e.dist < legEndDist) {
+          dayCoords.push(e.coord)
+        }
+      }
+
+      // Current vehicle head position for this day
+      const endState = this.sliceAtFraction(legEndDist / this.totalDistance)
+      dayCoords.push(endState.currentPos)
+
+      if (dayCoords.length >= 2) {
+        slices.push({ day: c.day, coords: dayCoords })
+      }
+    }
+
+    return slices
+  }
+}
+
+export interface DayStyle {
+  day: number
+  color: string       // Main road line color
+  glowColor: string   // Atmospheric route aura
+  label: string
+}
+
+export const DAY_PALETTE: DayStyle[] = [
+  { day: 1, color: "#ff7e47", glowColor: "rgba(255, 126, 71, 0.4)", label: "Day 1" }, // Sunset Coral / Amber
+  { day: 2, color: "#06b6d4", glowColor: "rgba(6, 182, 212, 0.4)",  label: "Day 2" }, // Coastal Cyan / Turquoise
+  { day: 3, color: "#a855f7", glowColor: "rgba(168, 85, 247, 0.4)", label: "Day 3" }, // Lavender Purple
+  { day: 4, color: "#10b981", glowColor: "rgba(16, 185, 129, 0.4)", label: "Day 4" }, // Emerald Green
+  { day: 5, color: "#f59e0b", glowColor: "rgba(245, 158, 11, 0.4)", label: "Day 5" }, // Warm Amber Gold
+  { day: 6, color: "#ec4899", glowColor: "rgba(236, 72, 153, 0.4)", label: "Day 6" }, // Rose Pink
+  { day: 7, color: "#6366f1", glowColor: "rgba(99, 102, 241, 0.4)", label: "Day 7" }, // Indigo
+]
+
+export function getDayColor(dayNumber: number): DayStyle {
+  const idx = Math.max(0, dayNumber - 1) % DAY_PALETTE.length
+  return DAY_PALETTE[idx]
+}
+
+export interface DayCutoff {
+  day: number
+  startDist: number
+  endDist: number
+}
+
+export function calculateDayCutoffs(
+  mementos: { coords: Coordinates; date: any }[],
+  timeline: RouteTimeline
+): DayCutoff[] {
+  if (timeline.totalDistance <= 0) return []
+
+  function getDateStr(date: any): string {
+    if (typeof date === "string") return date.slice(0, 10)
+    if (date && typeof date === "object") {
+      const s = date.en || date.ja || date.zh || ""
+      return String(s).slice(0, 10)
+    }
+    return ""
+  }
+
+  // Group mementos by chronological distinct dates
+  const dateGroups: { date: string; mementos: { coords: Coordinates; date: any }[] }[] = []
+  for (const m of mementos) {
+    const d = getDateStr(m.date)
+    const last = dateGroups.at(-1)
+    if (last && last.date === d) {
+      last.mementos.push(m)
+    } else {
+      dateGroups.push({ date: d, mementos: [m] })
+    }
+  }
+
+  if (dateGroups.length <= 1) {
+    return [{ day: 1, startDist: 0, endDist: timeline.totalDistance }]
+  }
+
+  const cutoffs: DayCutoff[] = []
+  let prevEnd = 0
+
+  for (let i = 0; i < dateGroups.length; i++) {
+    const dayNumber = i + 1
+    if (i === dateGroups.length - 1) {
+      cutoffs.push({ day: dayNumber, startDist: prevEnd, endDist: timeline.totalDistance })
+    } else {
+      const lastMemento = dateGroups[i].mementos.at(-1)!
+      const nextMemento = dateGroups[i + 1].mementos[0]
+      const distLast = timeline.distanceAtCoordinate(lastMemento.coords)
+      const distNext = timeline.distanceAtCoordinate(nextMemento.coords)
+
+      // Look for a segment boundary transition between distLast and distNext
+      let endDist = (distLast + distNext) / 2
+      for (const entry of timeline.entries) {
+        if (entry.dist >= distLast && entry.dist <= distNext) {
+          const nextEntry = timeline.entries[timeline.entries.indexOf(entry) + 1]
+          if (nextEntry && nextEntry.seg !== entry.seg) {
+            endDist = entry.dist
+            break
+          }
+        }
+      }
+
+      cutoffs.push({ day: dayNumber, startDist: prevEnd, endDist })
+      prevEnd = endDist
+    }
+  }
+
+  return cutoffs
 }
 
 export interface RouteSnapResult {

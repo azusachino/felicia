@@ -6,6 +6,7 @@ import {
   smoothSegmentCoords,
   projectPointToSegment,
   snapCoordinateToRoute,
+  calculateDayCutoffs,
 } from "./timeline"
 
 describe("Route Timeline & GPS Smoothing", () => {
@@ -119,6 +120,45 @@ describe("Route Timeline & GPS Smoothing", () => {
     const emptySnap = snapCoordinateToRoute(beachPhoto, [], 1.0)
     expect(emptySnap.snapped).toBe(false)
     expect(emptySnap.coord).toEqual(beachPhoto)
+  })
+
+  test("calculateDayCutoffs partitions route distances across distinct trip dates", () => {
+    // 2-day trip: Leg 1 Tokyo -> Shimoda, Leg 2 Shimoda -> Tokyo
+    const leg1: [number, number][] = [
+      [139.7, 35.6],
+      [139.3, 35.2],
+      [138.9, 34.6], // Day 1 stop
+    ]
+    const leg2: [number, number][] = [
+      [138.9, 34.6],
+      [139.1, 34.9], // Day 2 stop
+      [139.7, 35.6], // Day 2 return
+    ]
+    const timeline = new RouteTimeline([leg1, leg2], false)
+    const mementos = [
+      { coords: [138.9, 34.6] as [number, number], date: "2026-08-01T12:00:00Z" },
+      { coords: [139.1, 34.9] as [number, number], date: "2026-08-02T10:00:00Z" },
+    ]
+
+    const cutoffs = calculateDayCutoffs(mementos, timeline)
+    expect(cutoffs.length).toBe(2)
+    expect(cutoffs[0].day).toBe(1)
+    expect(cutoffs[0].startDist).toBe(0)
+    expect(cutoffs[0].endDist).toBeGreaterThan(0)
+    expect(cutoffs[1].day).toBe(2)
+    expect(cutoffs[1].startDist).toBe(cutoffs[0].endDist)
+    expect(cutoffs[1].endDist).toBe(timeline.totalDistance)
+
+    // Slice midway through Day 1 (25% progress)
+    const day1Slices = timeline.sliceByDays(0.25, cutoffs)
+    expect(day1Slices.length).toBe(1)
+    expect(day1Slices[0].day).toBe(1)
+
+    // Slice midway through Day 2 (75% progress)
+    const day2Slices = timeline.sliceByDays(0.75, cutoffs)
+    expect(day2Slices.length).toBe(2)
+    expect(day2Slices[0].day).toBe(1) // Completed Day 1
+    expect(day2Slices[1].day).toBe(2) // In-progress Day 2
   })
 })
 

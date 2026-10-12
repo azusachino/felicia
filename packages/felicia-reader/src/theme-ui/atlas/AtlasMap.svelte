@@ -10,7 +10,7 @@
   import lineSlice from "@turf/line-slice"
   import type { Coordinates, Journey, Memento, Theme } from "@felicia/model"
   import type { PlaybackStep } from "../../playback/engine"
-  import { RouteTimeline, easeInOutCubic, haversineDistance } from "../../playback/timeline"
+  import { RouteTimeline, easeInOutCubic, haversineDistance, getDayColor, calculateDayCutoffs, type DayCutoff } from "../../playback/timeline"
 
   let {
     journeys,
@@ -238,8 +238,17 @@
         marker.getElement().classList.toggle("is-dimmed", journeyId !== activeJourneyId)
       } else {
         const ownerJourney = journeys.find((journey) => journey.mementos.some((item) => item.id === id))
-        marker.getElement().classList.toggle("is-active", id === activeMementoId)
+        const isActive = id === activeMementoId
+        marker.getElement().classList.toggle("is-active", isActive)
         marker.getElement().classList.toggle("is-dimmed", ownerJourney?.id !== activeJourneyId)
+        if (isActive && currentStep && "day" in currentStep) {
+          const dayPalette = getDayColor(currentStep.day)
+          marker.getElement().style.borderColor = "#ffffff"
+          marker.getElement().style.boxShadow = `0 0 0 3px ${dayPalette.color}, 0 0 16px ${dayPalette.glow}, 0 4px 14px rgba(0, 0, 0, 0.7)`
+        } else if (!isActive) {
+          marker.getElement().style.borderColor = ""
+          marker.getElement().style.boxShadow = ""
+        }
       }
     })
     updateSpokes()
@@ -263,7 +272,26 @@
   }
 
   let lastAnimatedCoords: Coordinates | null = null
-  let currentTraveledCoords: Coordinates[] = []
+  let cachedJourneyId: string | null = null
+  let cachedTimeline: RouteTimeline | null = null
+  let cachedDayCutoffs: DayCutoff[] = []
+
+  function getTimelineForJourney(journey: Journey): { timeline: RouteTimeline; cutoffs: DayCutoff[] } | null {
+    const segments = journey.routeSegments?.length ? journey.routeSegments : (journey.route?.length ? [journey.route] : [])
+    const validSegments = segments.filter((s) => s.length >= 2)
+    if (!validSegments.length) return null
+
+    if (cachedTimeline && cachedJourneyId === journey.id) {
+      return { timeline: cachedTimeline, cutoffs: cachedDayCutoffs }
+    }
+
+    const timeline = new RouteTimeline(validSegments, true)
+    const cutoffs = calculateDayCutoffs(journey.mementos, timeline)
+    cachedJourneyId = journey.id
+    cachedTimeline = timeline
+    cachedDayCutoffs = cutoffs
+    return { timeline, cutoffs }
+  }
 
   function emptyFeatureCollection() {
     return {
@@ -272,26 +300,51 @@
     }
   }
 
-  function updateTraveledRoute(coords: Coordinates[]) {
-    currentTraveledCoords = coords
+  function updateTraveledRoute(
+    daySlices: Array<{ day: number; coords: Coordinates[] }>,
+    activeDay: number = 1,
+    isSummary: boolean = false
+  ) {
     const source = map?.getSource("routes-traveled") as maplibregl.GeoJSONSource | undefined
     if (!source) return
-    if (coords.length < 2) {
+    if (!daySlices.length) {
       source.setData(emptyFeatureCollection())
       return
     }
+
+    const features = daySlices
+      .filter((s) => s.coords.length >= 2)
+      .map((slice) => {
+        const palette = getDayColor(slice.day)
+        const isCurrentDay = !isSummary && slice.day === activeDay
+        // When overlapping/collapsed: past days render with subtle transparency and thinner line
+        const opacity = isSummary ? 0.85 : isCurrentDay ? 0.95 : 0.32
+        const glowOpacity = isSummary ? 0.25 : isCurrentDay ? 0.45 : 0.12
+        const width = isSummary ? 3.8 : isCurrentDay ? 4.5 : 3.0
+        const glowWidth = isCurrentDay ? 12 : 7
+
+        return {
+          type: "Feature" as const,
+          geometry: {
+            type: "LineString" as const,
+            coordinates: slice.coords,
+          },
+          properties: {
+            day: slice.day,
+            color: palette.color,
+            glowColor: palette.glow,
+            opacity,
+            glowOpacity,
+            width,
+            glowWidth,
+            isCurrentDay: isCurrentDay ? 1 : 0,
+          },
+        }
+      })
+
     source.setData({
       type: "FeatureCollection",
-      features: [
-        {
-          type: "Feature",
-          geometry: {
-            type: "LineString",
-            coordinates: coords,
-          },
-          properties: {},
-        },
-      ],
+      features,
     })
   }
 
@@ -358,13 +411,14 @@
     ;(map.getSource("routes-photo-spots") as maplibregl.GeoJSONSource | undefined)?.setData(data.points)
   }
 
-  function ensureVehicleMarker(coord: Coordinates, bearingDeg: number = 0) {
+  function ensureVehicleMarker(coord: Coordinates, bearingDeg: number = 0, dayNumber: number = 1) {
+    const dayPalette = getDayColor(dayNumber)
     if (!vehicleMarker && map) {
       const wrap = document.createElement("div")
       wrap.className = "atlas-vehicle-indicator"
       wrap.innerHTML = `
-        <div class="atlas-vehicle-pulse"></div>
-        <div class="atlas-vehicle-body">
+        <div class="atlas-vehicle-pulse" style="border-color: ${dayPalette.pulse};"></div>
+        <div class="atlas-vehicle-body" style="background: ${dayPalette.color}; box-shadow: 0 0 14px ${dayPalette.glow}, 0 4px 12px rgba(0, 0, 0, 0.6);">
           <svg class="atlas-vehicle-heading" viewBox="0 0 24 24" fill="currentColor">
             <polygon points="12 2 19 21 12 17 5 21 12 2"></polygon>
           </svg>
@@ -381,6 +435,16 @@
       vehicleMarker.getElement().style.display = "grid"
       vehicleMarker.setLngLat(coord)
       updateVehicleBearing(bearingDeg)
+
+      const body = vehicleMarker.getElement().querySelector(".atlas-vehicle-body") as HTMLElement | null
+      const pulse = vehicleMarker.getElement().querySelector(".atlas-vehicle-pulse") as HTMLElement | null
+      if (body) {
+        body.style.background = dayPalette.color
+        body.style.boxShadow = `0 0 14px ${dayPalette.glow}, 0 4px 12px rgba(0, 0, 0, 0.6)`
+      }
+      if (pulse) {
+        pulse.style.borderColor = dayPalette.pulse
+      }
     }
   }
 
@@ -418,50 +482,47 @@
     fromCoords: Coordinates,
     toCoords: Coordinates,
     destinationMementoId?: string,
+    targetDay: number = 1,
     customDurationMs?: number
   ) {
     if (!map) return
+    const journey = activeJourney()
+    if (!journey) return
+
+    const info = getTimelineForJourney(journey)
+    if (!info || info.timeline.totalDistance <= 0.05) {
+      if (destinationMementoId) flyToMemento(destinationMementoId)
+      else map.flyTo({ center: toCoords, zoom: 12.2, pitch: 0, bearing: 0, padding: { top: 60, bottom: 80, left: 340, right: 60 }, duration: 600 })
+      return
+    }
+
+    const { timeline, cutoffs } = info
+    const targetDist = timeline.distanceAtCoordinate(toCoords)
+
     if (prefersReducedMotion) {
       if (activeAnimationTimer) {
         activeAnimationTimer.stop()
         activeAnimationTimer = null
       }
-      const journey = activeJourney()
-      if (journey) {
-        const segments = journey.routeSegments?.length ? journey.routeSegments : [journey.route]
-        const validSegments = segments.filter((s) => s.length >= 2)
-        if (validSegments.length) {
-          const timeline = new RouteTimeline(validSegments, true)
-          const targetDist = timeline.distanceAtCoordinate(toCoords)
-          const finalState = timeline.sliceAtFraction(targetDist / timeline.totalDistance)
-          updateTraveledRoute(finalState.traveled)
-        }
-      }
-      ensureVehicleMarker(toCoords)
+      const fraction = targetDist / timeline.totalDistance
+      const slices = timeline.sliceByDays(fraction, cutoffs)
+      updateTraveledRoute(slices, targetDay, false)
+      ensureVehicleMarker(toCoords, 0, targetDay)
       if (destinationMementoId) flyToMemento(destinationMementoId)
       else map.flyTo({ center: toCoords, zoom: 12.2, pitch: 0, bearing: 0, padding: { top: 60, bottom: 80, left: 340, right: 60 }, duration: 600 })
       return
     }
-    const journey = activeJourney()
-    if (!journey) return
-
-    const segments = journey.routeSegments?.length ? journey.routeSegments : [journey.route]
-    const validSegments = segments.filter((s) => s.length >= 2)
-    if (!validSegments.length) return
 
     try {
-      const timeline = new RouteTimeline(validSegments, true)
-      if (timeline.totalDistance <= 0.05) return
-
       const startDist = timeline.distanceAtCoordinate(fromCoords)
-      const targetDist = timeline.distanceAtCoordinate(toCoords)
       const travelDist = targetDist - startDist
 
       // If already at destination or reverse seek, reveal directly
       if (travelDist <= 0.05) {
-        const finalState = timeline.sliceAtFraction(targetDist / timeline.totalDistance)
-        updateTraveledRoute(finalState.traveled)
-        ensureVehicleMarker(toCoords)
+        const fraction = targetDist / timeline.totalDistance
+        const slices = timeline.sliceByDays(fraction, cutoffs)
+        updateTraveledRoute(slices, targetDay, false)
+        ensureVehicleMarker(toCoords, 0, targetDay)
         if (destinationMementoId) flyToMemento(destinationMementoId)
         else {
           map.flyTo({
@@ -484,7 +545,7 @@
         map.stop()
       }
 
-      ensureVehicleMarker(fromCoords)
+      ensureVehicleMarker(fromCoords, 0, targetDay)
 
       // Dynamic duration based on travel distance:
       // When auto-playing: paced duration matching step dwell (3.2s - 8.5s).
@@ -522,18 +583,21 @@
         const currentTotalDist = startDist + rawProgress * travelDist
         const fraction = currentTotalDist / timeline.totalDistance
 
-        const { traveled, currentPos, bearing } = timeline.sliceAtFraction(fraction)
+        const { currentPos, bearing } = timeline.sliceAtFraction(fraction)
+        const slices = timeline.sliceByDays(fraction, cutoffs)
 
-        // Location indicator smoothly tracks vehicle position along the route with forward heading
-        ensureVehicleMarker(currentPos, bearing)
-        updateTraveledRoute(traveled)
+        // Location indicator smoothly tracks vehicle position along the route with forward heading & day tint
+        ensureVehicleMarker(currentPos, bearing, targetDay)
+        updateTraveledRoute(slices, targetDay, false)
 
         if (rawProgress >= 1) {
           activeAnimationTimer?.stop()
           activeAnimationTimer = null
-          const finalState = timeline.sliceAtFraction(targetDist / timeline.totalDistance)
-          updateTraveledRoute(finalState.traveled)
-          ensureVehicleMarker(toCoords, finalState.bearing)
+          const finalFraction = targetDist / timeline.totalDistance
+          const finalSlices = timeline.sliceByDays(finalFraction, cutoffs)
+          const finalState = timeline.sliceAtFraction(finalFraction)
+          updateTraveledRoute(finalSlices, targetDay, false)
+          ensureVehicleMarker(toCoords, finalState.bearing, targetDay)
         }
       })
     } catch {
@@ -624,20 +688,29 @@
         },
       })
 
-      // Traveled route (bold, glowing, progressive path drawing)
+      // Traveled route (bold, glowing, progressive path drawing with per-day color and history transparency)
       map.addLayer({
         id: "route-traveled-glow",
         type: "line",
         source: "routes-traveled",
         layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": "#ff9b72", "line-width": 10, "line-opacity": 0.35, "line-blur": 5 },
+        paint: {
+          "line-color": ["coalesce", ["get", "glowColor"], "#ff9b72"],
+          "line-width": ["coalesce", ["get", "glowWidth"], 10],
+          "line-opacity": ["coalesce", ["get", "glowOpacity"], 0.35],
+          "line-blur": 5,
+        },
       })
       map.addLayer({
         id: "route-traveled",
         type: "line",
         source: "routes-traveled",
         layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": "#ff7e47", "line-width": 4.5, "line-opacity": 0.95 },
+        paint: {
+          "line-color": ["coalesce", ["get", "color"], "#ff7e47"],
+          "line-width": ["coalesce", ["get", "width"], 4.5],
+          "line-opacity": ["coalesce", ["get", "opacity"], 0.95],
+        },
       })
 
       // Photo scenic viewpoint connectors (Dawarich-style route snapping indicator)
@@ -731,8 +804,11 @@
       hideVehicleMarker()
       fitActiveJourney()
       if (journey) {
-        const allRouteCoords = journey.routeSegments?.length ? journey.routeSegments.flat() : journey.route
-        updateTraveledRoute(allRouteCoords)
+        const info = getTimelineForJourney(journey)
+        if (info) {
+          const slices = info.timeline.sliceByDays(1.0, info.cutoffs)
+          updateTraveledRoute(slices, 1, true)
+        }
       }
       lastAnimatedCoords = null
     } else if (currentStep.type === "day") {
@@ -741,14 +817,13 @@
         activeAnimationTimer = null
       }
       if (journey) {
-        const segments = journey.routeSegments?.length ? journey.routeSegments : (journey.route?.length ? [journey.route] : [])
-        const validSegments = segments.filter((s) => s.length >= 2)
-        const originCoord = validSegments[0]?.[0] ?? journey.mementos[0]?.coords
+        const info = getTimelineForJourney(journey)
+        const originCoord = info?.timeline.startCoord ?? journey.mementos[0]?.coords
 
         if (currentStep.day === 1 && originCoord) {
           // Day 1 starts at Tokyo departure origin, NOT at Kujuppama destination!
-          updateTraveledRoute([])
-          ensureVehicleMarker(originCoord)
+          updateTraveledRoute([], 1)
+          ensureVehicleMarker(originCoord, 0, currentStep.day)
           map?.flyTo({
             center: originCoord,
             zoom: 12.0,
@@ -759,8 +834,14 @@
           })
           lastAnimatedCoords = originCoord
         } else {
+          // For Day > 1, show route up to the start of this day
+          if (info && currentStep.day > 1) {
+            const prevCutoff = info.cutoffs[currentStep.day - 2]?.cutoffFraction ?? 0
+            const slices = info.timeline.sliceByDays(prevCutoff, info.cutoffs)
+            updateTraveledRoute(slices, currentStep.day, false)
+          }
           if (lastAnimatedCoords) {
-            ensureVehicleMarker(lastAnimatedCoords)
+            ensureVehicleMarker(lastAnimatedCoords, 0, currentStep.day)
           }
           const dayMementos = journey.mementos.filter((m) => {
             const d = m.date.en || m.date.ja || m.date.zh || ""
@@ -786,8 +867,8 @@
           activeAnimationTimer.stop()
           activeAnimationTimer = null
         }
-        updateTraveledRoute([currentStep.coords])
-        ensureVehicleMarker(currentStep.coords)
+        updateTraveledRoute([], currentStep.day)
+        ensureVehicleMarker(currentStep.coords, 0, currentStep.day)
         map?.flyTo({
           center: currentStep.coords,
           zoom: 12.0,
@@ -800,14 +881,14 @@
       } else if (currentStep.role === "end") {
         if (journey) {
           const from = resolveLegOrigin(journey, currentStep.coords)
-          animateAlongRoute(from, currentStep.coords, undefined)
+          animateAlongRoute(from, currentStep.coords, undefined, currentStep.day)
         }
         lastAnimatedCoords = currentStep.coords
       }
     } else if (currentStep.type === "stop") {
       if (journey) {
         const from = resolveLegOrigin(journey, currentStep.coords)
-        animateAlongRoute(from, currentStep.coords, currentStep.memento.id)
+        animateAlongRoute(from, currentStep.coords, currentStep.memento.id, currentStep.day)
       } else {
         flyToMemento(currentStep.memento.id)
       }

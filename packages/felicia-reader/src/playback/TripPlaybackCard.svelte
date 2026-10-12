@@ -2,6 +2,7 @@
   import { untrack } from "svelte"
   import type { Lang } from "@felicia/model"
   import type { PlaybackController, PlaybackControllerState, PlaybackStep } from "./engine"
+  import { getDayColor } from "./timeline"
 
   let {
     controller,
@@ -174,7 +175,7 @@
     {:else if currentStep.type === "day"}
       <!-- DAY BANNER CARD -->
       <div class="py-3">
-        <p class="text-[0.7rem] font-medium tracking-wider text-orange-400 uppercase">
+        <p class="text-[0.7rem] font-semibold tracking-wider uppercase" style="color: {getDayColor(currentStep.day).color};">
           {i18n.dayPrefix} {currentStep.day} {i18n.daySuffix}
         </p>
         <h2 class="mt-0.5 text-lg font-bold">{currentStep.date}</h2>
@@ -211,7 +212,7 @@
               <span>{i18n.arrival}</span>
             {/if}
           </span>
-          <span class="rounded bg-white/10 px-1.5 py-0.5">{i18n.dayPrefix} {currentStep.day} {i18n.daySuffix}</span>
+          <span class="rounded px-1.5 py-0.5 font-semibold" style="background-color: {getDayColor(currentStep.day).color}22; color: {getDayColor(currentStep.day).color}; border: 1px solid {getDayColor(currentStep.day).color}44;">{i18n.dayPrefix} {currentStep.day} {i18n.daySuffix}</span>
         </div>
         <h2 class="mt-1 text-base font-bold">{currentStep.title}</h2>
         <p class="mt-0.5 flex items-center gap-1 text-xs text-stone-300">
@@ -256,7 +257,7 @@
       <!-- STOP CARD -->
       <div class="py-1">
         <div class="flex items-center justify-between text-xs text-stone-400">
-          <span class="text-orange-400">{i18n.dayPrefix} {currentStep.day} {i18n.daySuffix}</span>
+          <span class="font-semibold" style="color: {getDayColor(currentStep.day).color};">{i18n.dayPrefix} {currentStep.day} {i18n.daySuffix}</span>
           <span class="rounded bg-white/10 px-1.5 py-0.5">{currentStep.memento.place[lang] || currentStep.memento.place.ja || currentStep.memento.place.en || currentStep.memento.place.zh}</span>
         </div>
         <h2 class="mt-1 text-base font-bold">
