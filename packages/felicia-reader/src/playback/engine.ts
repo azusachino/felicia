@@ -75,15 +75,18 @@ export function getStepDuration(step: PlaybackStep, speed = 1): number {
   if (step.type === "intro") {
     baseMs = 3500
   } else if (step.type === "day") {
-    baseMs = 2400
-  } else if (step.type === "waypoint") {
     baseMs = 2800
+  } else if (step.type === "waypoint") {
+    baseMs = step.role === "start" ? 3000 : 8500
   } else if (step.type === "stop") {
     const photoCount = step.memento.photos.length
     const textLen = (step.memento.essay.zh || step.memento.essay.ja || step.memento.essay.en || "").length
-    baseMs = Math.max(5000, photoCount * 2000, textLen * 120)
+    const contentMs = Math.max(5000, photoCount * 2000, textLen * 120)
+    // Stop 1 has a long driving leg from Tokyo (~8s animation), provide generous travel allowance
+    const travelAllowance = step.stopIndex === 0 ? 8000 : 3500
+    baseMs = contentMs + travelAllowance
   } else if (step.type === "summary") {
-    baseMs = 4500
+    baseMs = 5000
   }
   return Math.round(baseMs / speed)
 }

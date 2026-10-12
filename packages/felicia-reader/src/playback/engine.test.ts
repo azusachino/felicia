@@ -154,11 +154,11 @@ describe("Playback Engine", () => {
     expect(introDuration).toBe(3500)
 
     const waypointDuration = getStepDuration(steps[2], 1)
-    expect(waypointDuration).toBe(2800)
+    expect(waypointDuration).toBe(3000)
 
     const stop1Duration = getStepDuration(steps[3], 1)
-    // 1 photo (= 2000), 23 chars (= 2760), min 5000 -> 5000
-    expect(stop1Duration).toBe(5000)
+    // 1 photo (= 2000), 23 chars (= 2760), min 5000 + 8000 travel allowance -> 13000
+    expect(stop1Duration).toBe(13000)
 
     // At 2x speed, duration halves
     expect(getStepDuration(steps[0], 2)).toBe(1750)
