@@ -889,7 +889,7 @@
           })
           lastAnimatedCoords = originCoord
         } else {
-          // For Day > 1, show route up to the start of this day
+          // For Day > 1, show route up to the start of this day without jumping ahead
           if (info && currentStep.day > 1) {
             const prevCutoff = info.cutoffs[currentStep.day - 2]?.cutoffFraction ?? 0
             const slices = info.timeline.sliceByDays(prevCutoff, info.cutoffs)
@@ -897,22 +897,15 @@
           }
           if (lastAnimatedCoords) {
             ensureVehicleMarker(lastAnimatedCoords, 0, currentStep.day)
-          }
-          const dayMementos = journey.mementos.filter((m) => {
-            const d = m.date.en || m.date.ja || m.date.zh || ""
-            return d.startsWith(currentStep.date)
-          })
-          if (dayMementos.length) {
-            const bounds = boundsOf(dayMementos.map((m) => m.coords))
-            if (bounds) {
-              map?.fitBounds(bounds, {
-                padding: { top: 80, bottom: 90, left: 360, right: 80 },
-                maxZoom: 12.0,
-                pitch: 0,
-                bearing: 0,
-                duration: prefersReducedMotion ? 0 : 1200,
-              })
-            }
+            // Keep camera steady at current resting position so viewer doesn't jump forward then backward
+            map?.easeTo({
+              center: lastAnimatedCoords,
+              zoom: 12.0,
+              pitch: 0,
+              bearing: 0,
+              padding: { top: 60, bottom: 80, left: 340, right: 60 },
+              duration: prefersReducedMotion ? 0 : 800,
+            })
           }
         }
       }

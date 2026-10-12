@@ -1,27 +1,31 @@
 <script lang="ts">
-  import type { Journey, Lang } from "@felicia/model"
+  import type { Journey, Lang, Theme } from "@felicia/model"
 
   let {
     journeys,
     activeJourneyId,
     mode = "map",
     lang = "zh",
+    theme = "dark",
     onSelectJourney,
     onModeChange,
+    onToggleTheme,
   }: {
     journeys: Journey[]
     activeJourneyId: string | null
     mode: "map" | "journal"
     lang: Lang
+    theme?: Theme
     onSelectJourney: (id: string | null) => void
     onModeChange: (mode: "map" | "journal") => void
+    onToggleTheme?: () => void
   } = $props()
 
   const labels = $derived(
     {
-      zh: { allPlaces: "全部地点", trips: "旅程回放", map: "地图", journal: "手记" },
-      ja: { allPlaces: "すべての場所", trips: "旅の再生", map: "地図", journal: "手記" },
-      en: { allPlaces: "All Places", trips: "Journeys", map: "Map", journal: "Journal" },
+      zh: { allPlaces: "全部地点", trips: "旅程回放", map: "地图", journal: "手记", lightTheme: "浅色模式", darkTheme: "深色模式" },
+      ja: { allPlaces: "すべての場所", trips: "旅の再生", map: "地図", journal: "手記", lightTheme: "ライトモード", darkTheme: "ダークモード" },
+      en: { allPlaces: "All Places", trips: "Journeys", map: "Map", journal: "Journal", lightTheme: "Light Mode", darkTheme: "Dark Mode" },
     }[lang]
   )
 </script>
@@ -62,27 +66,59 @@
     <span class="pointer-events-none absolute right-3 text-xs text-stone-400">▼</span>
   </div>
 
-  <!-- Right: Dual-Mode Switch Pill (Map vs Journal) -->
-  <nav class="pointer-events-auto relative isolate inline-grid grid-cols-2 items-center rounded-full border border-white/20 bg-black/60 p-1 text-xs text-stone-300 shadow-lg backdrop-blur-xl">
-    <span
-      class="pointer-events-none absolute inset-y-1 left-1 z-0 w-[calc(50%-4px)] rounded-full bg-white/25 shadow-sm transition-transform duration-300 ease-out"
-      style:transform={mode === "journal" ? "translateX(100%)" : "translateX(0%)"}
-    ></span>
-    <button
-      type="button"
-      class="relative z-10 flex min-h-8 min-w-[4.2rem] cursor-pointer items-center justify-center rounded-full border-0 bg-transparent px-3 text-xs font-medium text-white transition hover:text-white"
-      class:font-semibold={mode === "map"}
-      onclick={() => onModeChange("map")}
-    >
-      {labels.map}
-    </button>
-    <button
-      type="button"
-      class="relative z-10 flex min-h-8 min-w-[4.2rem] cursor-pointer items-center justify-center rounded-full border-0 bg-transparent px-3 text-xs font-medium text-white transition hover:text-white"
-      class:font-semibold={mode === "journal"}
-      onclick={() => onModeChange("journal")}
-    >
-      {labels.journal}
-    </button>
-  </nav>
+  <!-- Right: Dual-Mode Switch Pill & Theme Toggle -->
+  <div class="pointer-events-auto flex items-center gap-2">
+    <nav class="relative isolate inline-grid grid-cols-2 items-center rounded-full border border-white/20 bg-black/60 p-1 text-xs text-stone-300 shadow-lg backdrop-blur-xl">
+      <span
+        class="pointer-events-none absolute inset-y-1 left-1 z-0 w-[calc(50%-4px)] rounded-full bg-white/25 shadow-sm transition-transform duration-300 ease-out"
+        style:transform={mode === "journal" ? "translateX(100%)" : "translateX(0%)"}
+      ></span>
+      <button
+        type="button"
+        class="relative z-10 flex min-h-8 min-w-[4.2rem] cursor-pointer items-center justify-center rounded-full border-0 bg-transparent px-3 text-xs font-medium text-white transition hover:text-white"
+        class:font-semibold={mode === "map"}
+        onclick={() => onModeChange("map")}
+      >
+        {labels.map}
+      </button>
+      <button
+        type="button"
+        class="relative z-10 flex min-h-8 min-w-[4.2rem] cursor-pointer items-center justify-center rounded-full border-0 bg-transparent px-3 text-xs font-medium text-white transition hover:text-white"
+        class:font-semibold={mode === "journal"}
+        onclick={() => onModeChange("journal")}
+      >
+        {labels.journal}
+      </button>
+    </nav>
+
+    {#if onToggleTheme}
+      <button
+        type="button"
+        class="inline-flex size-10 items-center justify-center rounded-full border border-white/20 bg-black/60 text-stone-200 shadow-lg backdrop-blur-xl transition hover:bg-black/75 hover:text-white"
+        title={theme === "light" ? labels.darkTheme : labels.lightTheme}
+        aria-label={theme === "light" ? labels.darkTheme : labels.lightTheme}
+        onclick={onToggleTheme}
+      >
+        {#if theme === "light"}
+          <!-- Moon icon for switching to dark -->
+          <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        {:else}
+          <!-- Sun icon for switching to light -->
+          <svg class="size-4 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        {/if}
+      </button>
+    {/if}
+  </div>
 </header>
