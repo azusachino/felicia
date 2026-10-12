@@ -10,7 +10,7 @@
   import lineSlice from "@turf/line-slice"
   import type { Coordinates, Journey, Memento, Theme } from "@felicia/model"
   import type { PlaybackStep } from "../../playback/engine"
-  import { RouteTimeline, calculateBearing } from "../../playback/timeline"
+  import { RouteTimeline, calculateBearing, lerpAngle, easeInOutCubic } from "../../playback/timeline"
 
   let {
     journeys,
@@ -58,21 +58,7 @@
         tileSize: 256,
         maxzoom: 16,
       },
-      // 3. Transportation reference overlay: roads, highways, rail labels
-      "transport-ref": {
-        type: "raster",
-        tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}"],
-        tileSize: 256,
-        maxzoom: 19,
-      },
-      // 4. Boundaries and places reference overlay: cities, towns, administrative boundaries, coastal place names
-      "places-ref": {
-        type: "raster",
-        tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"],
-        tileSize: 256,
-        maxzoom: 19,
-      },
-      // 5. Dark Canvas reference overlay
+      // 3. Dark Canvas reference overlay: clean town/city labels and subtle boundaries
       "dark-canvas-ref": {
         type: "raster",
         tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"],
@@ -83,11 +69,9 @@
     layers: [
       // Light theme: Rich Topo Map with transport and place names
       { id: "layer-topo-base", type: "raster", source: "topo-base", layout: { visibility: "none" } },
-      // Dark theme: Dark base + Road Transportation network + Boundaries & Places
+      // Dark theme: Dark base + Subtle Reference Labels
       { id: "layer-dark-base", type: "raster", source: "dark-base", layout: { visibility: "visible" } },
-      { id: "layer-dark-ref", type: "raster", source: "dark-canvas-ref", layout: { visibility: "visible" } },
-      { id: "layer-transport-ref", type: "raster", source: "transport-ref", paint: { "raster-opacity": 0.82 } },
-      { id: "layer-places-ref", type: "raster", source: "places-ref", paint: { "raster-opacity": 0.9 } },
+      { id: "layer-dark-ref", type: "raster", source: "dark-canvas-ref", layout: { visibility: "visible" }, paint: { "raster-opacity": 0.75 } },
     ],
   }
 
@@ -184,13 +168,14 @@
     if (!map || !id) return
     const m = journeys.flatMap((j) => j.mementos).find((item) => item.id === id)
     if (!m) return
+    if (map.isMoving()) map.stop()
     map.flyTo({
       center: m.coords,
-      zoom: 14.5,
-      pitch: 45,
+      zoom: 14.2,
+      pitch: 40,
       bearing: customBearing ?? 15,
-      speed: 0.95,
-      curve: 1.25,
+      speed: 1.1,
+      curve: 1.3,
       essential: true,
       padding: { top: 60, bottom: 80, left: 340, right: 60 },
     })
@@ -229,8 +214,17 @@
     })
   }
 
-  function animateAlongRoute(fromCoords: Coordinates, toCoords: Coordinates, durationMs = 2800) {
-    if (!map || prefersReducedMotion) return
+  function animateAlongRoute(
+    fromCoords: Coordinates,
+    toCoords: Coordinates,
+    destinationMementoId?: string,
+    durationMs = 3200
+  ) {
+    if (!map) return
+    if (prefersReducedMotion) {
+      if (destinationMementoId) flyToMemento(destinationMementoId)
+      return
+    }
     const journey = activeJourney()
     if (!journey) return
 
@@ -245,11 +239,19 @@
       const startDist = timeline.distanceAtCoordinate(fromCoords)
       const targetDist = timeline.distanceAtCoordinate(toCoords)
       const travelDist = targetDist - startDist
-      if (travelDist <= 0.05) return
+
+      // If already at destination or reverse seek, reveal directly
+      if (Math.abs(travelDist) <= 0.05) {
+        if (destinationMementoId) flyToMemento(destinationMementoId)
+        return
+      }
 
       if (activeAnimationTimer) {
         activeAnimationTimer.stop()
         activeAnimationTimer = null
+      }
+      if (map.isMoving()) {
+        map.stop()
       }
 
       if (!vehicleMarker) {
@@ -262,29 +264,38 @@
       }
 
       const startTime = performance.now()
+      let currentBearing = map.getBearing()
+      let lastCamFrame = 0
+
       activeAnimationTimer = timer(() => {
         const elapsed = performance.now() - startTime
-        const progress = Math.min(1, elapsed / durationMs)
-        const currentTotalDist = startDist + progress * travelDist
+        const rawProgress = Math.min(1, elapsed / durationMs)
+        const easedProgress = easeInOutCubic(rawProgress)
+        const currentTotalDist = startDist + easedProgress * travelDist
         const fraction = currentTotalDist / timeline.totalDistance
 
-        const { traveled, currentPos, bearing } = timeline.sliceAtFraction(fraction)
+        const { traveled, currentPos, bearing: targetBearing } = timeline.sliceAtFraction(fraction)
 
         vehicleMarker?.setLngLat(currentPos)
         updateTraveledRoute(traveled)
 
-        // Smooth camera follow tracking with gentle forward heading
-        if (progress < 0.95 && map) {
-          map.easeTo({
+        // Interpolate camera bearing smoothly to prevent sharp angular jumps
+        currentBearing = lerpAngle(currentBearing, targetBearing, 0.08)
+
+        // Throttled camera follow: update every ~32ms (30fps) using smooth jumpTo
+        const now = performance.now()
+        if (rawProgress < 0.96 && map && now - lastCamFrame >= 30) {
+          lastCamFrame = now
+          map.jumpTo({
             center: currentPos,
-            bearing: bearing,
-            pitch: 45,
-            duration: 100,
-            essential: true,
+            bearing: currentBearing,
+            pitch: 42,
+            zoom: 13.8,
+            padding: { top: 60, bottom: 80, left: 340, right: 60 },
           })
         }
 
-        if (progress >= 1) {
+        if (rawProgress >= 1) {
           activeAnimationTimer?.stop()
           activeAnimationTimer = null
           if (vehicleMarker) {
@@ -292,10 +303,15 @@
           }
           const finalState = timeline.sliceAtFraction(targetDist / timeline.totalDistance)
           updateTraveledRoute(finalState.traveled)
+
+          if (destinationMementoId) {
+            flyToMemento(destinationMementoId, currentBearing)
+          }
         }
       })
     } catch {
       // Graceful fallback if timeline fails
+      if (destinationMementoId) flyToMemento(destinationMementoId)
     }
   }
 
@@ -350,7 +366,7 @@
         type: "line",
         source: "routes",
         layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": "#7fd8cb", "line-width": 2, "line-opacity": 0.25 },
+        paint: { "line-color": "#94a3b8", "line-width": 1.5, "line-opacity": 0.12 },
       })
       map.addLayer({
         id: "route-active",
@@ -424,7 +440,8 @@
     void activeMementoId
     if (loaded) {
       syncMarkers()
-      if (activeMementoId) {
+      // Only trigger flyTo when user directly selects a memento outside of active playback steps
+      if (activeMementoId && !currentStep) {
         flyToMemento(activeMementoId)
       }
     }
@@ -446,6 +463,13 @@
       }
       lastAnimatedStopIndex = -1
     } else if (currentStep.type === "day") {
+      if (activeAnimationTimer) {
+        activeAnimationTimer.stop()
+        activeAnimationTimer = null
+      }
+      if (vehicleMarker) {
+        vehicleMarker.getElement().style.display = "none"
+      }
       if (journey) {
         const dayMementos = journey.mementos.filter((m) => {
           const d = m.date.en || m.date.ja || m.date.zh || ""
@@ -455,9 +479,11 @@
           const bounds = boundsOf(dayMementos.map((m) => m.coords))
           if (bounds) {
             map?.fitBounds(bounds, {
-              padding: { top: 70, bottom: 90, left: 340, right: 60 },
+              padding: { top: 80, bottom: 90, left: 360, right: 80 },
               maxZoom: 12.5,
-              duration: prefersReducedMotion ? 0 : 800,
+              pitch: 30,
+              bearing: 0,
+              duration: prefersReducedMotion ? 0 : 1200,
             })
           }
         }
@@ -471,7 +497,9 @@
         if (lastAnimatedStopIndex >= 0 && lastAnimatedStopIndex !== currentStep.stopIndex) {
           const prevMemento = journey.mementos[lastAnimatedStopIndex]
           if (prevMemento) {
-            animateAlongRoute(prevMemento.coords, currentStep.coords)
+            animateAlongRoute(prevMemento.coords, currentStep.coords, currentStep.memento.id)
+          } else {
+            flyToMemento(currentStep.memento.id)
           }
         } else if (timeline && timeline.totalDistance > 0) {
           // Direct jump or first stop in playback: reveal route up to current stop

@@ -36,6 +36,27 @@ export function calculateBearing(from: Coordinates, to: Coordinates): number {
   return (deg + 360) % 360
 }
 
+export function shortestAngleDelta(fromDeg: number, toDeg: number): number {
+  return ((toDeg - fromDeg + 540) % 360) - 180
+}
+
+export function lerpAngle(fromDeg: number, toDeg: number, t: number): number {
+  const diff = shortestAngleDelta(fromDeg, toDeg)
+  return (fromDeg + diff * t + 360) % 360
+}
+
+/** Hermite smoothstep easing curve */
+export function smoothstep(t: number): number {
+  const clamped = Math.max(0, Math.min(1, t))
+  return clamped * clamped * (3 - 2 * clamped)
+}
+
+/** Cubic ease-in-out curve for cinematic acceleration and braking */
+export function easeInOutCubic(t: number): number {
+  const clamped = Math.max(0, Math.min(1, t))
+  return clamped < 0.5 ? 4 * clamped * clamped * clamped : 1 - Math.pow(-2 * clamped + 2, 3) / 2
+}
+
 /**
  * Bounded Chaikin Corner-Cutting for GPS Polylines.
  * Smooths sharp GPS corners into gentle arcs while bounding cut distances to maxCornerM (default 30m)
@@ -144,8 +165,17 @@ export class RouteTimeline {
     const traveled = this.entries.slice(0, idx).map((e) => e.coord)
     traveled.push(currentPos)
 
-    // Calculate bearing slightly ahead (or from prev to currentPos)
-    const bearing = calculateBearing(prev.coord, curr.coord)
+    // Calculate forward-looking bearing using a look-ahead window along the same segment
+    // (at least 300m or 3 points ahead) to avoid micro-jitter on sharp curves
+    let lookAheadCoord = curr.coord
+    const lookAheadTargetDist = targetDist + 0.35 // 350 meters ahead
+    for (let k = idx; k < this.entries.length; k++) {
+      if (this.entries[k].seg !== curr.seg) break
+      lookAheadCoord = this.entries[k].coord
+      if (this.entries[k].dist >= lookAheadTargetDist) break
+    }
+
+    const bearing = calculateBearing(currentPos, lookAheadCoord)
 
     return {
       traveled,
