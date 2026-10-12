@@ -604,13 +604,6 @@
         {:else if buildState.status === "error"}
           <span class="trigger-status trigger-status--error">{buildState.message}</span>
         {/if}
-        {#if siteInfo?.artifact_ready}
-          {#if studio.desktop}
-            <Button variant="outline" onclick={() => studio.openPreview()}><Eye size={16} aria-hidden="true" />{message(locale, "admin.preview.open")}</Button>
-          {:else}
-            <a class="preview-link" href={previewUrl(siteInfo.preview_port)} target="_blank" rel="external noreferrer">{message(locale, "admin.site.open_preview")}</a>
-          {/if}
-        {/if}
       </div>
       <p class="trigger-note">{message(locale, "admin.build.detail_note")}</p>
     </section>

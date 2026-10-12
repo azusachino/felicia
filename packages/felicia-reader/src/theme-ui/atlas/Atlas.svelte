@@ -135,7 +135,7 @@
 <svelte:window onkeydown={(event) => event.key === "Escape" && (closeMemento(), (showStage = false), (lightboxPhoto = null))} />
 
 <main
-  class="felicia-canvas relative z-20 isolate h-screen w-full overflow-hidden transition-colors duration-300 {theme === 'light' ? 'bg-[#f8fafc] text-stone-900' : 'bg-[#07131f] text-stone-100'}"
+  class="felicia-canvas waypoints relative z-20 isolate h-screen w-full overflow-hidden transition-colors duration-300 {theme === 'light' ? 'bg-[#f8fafc] text-stone-900' : 'bg-[#07131f] text-stone-100'}"
   class:light={theme === "light"}
 >
   {#if isLoading}
