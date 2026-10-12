@@ -152,6 +152,7 @@
           {activeJourneyId}
           {activeMementoId}
           {currentStep}
+          isPlaying={playbackController?.getState().isPlaying ?? false}
           {lang}
           {theme}
           onSelect={(id) => {

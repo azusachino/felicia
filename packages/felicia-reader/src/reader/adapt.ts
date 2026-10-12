@@ -132,8 +132,9 @@ export function adaptJourney(apiJourney: ApiJourney, apiMementos: ApiMemento[], 
     const rawCoords = geometryPoint(apiMemento.geom)
     const isNonZero = rawCoords[0] !== 0 || rawCoords[1] !== 0
     const snapResult = isNonZero && segments.length > 0 ? snapCoordinateToRoute(rawCoords, segments, 1.0) : null
-    const finalCoords = snapResult?.snapped ? snapResult.coord : rawCoords
-    const originalCoords = snapResult?.snapped ? rawCoords : undefined
+    // When the route already touches the visited stop (< 50m), retain the authoritative place coordinate directly
+    const finalCoords = snapResult?.snapped && snapResult.distanceKm >= 0.05 ? snapResult.coord : rawCoords
+    const originalCoords = snapResult?.snapped && snapResult.distanceKm >= 0.05 ? rawCoords : undefined
 
     const visitKey = `${apiMemento.place}:${finalCoords[0].toFixed(5)},${finalCoords[1].toFixed(5)}`
     let visit = visitByKey.get(visitKey)

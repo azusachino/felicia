@@ -17,6 +17,7 @@
     activeJourneyId,
     activeMementoId,
     currentStep = null,
+    isPlaying = false,
     lang,
     theme,
     onSelect,
@@ -25,6 +26,7 @@
     activeJourneyId: string | null
     activeMementoId: string | null
     currentStep?: PlaybackStep | null
+    isPlaying?: boolean
     lang: "ja" | "en" | "zh"
     theme: Theme
     onSelect: (id: string) => void
@@ -394,9 +396,25 @@
     customDurationMs?: number
   ) {
     if (!map) return
-    if (prefersReducedMotion) {
+    if (prefersReducedMotion || !isPlaying) {
+      if (activeAnimationTimer) {
+        activeAnimationTimer.stop()
+        activeAnimationTimer = null
+      }
+      const journey = activeJourney()
+      if (journey) {
+        const segments = journey.routeSegments?.length ? journey.routeSegments : [journey.route]
+        const validSegments = segments.filter((s) => s.length >= 2)
+        if (validSegments.length) {
+          const timeline = new RouteTimeline(validSegments, true)
+          const targetDist = timeline.distanceAtCoordinate(toCoords)
+          const finalState = timeline.sliceAtFraction(targetDist / timeline.totalDistance)
+          updateTraveledRoute(finalState.traveled)
+        }
+      }
+      ensureVehicleMarker(toCoords)
       if (destinationMementoId) flyToMemento(destinationMementoId)
-      else map.flyTo({ center: toCoords, zoom: 12.2, pitch: 0, bearing: 0, padding: { top: 60, bottom: 80, left: 340, right: 60 } })
+      else map.flyTo({ center: toCoords, zoom: 12.2, pitch: 0, bearing: 0, padding: { top: 60, bottom: 80, left: 340, right: 60 }, duration: 600 })
       return
     }
     const journey = activeJourney()
@@ -806,7 +824,7 @@
 <style>
   :global(.atlas-marker) {
     display: grid;
-    position: relative;
+    position: absolute;
     width: 2rem;
     height: 2rem;
     place-items: center;
@@ -836,10 +854,13 @@
   }
 
   :global(.atlas-marker.is-active) {
-    z-index: 2;
+    z-index: 20;
     background: #ff9b72;
     color: #07131f;
-    scale: 1.16;
+    box-shadow:
+      0 0 0 3px #ff9b72,
+      0 0 16px rgba(255, 155, 114, 0.8),
+      0 4px 14px rgba(0, 0, 0, 0.7);
   }
 
   :global(.atlas-marker i) {
@@ -883,7 +904,7 @@
     height: 2.4rem;
     pointer-events: none;
     z-index: 50;
-    position: relative;
+    position: absolute;
   }
 
   :global(.atlas-vehicle-body) {
