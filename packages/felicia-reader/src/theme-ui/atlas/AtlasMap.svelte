@@ -715,9 +715,7 @@
       zoom: 4.5,
       attributionControl: false,
     })
-    // 1. Zoom in/out +/- controls and compass navigation widget
-    map.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), "bottom-right")
-    // 2. Map attribution
+    // Map attribution
     map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right")
 
     // Track when visitor manually zooms (wheel, pinch, double-click, +/- buttons)
@@ -1202,35 +1200,5 @@
   :global(.atlas-marker.is-active .atlas-arrival-callout) {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
-  }
-
-  /* MapLibre Navigation (+/- zoom & compass) Controls Styling */
-  :global(.maplibregl-ctrl-group) {
-    border-radius: 999px !important;
-    overflow: hidden;
-    background: rgba(15, 23, 42, 0.75) !important;
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
-  }
-
-  :global(.maplibregl-ctrl-group button) {
-    width: 32px !important;
-    height: 32px !important;
-    border: none !important;
-  }
-
-  :global(.maplibregl-ctrl-group button .maplibregl-ctrl-icon) {
-    filter: invert(1);
-  }
-
-  :global(.theme-light .maplibregl-ctrl-group) {
-    background: rgba(255, 255, 255, 0.9) !important;
-    border: 1px solid rgba(0, 0, 0, 0.1) !important;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
-  }
-
-  :global(.theme-light .maplibregl-ctrl-group button .maplibregl-ctrl-icon) {
-    filter: none;
   }
 </style>
