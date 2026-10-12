@@ -396,7 +396,7 @@
     customDurationMs?: number
   ) {
     if (!map) return
-    if (prefersReducedMotion || !isPlaying) {
+    if (prefersReducedMotion) {
       if (activeAnimationTimer) {
         activeAnimationTimer.stop()
         activeAnimationTimer = null
@@ -462,12 +462,14 @@
       ensureVehicleMarker(fromCoords)
 
       // Dynamic duration based on travel distance:
-      // Short hops (~2-10km): ~3.2s - 4.2s.
-      // Long highway legs (~197km): ~7.5s - 8.2s.
+      // When auto-playing: paced duration matching step dwell (3.2s - 8.5s).
+      // When stepping manually: brisk, smooth driving animation (1.2s - 2.2s).
       const calculatedDuration = Math.round(
         Math.min(8500, Math.max(3200, 2600 + Math.sqrt(Math.max(0, travelDist)) * 390))
       )
-      const durationMs = customDurationMs ?? calculatedDuration
+      const durationMs =
+        customDurationMs ??
+        (isPlaying ? calculatedDuration : Math.min(2200, Math.max(1200, Math.round(calculatedDuration * 0.35))))
 
       // Pre-frame leg bounds so all map tiles load cleanly with zero request cancellations
       const legBounds = boundsOf([fromCoords, toCoords])
@@ -477,7 +479,7 @@
           maxZoom: travelDist > 30 ? 10.5 : 12.2,
           pitch: 0,
           bearing: 0,
-          duration: 700,
+          duration: Math.min(800, Math.round(durationMs * 0.25)),
         })
       }
 
@@ -748,7 +750,7 @@
         if (currentStep.day === 1 && originCoord) {
           // Day 1 starts at Tokyo departure origin, NOT at Kujuppama destination!
           updateTraveledRoute([])
-          hideVehicleMarker()
+          ensureVehicleMarker(originCoord)
           map?.flyTo({
             center: originCoord,
             zoom: 12.0,
@@ -759,7 +761,9 @@
           })
           lastAnimatedCoords = originCoord
         } else {
-          hideVehicleMarker()
+          if (lastAnimatedCoords) {
+            ensureVehicleMarker(lastAnimatedCoords)
+          }
           const dayMementos = journey.mementos.filter((m) => {
             const d = m.date.en || m.date.ja || m.date.zh || ""
             return d.startsWith(currentStep.date)
@@ -785,7 +789,7 @@
           activeAnimationTimer = null
         }
         updateTraveledRoute([currentStep.coords])
-        hideVehicleMarker()
+        ensureVehicleMarker(currentStep.coords)
         map?.flyTo({
           center: currentStep.coords,
           zoom: 12.0,
