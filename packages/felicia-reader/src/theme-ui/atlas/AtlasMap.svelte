@@ -141,13 +141,13 @@
   function waypointMarkerElement(journey: Journey, role: "start" | "end", coord: Coordinates) {
     const button = document.createElement("button")
     button.type = "button"
-    button.className = `atlas-marker-waypoint atlas-marker-${role}`
-    const startText = lang === "ja" ? "出発" : lang === "zh" ? "出发" : "START"
-    const endText = lang === "ja" ? "到着" : lang === "zh" ? "到达" : "GOAL"
+    button.className = `atlas-marker atlas-marker-special atlas-marker-${role}`
+    const startText = lang === "ja" ? "出発" : lang === "zh" ? "出发" : "Start"
+    const endText = lang === "ja" ? "到着" : lang === "zh" ? "到达" : "Goal"
     const icon = role === "start" ? "🚗" : "🏁"
-    const label = role === "start" ? `${icon} ${startText}` : `${icon} ${endText}`
+    const label = `${icon} ${role === "start" ? startText : endText}`
     button.setAttribute("aria-label", label)
-    button.innerHTML = `<span>${icon}</span><span>${role === "start" ? startText : endText}</span>`
+    button.innerHTML = `<span>${icon}</span>`
     button.addEventListener("click", (event) => {
       event.stopPropagation()
       if (map?.isMoving()) map.stop()
@@ -179,7 +179,7 @@
         markers.set(memento.id, marker)
       })
 
-      // 2. Journey Start & End waypoints
+      // 2. Journey Start & End waypoints (special circular milestone markers)
       const segments = journey.routeSegments?.length ? journey.routeSegments : (journey.route?.length ? [journey.route] : [])
       const validSegments = segments.filter((s) => s.length >= 2)
       const originCoord = validSegments[0]?.[0]
@@ -187,23 +187,27 @@
       const destCoord = lastSeg?.at(-1)
 
       if (originCoord) {
+        // If destCoord is very close to originCoord (< 0.005 deg / ~500m), offset slightly so both circles sit side-by-side
+        const isLoopTrip = destCoord && geoDistance(originCoord, destCoord) < 0.005
         const startMarker = new maplibregl.Marker({
           element: waypointMarkerElement(journey, "start", originCoord),
-          offset: [-34, 0],
+          anchor: "center",
+          offset: isLoopTrip ? [-18, 0] : [0, 0],
         })
           .setLngLat(originCoord)
           .addTo(map!)
         markers.set(`${journey.id}:start`, startMarker)
-      }
 
-      if (destCoord) {
-        const endMarker = new maplibregl.Marker({
-          element: waypointMarkerElement(journey, "end", destCoord),
-          offset: [34, 0],
-        })
-          .setLngLat(destCoord)
-          .addTo(map!)
-        markers.set(`${journey.id}:end`, endMarker)
+        if (destCoord) {
+          const endMarker = new maplibregl.Marker({
+            element: waypointMarkerElement(journey, "end", destCoord),
+            anchor: "center",
+            offset: isLoopTrip ? [18, 0] : [0, 0],
+          })
+            .setLngLat(destCoord)
+            .addTo(map!)
+          markers.set(`${journey.id}:end`, endMarker)
+        }
       }
     })
     syncMarkers()
@@ -277,6 +281,48 @@
     })
   }
 
+  function ensureVehicleMarker(coord: Coordinates) {
+    if (!vehicleMarker && map) {
+      const wrap = document.createElement("div")
+      wrap.className = "atlas-vehicle-indicator"
+      wrap.innerHTML = `
+        <div class="atlas-vehicle-pulse"></div>
+        <div class="atlas-vehicle-body">🚗</div>
+      `
+      vehicleMarker = new maplibregl.Marker({
+        element: wrap,
+        anchor: "center",
+      })
+        .setLngLat(coord)
+        .addTo(map)
+    } else if (vehicleMarker) {
+      vehicleMarker.getElement().style.display = "grid"
+      vehicleMarker.setLngLat(coord)
+    }
+  }
+
+  function hideVehicleMarker() {
+    if (vehicleMarker) {
+      vehicleMarker.getElement().style.display = "none"
+    }
+  }
+
+  function resolveLegOrigin(journey: Journey, currentCoords: Coordinates): Coordinates {
+    if (lastAnimatedCoords) return lastAnimatedCoords
+
+    const mementos = journey.mementos
+    const mementoIdx = mementos.findIndex(
+      (m) => Math.abs(m.coords[0] - currentCoords[0]) < 0.0001 && Math.abs(m.coords[1] - currentCoords[1]) < 0.0001
+    )
+    if (mementoIdx > 0) {
+      return mementos[mementoIdx - 1].coords
+    }
+
+    const segments = journey.routeSegments?.length ? journey.routeSegments : (journey.route?.length ? [journey.route] : [])
+    const validSegments = segments.filter((s) => s.length >= 2)
+    return validSegments[0]?.[0] ?? currentCoords
+  }
+
   function animateAlongRoute(
     fromCoords: Coordinates,
     toCoords: Coordinates,
@@ -308,6 +354,7 @@
       if (travelDist <= 0.05) {
         const finalState = timeline.sliceAtFraction(targetDist / timeline.totalDistance)
         updateTraveledRoute(finalState.traveled)
+        ensureVehicleMarker(toCoords)
         if (destinationMementoId) flyToMemento(destinationMementoId)
         else {
           map.flyTo({
@@ -330,60 +377,68 @@
         map.stop()
       }
 
-      if (!vehicleMarker) {
-        const el = document.createElement("div")
-        el.className = "atlas-traveling-dot"
-        vehicleMarker = new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat(fromCoords).addTo(map)
-      } else {
-        vehicleMarker.getElement().style.display = "block"
-        vehicleMarker.setLngLat(fromCoords)
-      }
+      ensureVehicleMarker(fromCoords)
 
       // Dynamic duration based on travel distance:
       // Short hops (~2-10km): ~3.2s - 4.2s.
-      // Long highway legs (~197km): ~7.8s - 8.2s.
+      // Long highway legs (~197km): ~7.5s - 8.2s.
       const calculatedDuration = Math.round(
         Math.min(8500, Math.max(3200, 2600 + Math.sqrt(Math.max(0, travelDist)) * 390))
       )
       const durationMs = customDurationMs ?? calculatedDuration
 
+      // Pre-frame leg bounds so all map tiles load cleanly with zero request cancellations
+      const legBounds = boundsOf([fromCoords, toCoords])
+      if (legBounds) {
+        map.fitBounds(legBounds, {
+          padding: { top: 90, bottom: 90, left: 370, right: 90 },
+          maxZoom: travelDist > 30 ? 10.5 : 12.2,
+          pitch: 0,
+          bearing: 0,
+          duration: 700,
+        })
+      }
+
       const startTime = performance.now()
-      let lastCamFrame = 0
+      let cameraFocusedOnArrival = false
 
       activeAnimationTimer = timer(() => {
         const elapsed = performance.now() - startTime
         const rawProgress = Math.min(1, elapsed / durationMs)
-        const easedProgress = easeInOutCubic(rawProgress)
-        const currentTotalDist = startDist + easedProgress * travelDist
+
+        // STATIC SPEED (constant linear velocity km/s, no cubic easing whiplash)
+        const currentTotalDist = startDist + rawProgress * travelDist
         const fraction = currentTotalDist / timeline.totalDistance
 
         const { traveled, currentPos } = timeline.sliceAtFraction(fraction)
 
-        vehicleMarker?.setLngLat(currentPos)
+        // Location indicator smoothly tracks vehicle position along the route
+        ensureVehicleMarker(currentPos)
         updateTraveledRoute(traveled)
 
-        // Strict North-South orientation: bearing: 0, pitch: 0 at all times!
-        // Camera steadily follows the moving vehicle at consistent cruise zoom ~12.0
-        const now = performance.now()
-        if (rawProgress < 0.98 && map && now - lastCamFrame >= 30) {
-          lastCamFrame = now
-          map.jumpTo({
-            center: currentPos,
-            bearing: 0,
-            pitch: 0,
-            zoom: 12.0,
-            padding: { top: 60, bottom: 80, left: 340, right: 60 },
-          })
+        // Smoothly focus on destination when vehicle approaches (last 15% of travel)
+        if (rawProgress >= 0.85 && !cameraFocusedOnArrival) {
+          cameraFocusedOnArrival = true
+          if (destinationMementoId) {
+            flyToMemento(destinationMementoId)
+          } else {
+            map?.flyTo({
+              center: toCoords,
+              zoom: 12.2,
+              pitch: 0,
+              bearing: 0,
+              padding: { top: 60, bottom: 80, left: 340, right: 60 },
+              duration: 800,
+            })
+          }
         }
 
         if (rawProgress >= 1) {
           activeAnimationTimer?.stop()
           activeAnimationTimer = null
-          if (vehicleMarker) {
-            vehicleMarker.getElement().style.display = "none"
-          }
           const finalState = timeline.sliceAtFraction(targetDist / timeline.totalDistance)
           updateTraveledRoute(finalState.traveled)
+          ensureVehicleMarker(toCoords)
 
           if (destinationMementoId) {
             flyToMemento(destinationMementoId)
@@ -549,9 +604,7 @@
         activeAnimationTimer.stop()
         activeAnimationTimer = null
       }
-      if (vehicleMarker) {
-        vehicleMarker.getElement().style.display = "none"
-      }
+      hideVehicleMarker()
       fitActiveJourney()
       updateTraveledRoute([])
       lastAnimatedCoords = null
@@ -560,9 +613,7 @@
         activeAnimationTimer.stop()
         activeAnimationTimer = null
       }
-      if (vehicleMarker) {
-        vehicleMarker.getElement().style.display = "none"
-      }
+      hideVehicleMarker()
       fitActiveJourney()
       if (journey) {
         const allRouteCoords = journey.routeSegments?.length ? journey.routeSegments.flat() : journey.route
@@ -582,14 +633,7 @@
         if (currentStep.day === 1 && originCoord) {
           // Day 1 starts at Tokyo departure origin, NOT at Kujuppama destination!
           updateTraveledRoute([])
-          if (!vehicleMarker && map) {
-            const el = document.createElement("div")
-            el.className = "atlas-traveling-dot"
-            vehicleMarker = new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat(originCoord).addTo(map)
-          } else if (vehicleMarker) {
-            vehicleMarker.getElement().style.display = "block"
-            vehicleMarker.setLngLat(originCoord)
-          }
+          ensureVehicleMarker(originCoord)
           map?.flyTo({
             center: originCoord,
             zoom: 12.0,
@@ -600,9 +644,7 @@
           })
           lastAnimatedCoords = originCoord
         } else {
-          if (vehicleMarker) {
-            vehicleMarker.getElement().style.display = "none"
-          }
+          hideVehicleMarker()
           const dayMementos = journey.mementos.filter((m) => {
             const d = m.date.en || m.date.ja || m.date.zh || ""
             return d.startsWith(currentStep.date)
@@ -628,14 +670,7 @@
           activeAnimationTimer = null
         }
         updateTraveledRoute([currentStep.coords])
-        if (!vehicleMarker && map) {
-          const el = document.createElement("div")
-          el.className = "atlas-traveling-dot"
-          vehicleMarker = new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat(currentStep.coords).addTo(map)
-        } else if (vehicleMarker) {
-          vehicleMarker.getElement().style.display = "block"
-          vehicleMarker.setLngLat(currentStep.coords)
-        }
+        ensureVehicleMarker(currentStep.coords)
         map?.flyTo({
           center: currentStep.coords,
           zoom: 12.0,
@@ -646,40 +681,16 @@
         })
         lastAnimatedCoords = currentStep.coords
       } else if (currentStep.role === "end") {
-        if (lastAnimatedCoords) {
-          animateAlongRoute(lastAnimatedCoords, currentStep.coords, undefined)
-        } else if (journey) {
-          const allRouteCoords = journey.routeSegments?.length ? journey.routeSegments.flat() : journey.route
-          updateTraveledRoute(allRouteCoords)
-          map?.flyTo({
-            center: currentStep.coords,
-            zoom: 12.0,
-            pitch: 0,
-            bearing: 0,
-            padding: { top: 60, bottom: 80, left: 340, right: 60 },
-            duration: prefersReducedMotion ? 0 : 1000,
-          })
+        if (journey) {
+          const from = resolveLegOrigin(journey, currentStep.coords)
+          animateAlongRoute(from, currentStep.coords, undefined)
         }
         lastAnimatedCoords = currentStep.coords
       }
     } else if (currentStep.type === "stop") {
       if (journey) {
-        if (lastAnimatedCoords) {
-          animateAlongRoute(lastAnimatedCoords, currentStep.coords, currentStep.memento.id)
-        } else {
-          const segments = journey.routeSegments?.length ? journey.routeSegments : [journey.route]
-          const validSegments = segments.filter((s) => s.length >= 2)
-          const timeline = validSegments.length ? new RouteTimeline(validSegments, true) : null
-          if (timeline && timeline.totalDistance > 0) {
-            const targetDist = timeline.distanceAtCoordinate(currentStep.coords)
-            const fraction = targetDist / timeline.totalDistance
-            const { traveled } = timeline.sliceAtFraction(fraction)
-            updateTraveledRoute(traveled)
-            flyToMemento(currentStep.memento.id)
-          } else {
-            flyToMemento(currentStep.memento.id)
-          }
-        }
+        const from = resolveLegOrigin(journey, currentStep.coords)
+        animateAlongRoute(from, currentStep.coords, currentStep.memento.id)
       } else {
         flyToMemento(currentStep.memento.id)
       }
@@ -747,71 +758,73 @@
     font-style: normal;
   }
 
-  :global(.atlas-marker-waypoint) {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.25rem;
-    height: 1.85rem;
-    padding: 0 0.55rem;
-    border-radius: 999px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    cursor: pointer;
-    border: 2px solid #ffffff;
-    box-shadow:
-      0 0 0 2px #000000aa,
-      0 4px 12px #00000088;
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;
-    user-select: none;
-    z-index: 1;
-  }
-
-  :global(.atlas-marker-waypoint:hover) {
-    transform: scale(1.1);
+  :global(.atlas-marker-special) {
+    border-width: 2.5px;
   }
 
   :global(.atlas-marker-start) {
-    background: #059669;
+    background: #065f46;
+    border-color: #34d399;
     color: #ffffff;
   }
 
   :global(.atlas-marker-end) {
-    background: #d97706;
+    background: #78350f;
+    border-color: #fbbf24;
     color: #ffffff;
   }
 
-  :global(.atlas-marker-waypoint.is-dimmed) {
-    opacity: 0.28;
+  :global(.atlas-marker-special span) {
+    font-size: 0.85rem;
+    line-height: 1;
   }
 
-  :global(.atlas-marker-waypoint.is-active) {
-    transform: scale(1.18);
-    box-shadow:
-      0 0 0 3px #ffffff,
-      0 0 16px #ff9b72;
-    z-index: 4;
+  :global(.atlas-vehicle-indicator) {
+    display: grid;
+    place-items: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    pointer-events: none;
+    z-index: 50;
+    position: relative;
   }
 
-  :global(.atlas-traveling-dot) {
-    width: 1.25rem;
-    height: 1.25rem;
+  :global(.atlas-vehicle-body) {
+    width: 2rem;
+    height: 2rem;
+    display: grid;
+    place-items: center;
     border-radius: 999px;
     background: #ff7e47;
-    border: 2.5px solid #ffffff;
-    box-shadow: 0 0 12px #ff7e47, 0 0 24px #ff7e47aa;
-    pointer-events: none;
-    z-index: 10;
-    animation: traveling-pulse 1.2s infinite ease-in-out;
+    border: 2px solid #ffffff;
+    box-shadow:
+      0 0 14px #ff7e47,
+      0 4px 12px rgba(0, 0, 0, 0.6);
+    font-size: 1rem;
+    line-height: 1;
+    position: relative;
+    z-index: 2;
   }
 
-  @keyframes traveling-pulse {
-    0%, 100% {
-      transform: scale(1);
+  :global(.atlas-vehicle-pulse) {
+    position: absolute;
+    inset: -6px;
+    border-radius: 999px;
+    border: 2px solid #ff9b72;
+    opacity: 0.8;
+    animation: vehicle-radar-pulse 1.4s infinite ease-out;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  @keyframes vehicle-radar-pulse {
+    0% {
+      transform: scale(0.85);
+      opacity: 0.9;
     }
-    50% {
-      transform: scale(1.3);
+    100% {
+      transform: scale(1.6);
+      opacity: 0;
     }
   }
 </style>
