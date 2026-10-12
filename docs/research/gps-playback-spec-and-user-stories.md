@@ -87,17 +87,19 @@ flowchart TD
     - Active day: vibrant neon core (`#ff7e47`, 4.5px) + Gaussian blur glow (`#ff9b72`, 10px, opacity 0.35).
     - Future days: subtle dashed line (`line-dasharray: [2, 3]`).
 
-### User Story 4 (US-04): Heading-Aware Camera Tracking Without Jerkiness
+### User Story 4 (US-04): Steady Camera Tracking with Heading Indicator & Dynamic Zoom Controls
 
 > **As a** reader watching vehicle movement between stops,  
-> **I want** the camera to look forward in the direction of travel with a 3D tilt ($45^\circ$),  
-> **So that** the perspective feels natural and documentary-like rather than jittering violently on tight curves.
+> **I want** the camera to smoothly follow the vehicle in steady North-up ($0^\circ$) orientation without disorienting map rotation,  
+> **And I want** the vehicle marker itself to indicate forward driving direction and allow me to zoom in/out freely,  
+> **So that** the perspective feels natural, easy to read, and gives me full control over regional vs local detail.
 
 - **Acceptance Criteria (TC-04.1)**:
-  - The path is smoothed using Bounded Chaikin Corner-Cutting (`maxCornerM = 30m`), removing sharp 90-degree discontinuities.
-  - Camera bearing is computed as:
-    $$\theta = \text{bearing}(\text{currentCoord}, \text{along}(\text{route}, \text{dist} + 200\text{m}))$$
-  - When navigating tight mountain curves (e.g. Kawazu Seven Waterfalls or Izu Skyline), the camera maintains an orientation within $\pm 25^\circ$ of vehicle travel.
+  - The map maintains steady North-up orientation (`bearing: 0, pitch: 0`) to prevent dizzying rotation and tile thrashing on winding coastal roads.
+  - The vehicle marker includes a dynamic forward arrow indicating driving bearing ($\theta = \text{bearing}(\text{prevCoord}, \text{currCoord})$) and day-tinted radar pulse.
+  - Camera follows the vehicle continuously at 60 FPS with generous left padding so the HUD never obscures the moving car.
+  - Interactive navigation controls (`NavigationControl`, `+` and `−`, compass) allow visitors to zoom in and out dynamically at any time.
+  - When the visitor manually zooms, the tracking loop preserves their preferred zoom level across subsequent legs.
 
 ### User Story 5 (US-05): Multi-Modal Discontinuous Transport (Ferry, Train, Flight)
 

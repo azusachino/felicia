@@ -39,14 +39,16 @@ Because Felicia's reader design is not yet settled, pivoting directly to this mo
    - Make the full-bleed MapLibre canvas (`h-dvh w-full overflow-hidden`) the default viewport.
    - Replace the heavy split-pane sidebar with floating, frosted-glass controls (Top toolbar with trip picker and animated mode switch; bottom-left playback controller; bottom-right detail drawer).
 
-3. **Journey Playback Engine:**
+3. **Journey Playback Engine & Camera Physics:**
    - Implement the chronological state machine: `intro` (tilted photo fan & stats) → `day` (weather badge & route milestones) → `stop` (camera flythrough, live photo loop, essay) → `summary` (journey metrics).
-   - Use dynamic content-aware stop pacing (`Math.max(5000, photos*2000, text*120)`).
+   - Use dynamic distance-proportional transit pacing with smooth 60 FPS vehicle tracking and North-up ($0^\circ$) camera stability.
+   - Support interactive zoom controls (`+`, `−`, compass) and preserve the visitor's custom zoom level during playback.
 
-4. **Dual Surface Information Architecture:**
+4. **Dual Surface Information Architecture & Unified Themes:**
    - Provide two complementary views under one unified reader:
-     - **Map Canvas (`/` or `/map`)**: Spatial playback and interactive route inspection.
+     - **Map Canvas (`/` or `/map`)**: Spatial playback, road-matched routing, and interactive route inspection.
      - **Journal Stream (`/journal`)**: Vertical chronological reading feed of moments grouped by date.
+   - Full light and dark theme support across both surfaces, including topographic map layers, glassmorphic HUD cards, number markers, and journal feed.
 
 5. **Data Model & Ingestion Enrichment:**
    - Extend route leg definitions with `leg_mode` (`car`, `ferry`, `train`, `plane`, `foot`).
