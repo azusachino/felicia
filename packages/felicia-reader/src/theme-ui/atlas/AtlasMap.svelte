@@ -65,27 +65,24 @@
         maxzoom: 19,
         attribution: "&copy; Esri, HERE, Garmin, Intermap, USGS, METI/NASA",
       },
-      // 2. High-contrast Esri Dark Canvas Base for sleek dark spatial journal aesthetic
-      "dark-base": {
-        type: "raster",
-        tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"],
-        tileSize: 256,
-        maxzoom: 16,
-      },
-      // 3. Dark Canvas reference overlay: clean town/city labels and subtle boundaries
-      "dark-canvas-ref": {
-        type: "raster",
-        tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"],
-        tileSize: 256,
-        maxzoom: 16,
-      },
     },
     layers: [
       // Light theme: Rich Topo Map with transport and place names
       { id: "layer-topo-base", type: "raster", source: "topo-base", layout: { visibility: "none" } },
-      // Dark theme: Dark base + Subtle Reference Labels (raster-fade-duration 0 ensures instant tile appearance without blank dark flickers)
-      { id: "layer-dark-base", type: "raster", source: "dark-base", layout: { visibility: "visible" }, paint: { "raster-fade-duration": 0 } },
-      { id: "layer-dark-ref", type: "raster", source: "dark-canvas-ref", layout: { visibility: "visible" }, paint: { "raster-opacity": 0.75, "raster-fade-duration": 0 } },
+      // Dark theme: Sleek Midnight Topo with visible coastlines, peninsulas, mountain relief, and roads across all rural & southern regions
+      {
+        id: "layer-dark-topo",
+        type: "raster",
+        source: "topo-base",
+        layout: { visibility: "visible" },
+        paint: {
+          "raster-brightness-max": 0.25,
+          "raster-brightness-min": 0.02,
+          "raster-saturation": -0.85,
+          "raster-contrast": 0.5,
+          "raster-fade-duration": 0,
+        },
+      },
     ],
   }
 
@@ -683,8 +680,7 @@
     if (!map) return
     const isLight = theme === "light"
     map.setLayoutProperty("layer-topo-base", "visibility", isLight ? "visible" : "none")
-    map.setLayoutProperty("layer-dark-base", "visibility", isLight ? "none" : "visible")
-    map.setLayoutProperty("layer-dark-ref", "visibility", isLight ? "none" : "visible")
+    map.setLayoutProperty("layer-dark-topo", "visibility", isLight ? "none" : "visible")
   }
 
   onMount(() => {
