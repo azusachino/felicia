@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Lang, Memento } from "@felicia/model"
+  import { message } from "@felicia/model"
   import { templateFor } from "./stubs"
   import TicketStub from "../../components/TicketStub.svelte"
 
@@ -19,6 +20,7 @@
 
   const t = (value: { ja: string; en: string; zh: string }) => value[lang]
   const template = $derived(templateFor(memento.kind))
+  const kindLabel = $derived(message(lang, `kind.${memento.kind}` as any) || template?.label || "memento")
 </script>
 
 <button
@@ -52,7 +54,7 @@
     </div>
   {:else if memento.kind === "goods"}
     <div class="tag-hole"></div>
-    <span class="tag-kind">{template?.label}</span>
+    <span class="tag-kind">{kindLabel}</span>
     <strong>{t(memento.title)}</strong>
     {#if t(memento.vendor) || memento.price}
       <small>{[t(memento.vendor), memento.price].filter(Boolean).join(" · ")}</small>
@@ -63,7 +65,7 @@
     <div class="receipt-rule"></div>
     <small>{t(memento.date)} · {memento.price}</small>
   {:else}
-    <span class="card-kind">{template?.label ?? "memento"}</span>
+    <span class="card-kind">{kindLabel}</span>
     <strong>{t(memento.title)}</strong>
     <small>{t(memento.place)} · {t(memento.date)}</small>
   {/if}
@@ -105,7 +107,7 @@
   .stub:focus-visible,
   .stub.selected {
     z-index: 2;
-    outline: 2px solid #ff9b72;
+    outline: 2px solid #39C5BB;
     outline-offset: 3px;
     box-shadow: 0 1rem 3rem #000b;
     transform: translateY(-0.35rem) rotate(0);

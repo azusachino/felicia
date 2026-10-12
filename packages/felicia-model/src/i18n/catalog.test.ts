@@ -10,10 +10,10 @@ describe("system locale catalogs", () => {
     }
   })
 
-  test("normalizes browser language tags and falls back to Japanese", () => {
+  test("normalizes browser language tags and falls back to English", () => {
     expect(resolveLocale("zh-CN")).toBe("zh")
     expect(resolveLocale("en-US")).toBe("en")
-    expect(resolveLocale("fr-FR")).toBe("ja")
+    expect(resolveLocale("fr-FR")).toBe("en")
     expect(message("en", "design.cartography")).toBe("Cartography")
   })
 })

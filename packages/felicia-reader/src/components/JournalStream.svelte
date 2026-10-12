@@ -3,7 +3,7 @@
 
   let {
     journey,
-    lang = "zh",
+    lang = "en",
     theme = "dark",
     onSelectPhoto,
   }: {
@@ -32,7 +32,7 @@
 <div class="pointer-events-auto mx-auto max-w-3xl px-4 pt-24 pb-32 transition-colors duration-300 {theme === 'light' ? 'text-stone-800' : 'text-stone-100'}">
   <!-- Journey Header -->
   <header class="mb-12 text-center">
-    <p class="text-xs font-semibold tracking-widest text-orange-500 uppercase">
+    <p class="text-xs font-semibold tracking-widest text-[#39C5BB] uppercase">
       {journey.place[lang] || journey.place.zh || journey.place.ja}
     </p>
     <h1 class="mt-2 text-3xl font-extrabold tracking-tight max-[48rem]:text-2xl {theme === 'light' ? 'text-stone-900' : 'text-white'}">
@@ -49,12 +49,12 @@
       {@const weather = journey.weather?.[group.dayIndex] ?? journey.weather?.[group.date]}
       <section class="relative border-l pl-6 max-[48rem]:pl-4 {theme === 'light' ? 'border-black/10' : 'border-white/10'}">
         <!-- Day Dot Milestone -->
-        <div class="absolute -left-2 top-0 size-4 rounded-full border-2 bg-orange-500 {theme === 'light' ? 'border-white shadow' : 'border-stone-900'}"></div>
+        <div class="absolute -left-2 top-0 size-4 rounded-full border-2 bg-[#39C5BB] {theme === 'light' ? 'border-white shadow' : 'border-stone-900'}"></div>
 
         <!-- Day Header -->
         <header class="mb-6 flex flex-wrap items-center gap-3">
           <h2 class="text-lg font-bold {theme === 'light' ? 'text-stone-900' : 'text-white'}">
-            第 {group.dayIndex} 天 · {group.date}
+            {lang === 'ja' ? `第 ${group.dayIndex} 日 · ${group.date}` : lang === 'zh' ? `第 ${group.dayIndex} 天 · ${group.date}` : `Day ${group.dayIndex} · ${group.date}`}
           </h2>
           {#if weather}
             <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs {theme === 'light' ? 'bg-black/5 text-stone-700' : 'bg-white/10 text-stone-300'}">
@@ -69,7 +69,7 @@
           {#each group.mementos as memento}
             <article class="rounded-2xl border p-5 shadow-lg backdrop-blur-md transition-colors {theme === 'light' ? 'border-black/10 bg-white shadow-stone-200/50' : 'border-white/10 bg-white/5'}">
               <div class="flex items-center justify-between text-xs {theme === 'light' ? 'text-stone-500' : 'text-stone-400'}">
-                <span class="font-medium text-orange-500">{memento.place[lang] || memento.place.zh}</span>
+                <span class="font-medium text-[#39C5BB]">{memento.place[lang] || memento.place.zh}</span>
                 <span>{memento.date[lang] || memento.date.zh}</span>
               </div>
 
@@ -100,7 +100,7 @@
                       />
                       {#if photo.video}
                         <span class="absolute top-2 left-2 flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[0.625rem] font-medium text-white backdrop-blur">
-                          <span class="size-1.5 rounded-full bg-orange-400"></span> LIVE
+                          <span class="size-1.5 rounded-full bg-[#FF5E98]"></span> LIVE
                         </span>
                       {/if}
                     </button>

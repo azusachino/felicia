@@ -109,7 +109,7 @@ export function resolveWaypointPlace(
   coords: Coordinates,
   role: "start" | "end",
   journeyPlace: string,
-  lang: "ja" | "en" | "zh" = "ja"
+  lang: "ja" | "en" | "zh" = "en"
 ): string {
   const [lon, lat] = coords
   // Greater Tokyo / Saitama Border (Kawaguchi / Kita-ku area)
@@ -140,7 +140,7 @@ export function resolveWaypointPlace(
 
 export function resolveWaypointTitle(
   role: "start" | "end",
-  lang: "ja" | "en" | "zh" = "ja"
+  lang: "ja" | "en" | "zh" = "en"
 ): string {
   if (role === "start") {
     return lang === "ja" ? "旅の出発" : lang === "zh" ? "旅程出发" : "Journey Departure"
@@ -148,7 +148,7 @@ export function resolveWaypointTitle(
   return lang === "ja" ? "帰路・到着" : lang === "zh" ? "归途・到达" : "Return & Arrival"
 }
 
-export function generatePlaybackSteps(journey: Journey, lang: "ja" | "en" | "zh" = "ja"): PlaybackStep[] {
+export function generatePlaybackSteps(journey: Journey, lang: "ja" | "en" | "zh" = "en"): PlaybackStep[] {
   const mementos = [...journey.mementos]
   const allPhotos = mementos.flatMap((m) => m.photos)
   const uniquePlaces = [...new Set(mementos.map((m) => m.place[lang] || m.place.ja || m.place.en || m.place.zh))]
@@ -317,6 +317,14 @@ export class PlaybackController {
 
   constructor(steps: PlaybackStep[]) {
     this.steps = steps
+  }
+
+  public updateSteps(newSteps: PlaybackStep[]): void {
+    this.steps = newSteps
+    if (this.currentIndex >= this.steps.length) {
+      this.currentIndex = Math.max(0, this.steps.length - 1)
+    }
+    this.notify()
   }
 
   public subscribe(listener: StateListener): () => void {

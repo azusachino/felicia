@@ -12,10 +12,10 @@
     type PlaybackControllerState,
     type PlaybackStep,
   } from "../../playback/engine"
-  import type { Journey, Lang, Memento, Theme } from "@felicia/model"
+  import { type Journey, type Lang, type Memento, type Theme, message } from "@felicia/model"
 
   let {
-    lang = $bindable("ja"),
+    lang = $bindable("en"),
     theme = $bindable("dark"),
     loadJourneys,
   }: {
@@ -86,6 +86,10 @@
   $effect(() => {
     if (activeJourney && activeJourney.id !== lastJourneyId) {
       initPlayback(activeJourney)
+    } else if (activeJourney && playbackController) {
+      // Refresh step copy when language changes
+      const updatedSteps = generatePlaybackSteps(activeJourney, lang)
+      playbackController.updateSteps(updatedSteps)
     } else if (!activeJourney && playbackController) {
       initPlayback(null)
     }
@@ -214,7 +218,7 @@
             class="flex items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-semibold shadow-xl backdrop-blur-xl transition {theme === 'light' ? 'border-black/10 bg-white/90 text-stone-800 hover:bg-white' : 'border-white/20 bg-black/75 text-white hover:bg-black/90'}"
             onclick={() => (isPlaybackDismissed = false)}
           >
-            <span class="text-orange-400">▶</span>
+            <span class="text-[#39C5BB]">▶</span>
             <span>{lang === 'ja' ? '旅の再生を開く' : lang === 'zh' ? '恢复行程回放' : 'Open Trip Playback'}</span>
           </button>
         </div>
@@ -235,10 +239,11 @@
         <AtlasDetail
           memento={selectedMemento}
           {lang}
-          photoLabel="Photos"
-          photosHeading="Photos"
-          closeLabel="Close"
-          storyLabel="Story"
+          {theme}
+          photoLabel={lang === 'ja' ? '枚の写真' : lang === 'zh' ? '张照片' : 'Photos'}
+          photosHeading={lang === 'ja' ? '写真' : lang === 'zh' ? '照片' : 'Photos'}
+          closeLabel={message(lang, "ui.close")}
+          storyLabel={message(lang, "ui.story")}
           onClose={closeMemento}
         />
       {/if}

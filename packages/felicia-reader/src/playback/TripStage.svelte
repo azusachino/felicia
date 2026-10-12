@@ -6,7 +6,7 @@
   let {
     controller,
     currentStep,
-    lang = "ja",
+    lang = "en",
     onClose,
   }: {
     controller: PlaybackController
@@ -70,23 +70,23 @@
   <header class="flex items-center justify-between">
     <div>
       {#if currentStep.type === "intro"}
-        <p class="text-xs tracking-wider text-orange-400 uppercase">{i18n.stage}</p>
+        <p class="text-xs tracking-wider text-[#39C5BB] uppercase">{i18n.stage}</p>
         <h1 class="text-xl font-bold">{currentStep.title}</h1>
       {:else if currentStep.type === "day"}
-        <p class="text-xs tracking-wider text-orange-400 uppercase">{i18n.dayPrefix} {currentStep.day} {i18n.daySuffix}</p>
+        <p class="text-xs tracking-wider text-[#39C5BB] uppercase">{i18n.dayPrefix} {currentStep.day} {i18n.daySuffix}</p>
         <h1 class="text-xl font-bold">{currentStep.date}</h1>
       {:else if currentStep.type === "waypoint"}
-        <p class="text-xs tracking-wider text-orange-400 uppercase">
+        <p class="text-xs tracking-wider text-[#39C5BB] uppercase">
           {currentStep.role === "start" ? i18n.departure : i18n.arrival} · {i18n.dayPrefix} {currentStep.day} {i18n.daySuffix}
         </p>
         <h1 class="text-xl font-bold">{currentStep.title}</h1>
       {:else if currentStep.type === "stop"}
-        <p class="text-xs tracking-wider text-orange-400 uppercase">
+        <p class="text-xs tracking-wider text-[#39C5BB] uppercase">
           {i18n.dayPrefix} {currentStep.day} {i18n.daySuffix} · {currentStep.memento.place[lang] || currentStep.memento.place.ja || currentStep.memento.place.en || currentStep.memento.place.zh}
         </p>
         <h1 class="text-xl font-bold">{currentStep.memento.title[lang] || currentStep.memento.title.ja || currentStep.memento.title.en || currentStep.memento.title.zh}</h1>
       {:else if currentStep.type === "summary"}
-        <p class="text-xs tracking-wider text-orange-400 uppercase">{i18n.summary}</p>
+        <p class="text-xs tracking-wider text-[#39C5BB] uppercase">{i18n.summary}</p>
         <h1 class="text-xl font-bold">{currentStep.title}</h1>
       {/if}
     </div>
@@ -137,7 +137,7 @@
               class="max-h-[60vh] max-w-full object-contain"
             ></video>
             <span class="absolute top-3 left-3 flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
-              <span class="size-2 rounded-full bg-orange-400"></span> LIVE
+              <span class="size-2 rounded-full bg-[#FF5E98]"></span> LIVE
             </span>
           {:else}
             <img src={photo.src} alt="" class="max-h-[60vh] max-w-full object-contain" />
@@ -155,7 +155,7 @@
         <h2 class="mt-4 text-3xl font-bold">{currentStep.place}</h2>
         <p class="mt-2 text-base text-stone-300">{currentStep.title}</p>
         {#if currentStep.time}
-          <p class="mt-2 text-lg font-mono font-semibold text-orange-400">
+          <p class="mt-2 text-lg font-mono font-semibold text-[#39C5BB]">
             🕒 {currentStep.date ? `${currentStep.date} ` : ""}{currentStep.time}
           </p>
         {/if}
@@ -163,7 +163,7 @@
           <span>{currentStep.coords[0].toFixed(4)}, {currentStep.coords[1].toFixed(4)}</span>
           {#if currentStep.distanceKm !== undefined}
             <span class="text-stone-400">·</span>
-            <span class="text-orange-300">{currentStep.distanceKm.toLocaleString()} km</span>
+            <span class="text-teal-300">{currentStep.distanceKm.toLocaleString()} km</span>
           {/if}
         </div>
       </div>
@@ -171,15 +171,15 @@
     {:else if currentStep.type === "summary"}
       <div class="grid grid-cols-3 gap-4 text-center max-[48rem]:grid-cols-2">
         <div class="rounded-xl border border-white/10 bg-white/5 p-4">
-          <div class="font-mono text-3xl font-bold text-orange-400">{currentStep.dayCount}</div>
+          <div class="font-mono text-3xl font-bold text-[#39C5BB]">{currentStep.dayCount}</div>
           <div class="mt-1 text-xs text-stone-400">{i18n.days}</div>
         </div>
         <div class="rounded-xl border border-white/10 bg-white/5 p-4">
-          <div class="font-mono text-3xl font-bold text-orange-400">{currentStep.stopCount}</div>
+          <div class="font-mono text-3xl font-bold text-[#39C5BB]">{currentStep.stopCount}</div>
           <div class="mt-1 text-xs text-stone-400">{i18n.records}</div>
         </div>
         <div class="rounded-xl border border-white/10 bg-white/5 p-4">
-          <div class="font-mono text-3xl font-bold text-orange-400">{currentStep.photoCount}</div>
+          <div class="font-mono text-3xl font-bold text-[#39C5BB]">{currentStep.photoCount}</div>
           <div class="mt-1 text-xs text-stone-400">{i18n.photos}</div>
         </div>
       </div>
@@ -200,7 +200,7 @@
         <li class="flex-1">
           <button
             type="button"
-            class="h-1 w-full cursor-pointer rounded-full border-0 p-0 transition-colors duration-300 {i <= state.currentStepIndex ? 'bg-orange-400' : 'bg-white/20'}"
+            class="h-1 w-full cursor-pointer rounded-full border-0 p-0 transition-colors duration-300 {i <= state.currentStepIndex ? 'bg-[#39C5BB]' : 'bg-white/20'}"
             onclick={() => controller.seek(i)}
             aria-label="Step {i + 1}"
           ></button>
@@ -221,7 +221,7 @@
 
       <button
         type="button"
-        class="flex size-12 cursor-pointer items-center justify-center rounded-full border border-orange-400/40 bg-orange-500/30 text-lg text-orange-300 hover:bg-orange-500/50 hover:text-white"
+        class="flex size-12 cursor-pointer items-center justify-center rounded-full border border-[#39C5BB]/40 bg-[#39C5BB]/30 text-lg text-[#39C5BB] hover:bg-[#39C5BB]/50 hover:text-white"
         onclick={() => controller.togglePlay()}
       >
         {state.isPlaying ? "⏸" : "▶"}

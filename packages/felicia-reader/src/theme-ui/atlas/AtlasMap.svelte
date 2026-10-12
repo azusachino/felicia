@@ -124,6 +124,16 @@
     return bounds
   }
 
+  function getCameraPadding() {
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 768
+    if (isMobile) {
+      // On mobile: top toolbar is ~50px (with brand & select), bottom card is ~250px, left/right minimal 24px
+      return { top: 85, bottom: 270, left: 24, right: 24 }
+    }
+    // Desktop: left HUD sidebar card width ~340px
+    return { top: 60, bottom: 80, left: 340, right: 60 }
+  }
+
   function fitActiveJourney() {
     if (!map) return
     const journey = activeJourney()
@@ -132,7 +142,7 @@
     if (!bounds) return
     const distance = journey ? journeyDistance(journey) : 5
     map.fitBounds(bounds, {
-      padding: { top: 60, bottom: 80, left: 340, right: 60 },
+      padding: getCameraPadding(),
       maxZoom: 11,
       duration: prefersReducedMotion ? 0 : Math.min(1800, 1000 + distance * 200),
     })
@@ -193,7 +203,7 @@
         zoom: 12.2,
         pitch: 0,
         bearing: 0,
-        padding: { top: 60, bottom: 80, left: 340, right: 60 },
+        padding: getCameraPadding(),
         duration: prefersReducedMotion ? 0 : 1000,
       })
     })
@@ -292,7 +302,7 @@
       speed: 1.0,
       curve: 1.2,
       essential: true,
-      padding: { top: 60, bottom: 80, left: 340, right: 60 },
+      padding: getCameraPadding(),
     })
   }
 
@@ -343,10 +353,10 @@
         const palette = getDayColor(slice.day)
         const isCurrentDay = !isSummary && slice.day === activeDay
         // When overlapping/collapsed: past days render with subtle transparency and thinner line
-        const opacity = isSummary ? 0.85 : isCurrentDay ? 0.95 : 0.32
-        const glowOpacity = isSummary ? 0.25 : isCurrentDay ? 0.45 : 0.12
-        const width = isSummary ? 3.8 : isCurrentDay ? 4.5 : 3.0
-        const glowWidth = isCurrentDay ? 12 : 7
+        const opacity = isSummary ? 0.95 : isCurrentDay ? 1.0 : 0.65
+        const glowOpacity = isSummary ? 0.45 : isCurrentDay ? 0.75 : 0.35
+        const width = isSummary ? 5.5 : isCurrentDay ? 6.5 : 4.5
+        const glowWidth = isCurrentDay ? 16 : 10
 
         return {
           type: "Feature" as const,
@@ -516,7 +526,7 @@
 
     const info = getTimelineForJourney(journey)
     if (!info || info.timeline.totalDistance <= 0.05) {
-      map.jumpTo({ center: toCoords, zoom: 12.0, pitch: 0, bearing: 0, padding: { top: 60, bottom: 80, left: 340, right: 60 } })
+      map.jumpTo({ center: toCoords, zoom: 12.0, pitch: 0, bearing: 0, padding: getCameraPadding() })
       return
     }
 
@@ -532,7 +542,7 @@
       const slices = timeline.sliceByDays(fraction, cutoffs)
       updateTraveledRoute(slices, targetDay, false)
       ensureVehicleMarker(toCoords, 0, targetDay)
-      map.jumpTo({ center: toCoords, zoom: 12.0, pitch: 0, bearing: 0, padding: { top: 60, bottom: 80, left: 340, right: 60 } })
+      map.jumpTo({ center: toCoords, zoom: 12.0, pitch: 0, bearing: 0, padding: getCameraPadding() })
       return
     }
 
@@ -551,7 +561,7 @@
           zoom: 12.0,
           pitch: 0,
           bearing: 0,
-          padding: { top: 60, bottom: 80, left: 340, right: 60 },
+          padding: getCameraPadding(),
         })
         return
       }
@@ -576,7 +586,7 @@
           zoom: initialZoom,
           pitch: 0,
           bearing: 0,
-          padding: { top: 60, bottom: 80, left: 340, right: 60 },
+          padding: getCameraPadding(),
           duration: prefersReducedMotion ? 0 : 500,
         })
       }
@@ -626,7 +636,7 @@
           zoom: dynamicZoom,
           pitch: 0,
           bearing: 0,
-          padding: { top: 60, bottom: 80, left: 340, right: 60 },
+          padding: getCameraPadding(),
         })
 
         if (rawProgress >= 1) {
@@ -645,7 +655,7 @@
             zoom: 12.5,
             pitch: 0,
             bearing: 0,
-            padding: { top: 60, bottom: 80, left: 340, right: 60 },
+            padding: getCameraPadding(),
             duration: 1000,
           })
 
@@ -715,9 +725,7 @@
       zoom: 4.5,
       attributionControl: false,
     })
-    // 1. Zoom in/out +/- controls and compass navigation widget
-    map.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), "bottom-right")
-    // 2. Map attribution
+    // Map attribution
     map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right")
 
     // Track when visitor manually zooms (wheel, pinch, double-click, +/- buttons)
@@ -751,7 +759,7 @@
         source: "routes",
         filter: ["==", ["get", "journeyId"], activeJourneyId ?? ""],
         layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": "#ff9b72", "line-width": 2.5, "line-opacity": 0.35, "line-dasharray": [2, 2] },
+        paint: { "line-color": "#39C5BB", "line-width": 3.5, "line-opacity": 0.65, "line-dasharray": [3, 2] },
       })
       map.addLayer({
         id: "route-active-dashed",
@@ -764,10 +772,10 @@
         ],
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
-          "line-color": "#ff9b72",
-          "line-width": 2.5,
-          "line-dasharray": [2, 3],
-          "line-opacity": 0.35,
+          "line-color": "#39C5BB",
+          "line-width": 3.5,
+          "line-dasharray": [3, 3],
+          "line-opacity": 0.65,
         },
       })
 
@@ -778,10 +786,10 @@
         source: "routes-traveled",
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
-          "line-color": ["coalesce", ["get", "glowColor"], "#ff9b72"],
-          "line-width": ["coalesce", ["get", "glowWidth"], 10],
-          "line-opacity": ["coalesce", ["get", "glowOpacity"], 0.35],
-          "line-blur": 5,
+          "line-color": ["coalesce", ["get", "glowColor"], "#39C5BB"],
+          "line-width": ["coalesce", ["get", "glowWidth"], 16],
+          "line-opacity": ["coalesce", ["get", "glowOpacity"], 0.6],
+          "line-blur": 6,
         },
       })
       map.addLayer({
@@ -790,9 +798,9 @@
         source: "routes-traveled",
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
-          "line-color": ["coalesce", ["get", "color"], "#ff7e47"],
-          "line-width": ["coalesce", ["get", "width"], 4.5],
-          "line-opacity": ["coalesce", ["get", "opacity"], 0.95],
+          "line-color": ["coalesce", ["get", "color"], "#39C5BB"],
+          "line-width": ["coalesce", ["get", "width"], 6.0],
+          "line-opacity": ["coalesce", ["get", "opacity"], 1.0],
         },
       })
 
@@ -806,7 +814,7 @@
         source: "routes-spokes",
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
-          "line-color": "#ff9b72",
+          "line-color": "#39C5BB",
           "line-width": ["case", ["==", ["get", "active"], 1], 2, 1.2],
           "line-dasharray": [2, 2],
           "line-opacity": ["case", ["==", ["get", "active"], 1], 0.85, 0.4],
@@ -819,7 +827,7 @@
         source: "routes-photo-spots",
         paint: {
           "circle-radius": ["case", ["==", ["get", "active"], 1], 4.5, 3],
-          "circle-color": "#ff7e47",
+          "circle-color": "#39C5BB",
           "circle-stroke-width": 1.5,
           "circle-stroke-color": "#ffffff",
           "circle-opacity": ["case", ["==", ["get", "active"], 1], 0.95, 0.5],
@@ -915,7 +923,7 @@
             zoom: 12.0,
             pitch: 0,
             bearing: 0,
-            padding: { top: 60, bottom: 80, left: 340, right: 60 },
+            padding: getCameraPadding(),
             duration: prefersReducedMotion ? 0 : 1200,
           })
           lastAnimatedCoords = originCoord
@@ -934,7 +942,7 @@
               zoom: 12.0,
               pitch: 0,
               bearing: 0,
-              padding: { top: 60, bottom: 80, left: 340, right: 60 },
+              padding: getCameraPadding(),
               duration: prefersReducedMotion ? 0 : 800,
             })
           }
@@ -953,7 +961,7 @@
           zoom: 12.0,
           pitch: 0,
           bearing: 0,
-          padding: { top: 60, bottom: 80, left: 340, right: 60 },
+          padding: getCameraPadding(),
           duration: prefersReducedMotion ? 0 : 1000,
         })
         lastAnimatedCoords = currentStep.coords
@@ -1030,12 +1038,12 @@
 
   :global(.atlas-marker.is-active) {
     z-index: 20;
-    background: #ff7e47;
+    background: #39C5BB;
     border-color: #ffffff;
     color: #ffffff;
     box-shadow:
-      0 0 0 3px #ff7e47,
-      0 0 16px rgba(255, 126, 71, 0.8),
+      0 0 0 3px #39C5BB,
+      0 0 16px rgba(57, 197, 187, 0.8),
       0 4px 14px rgba(0, 0, 0, 0.7);
   }
 
@@ -1055,17 +1063,17 @@
   }
 
   :global(.atlas-marker-end) {
-    background: #78350f;
-    border-color: #fbbf24;
+    background: #831843;
+    border-color: #FF5E98;
     color: #ffffff;
   }
 
   :global(.atlas-marker-end.is-active) {
-    background: #d97706;
-    border-color: #fde68a;
+    background: #be185d;
+    border-color: #f472b6;
     box-shadow:
-      0 0 0 3px #d97706,
-      0 0 16px rgba(251, 191, 36, 0.8),
+      0 0 0 3px #be185d,
+      0 0 16px rgba(255, 94, 152, 0.8),
       0 4px 14px rgba(0, 0, 0, 0.7);
   }
 
@@ -1091,10 +1099,10 @@
     display: grid;
     place-items: center;
     border-radius: 999px;
-    background: #ff7e47;
+    background: #39C5BB;
     border: 2px solid #ffffff;
     box-shadow:
-      0 0 14px rgba(255, 126, 71, 0.9),
+      0 0 14px rgba(57, 197, 187, 0.9),
       0 4px 12px rgba(0, 0, 0, 0.6);
     color: #ffffff;
     position: relative;
@@ -1113,7 +1121,7 @@
     position: absolute;
     inset: -6px;
     border-radius: 999px;
-    border: 2px solid #ff9b72;
+    border: 2px solid #5fe0d7;
     opacity: 0.8;
     animation: vehicle-radar-pulse 1.4s infinite ease-out;
     pointer-events: none;
@@ -1135,7 +1143,7 @@
     position: absolute;
     inset: -8px;
     border-radius: 999px;
-    border: 2px solid #ff7e47;
+    border: 2px solid #39C5BB;
     opacity: 0;
     pointer-events: none;
     z-index: -1;
@@ -1202,35 +1210,5 @@
   :global(.atlas-marker.is-active .atlas-arrival-callout) {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
-  }
-
-  /* MapLibre Navigation (+/- zoom & compass) Controls Styling */
-  :global(.maplibregl-ctrl-group) {
-    border-radius: 999px !important;
-    overflow: hidden;
-    background: rgba(15, 23, 42, 0.75) !important;
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
-  }
-
-  :global(.maplibregl-ctrl-group button) {
-    width: 32px !important;
-    height: 32px !important;
-    border: none !important;
-  }
-
-  :global(.maplibregl-ctrl-group button .maplibregl-ctrl-icon) {
-    filter: invert(1);
-  }
-
-  :global(.theme-light .maplibregl-ctrl-group) {
-    background: rgba(255, 255, 255, 0.9) !important;
-    border: 1px solid rgba(0, 0, 0, 0.1) !important;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
-  }
-
-  :global(.theme-light .maplibregl-ctrl-group button .maplibregl-ctrl-icon) {
-    filter: none;
   }
 </style>

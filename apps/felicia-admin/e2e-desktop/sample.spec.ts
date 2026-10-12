@@ -61,21 +61,19 @@ test("journey detail opens the built preview in-app with comfortable header cont
   expect(popups).toBe(0)
 })
 
-test("reader exposes Sun and Moon controls without changing saved appearance", async ({ page }) => {
+test("reader exposes theme toggle control without changing saved appearance", async ({ page }) => {
   await page.route("**/wails/runtime.js", (route) => route.fulfill({ contentType: "application/javascript", body: "" }))
   await page.goto("/#/site")
   const before = await (await page.request.get("/api/admin/site-settings")).json()
   await page.getByRole("button", { name: "Preview last built site", exact: true }).click()
   const reader = page.frameLocator('iframe[title="Last built site"]')
-  const light = reader.getByRole("button", { name: /^(Light|ライト|浅色)$/ })
-  const dark = reader.getByRole("button", { name: /^(Dark|ダーク|深色)$/ })
-  await expect(light.locator("svg")).toBeVisible()
-  await expect(dark.locator("svg")).toBeVisible()
-  await light.click()
-  await expect(light).toHaveAttribute("aria-pressed", "true")
+  const toggle = reader.getByRole("button", { name: /^(Light Mode|Dark Mode|ライトモード|ダークモード|浅色模式|深色模式)$/ })
+  await expect(toggle.locator("svg")).toBeVisible()
+  // Default is dark; clicking toggles to light
+  await toggle.click()
   await expect(reader.locator(".waypoints")).toHaveClass(/light/)
-  await dark.click()
-  await expect(dark).toHaveAttribute("aria-pressed", "true")
+  // Clicking again toggles back to dark
+  await toggle.click()
   await expect(reader.locator(".waypoints")).not.toHaveClass(/light/)
   expect(await (await page.request.get("/api/admin/site-settings")).json()).toEqual(before)
 })
