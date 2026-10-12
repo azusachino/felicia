@@ -285,17 +285,19 @@ export interface DayStyle {
   day: number
   color: string       // Main road line color
   glowColor: string   // Atmospheric route aura
+  glow: string        // Aura glow color
+  pulse: string       // Radar beacon border color
   label: string
 }
 
 export const DAY_PALETTE: DayStyle[] = [
-  { day: 1, color: "#ff7e47", glowColor: "rgba(255, 126, 71, 0.4)", label: "Day 1" }, // Sunset Coral / Amber
-  { day: 2, color: "#06b6d4", glowColor: "rgba(6, 182, 212, 0.4)",  label: "Day 2" }, // Coastal Cyan / Turquoise
-  { day: 3, color: "#a855f7", glowColor: "rgba(168, 85, 247, 0.4)", label: "Day 3" }, // Lavender Purple
-  { day: 4, color: "#10b981", glowColor: "rgba(16, 185, 129, 0.4)", label: "Day 4" }, // Emerald Green
-  { day: 5, color: "#f59e0b", glowColor: "rgba(245, 158, 11, 0.4)", label: "Day 5" }, // Warm Amber Gold
-  { day: 6, color: "#ec4899", glowColor: "rgba(236, 72, 153, 0.4)", label: "Day 6" }, // Rose Pink
-  { day: 7, color: "#6366f1", glowColor: "rgba(99, 102, 241, 0.4)", label: "Day 7" }, // Indigo
+  { day: 1, color: "#ff7e47", glowColor: "rgba(255, 126, 71, 0.4)", glow: "rgba(255, 126, 71, 0.8)", pulse: "#ff9b72", label: "Day 1" }, // Sunset Coral / Amber
+  { day: 2, color: "#06b6d4", glowColor: "rgba(6, 182, 212, 0.4)",  glow: "rgba(6, 182, 212, 0.8)", pulse: "#67e8f9", label: "Day 2" }, // Coastal Cyan / Turquoise
+  { day: 3, color: "#a855f7", glowColor: "rgba(168, 85, 247, 0.4)", glow: "rgba(168, 85, 247, 0.8)", pulse: "#d8b4fe", label: "Day 3" }, // Lavender Purple
+  { day: 4, color: "#10b981", glowColor: "rgba(16, 185, 129, 0.4)", glow: "rgba(16, 185, 129, 0.8)", pulse: "#6ee7b7", label: "Day 4" }, // Emerald Green
+  { day: 5, color: "#f59e0b", glowColor: "rgba(245, 158, 11, 0.4)", glow: "rgba(245, 158, 11, 0.8)", pulse: "#fcd34d", label: "Day 5" }, // Warm Amber Gold
+  { day: 6, color: "#ec4899", glowColor: "rgba(236, 72, 153, 0.4)", glow: "rgba(236, 72, 153, 0.8)", pulse: "#f472b6", label: "Day 6" }, // Rose Pink
+  { day: 7, color: "#6366f1", glowColor: "rgba(99, 102, 241, 0.4)", glow: "rgba(99, 102, 241, 0.8)", pulse: "#a5b4fc", label: "Day 7" }, // Indigo
 ]
 
 export function getDayColor(dayNumber: number): DayStyle {
@@ -307,6 +309,7 @@ export interface DayCutoff {
   day: number
   startDist: number
   endDist: number
+  cutoffFraction?: number
 }
 
 export function calculateDayCutoffs(
@@ -365,9 +368,20 @@ export function calculateDayCutoffs(
         }
       }
 
-      cutoffs.push({ day: dayNumber, startDist: prevEnd, endDist })
+      cutoffs.push({
+        day: dayNumber,
+        startDist: prevEnd,
+        endDist,
+        cutoffFraction: timeline.totalDistance > 0 ? endDist / timeline.totalDistance : 0,
+      })
       prevEnd = endDist
     }
+  }
+
+  // Populate cutoffFraction for last cutoff as well
+  if (cutoffs.length > 0) {
+    const lastCutoff = cutoffs.at(-1)!
+    lastCutoff.cutoffFraction = timeline.totalDistance > 0 ? lastCutoff.endDist / timeline.totalDistance : 1.0
   }
 
   return cutoffs

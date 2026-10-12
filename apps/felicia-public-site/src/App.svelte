@@ -1,10 +1,8 @@
 <script lang="ts">
-  import { Sun, Moon } from "@lucide/svelte"
-  import { Reader, message, resolveLocale, themeFromId, type ApiSiteSettings, type Lang, type Theme } from "@felicia/reader"
+  import { Reader, resolveLocale, themeFromId, type ApiSiteSettings, type Lang, type Theme } from "@felicia/reader"
   import { loadJourneys, loadSiteSettings } from "./api/source"
 
   let settings = $state<ApiSiteSettings | null>(null)
-  const markUrl = `${import.meta.env.BASE_URL}felicia-mark.svg`
 
   $effect(() => {
     loadSiteSettings()
@@ -18,10 +16,6 @@
   let lang: Lang = $state(resolveLocale(storedLocale ?? navigator.language))
   let theme: Theme = $state("dark")
   let appearanceEdited = $state(false)
-  function chooseTheme(value: Theme) {
-    appearanceEdited = true
-    theme = value
-  }
 
   $effect(() => localStorage.setItem("felicia.locale", lang))
 

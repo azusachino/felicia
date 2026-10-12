@@ -4,15 +4,10 @@
   import { onMount } from "svelte"
   import { geoDistance } from "d3-geo"
   import { timer, type Timer } from "d3-timer"
-  import { lineString, point } from "@turf/helpers"
-  import along from "@turf/along"
-  import length from "@turf/length"
-  import lineSlice from "@turf/line-slice"
   import type { Coordinates, Journey, Memento, Theme } from "@felicia/model"
   import type { PlaybackStep } from "../../playback/engine"
   import {
     RouteTimeline,
-    easeInOutCubic,
     haversineDistance,
     calculateLegDriveDurationMs,
     getDayColor,
@@ -169,7 +164,7 @@
     return button
   }
 
-  function waypointMarkerElement(journey: Journey, role: "start" | "end", coord: Coordinates) {
+  function waypointMarkerElement(_journey: Journey, role: "start" | "end", coord: Coordinates) {
     const button = document.createElement("button")
     button.type = "button"
     button.className = `atlas-marker atlas-marker-special atlas-marker-${role}`
