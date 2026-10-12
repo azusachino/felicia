@@ -15,7 +15,7 @@
   import { type Journey, type Lang, type Memento, type Theme, message } from "@felicia/model"
 
   let {
-    lang = $bindable("ja"),
+    lang = $bindable("en"),
     theme = $bindable("dark"),
     loadJourneys,
   }: {

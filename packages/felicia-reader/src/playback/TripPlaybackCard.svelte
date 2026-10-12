@@ -7,7 +7,7 @@
   let {
     controller,
     currentStep,
-    lang = "ja",
+    lang = "en",
     theme = "dark",
     legPhase = "arrived",
     legDistanceKm = 0,

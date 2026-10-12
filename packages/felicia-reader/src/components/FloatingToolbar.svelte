@@ -5,7 +5,7 @@
     journeys,
     activeJourneyId,
     mode = "map",
-    lang = "zh",
+    lang = "en",
     theme = "dark",
     onSelectJourney,
     onModeChange,

@@ -95,10 +95,10 @@ export const catalogs: Record<Locale, Catalog> = {
 
 export function resolveLocale(value: string | null | undefined): Locale {
   if (value === "ja" || value === "en" || value === "zh") return value
+  if (value?.startsWith("en")) return "en"
   if (value?.startsWith("ja")) return "ja"
   if (value?.startsWith("zh")) return "zh"
-  if (value?.startsWith("en")) return "en"
-  return "ja"
+  return "en"
 }
 
 export function message(locale: Locale, key: MessageKey): string {

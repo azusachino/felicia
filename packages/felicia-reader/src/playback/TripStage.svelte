@@ -6,7 +6,7 @@
   let {
     controller,
     currentStep,
-    lang = "ja",
+    lang = "en",
     onClose,
   }: {
     controller: PlaybackController

@@ -42,7 +42,7 @@ type SiteSettings struct {
 // site settings — "absent settings" behaves like the Atlas site in the default
 // language and theme, with no title/description/accent authored yet.
 func DefaultSiteSettings(journalID uuid.UUID) SiteSettings {
-	return SiteSettings{JournalID: journalID, Design: "atlas", DefaultLanguage: "ja", DefaultTheme: "dark"}
+	return SiteSettings{JournalID: journalID, Design: "atlas", DefaultLanguage: "en", DefaultTheme: "dark"}
 }
 
 // Journey represents a travel trip.

@@ -141,7 +141,7 @@ CREATE TABLE IF NOT EXISTS tb_site_settings (
   title TEXT NOT NULL DEFAULT '',
   description TEXT NOT NULL DEFAULT '',
   design TEXT NOT NULL DEFAULT 'atlas' CHECK (design IN ('cartography', 'cabinet', 'techo', 'atlas')),
-  default_language TEXT NOT NULL DEFAULT 'ja' CHECK (default_language IN ('ja', 'en', 'zh')),
+  default_language TEXT NOT NULL DEFAULT 'en' CHECK (default_language IN ('ja', 'en', 'zh')),
   default_theme TEXT NOT NULL DEFAULT 'dark' CHECK (default_theme IN ('dark', 'light')),
   accent TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL,

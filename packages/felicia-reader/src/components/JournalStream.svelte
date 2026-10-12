@@ -3,7 +3,7 @@
 
   let {
     journey,
-    lang = "zh",
+    lang = "en",
     theme = "dark",
     onSelectPhoto,
   }: {
