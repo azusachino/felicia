@@ -59,7 +59,7 @@ test.describe("preview", () => {
     })
     await expect(dialog).toBeVisible()
     const reader = page.frameLocator('iframe[title="Last built site"]')
-    await reader.getByRole("button", { name: /^(Light|ライト|浅色)$/ }).click()
+    await reader.getByRole("button", { name: /^(Light Mode|Dark Mode|ライトモード|ダークモード|浅色模式|深色模式)$/ }).click()
     await page.keyboard.press("Escape")
     await expect(dialog).toBeHidden()
     await expect(opener).toBeFocused()
