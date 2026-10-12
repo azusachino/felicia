@@ -46,6 +46,8 @@
   let currentStep = $state<PlaybackStep | null>(null)
   let isPlaying = $state(false)
   let lastJourneyId = $state<string | null>(null)
+  let legPhase = $state<"transit" | "arrived">("arrived")
+  let legDistanceKm = $state<number>(0)
 
   function initPlayback(journey: Journey | null) {
     playbackController?.destroy()
@@ -54,6 +56,8 @@
       currentStep = null
       isPlaying = false
       lastJourneyId = null
+      legPhase = "arrived"
+      legDistanceKm = 0
       return
     }
     const steps = generatePlaybackSteps(journey, lang)
@@ -63,8 +67,12 @@
       isPlaying = state.isPlaying
       if (step.type === "stop") {
         activeMementoId = step.memento.id
+        legDistanceKm = step.travelDistanceKm ?? 0
+        legPhase = state.isPlaying && (step.travelDistanceKm ?? 0) > 0.05 ? "transit" : "arrived"
       } else {
         activeMementoId = null
+        legPhase = "arrived"
+        legDistanceKm = 0
       }
     })
     playbackController = ctrl
@@ -162,6 +170,12 @@
             activeMementoId = id
             selectedMementoId = id
           }}
+          onLegStart={() => {
+            if (isPlaying) legPhase = "transit"
+          }}
+          onLegArrive={() => {
+            legPhase = "arrived"
+          }}
         />
       </div>
 
@@ -171,6 +185,8 @@
           controller={playbackController}
           {currentStep}
           {lang}
+          {legPhase}
+          {legDistanceKm}
           onOpenStage={() => (showStage = true)}
           onOpenDetail={(mementoId) => (selectedMementoId = mementoId)}
           onClose={() => {

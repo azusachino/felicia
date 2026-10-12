@@ -8,6 +8,8 @@
     controller,
     currentStep,
     lang = "ja",
+    legPhase = "arrived",
+    legDistanceKm = 0,
     onOpenStage,
     onOpenDetail,
     onClose,
@@ -15,6 +17,8 @@
     controller: PlaybackController
     currentStep: PlaybackStep
     lang: Lang
+    legPhase?: "transit" | "arrived"
+    legDistanceKm?: number
     onOpenStage?: () => void
     onOpenDetail?: (mementoId: string) => void
     onClose?: () => void
@@ -60,6 +64,10 @@
         readStory: "阅读完整手记 →",
         departureTime: "出发时间",
         arrivalTime: "到达时间",
+        transit: "行进中",
+        nextStop: "下一站目的地",
+        arrived: "已到达",
+        legDist: "区间距离",
       },
       ja: {
         intro: "旅の再生",
@@ -85,6 +93,10 @@
         readStory: "手記を読む →",
         departureTime: "出発時刻",
         arrivalTime: "到着時刻",
+        transit: "移動中",
+        nextStop: "次の目的地",
+        arrived: "到着",
+        legDist: "区間距離",
       },
       en: {
         intro: "Trip Playback",
@@ -110,6 +122,10 @@
         readStory: "Read full story →",
         departureTime: "Departure Time",
         arrivalTime: "Arrival Time",
+        transit: "En route",
+        nextStop: "Next Destination",
+        arrived: "Arrived",
+        legDist: "Leg Distance",
       },
     }[lang]
   )
@@ -254,55 +270,106 @@
       </div>
 
     {:else if currentStep.type === "stop"}
-      <!-- STOP CARD -->
-      <div class="py-1">
-        <div class="flex items-center justify-between text-xs text-stone-400">
-          <span class="font-semibold" style="color: {getDayColor(currentStep.day).color};">{i18n.dayPrefix} {currentStep.day} {i18n.daySuffix}</span>
-          <span class="rounded bg-white/10 px-1.5 py-0.5">{currentStep.memento.place[lang] || currentStep.memento.place.ja || currentStep.memento.place.en || currentStep.memento.place.zh}</span>
-        </div>
-        <h2 class="mt-1 text-base font-bold">
-          {currentStep.memento.title[lang] || currentStep.memento.title.ja || currentStep.memento.title.en || currentStep.memento.title.zh}
-        </h2>
-
-        <!-- Photo / Live Photo Polaroid Frame -->
-        {#if currentStep.memento.photos.length > 0}
-          {@const photo = currentStep.memento.photos[0]}
-          <div class="relative my-3 overflow-hidden rounded-xl border border-white/20 bg-stone-900 shadow-md">
-            {#if photo.video}
-              <video
-                src={photo.video}
-                poster={photo.src}
-                autoplay
-                loop
-                muted
-                playsinline
-                class="aspect-[4/3] w-full object-cover"
-              ></video>
-              <span class="absolute top-2 left-2 flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[0.625rem] font-medium text-white backdrop-blur">
-                <span class="size-2 rounded-full bg-orange-400"></span> LIVE
-              </span>
-            {:else}
-              <img src={photo.src} alt="" class="aspect-[4/3] w-full object-cover" />
-            {/if}
+      {#if legPhase === "transit"}
+        <!-- TRANSIT EN ROUTE HUD -->
+        <div class="py-1">
+          <div class="flex items-center justify-between text-xs text-stone-400">
+            <span class="font-semibold" style="color: {getDayColor(currentStep.day).color};">
+              {i18n.dayPrefix} {currentStep.day} {i18n.daySuffix}
+            </span>
+            <span class="flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-500/20 px-2 py-0.5 text-[0.68rem] font-semibold text-orange-300">
+              <span class="size-1.5 rounded-full bg-orange-400 animate-pulse"></span>
+              {i18n.transit}
+            </span>
           </div>
-        {/if}
 
-        {#if currentStep.memento.essay[lang] || currentStep.memento.essay.ja || currentStep.memento.essay.en || currentStep.memento.essay.zh}
-          <p class="mt-1 line-clamp-3 text-xs leading-relaxed text-stone-300">
-            {currentStep.memento.essay[lang] || currentStep.memento.essay.ja || currentStep.memento.essay.en || currentStep.memento.essay.zh}
+          <div class="mt-2 text-[0.65rem] font-medium tracking-wider text-stone-400 uppercase">{i18n.nextStop}</div>
+          <h2 class="mt-0.5 text-base font-bold text-white">
+            {currentStep.memento.title[lang] || currentStep.memento.title.ja || currentStep.memento.title.en || currentStep.memento.title.zh}
+          </h2>
+          <p class="mt-0.5 flex items-center gap-1 text-xs text-stone-300">
+            <span class="text-orange-400">📍</span>
+            <span>{currentStep.memento.place[lang] || currentStep.memento.place.ja || currentStep.memento.place.en || currentStep.memento.place.zh}</span>
           </p>
-        {/if}
 
-        {#if onOpenDetail}
-          <button
-            type="button"
-            class="mt-2 text-xs text-orange-400 underline underline-offset-4 hover:text-orange-300"
-            onclick={() => onOpenDetail?.(currentStep.memento.id)}
-          >
-            {i18n.readStory}
-          </button>
-        {/if}
-      </div>
+          <!-- Transit Leg Details -->
+          <div class="mt-3 rounded-xl border border-white/15 bg-white/5 p-3 text-xs">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="flex size-7 items-center justify-center rounded-full bg-orange-500/20 text-sm">🚗</span>
+                <div>
+                  <div class="font-semibold text-white">{currentStep.memento.place[lang] || currentStep.memento.place.ja || currentStep.memento.place.en || currentStep.memento.place.zh}</div>
+                  <div class="text-[0.65rem] text-stone-400">{i18n.transit}</div>
+                </div>
+              </div>
+              {#if currentStep.travelDistanceKm || legDistanceKm}
+                <div class="text-right">
+                  <div class="text-[0.65rem] text-stone-400">{i18n.legDist}</div>
+                  <div class="font-mono font-bold text-orange-300">
+                    {currentStep.travelDistanceKm ?? legDistanceKm} {i18n.km}
+                  </div>
+                </div>
+              {/if}
+            </div>
+          </div>
+        </div>
+      {:else}
+        <!-- ARRIVED MEMENTO CARD -->
+        <div class="py-1">
+          <div class="flex items-center justify-between text-xs text-stone-400">
+            <span class="font-semibold" style="color: {getDayColor(currentStep.day).color};">{i18n.dayPrefix} {currentStep.day} {i18n.daySuffix}</span>
+            <div class="flex items-center gap-1.5">
+              <span class="flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/20 px-2 py-0.5 text-[0.65rem] font-semibold text-emerald-300">
+                <span>✓</span>
+                <span>{i18n.arrived}</span>
+              </span>
+              <span class="rounded bg-white/10 px-1.5 py-0.5">{currentStep.memento.place[lang] || currentStep.memento.place.ja || currentStep.memento.place.en || currentStep.memento.place.zh}</span>
+            </div>
+          </div>
+          <h2 class="mt-1 text-base font-bold">
+            {currentStep.memento.title[lang] || currentStep.memento.title.ja || currentStep.memento.title.en || currentStep.memento.title.zh}
+          </h2>
+
+          <!-- Photo / Live Photo Polaroid Frame -->
+          {#if currentStep.memento.photos.length > 0}
+            {@const photo = currentStep.memento.photos[0]}
+            <div class="relative my-3 overflow-hidden rounded-xl border border-white/20 bg-stone-900 shadow-md">
+              {#if photo.video}
+                <video
+                  src={photo.video}
+                  poster={photo.src}
+                  autoplay
+                  loop
+                  muted
+                  playsinline
+                  class="aspect-[4/3] w-full object-cover"
+                ></video>
+                <span class="absolute top-2 left-2 flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[0.625rem] font-medium text-white backdrop-blur">
+                  <span class="size-2 rounded-full bg-orange-400"></span> LIVE
+                </span>
+              {:else}
+                <img src={photo.src} alt="" class="aspect-[4/3] w-full object-cover" />
+              {/if}
+            </div>
+          {/if}
+
+          {#if currentStep.memento.essay[lang] || currentStep.memento.essay.ja || currentStep.memento.essay.en || currentStep.memento.essay.zh}
+            <p class="mt-1 line-clamp-3 text-xs leading-relaxed text-stone-300">
+              {currentStep.memento.essay[lang] || currentStep.memento.essay.ja || currentStep.memento.essay.en || currentStep.memento.essay.zh}
+            </p>
+          {/if}
+
+          {#if onOpenDetail}
+            <button
+              type="button"
+              class="mt-2 text-xs text-orange-400 underline underline-offset-4 hover:text-orange-300"
+              onclick={() => onOpenDetail?.(currentStep.memento.id)}
+            >
+              {i18n.readStory}
+            </button>
+          {/if}
+        </div>
+      {/if}
 
     {:else if currentStep.type === "summary"}
       <!-- SUMMARY SCORECARD -->

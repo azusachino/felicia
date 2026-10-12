@@ -1,4 +1,5 @@
 import type { Coordinates, Journey, Memento, PhotoAsset, WeatherInfo } from "@felicia/model"
+import { calculateLegDriveDurationMs, haversineDistance } from "./timeline"
 
 export type StepType = "intro" | "day" | "waypoint" | "stop" | "summary"
 
@@ -31,6 +32,7 @@ export interface WaypointStep {
   day: number
   coords: Coordinates
   distanceKm?: number
+  travelDistanceKm?: number
   time?: string
   date?: string
 }
@@ -42,6 +44,7 @@ export interface StopStep {
   memento: Memento
   coords: Coordinates
   anchor: string
+  travelDistanceKm?: number
 }
 
 export interface SummaryStep {
@@ -77,16 +80,21 @@ export function getStepDuration(step: PlaybackStep, speed = 1): number {
   if (step.type === "intro") {
     baseMs = 3500
   } else if (step.type === "day") {
-    baseMs = 2800
+    baseMs = 2600
   } else if (step.type === "waypoint") {
-    baseMs = step.role === "start" ? 3000 : 8500
+    if (step.role === "start") {
+      baseMs = 3000
+    } else {
+      const driveMs = calculateLegDriveDurationMs(step.travelDistanceKm ?? 0)
+      baseMs = driveMs + 5000
+    }
   } else if (step.type === "stop") {
     const photoCount = step.memento.photos.length
     const textLen = (step.memento.essay.zh || step.memento.essay.ja || step.memento.essay.en || "").length
-    const contentMs = Math.max(5000, photoCount * 2000, textLen * 120)
-    // Stop 1 has a long driving leg from Tokyo (~8s animation), provide generous travel allowance
-    const travelAllowance = step.stopIndex === 0 ? 8000 : 3500
-    baseMs = contentMs + travelAllowance
+    const driveMs = calculateLegDriveDurationMs(step.travelDistanceKm ?? 0)
+    // Dwell duration after arrival for reading & viewing photos
+    const dwellMs = Math.max(5000, Math.min(8500, 4000 + photoCount * 1200 + textLen * 40))
+    baseMs = driveMs + dwellMs
   } else if (step.type === "summary") {
     baseMs = 5000
   }
@@ -182,6 +190,7 @@ export function generatePlaybackSteps(journey: Journey, lang: "ja" | "en" | "zh"
 
   const steps: PlaybackStep[] = [intro]
   let globalStopIndex = 0
+  let prevCoords: Coordinates | undefined = originCoord
 
   dateGroups.forEach((group, dayIdx) => {
     const dayNumber = dayIdx + 1
@@ -210,10 +219,13 @@ export function generatePlaybackSteps(journey: Journey, lang: "ja" | "en" | "zh"
         time: journey.departureTime || "08:30",
         coords: originCoord,
         distanceKm: 0,
+        travelDistanceKm: 0,
       })
+      prevCoords = originCoord
     }
 
     for (const memento of group.mementos) {
+      const distKm = prevCoords ? haversineDistance(prevCoords, memento.coords) : 0
       steps.push({
         type: "stop",
         day: dayNumber,
@@ -221,12 +233,15 @@ export function generatePlaybackSteps(journey: Journey, lang: "ja" | "en" | "zh"
         memento,
         coords: memento.coords,
         anchor: memento.id,
+        travelDistanceKm: Math.round(distKm * 10) / 10,
       })
+      prevCoords = memento.coords
       globalStopIndex++
     }
 
     // On the final day, after all mementos, if we have a return destination, insert End Waypoint
     if (dayIdx === dateGroups.length - 1 && destCoord) {
+      const distKm = prevCoords ? haversineDistance(prevCoords, destCoord) : 0
       steps.push({
         type: "waypoint",
         role: "end",
@@ -237,6 +252,7 @@ export function generatePlaybackSteps(journey: Journey, lang: "ja" | "en" | "zh"
         time: journey.arrivalTime || "18:30",
         coords: destCoord,
         distanceKm: journey.distanceKm,
+        travelDistanceKm: Math.round(distKm * 10) / 10,
       })
     }
   })

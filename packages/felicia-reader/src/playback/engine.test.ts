@@ -161,8 +161,12 @@ describe("Playback Engine", () => {
     expect(waypointDuration).toBe(3000)
 
     const stop1Duration = getStepDuration(steps[3], 1)
-    // 1 photo (= 2000), 23 chars (= 2760), min 5000 + 8000 travel allowance -> 13000
-    expect(stop1Duration).toBe(13000)
+    // 1 photo (= 1200), 22 chars (= 880), base dwell 6080 + 800 (0km drive cushion) -> 6880
+    expect(stop1Duration).toBe(6880)
+
+    // Stop 2 travels from Yantai to Dalian (~154km): travelDriveMs is 1200 + (154.4 / 12) * 1000 = 14067, dwell is 5000
+    const stop2Duration = getStepDuration(steps[5], 1)
+    expect(stop2Duration).toBeGreaterThan(18000)
 
     // At 2x speed, duration halves
     expect(getStepDuration(steps[0], 2)).toBe(1750)

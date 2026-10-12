@@ -58,6 +58,15 @@ export function easeInOutCubic(t: number): number {
 }
 
 /**
+ * Calculates intuitive leg driving duration proportional to distance.
+ * Velocity: ~12 km/s of simulated travel (1 second per 12 km), with a 1.2s start/stop cushion.
+ */
+export function calculateLegDriveDurationMs(distanceKm: number): number {
+  if (distanceKm <= 0.05) return 800
+  return Math.round(1200 + (distanceKm / 12.0) * 1000)
+}
+
+/**
  * Bounded Chaikin Corner-Cutting for GPS Polylines.
  * Smooths sharp GPS corners into gentle arcs while bounding cut distances to maxCornerM (default 30m)
  * so tracks never drift away from actual roads or highway curves.

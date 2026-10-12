@@ -10,7 +10,15 @@
   import lineSlice from "@turf/line-slice"
   import type { Coordinates, Journey, Memento, Theme } from "@felicia/model"
   import type { PlaybackStep } from "../../playback/engine"
-  import { RouteTimeline, easeInOutCubic, haversineDistance, getDayColor, calculateDayCutoffs, type DayCutoff } from "../../playback/timeline"
+  import {
+    RouteTimeline,
+    easeInOutCubic,
+    haversineDistance,
+    calculateLegDriveDurationMs,
+    getDayColor,
+    calculateDayCutoffs,
+    type DayCutoff,
+  } from "../../playback/timeline"
 
   let {
     journeys,
@@ -21,6 +29,8 @@
     lang,
     theme,
     onSelect,
+    onLegArrive,
+    onLegStart,
   }: {
     journeys: Journey[]
     activeJourneyId: string | null
@@ -30,6 +40,8 @@
     lang: "ja" | "en" | "zh"
     theme: Theme
     onSelect: (id: string) => void
+    onLegArrive?: (mementoId?: string) => void
+    onLegStart?: (travelDist: number) => void
   } = $props()
 
   let container = $state<HTMLDivElement>()
@@ -71,9 +83,9 @@
     layers: [
       // Light theme: Rich Topo Map with transport and place names
       { id: "layer-topo-base", type: "raster", source: "topo-base", layout: { visibility: "none" } },
-      // Dark theme: Dark base + Subtle Reference Labels
-      { id: "layer-dark-base", type: "raster", source: "dark-base", layout: { visibility: "visible" } },
-      { id: "layer-dark-ref", type: "raster", source: "dark-canvas-ref", layout: { visibility: "visible" }, paint: { "raster-opacity": 0.75 } },
+      // Dark theme: Dark base + Subtle Reference Labels (raster-fade-duration 0 ensures instant tile appearance without blank dark flickers)
+      { id: "layer-dark-base", type: "raster", source: "dark-base", layout: { visibility: "visible" }, paint: { "raster-fade-duration": 0 } },
+      { id: "layer-dark-ref", type: "raster", source: "dark-canvas-ref", layout: { visibility: "visible" }, paint: { "raster-opacity": 0.75, "raster-fade-duration": 0 } },
     ],
   }
 
@@ -136,7 +148,15 @@
     button.type = "button"
     button.className = "atlas-marker"
     button.setAttribute("aria-label", `${index + 1}. ${memento.title[lang]}`)
-    button.innerHTML = `<span>${index + 1}</span>`
+    const placeName = memento.place[lang] || memento.place.ja || memento.place.en || memento.place.zh || memento.title[lang] || ""
+    button.innerHTML = `
+      <span>${index + 1}</span>
+      <div class="atlas-marker-ripple"></div>
+      <div class="atlas-arrival-callout">
+        <span class="atlas-callout-icon">📍</span>
+        <span class="atlas-callout-place">${placeName}</span>
+      </div>
+    `
     button.addEventListener("click", (event) => {
       event.stopPropagation()
       onSelect(memento.id)
@@ -250,6 +270,7 @@
           marker.getElement().style.borderColor = "#ffffff"
           marker.getElement().style.boxShadow = `0 0 0 3px ${dayPalette.color}, 0 0 16px ${dayPalette.glow}, 0 4px 14px rgba(0, 0, 0, 0.7)`
         } else if (!isActive) {
+          marker.getElement().classList.remove("is-arrived")
           marker.getElement().style.borderColor = ""
           marker.getElement().style.boxShadow = ""
         }
@@ -543,23 +564,22 @@
         map.stop()
       }
 
-      ensureVehicleMarker(fromCoords, 0, targetDay)
+      onLegStart?.(travelDist)
 
-      // Instantly position camera at start of leg so viewer sees the car ready to drive
+      // Instantly position camera at start of leg so viewer sees the car ready to drive.
+      // For long highway legs (> 40km), start with broader framing (zoom 10.5) so whole region is visible.
+      const initialZoom = travelDist > 40 ? 10.5 : 11.5
       map.jumpTo({
         center: fromCoords,
-        zoom: 11.5,
+        zoom: initialZoom,
         pitch: 0,
         bearing: 0,
         padding: { top: 60, bottom: 80, left: 340, right: 60 },
       })
 
-      // Dynamic duration based on travel distance:
-      // When auto-playing: paced duration matching step dwell (3.2s - 8.5s).
-      // When stepping manually: brisk, smooth driving animation (1.2s - 2.2s).
-      const calculatedDuration = Math.round(
-        Math.min(8500, Math.max(3200, 2600 + Math.sqrt(Math.max(0, travelDist)) * 390))
-      )
+      // Intuitive speed proportional to distance:
+      // ~12 km/s simulated velocity (1 second per 12 km) + 1.2s start/stop cushion
+      const calculatedDuration = calculateLegDriveDurationMs(travelDist)
       const durationMs =
         customDurationMs ??
         (isPlaying ? calculatedDuration : Math.min(2200, Math.max(1200, Math.round(calculatedDuration * 0.35))))
@@ -583,10 +603,24 @@
         // 2. Traveled route polyline draws progressively behind the car
         updateTraveledRoute(slices, targetDay, false)
 
-        // 3. Camera continuously follows the moving car at 60 FPS
+        // 3. Dynamic Zoom based on leg distance:
+        // Long highway runs stay at zoom 10.0 to prevent tile thrashing and keep regional landscape in view.
+        // As car approaches within 10km of destination, camera smoothly eases from 10.0 to 11.8.
+        let dynamicZoom = 11.5
+        if (travelDist > 40) {
+          const remainingKm = Math.max(0, targetDist - currentTotalDist)
+          if (remainingKm > 10) {
+            dynamicZoom = 10.0
+          } else {
+            const t = 1 - remainingKm / 10
+            dynamicZoom = 10.0 + t * 1.8
+          }
+        }
+
+        // 4. Camera continuously follows the moving car at 60 FPS
         map?.jumpTo({
           center: currentPos,
-          zoom: 11.5,
+          zoom: dynamicZoom,
           pitch: 0,
           bearing: 0,
           padding: { top: 60, bottom: 80, left: 340, right: 60 },
@@ -600,13 +634,26 @@
           const finalState = timeline.sliceAtFraction(finalFraction)
           updateTraveledRoute(finalSlices, targetDay, false)
           ensureVehicleMarker(toCoords, finalState.bearing, targetDay)
-          map?.jumpTo({
+
+          // Arrival Climax:
+          // 1. Camera gently glides in to inspection zoom 12.5 centered on destination
+          map?.easeTo({
             center: toCoords,
-            zoom: 12.0,
+            zoom: 12.5,
             pitch: 0,
             bearing: 0,
             padding: { top: 60, bottom: 80, left: 340, right: 60 },
+            duration: 1000,
           })
+
+          // 2. Trigger arrival ripple beacon & floating badge on marker
+          if (destinationMementoId) {
+            const marker = markers.get(destinationMementoId)
+            marker?.getElement().classList.add("is-arrived")
+          }
+
+          // 3. Notify parent component that leg has arrived
+          onLegArrive?.(destinationMementoId)
         }
       })
     } catch {
@@ -1049,5 +1096,71 @@
       transform: scale(1.6);
       opacity: 0;
     }
+  }
+
+  :global(.atlas-marker-ripple) {
+    position: absolute;
+    inset: -8px;
+    border-radius: 999px;
+    border: 2px solid #ff7e47;
+    opacity: 0;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  :global(.atlas-marker.is-arrived .atlas-marker-ripple) {
+    animation: marker-arrival-ripple 1.8s ease-out infinite;
+  }
+
+  @keyframes marker-arrival-ripple {
+    0% {
+      transform: scale(0.85);
+      opacity: 0.95;
+    }
+    100% {
+      transform: scale(2.4);
+      opacity: 0;
+    }
+  }
+
+  :global(.atlas-arrival-callout) {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    opacity: 0;
+    pointer-events: none;
+    white-space: nowrap;
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+    padding: 0.25rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.65);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    transition: opacity 0.35s ease, transform 0.35s ease;
+    z-index: 40;
+  }
+
+  :global(.atlas-arrival-callout)::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 5px;
+    border-style: solid;
+    border-color: rgba(15, 23, 42, 0.92) transparent transparent transparent;
+  }
+
+  :global(.atlas-marker.is-arrived .atlas-arrival-callout),
+  :global(.atlas-marker.is-active .atlas-arrival-callout) {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
   }
 </style>
