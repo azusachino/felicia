@@ -163,6 +163,7 @@
       {theme}
       onSelectJourney={handleSelectJourney}
       onModeChange={(newMode) => (mode = newMode)}
+      onToggleTheme={() => (theme = theme === "light" ? "dark" : "light")}
     />
 
     {#if mode === "map"}

@@ -133,7 +133,7 @@
   )
 </script>
 
-<aside class="calendar-map-trip pointer-events-auto absolute bottom-4 left-4 z-20 flex max-h-[calc(100vh-6rem)] w-[min(23rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-2xl transition max-[48rem]:inset-x-3 max-[48rem]:bottom-4 max-[48rem]:w-auto {theme === 'light' ? 'border-black/10 bg-white/90 text-stone-900 shadow-stone-400/30' : 'border-white/20 bg-black/75 text-white'}">
+<aside class="calendar-map-trip pointer-events-auto absolute bottom-3 left-3 z-20 flex max-h-[17rem] w-[min(23rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-2xl transition sm:bottom-4 sm:left-4 sm:max-h-[calc(100vh-6rem)] sm:w-[23rem] {theme === 'light' ? 'border-black/10 bg-white/92 text-stone-900 shadow-stone-400/30' : 'border-white/20 bg-black/80 text-white'}">
   <!-- Top Segmented Progress Bar -->
   <ol class="flex shrink-0 list-none gap-1 px-4 pt-3.5" aria-label="Trip Progress">
     {#each Array(state.totalSteps) as _, i}
@@ -157,13 +157,13 @@
         <h2 class="mt-0.5 truncate text-lg font-bold">{currentStep.title}</h2>
         <p class="text-xs {theme === 'light' ? 'text-stone-500' : 'text-stone-400'}">{currentStep.dateRange} · {currentStep.dayCount} {i18n.daySuffix} · {currentStep.stopCount} {i18n.records}</p>
 
-        <!-- 3 Tilted Polaroid Cover Fan -->
+        <!-- 3 Tilted Polaroid Cover Fan (compact on mobile) -->
         {#if currentStep.covers.length > 0}
-          <div class="relative my-4 flex h-28 items-center justify-center">
+          <div class="relative my-2.5 flex h-20 items-center justify-center sm:my-4 sm:h-28">
             {#each currentStep.covers.slice(0, 3) as cover, idx}
               <div
-                class="absolute size-24 overflow-hidden rounded-lg border-2 bg-stone-900 shadow-xl transition-transform duration-300 {theme === 'light' ? 'border-white shadow-stone-400/40' : 'border-white/90'}"
-                style:transform={idx === 0 ? "translateX(-2.2rem) rotate(-7deg)" : idx === 2 ? "translateX(2.2rem) rotate(7deg)" : "rotate(0deg) scale(1.05)"}
+                class="absolute size-16 overflow-hidden rounded-lg border-2 bg-stone-900 shadow-xl transition-transform duration-300 sm:size-24 {theme === 'light' ? 'border-white shadow-stone-400/40' : 'border-white/90'}"
+                style:transform={idx === 0 ? "translateX(-1.6rem) rotate(-7deg)" : idx === 2 ? "translateX(1.6rem) rotate(7deg)" : "rotate(0deg) scale(1.05)"}
                 style:z-index={idx === 1 ? 3 : 1}
               >
                 <img src={cover.src} alt="" class="size-full object-cover" />
@@ -335,7 +335,7 @@
           <!-- Photo / Live Photo Polaroid Frame -->
           {#if currentStep.memento.photos.length > 0}
             {@const photo = currentStep.memento.photos[0]}
-            <div class="relative my-3 overflow-hidden rounded-xl border bg-stone-900 shadow-md {theme === 'light' ? 'border-black/10' : 'border-white/20'}">
+            <div class="relative my-2 overflow-hidden rounded-xl border bg-stone-900 shadow-md sm:my-3 {theme === 'light' ? 'border-black/10' : 'border-white/20'}">
               {#if photo.video}
                 <video
                   src={photo.video}
@@ -344,13 +344,13 @@
                   loop
                   muted
                   playsinline
-                  class="aspect-[4/3] w-full object-cover"
+                  class="max-h-32 w-full object-cover sm:max-h-none sm:aspect-[4/3]"
                 ></video>
                 <span class="absolute top-2 left-2 flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[0.625rem] font-medium text-white backdrop-blur">
                   <span class="size-2 rounded-full bg-[#FF5E98]"></span> LIVE
                 </span>
               {:else}
-                <img src={photo.src} alt="" class="aspect-[4/3] w-full object-cover" />
+                <img src={photo.src} alt="" class="max-h-32 w-full object-cover sm:max-h-none sm:aspect-[4/3]" />
               {/if}
             </div>
           {/if}

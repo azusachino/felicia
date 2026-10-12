@@ -14,10 +14,10 @@ describe("Atlas theme and container contract", () => {
     expect(content).toContain('class:light={theme === "light"}')
   })
 
-  test("Atlas does not pass onToggleTheme to FloatingToolbar, avoiding double theme switchers", () => {
+  test("Atlas passes onToggleTheme to FloatingToolbar as the canonical single theme control", () => {
     const file = fileURLToPath(new URL("./Atlas.svelte", import.meta.url))
     const content = readFileSync(file, "utf8")
-    expect(content).not.toContain("onToggleTheme=")
+    expect(content).toContain("onToggleTheme=")
   })
 
   test("FloatingToolbar includes felicia-mark brand icon", () => {

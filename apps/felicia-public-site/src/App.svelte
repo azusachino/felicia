@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { Sun, Moon } from "@lucide/svelte"
-  import { Reader, message, resolveLocale, themeFromId, type ApiSiteSettings, type Lang, type Theme } from "@felicia/reader"
+  import { Reader, resolveLocale, themeFromId, type ApiSiteSettings, type Lang, type Theme } from "@felicia/reader"
   import { loadJourneys, loadSiteSettings } from "./api/source"
 
   let settings = $state<ApiSiteSettings | null>(null)
@@ -17,10 +16,6 @@
   let lang: Lang = $state(resolveLocale(storedLocale ?? navigator.language))
   let theme: Theme = $state("dark")
   let appearanceEdited = $state(false)
-  function chooseTheme(value: Theme) {
-    appearanceEdited = true
-    theme = value
-  }
 
   $effect(() => localStorage.setItem("felicia.locale", lang))
 
@@ -45,14 +40,6 @@
 />
 
 <div class="public-reader-shell" class:theme-light={theme === "light"}>
-  <div class="reader-appearance">
-    <button type="button" aria-label={message(lang, "theme.light")} title={message(lang, "theme.light")} aria-pressed={theme === "light"} onclick={() => chooseTheme("light")}>
-      <Sun size={18} aria-hidden="true" />
-    </button>
-    <button type="button" aria-label={message(lang, "theme.dark")} title={message(lang, "theme.dark")} aria-pressed={theme === "dark"} onclick={() => chooseTheme("dark")}>
-      <Moon size={18} aria-hidden="true" />
-    </button>
-  </div>
   <Reader bind:lang bind:theme {loadJourneys} />
 </div>
 
@@ -66,46 +53,5 @@
 
   .public-reader-shell.theme-light {
     color-scheme: light;
-  }
-
-  .reader-appearance {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    z-index: 30;
-    display: flex;
-    padding: 3px;
-    border: 1px solid rgba(184, 232, 221, 0.2);
-    border-radius: 8px;
-    background: rgba(9, 25, 37, 0.9);
-    color: #c8d9dc;
-  }
-
-  .reader-appearance button {
-    display: grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    border: 0;
-    border-radius: 5px;
-    color: inherit;
-    background: transparent;
-    cursor: pointer;
-  }
-
-  .reader-appearance button[aria-pressed="true"] {
-    color: #07131f;
-    background: #ff9b72;
-  }
-
-  .reader-appearance button:focus-visible {
-    outline: 2px solid currentColor;
-    outline-offset: 2px;
-  }
-
-  .public-reader-shell.theme-light .reader-appearance {
-    background: rgba(241, 248, 246, 0.95);
-    border-color: rgba(13, 41, 55, 0.16);
-    color: #23424b;
   }
 </style>

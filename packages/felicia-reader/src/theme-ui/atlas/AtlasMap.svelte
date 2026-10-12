@@ -124,6 +124,16 @@
     return bounds
   }
 
+  function getCameraPadding() {
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 768
+    if (isMobile) {
+      // On mobile: top toolbar is ~48px, bottom card is ~220px, left/right minimal 20px
+      return { top: 60, bottom: 240, left: 24, right: 24 }
+    }
+    // Desktop: left HUD sidebar card width ~340px
+    return { top: 60, bottom: 80, left: 340, right: 60 }
+  }
+
   function fitActiveJourney() {
     if (!map) return
     const journey = activeJourney()
@@ -132,7 +142,7 @@
     if (!bounds) return
     const distance = journey ? journeyDistance(journey) : 5
     map.fitBounds(bounds, {
-      padding: { top: 60, bottom: 80, left: 340, right: 60 },
+      padding: getCameraPadding(),
       maxZoom: 11,
       duration: prefersReducedMotion ? 0 : Math.min(1800, 1000 + distance * 200),
     })
@@ -193,7 +203,7 @@
         zoom: 12.2,
         pitch: 0,
         bearing: 0,
-        padding: { top: 60, bottom: 80, left: 340, right: 60 },
+        padding: getCameraPadding(),
         duration: prefersReducedMotion ? 0 : 1000,
       })
     })
@@ -292,7 +302,7 @@
       speed: 1.0,
       curve: 1.2,
       essential: true,
-      padding: { top: 60, bottom: 80, left: 340, right: 60 },
+      padding: getCameraPadding(),
     })
   }
 
@@ -343,10 +353,10 @@
         const palette = getDayColor(slice.day)
         const isCurrentDay = !isSummary && slice.day === activeDay
         // When overlapping/collapsed: past days render with subtle transparency and thinner line
-        const opacity = isSummary ? 0.85 : isCurrentDay ? 0.95 : 0.32
-        const glowOpacity = isSummary ? 0.25 : isCurrentDay ? 0.45 : 0.12
-        const width = isSummary ? 3.8 : isCurrentDay ? 4.5 : 3.0
-        const glowWidth = isCurrentDay ? 12 : 7
+        const opacity = isSummary ? 0.95 : isCurrentDay ? 1.0 : 0.65
+        const glowOpacity = isSummary ? 0.45 : isCurrentDay ? 0.75 : 0.35
+        const width = isSummary ? 5.5 : isCurrentDay ? 6.5 : 4.5
+        const glowWidth = isCurrentDay ? 16 : 10
 
         return {
           type: "Feature" as const,
@@ -516,7 +526,7 @@
 
     const info = getTimelineForJourney(journey)
     if (!info || info.timeline.totalDistance <= 0.05) {
-      map.jumpTo({ center: toCoords, zoom: 12.0, pitch: 0, bearing: 0, padding: { top: 60, bottom: 80, left: 340, right: 60 } })
+      map.jumpTo({ center: toCoords, zoom: 12.0, pitch: 0, bearing: 0, padding: getCameraPadding() })
       return
     }
 
@@ -532,7 +542,7 @@
       const slices = timeline.sliceByDays(fraction, cutoffs)
       updateTraveledRoute(slices, targetDay, false)
       ensureVehicleMarker(toCoords, 0, targetDay)
-      map.jumpTo({ center: toCoords, zoom: 12.0, pitch: 0, bearing: 0, padding: { top: 60, bottom: 80, left: 340, right: 60 } })
+      map.jumpTo({ center: toCoords, zoom: 12.0, pitch: 0, bearing: 0, padding: getCameraPadding() })
       return
     }
 
@@ -551,7 +561,7 @@
           zoom: 12.0,
           pitch: 0,
           bearing: 0,
-          padding: { top: 60, bottom: 80, left: 340, right: 60 },
+          padding: getCameraPadding(),
         })
         return
       }
@@ -576,7 +586,7 @@
           zoom: initialZoom,
           pitch: 0,
           bearing: 0,
-          padding: { top: 60, bottom: 80, left: 340, right: 60 },
+          padding: getCameraPadding(),
           duration: prefersReducedMotion ? 0 : 500,
         })
       }
@@ -626,7 +636,7 @@
           zoom: dynamicZoom,
           pitch: 0,
           bearing: 0,
-          padding: { top: 60, bottom: 80, left: 340, right: 60 },
+          padding: getCameraPadding(),
         })
 
         if (rawProgress >= 1) {
@@ -645,7 +655,7 @@
             zoom: 12.5,
             pitch: 0,
             bearing: 0,
-            padding: { top: 60, bottom: 80, left: 340, right: 60 },
+            padding: getCameraPadding(),
             duration: 1000,
           })
 
@@ -749,7 +759,7 @@
         source: "routes",
         filter: ["==", ["get", "journeyId"], activeJourneyId ?? ""],
         layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": "#39C5BB", "line-width": 2.5, "line-opacity": 0.35, "line-dasharray": [2, 2] },
+        paint: { "line-color": "#39C5BB", "line-width": 3.5, "line-opacity": 0.65, "line-dasharray": [3, 2] },
       })
       map.addLayer({
         id: "route-active-dashed",
@@ -763,9 +773,9 @@
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
           "line-color": "#39C5BB",
-          "line-width": 2.5,
-          "line-dasharray": [2, 3],
-          "line-opacity": 0.35,
+          "line-width": 3.5,
+          "line-dasharray": [3, 3],
+          "line-opacity": 0.65,
         },
       })
 
@@ -777,9 +787,9 @@
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
           "line-color": ["coalesce", ["get", "glowColor"], "#39C5BB"],
-          "line-width": ["coalesce", ["get", "glowWidth"], 10],
-          "line-opacity": ["coalesce", ["get", "glowOpacity"], 0.35],
-          "line-blur": 5,
+          "line-width": ["coalesce", ["get", "glowWidth"], 16],
+          "line-opacity": ["coalesce", ["get", "glowOpacity"], 0.6],
+          "line-blur": 6,
         },
       })
       map.addLayer({
@@ -789,8 +799,8 @@
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
           "line-color": ["coalesce", ["get", "color"], "#39C5BB"],
-          "line-width": ["coalesce", ["get", "width"], 4.5],
-          "line-opacity": ["coalesce", ["get", "opacity"], 0.95],
+          "line-width": ["coalesce", ["get", "width"], 6.0],
+          "line-opacity": ["coalesce", ["get", "opacity"], 1.0],
         },
       })
 
@@ -913,7 +923,7 @@
             zoom: 12.0,
             pitch: 0,
             bearing: 0,
-            padding: { top: 60, bottom: 80, left: 340, right: 60 },
+            padding: getCameraPadding(),
             duration: prefersReducedMotion ? 0 : 1200,
           })
           lastAnimatedCoords = originCoord
@@ -932,7 +942,7 @@
               zoom: 12.0,
               pitch: 0,
               bearing: 0,
-              padding: { top: 60, bottom: 80, left: 340, right: 60 },
+              padding: getCameraPadding(),
               duration: prefersReducedMotion ? 0 : 800,
             })
           }
@@ -951,7 +961,7 @@
           zoom: 12.0,
           pitch: 0,
           bearing: 0,
-          padding: { top: 60, bottom: 80, left: 340, right: 60 },
+          padding: getCameraPadding(),
           duration: prefersReducedMotion ? 0 : 1000,
         })
         lastAnimatedCoords = currentStep.coords
