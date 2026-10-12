@@ -110,7 +110,13 @@
     return journeys.find((journey) => journey.id === activeJourneyId) ?? null
   }
 
-  function coordinatesFor(journey: Journey) {
+  function coordinatesFor(journey: Journey | null) {
+    if (!journey) {
+      return journeys.flatMap((j) => {
+        const route = j.routeSegments?.length ? j.routeSegments.flat() : j.route
+        return [...route, ...j.mementos.map((memento) => memento.coords)]
+      })
+    }
     const route = journey.routeSegments?.length ? journey.routeSegments.flat() : journey.route
     return [...route, ...journey.mementos.map((memento) => memento.coords)]
   }
@@ -123,11 +129,12 @@
   }
 
   function fitActiveJourney() {
+    if (!map) return
     const journey = activeJourney()
-    if (!map || !journey) return
-    const bounds = boundsOf(coordinatesFor(journey))
+    const coords = coordinatesFor(journey)
+    const bounds = boundsOf(coords)
     if (!bounds) return
-    const distance = journeyDistance(journey)
+    const distance = journey ? journeyDistance(journey) : 5
     map.fitBounds(bounds, {
       padding: { top: 60, bottom: 80, left: 340, right: 60 },
       maxZoom: 11,
@@ -256,12 +263,12 @@
           ((currentStep.role === "start" && id.endsWith(":start")) ||
            (currentStep.role === "end" && id.endsWith(":end")))
         marker.getElement().classList.toggle("is-active", isCurrentStepWaypoint)
-        marker.getElement().classList.toggle("is-dimmed", journeyId !== activeJourneyId)
+        marker.getElement().classList.toggle("is-dimmed", Boolean(activeJourneyId && journeyId !== activeJourneyId))
       } else {
         const ownerJourney = journeys.find((journey) => journey.mementos.some((item) => item.id === id))
         const isActive = id === activeMementoId
         marker.getElement().classList.toggle("is-active", isActive)
-        marker.getElement().classList.toggle("is-dimmed", ownerJourney?.id !== activeJourneyId)
+        marker.getElement().classList.toggle("is-dimmed", Boolean(activeJourneyId && ownerJourney?.id !== activeJourneyId))
         if (isActive && currentStep && "day" in currentStep) {
           const dayPalette = getDayColor(currentStep.day)
           marker.getElement().style.borderColor = "#ffffff"
@@ -666,15 +673,28 @@
   function refresh() {
     if (!loaded || !map) return
     ;(map.getSource("routes") as maplibregl.GeoJSONSource | undefined)?.setData(routeGeoJson())
-    map.setFilter("route-active", ["==", ["get", "journeyId"], activeJourneyId ?? ""])
-    if (map.getLayer("route-active-glow")) {
-      map.setFilter("route-active-glow", ["==", ["get", "journeyId"], activeJourneyId ?? ""])
+    if (activeJourneyId) {
+      map.setFilter("route-active", ["==", ["get", "journeyId"], activeJourneyId])
+      if (map.getLayer("route-active-glow")) {
+        map.setFilter("route-active-glow", ["==", ["get", "journeyId"], activeJourneyId])
+      }
+      map.setFilter("route-active-dashed", [
+        "all",
+        ["==", ["get", "journeyId"], activeJourneyId],
+        ["in", ["get", "legMode"], ["literal", ["ferry", "train", "plane"]]],
+      ])
+    } else {
+      // In "All Places" mode, show all routes as active
+      map.setFilter("route-active", null)
+      if (map.getLayer("route-active-glow")) {
+        map.setFilter("route-active-glow", null)
+      }
+      map.setFilter("route-active-dashed", [
+        "in",
+        ["get", "legMode"],
+        ["literal", ["ferry", "train", "plane"]],
+      ])
     }
-    map.setFilter("route-active-dashed", [
-      "all",
-      ["==", ["get", "journeyId"], activeJourneyId ?? ""],
-      ["in", ["get", "legMode"], ["literal", ["ferry", "train", "plane"]]],
-    ])
     rebuildMarkers()
     syncMarkers()
     fitActiveJourney()
@@ -700,7 +720,7 @@
       zoom: 4.5,
       attributionControl: false,
     })
-    map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-left")
+    map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right")
     resizeObserver = new ResizeObserver(() => map?.resize())
     resizeObserver.observe(container)
 

@@ -35,10 +35,12 @@
   let lightboxPhoto = $state<{ src: string; video?: string; caption: string } | null>(null)
 
   const activeJourney = $derived(
-    journeys.find((journey) => journey.id === activeJourneyId) ?? journeys[0] ?? null
+    activeJourneyId ? (journeys.find((journey) => journey.id === activeJourneyId) ?? null) : null
   )
   const selectedMemento = $derived(
-    activeJourney?.mementos.find((memento) => memento.id === selectedMementoId) ?? null
+    activeJourney
+      ? (activeJourney.mementos.find((memento) => memento.id === selectedMementoId) ?? null)
+      : (journeys.flatMap((j) => j.mementos).find((m) => m.id === selectedMementoId) ?? null)
   )
 
   // Playback engine state
@@ -84,6 +86,8 @@
   $effect(() => {
     if (activeJourney && activeJourney.id !== lastJourneyId) {
       initPlayback(activeJourney)
+    } else if (!activeJourney && playbackController) {
+      initPlayback(null)
     }
   })
 
@@ -130,7 +134,10 @@
 
 <svelte:window onkeydown={(event) => event.key === "Escape" && (closeMemento(), (showStage = false), (lightboxPhoto = null))} />
 
-<main class="felicia-canvas relative z-20 isolate h-screen w-full overflow-hidden bg-[#07131f] text-stone-100" class:light={theme === "light"}>
+<main
+  class="felicia-canvas relative z-20 isolate h-screen w-full overflow-hidden transition-colors duration-300 {theme === 'light' ? 'bg-[#f8fafc] text-stone-900' : 'bg-[#07131f] text-stone-100'}"
+  class:light={theme === "light"}
+>
   {#if isLoading}
     <div class="flex h-screen w-full items-center justify-center text-sm text-stone-400">
       Loading journal...
@@ -236,14 +243,28 @@
         />
       {/if}
 
-    {:else if mode === "journal" && activeJourney}
+    {:else if mode === "journal"}
       <!-- Vertical Reading Stream (手记 / 日历) -->
       <div class="relative z-10 h-screen w-full overflow-y-auto overscroll-contain">
-        <JournalStream
-          journey={activeJourney}
-          {lang}
-          onSelectPhoto={handleSelectPhoto}
-        />
+        {#if activeJourney}
+          <JournalStream
+            journey={activeJourney}
+            {lang}
+            {theme}
+            onSelectPhoto={handleSelectPhoto}
+          />
+        {:else}
+          {#each journeys as j}
+            <div class="border-b last:border-b-0 {theme === 'light' ? 'border-black/10' : 'border-white/10'}">
+              <JournalStream
+                journey={j}
+                {lang}
+                {theme}
+                onSelectPhoto={handleSelectPhoto}
+              />
+            </div>
+          {/each}
+        {/if}
       </div>
 
       <!-- Lightbox for Journal Stream Photos -->
