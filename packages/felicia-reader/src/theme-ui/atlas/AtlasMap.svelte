@@ -10,7 +10,7 @@
   import lineSlice from "@turf/line-slice"
   import type { Coordinates, Journey, Memento, Theme } from "@felicia/model"
   import type { PlaybackStep } from "../../playback/engine"
-  import { RouteTimeline, easeInOutCubic } from "../../playback/timeline"
+  import { RouteTimeline, easeInOutCubic, haversineDistance } from "../../playback/timeline"
 
   let {
     journeys,
@@ -229,6 +229,7 @@
         marker.getElement().classList.toggle("is-dimmed", ownerJourney?.id !== activeJourneyId)
       }
     })
+    updateSpokes()
   }
 
   function flyToMemento(id: string | null) {
@@ -279,6 +280,69 @@
         },
       ],
     })
+  }
+
+  function spokesGeoJson() {
+    const journey = activeJourney()
+    if (!journey) {
+      return {
+        lines: emptyFeatureCollection(),
+        points: emptyFeatureCollection(),
+      }
+    }
+
+    const lineFeatures: any[] = []
+    const pointFeatures: any[] = []
+
+    journey.mementos.forEach((m) => {
+      if (m.originalCoords) {
+        const distKm = haversineDistance(m.coords, m.originalCoords)
+        // If distance > 30 meters, show spoke connector to photo EXIF location
+        if (distKm > 0.03) {
+          const isActive = m.id === activeMementoId
+          lineFeatures.push({
+            type: "Feature",
+            geometry: {
+              type: "LineString",
+              coordinates: [m.coords, m.originalCoords],
+            },
+            properties: {
+              mementoId: m.id,
+              active: isActive ? 1 : 0,
+            },
+          })
+          pointFeatures.push({
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: m.originalCoords,
+            },
+            properties: {
+              mementoId: m.id,
+              active: isActive ? 1 : 0,
+            },
+          })
+        }
+      }
+    })
+
+    return {
+      lines: {
+        type: "FeatureCollection" as const,
+        features: lineFeatures,
+      },
+      points: {
+        type: "FeatureCollection" as const,
+        features: pointFeatures,
+      },
+    }
+  }
+
+  function updateSpokes() {
+    if (!loaded || !map) return
+    const data = spokesGeoJson()
+    ;(map.getSource("routes-spokes") as maplibregl.GeoJSONSource | undefined)?.setData(data.lines)
+    ;(map.getSource("routes-photo-spots") as maplibregl.GeoJSONSource | undefined)?.setData(data.points)
   }
 
   function ensureVehicleMarker(coord: Coordinates) {
@@ -465,7 +529,9 @@
     if (!loaded || !map) return
     ;(map.getSource("routes") as maplibregl.GeoJSONSource | undefined)?.setData(routeGeoJson())
     map.setFilter("route-active", ["==", ["get", "journeyId"], activeJourneyId ?? ""])
-    map.setFilter("route-active-glow", ["==", ["get", "journeyId"], activeJourneyId ?? ""])
+    if (map.getLayer("route-active-glow")) {
+      map.setFilter("route-active-glow", ["==", ["get", "journeyId"], activeJourneyId ?? ""])
+    }
     map.setFilter("route-active-dashed", [
       "all",
       ["==", ["get", "journeyId"], activeJourneyId ?? ""],
@@ -555,6 +621,37 @@
         layout: { "line-cap": "round", "line-join": "round" },
         paint: { "line-color": "#ff7e47", "line-width": 4.5, "line-opacity": 0.95 },
       })
+
+      // Photo scenic viewpoint connectors (Dawarich-style route snapping indicator)
+      map.addSource("routes-spokes", { type: "geojson", data: emptyFeatureCollection() })
+      map.addSource("routes-photo-spots", { type: "geojson", data: emptyFeatureCollection() })
+
+      map.addLayer({
+        id: "routes-spokes-line",
+        type: "line",
+        source: "routes-spokes",
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: {
+          "line-color": "#ff9b72",
+          "line-width": ["case", ["==", ["get", "active"], 1], 2, 1.2],
+          "line-dasharray": [2, 2],
+          "line-opacity": ["case", ["==", ["get", "active"], 1], 0.85, 0.4],
+        },
+      })
+
+      map.addLayer({
+        id: "routes-photo-spots-circle",
+        type: "circle",
+        source: "routes-photo-spots",
+        paint: {
+          "circle-radius": ["case", ["==", ["get", "active"], 1], 4.5, 3],
+          "circle-color": "#ff7e47",
+          "circle-stroke-width": 1.5,
+          "circle-stroke-color": "#ffffff",
+          "circle-opacity": ["case", ["==", ["get", "active"], 1], 0.95, 0.5],
+        },
+      })
+
       loaded = true
       refresh()
       applyTheme()

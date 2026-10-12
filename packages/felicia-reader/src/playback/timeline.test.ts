@@ -4,6 +4,8 @@ import {
   calculateBearing,
   haversineDistance,
   smoothSegmentCoords,
+  projectPointToSegment,
+  snapCoordinateToRoute,
 } from "./timeline"
 
 describe("Route Timeline & GPS Smoothing", () => {
@@ -67,4 +69,56 @@ describe("Route Timeline & GPS Smoothing", () => {
     const foundDist = timeline.distanceAtCoordinate([139.7186, 35.7975])
     expect(foundDist).toBeCloseTo(timeline.entries[1].dist, 4)
   })
+
+  test("projectPointToSegment orthogonally projects onto a segment", () => {
+    const a: [number, number] = [139.0, 35.0]
+    const b: [number, number] = [139.0, 35.02] // North along longitude 139.0
+    const p: [number, number] = [139.001, 35.01] // Slightly to the east at mid-latitude
+
+    const proj = projectPointToSegment(p, a, b)
+    expect(proj.t).toBeCloseTo(0.5, 2)
+    expect(proj.point[0]).toBeCloseTo(139.0, 5)
+    expect(proj.point[1]).toBeCloseTo(35.01, 5)
+
+    // Point before segment start clamps to A (t = 0)
+    const beforeA = projectPointToSegment([139.0, 34.99], a, b)
+    expect(beforeA.t).toBe(0)
+    expect(beforeA.point).toEqual(a)
+
+    // Point after segment end clamps to B (t = 1)
+    const afterB = projectPointToSegment([139.0, 35.03], a, b)
+    expect(afterB.t).toBe(1)
+    expect(afterB.point).toEqual(b)
+  })
+
+  test("snapCoordinateToRoute snaps nearby points to road and preserves distant points", () => {
+    const road: [number, number][] = [
+      [138.9805, 34.6642],
+      [138.9830, 34.6660],
+      [138.9850, 34.6680],
+    ]
+    const segments = [road]
+
+    // Point ~200m away from the road (e.g. photo on the beach)
+    const beachPhoto: [number, number] = [138.9807, 34.6667]
+    const snapped = snapCoordinateToRoute(beachPhoto, segments, 1.0)
+    expect(snapped.snapped).toBe(true)
+    expect(snapped.distanceKm).toBeLessThan(0.3)
+    expect(snapped.originalCoord).toEqual(beachPhoto)
+    expect(snapped.coord[0]).not.toBe(beachPhoto[0]) // Snapped onto the road line
+
+    // Point 10 km away from route exceeds maxDistanceKm (1.0 km) -> not snapped
+    const farPoint: [number, number] = [139.2, 35.0]
+    const notSnapped = snapCoordinateToRoute(farPoint, segments, 1.0)
+    expect(notSnapped.snapped).toBe(false)
+    expect(notSnapped.distanceKm).toBeGreaterThan(10)
+    expect(notSnapped.coord).toEqual(farPoint)
+    expect(notSnapped.originalCoord).toEqual(farPoint)
+
+    // Empty route segments returns original coord with snapped = false
+    const emptySnap = snapCoordinateToRoute(beachPhoto, [], 1.0)
+    expect(emptySnap.snapped).toBe(false)
+    expect(emptySnap.coord).toEqual(beachPhoto)
+  })
 })
+

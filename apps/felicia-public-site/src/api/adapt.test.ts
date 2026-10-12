@@ -163,4 +163,25 @@ describe("adaptJourney", () => {
     expect(result.mementos[0].kind).toBe("ticket")
     expect(result.mementos[0].kindData?.ticket_type).toBe("おとな往復（中学生以上）")
   })
+
+  test("snaps nearby mementos to route and preserves original EXIF coords", () => {
+    const routeJourney = journey({
+      gps_route: {
+        type: "LineString",
+        coordinates: [
+          [139.0, 35.0],
+          [139.0, 35.02],
+        ],
+      },
+    })
+    const nearbyMemento = memento({
+      geom: { type: "Point", coordinates: [139.001, 35.01] }, // ~100m east of route midpoint
+    })
+    const result = adaptJourney(routeJourney, [nearbyMemento])
+
+    expect(result.mementos[0].originalCoords).toEqual([139.001, 35.01])
+    expect(result.mementos[0].coords[0]).toBeCloseTo(139.0, 4)
+    expect(result.mementos[0].coords[1]).toBeCloseTo(35.01, 4)
+    expect(result.visits[0].coords).toEqual(result.mementos[0].coords)
+  })
 })

@@ -1,4 +1,5 @@
 import type { ApiGeoJSONGeometry, ApiJourney, ApiMemento, Coordinates, Journey, L, Memento, MementoKind, Station, Visit } from "@felicia/model"
+import { snapCoordinateToRoute } from "../playback/timeline"
 
 function authored(canonical: string | undefined): L {
   const value = canonical ?? ""
@@ -123,23 +124,34 @@ function adaptMemento(apiMemento: ApiMemento, visitId: string, visitCoords: Coor
 }
 
 export function adaptJourney(apiJourney: ApiJourney, apiMementos: ApiMemento[], mediaURL: MediaURL = (value) => value): Journey {
+  const segments = routeSegments(apiJourney.gps_route)
   const visits: Visit[] = []
   const mementos: Memento[] = []
   const visitByKey = new Map<string, Visit>()
   for (const apiMemento of apiMementos) {
-    const coords = geometryPoint(apiMemento.geom)
-    const visitKey = `${apiMemento.place}:${coords[0]},${coords[1]}`
+    const rawCoords = geometryPoint(apiMemento.geom)
+    const isNonZero = rawCoords[0] !== 0 || rawCoords[1] !== 0
+    const snapResult = isNonZero && segments.length > 0 ? snapCoordinateToRoute(rawCoords, segments, 1.0) : null
+    const finalCoords = snapResult?.snapped ? snapResult.coord : rawCoords
+    const originalCoords = snapResult?.snapped ? rawCoords : undefined
+
+    const visitKey = `${apiMemento.place}:${finalCoords[0].toFixed(5)},${finalCoords[1].toFixed(5)}`
     let visit = visitByKey.get(visitKey)
     if (!visit) {
       visit = {
         id: `visit:${apiJourney.slug}:${visitKey}`,
         label: authored(apiMemento.place),
-        coords,
+        coords: finalCoords,
       }
       visitByKey.set(visitKey, visit)
       visits.push(visit)
     }
-    mementos.push(adaptMemento(apiMemento, visit.id, visit.coords, mediaURL))
+    const adapted = adaptMemento(apiMemento, visit.id, finalCoords, mediaURL)
+    adapted.coords = finalCoords
+    if (originalCoords) {
+      adapted.originalCoords = originalCoords
+    }
+    mementos.push(adapted)
   }
 
   const covers = (apiJourney.covers ?? []).map((photo) => ({

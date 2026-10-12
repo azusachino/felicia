@@ -202,3 +202,104 @@ export class RouteTimeline {
     return bestTimelineDist
   }
 }
+
+export interface RouteSnapResult {
+  coord: Coordinates
+  originalCoord: Coordinates
+  distanceKm: number
+  snapped: boolean
+}
+
+/**
+ * Projects a point onto a line segment [a, b].
+ * Uses equirectangular flat approximation scaled by cos(midLatitude).
+ */
+export function projectPointToSegment(
+  p: Coordinates,
+  a: Coordinates,
+  b: Coordinates
+): { point: Coordinates; t: number } {
+  const phi = ((a[1] + b[1]) / 2) * (Math.PI / 180)
+  const cosPhi = Math.cos(phi)
+  const vx = (b[0] - a[0]) * cosPhi
+  const vy = b[1] - a[1]
+  const ux = (p[0] - a[0]) * cosPhi
+  const uy = p[1] - a[1]
+  const lenSq = vx * vx + vy * vy
+
+  if (lenSq < 1e-14) {
+    return { point: [a[0], a[1]], t: 0 }
+  }
+
+  let t = (ux * vx + uy * vy) / lenSq
+  t = Math.max(0, Math.min(1, t))
+  return {
+    point: [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])],
+    t,
+  }
+}
+
+/**
+ * Snaps a coordinate to the closest point along the route polyline segments.
+ * Inspired by Dawarich's photo-track matching:
+ * If the minimum orthogonal/endpoint distance to any route segment is within maxDistanceKm (default 1.0 km),
+ * the point is snapped to the route so that markers sit directly on the road and playback connects seamlessly.
+ * Otherwise, the original coordinate is retained (snapped = false).
+ */
+export function snapCoordinateToRoute(
+  coord: Coordinates,
+  segments: Coordinates[][],
+  maxDistanceKm = 1.0
+): RouteSnapResult {
+  if (!segments || segments.length === 0) {
+    return {
+      coord: [coord[0], coord[1]],
+      originalCoord: [coord[0], coord[1]],
+      distanceKm: Infinity,
+      snapped: false,
+    }
+  }
+
+  let bestDist = Infinity
+  let bestPoint: Coordinates = [coord[0], coord[1]]
+
+  for (const segment of segments) {
+    if (!segment || segment.length === 0) continue
+    if (segment.length === 1) {
+      const d = haversineDistance(coord, segment[0])
+      if (d < bestDist) {
+        bestDist = d
+        bestPoint = segment[0]
+      }
+      continue
+    }
+
+    for (let i = 0; i < segment.length - 1; i++) {
+      const a = segment[i]
+      const b = segment[i + 1]
+      const proj = projectPointToSegment(coord, a, b)
+      const d = haversineDistance(coord, proj.point)
+      if (d < bestDist) {
+        bestDist = d
+        bestPoint = proj.point
+      }
+    }
+  }
+
+  if (bestDist <= maxDistanceKm) {
+    return {
+      coord: bestPoint,
+      originalCoord: [coord[0], coord[1]],
+      distanceKm: bestDist,
+      snapped: true,
+    }
+  }
+
+  return {
+    coord: [coord[0], coord[1]],
+    originalCoord: [coord[0], coord[1]],
+    distanceKm: bestDist,
+    snapped: false,
+  }
+}
+

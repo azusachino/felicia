@@ -38,6 +38,7 @@ export interface Memento {
   vendor: L
   price: string
   coords: Coordinates
+  originalCoords?: Coordinates
   essay: L
   kindData?: Record<string, unknown>
   photos: PhotoAsset[]
