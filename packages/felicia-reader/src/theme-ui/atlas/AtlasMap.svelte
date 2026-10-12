@@ -749,7 +749,7 @@
         source: "routes",
         filter: ["==", ["get", "journeyId"], activeJourneyId ?? ""],
         layout: { "line-cap": "round", "line-join": "round" },
-        paint: { "line-color": "#ff9b72", "line-width": 2.5, "line-opacity": 0.35, "line-dasharray": [2, 2] },
+        paint: { "line-color": "#39C5BB", "line-width": 2.5, "line-opacity": 0.35, "line-dasharray": [2, 2] },
       })
       map.addLayer({
         id: "route-active-dashed",
@@ -762,7 +762,7 @@
         ],
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
-          "line-color": "#ff9b72",
+          "line-color": "#39C5BB",
           "line-width": 2.5,
           "line-dasharray": [2, 3],
           "line-opacity": 0.35,
@@ -776,7 +776,7 @@
         source: "routes-traveled",
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
-          "line-color": ["coalesce", ["get", "glowColor"], "#ff9b72"],
+          "line-color": ["coalesce", ["get", "glowColor"], "#39C5BB"],
           "line-width": ["coalesce", ["get", "glowWidth"], 10],
           "line-opacity": ["coalesce", ["get", "glowOpacity"], 0.35],
           "line-blur": 5,
@@ -788,7 +788,7 @@
         source: "routes-traveled",
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
-          "line-color": ["coalesce", ["get", "color"], "#ff7e47"],
+          "line-color": ["coalesce", ["get", "color"], "#39C5BB"],
           "line-width": ["coalesce", ["get", "width"], 4.5],
           "line-opacity": ["coalesce", ["get", "opacity"], 0.95],
         },
@@ -804,7 +804,7 @@
         source: "routes-spokes",
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
-          "line-color": "#ff9b72",
+          "line-color": "#39C5BB",
           "line-width": ["case", ["==", ["get", "active"], 1], 2, 1.2],
           "line-dasharray": [2, 2],
           "line-opacity": ["case", ["==", ["get", "active"], 1], 0.85, 0.4],
@@ -817,7 +817,7 @@
         source: "routes-photo-spots",
         paint: {
           "circle-radius": ["case", ["==", ["get", "active"], 1], 4.5, 3],
-          "circle-color": "#ff7e47",
+          "circle-color": "#39C5BB",
           "circle-stroke-width": 1.5,
           "circle-stroke-color": "#ffffff",
           "circle-opacity": ["case", ["==", ["get", "active"], 1], 0.95, 0.5],
@@ -1028,12 +1028,12 @@
 
   :global(.atlas-marker.is-active) {
     z-index: 20;
-    background: #ff7e47;
+    background: #39C5BB;
     border-color: #ffffff;
     color: #ffffff;
     box-shadow:
-      0 0 0 3px #ff7e47,
-      0 0 16px rgba(255, 126, 71, 0.8),
+      0 0 0 3px #39C5BB,
+      0 0 16px rgba(57, 197, 187, 0.8),
       0 4px 14px rgba(0, 0, 0, 0.7);
   }
 
@@ -1053,17 +1053,17 @@
   }
 
   :global(.atlas-marker-end) {
-    background: #78350f;
-    border-color: #fbbf24;
+    background: #831843;
+    border-color: #FF5E98;
     color: #ffffff;
   }
 
   :global(.atlas-marker-end.is-active) {
-    background: #d97706;
-    border-color: #fde68a;
+    background: #be185d;
+    border-color: #f472b6;
     box-shadow:
-      0 0 0 3px #d97706,
-      0 0 16px rgba(251, 191, 36, 0.8),
+      0 0 0 3px #be185d,
+      0 0 16px rgba(255, 94, 152, 0.8),
       0 4px 14px rgba(0, 0, 0, 0.7);
   }
 
@@ -1089,10 +1089,10 @@
     display: grid;
     place-items: center;
     border-radius: 999px;
-    background: #ff7e47;
+    background: #39C5BB;
     border: 2px solid #ffffff;
     box-shadow:
-      0 0 14px rgba(255, 126, 71, 0.9),
+      0 0 14px rgba(57, 197, 187, 0.9),
       0 4px 12px rgba(0, 0, 0, 0.6);
     color: #ffffff;
     position: relative;
@@ -1111,7 +1111,7 @@
     position: absolute;
     inset: -6px;
     border-radius: 999px;
-    border: 2px solid #ff9b72;
+    border: 2px solid #5fe0d7;
     opacity: 0.8;
     animation: vehicle-radar-pulse 1.4s infinite ease-out;
     pointer-events: none;
@@ -1133,7 +1133,7 @@
     position: absolute;
     inset: -8px;
     border-radius: 999px;
-    border: 2px solid #ff7e47;
+    border: 2px solid #39C5BB;
     opacity: 0;
     pointer-events: none;
     z-index: -1;

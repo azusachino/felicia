@@ -37,7 +37,7 @@
       href="#top"
       class="inline-flex min-h-10 items-center gap-2 rounded-full border px-3.5 py-1 text-xs font-medium shadow-lg backdrop-blur-xl transition {theme === 'light' ? 'border-black/10 bg-white/80 text-stone-900 hover:bg-white/95' : 'border-white/20 bg-black/60 text-white hover:bg-black/75'}"
     >
-      <span class="inline-block size-2 rounded-full bg-orange-400"></span>
+      <img src="/felicia-mark.svg" alt="" class="size-4 shrink-0 rounded-sm" />
       <span class="tracking-wide">Felicia</span>
     </a>
   </div>

@@ -140,7 +140,7 @@
       <li class="flex-1">
         <button
           type="button"
-          class="h-1 w-full cursor-pointer rounded-full border-0 p-0 transition-colors duration-300 {i <= state.currentStepIndex ? 'bg-orange-500' : theme === 'light' ? 'bg-black/10' : 'bg-white/20'}"
+          class="h-1 w-full cursor-pointer rounded-full border-0 p-0 transition-colors duration-300 {i <= state.currentStepIndex ? 'bg-[#39C5BB]' : theme === 'light' ? 'bg-black/10' : 'bg-white/20'}"
           onclick={() => controller.seek(i)}
           aria-label="Step {i + 1}"
         ></button>
@@ -153,7 +153,7 @@
     {#if currentStep.type === "intro"}
       <!-- INTRO CARD -->
       <div class="py-1">
-        <p class="text-[0.7rem] font-semibold tracking-wider text-orange-500 uppercase">{i18n.intro}</p>
+        <p class="text-[0.7rem] font-semibold tracking-wider text-[#39C5BB] uppercase">{i18n.intro}</p>
         <h2 class="mt-0.5 truncate text-lg font-bold">{currentStep.title}</h2>
         <p class="text-xs {theme === 'light' ? 'text-stone-500' : 'text-stone-400'}">{currentStep.dateRange} · {currentStep.dayCount} {i18n.daySuffix} · {currentStep.stopCount} {i18n.records}</p>
 
@@ -216,7 +216,7 @@
       <!-- WAYPOINT CARD (DEPARTURE OR ARRIVAL) -->
       <div class="py-2">
         <div class="flex items-center justify-between text-xs {theme === 'light' ? 'text-stone-600' : 'text-stone-400'}">
-          <span class="inline-flex items-center gap-1.5 font-semibold text-orange-500">
+          <span class="inline-flex items-center gap-1.5 font-semibold text-[#39C5BB]">
             {#if currentStep.role === "start"}
               <svg class="size-3.5 fill-current" viewBox="0 0 24 24">
                 <polygon points="6 3 20 12 6 21 6 3"></polygon>
@@ -263,7 +263,7 @@
           {#if currentStep.distanceKm !== undefined}
             <div class="mt-1.5 flex items-center justify-between border-t pt-1.5 {theme === 'light' ? 'border-black/10' : 'border-white/10'}">
               <span class="{theme === 'light' ? 'text-stone-500' : 'text-stone-400'}">{i18n.cumDist}</span>
-              <span class="font-mono font-semibold {theme === 'light' ? 'text-orange-600' : 'text-orange-300'}">
+              <span class="font-mono font-semibold {theme === 'light' ? 'text-teal-700' : 'text-[#39C5BB]'}">
                 {currentStep.distanceKm.toLocaleString()} {i18n.km}
               </span>
             </div>
@@ -279,8 +279,8 @@
             <span class="font-semibold" style="color: {getDayColor(currentStep.day).color};">
               {i18n.dayPrefix} {currentStep.day} {i18n.daySuffix}
             </span>
-            <span class="flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[0.68rem] font-semibold {theme === 'light' ? 'border-orange-500/30 bg-orange-500/10 text-orange-600' : 'border-orange-500/30 bg-orange-500/20 text-orange-300'}">
-              <span class="size-1.5 rounded-full bg-orange-500 animate-pulse"></span>
+            <span class="flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[0.68rem] font-semibold {theme === 'light' ? 'border-[#39C5BB]/40 bg-[#39C5BB]/10 text-teal-700' : 'border-[#39C5BB]/40 bg-[#39C5BB]/20 text-[#39C5BB]'}">
+              <span class="size-1.5 rounded-full bg-[#39C5BB] animate-pulse"></span>
               {i18n.transit}
             </span>
           </div>
@@ -290,7 +290,7 @@
             {currentStep.memento.title[lang] || currentStep.memento.title.ja || currentStep.memento.title.en || currentStep.memento.title.zh}
           </h2>
           <p class="mt-0.5 flex items-center gap-1 text-xs {theme === 'light' ? 'text-stone-600' : 'text-stone-300'}">
-            <span class="text-orange-500">📍</span>
+            <span class="text-[#39C5BB]">📍</span>
             <span>{currentStep.memento.place[lang] || currentStep.memento.place.ja || currentStep.memento.place.en || currentStep.memento.place.zh}</span>
           </p>
 
@@ -298,7 +298,7 @@
           <div class="mt-3 rounded-xl border p-3 text-xs {theme === 'light' ? 'border-black/10 bg-black/5' : 'border-white/15 bg-white/5'}">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <span class="flex size-7 items-center justify-center rounded-full bg-orange-500/20 text-sm">🚗</span>
+                <span class="flex size-7 items-center justify-center rounded-full bg-[#39C5BB]/20 text-sm">🚗</span>
                 <div>
                   <div class="font-semibold {theme === 'light' ? 'text-stone-900' : 'text-white'}">{currentStep.memento.place[lang] || currentStep.memento.place.ja || currentStep.memento.place.en || currentStep.memento.place.zh}</div>
                   <div class="text-[0.65rem] {theme === 'light' ? 'text-stone-500' : 'text-stone-400'}">{i18n.transit}</div>
@@ -307,7 +307,7 @@
               {#if currentStep.travelDistanceKm || legDistanceKm}
                 <div class="text-right">
                   <div class="text-[0.65rem] {theme === 'light' ? 'text-stone-500' : 'text-stone-400'}">{i18n.legDist}</div>
-                  <div class="font-mono font-bold {theme === 'light' ? 'text-orange-600' : 'text-orange-300'}">
+                  <div class="font-mono font-bold {theme === 'light' ? 'text-teal-700' : 'text-[#39C5BB]'}">
                     {currentStep.travelDistanceKm ?? legDistanceKm} {i18n.km}
                   </div>
                 </div>
@@ -347,7 +347,7 @@
                   class="aspect-[4/3] w-full object-cover"
                 ></video>
                 <span class="absolute top-2 left-2 flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[0.625rem] font-medium text-white backdrop-blur">
-                  <span class="size-2 rounded-full bg-orange-400"></span> LIVE
+                  <span class="size-2 rounded-full bg-[#FF5E98]"></span> LIVE
                 </span>
               {:else}
                 <img src={photo.src} alt="" class="aspect-[4/3] w-full object-cover" />
@@ -364,7 +364,7 @@
           {#if onOpenDetail}
             <button
               type="button"
-              class="mt-2 text-xs text-orange-500 underline underline-offset-4 hover:text-orange-600"
+              class="mt-2 text-xs text-[#39C5BB] underline underline-offset-4 hover:text-teal-400"
               onclick={() => onOpenDetail?.(currentStep.memento.id)}
             >
               {i18n.readStory}
@@ -376,7 +376,7 @@
     {:else if currentStep.type === "summary"}
       <!-- SUMMARY SCORECARD -->
       <div class="py-2">
-        <p class="text-[0.7rem] font-medium tracking-wider text-orange-500 uppercase">{i18n.summary}</p>
+        <p class="text-[0.7rem] font-medium tracking-wider text-[#39C5BB] uppercase">{i18n.summary}</p>
         <h2 class="mt-0.5 text-lg font-bold">{currentStep.title}</h2>
 
         <div class="mt-4 grid grid-cols-2 gap-2 text-xs">
@@ -423,7 +423,7 @@
 
       <button
         type="button"
-        class="flex size-9 cursor-pointer items-center justify-center rounded-full border {theme === 'light' ? 'border-orange-500/40 bg-orange-500/15 text-orange-600 hover:bg-orange-500/25' : 'border-orange-400/40 bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 hover:text-white'}"
+        class="flex size-9 cursor-pointer items-center justify-center rounded-full border {theme === 'light' ? 'border-[#39C5BB]/40 bg-[#39C5BB]/15 text-teal-700 hover:bg-[#39C5BB]/25' : 'border-[#39C5BB]/40 bg-[#39C5BB]/20 text-[#39C5BB] hover:bg-[#39C5BB]/30 hover:text-white'}"
         onclick={() => controller.togglePlay()}
         aria-label={state.isPlaying ? i18n.pause : i18n.play}
       >

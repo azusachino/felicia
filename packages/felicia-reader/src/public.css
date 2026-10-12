@@ -70,14 +70,14 @@ button {
   --card: rgba(175, 222, 216, 0.06);
   --chip-bg: #102533;
   --chip-border: #456a73;
-  --accent-ink: var(--accent, #ff9b72);
-  --route: #7fd8cb;
+  --accent-ink: var(--accent, #39C5BB);
+  --route: #39C5BB;
   --ctrl-bg: rgba(11, 32, 45, 0.78);
   --ctrl-invert: 1;
   --stub-shade: rgba(0, 0, 0, 0.5);
   --surface-raised: rgba(12, 35, 47, 0.72);
-  --accent-soft: rgba(255, 155, 114, 0.14);
-  --accent-strong: #ff9b72;
+  --accent-soft: rgba(57, 197, 187, 0.16);
+  --accent-strong: #39C5BB;
   --glass-bg: rgba(12, 35, 47, 0.66);
   --glass-bg-deep: rgba(5, 19, 30, 0.84);
   --glass-border: rgba(194, 237, 229, 0.2);
@@ -99,14 +99,14 @@ button {
   --card: rgba(255, 255, 255, 0.45);
   --chip-bg: #f6fbf8;
   --chip-border: #9dbab6;
-  --accent-ink: var(--accent, #d9674c);
-  --route: #2c9e9a;
+  --accent-ink: var(--accent, #209990);
+  --route: #209990;
   --ctrl-bg: rgba(246, 252, 249, 0.78);
   --ctrl-invert: 0;
   --stub-shade: rgba(60, 40, 20, 0.3);
   --surface-raised: rgba(246, 252, 249, 0.72);
-  --accent-soft: rgba(217, 103, 76, 0.12);
-  --accent-strong: #c9583e;
+  --accent-soft: rgba(57, 197, 187, 0.14);
+  --accent-strong: #209990;
   --glass-bg: rgba(246, 252, 249, 0.62);
   --glass-bg-deep: rgba(220, 235, 233, 0.76);
   --glass-border: rgba(30, 91, 95, 0.18);
@@ -127,7 +127,7 @@ select {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent-strong, #ff9b72);
+  outline: 2px solid var(--accent-strong, #39C5BB);
   outline-offset: 3px;
 }
 
@@ -901,7 +901,7 @@ select {
 
 .map-marker:hover,
 .map-marker.is-active {
-  @apply border-orange-300 bg-orange-400 text-zinc-950;
+  @apply border-teal-200 bg-[#39C5BB] text-zinc-950;
   transform: translateY(-4px) scale(1.08);
 }
 

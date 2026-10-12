@@ -19,4 +19,19 @@ describe("Atlas theme and container contract", () => {
     const content = readFileSync(file, "utf8")
     expect(content).not.toContain("onToggleTheme=")
   })
+
+  test("FloatingToolbar includes felicia-mark brand icon", () => {
+    const file = fileURLToPath(new URL("../../components/FloatingToolbar.svelte", import.meta.url))
+    const content = readFileSync(file, "utf8")
+    expect(content).toContain('/felicia-mark.svg')
+    expect(content).not.toContain('bg-orange-400')
+  })
+
+  test("DAY_PALETTE adopts Hatsune Miku signature teal as Day 1", () => {
+    const file = fileURLToPath(new URL("../../playback/timeline.ts", import.meta.url))
+    const content = readFileSync(file, "utf8")
+    expect(content).toContain('#39C5BB')
+    expect(content).toContain('#FF5E98')
+    expect(content).not.toContain('#ff7e47')
+  })
 })

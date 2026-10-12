@@ -113,14 +113,14 @@
       <div class="mt-2 grid grid-cols-2 gap-2 text-xs">
         <button
           type="button"
-          class="flex cursor-pointer items-center justify-center gap-2 rounded-xl border p-2.5 transition {ratio === 'landscape' ? 'border-orange-400 bg-orange-500/10 text-orange-300' : 'border-white/10 text-stone-300'}"
+          class="flex cursor-pointer items-center justify-center gap-2 rounded-xl border p-2.5 transition {ratio === 'landscape' ? 'border-[#39C5BB] bg-[#39C5BB]/10 text-[#39C5BB]' : 'border-white/10 text-stone-300'}"
           onclick={() => (ratio = "landscape")}
         >
           <span>🖥️ 横屏 16:9</span>
         </button>
         <button
           type="button"
-          class="flex cursor-pointer items-center justify-center gap-2 rounded-xl border p-2.5 transition {ratio === 'portrait' ? 'border-orange-400 bg-orange-500/10 text-orange-300' : 'border-white/10 text-stone-300'}"
+          class="flex cursor-pointer items-center justify-center gap-2 rounded-xl border p-2.5 transition {ratio === 'portrait' ? 'border-[#39C5BB] bg-[#39C5BB]/10 text-[#39C5BB]' : 'border-white/10 text-stone-300'}"
           onclick={() => (ratio = "portrait")}
         >
           <span>📱 竖屏 9:16</span>
@@ -129,7 +129,7 @@
     </div>
 
     {#if status}
-      <p class="mt-3 text-xs text-orange-300">{status}</p>
+      <p class="mt-3 text-xs text-teal-300">{status}</p>
     {/if}
 
     <!-- Buttons -->
@@ -144,7 +144,7 @@
 
       <button
         type="button"
-        class="cursor-pointer rounded-xl border border-orange-400/50 bg-orange-500 px-4 py-2 text-xs font-semibold text-white shadow-lg transition hover:bg-orange-400 disabled:opacity-50"
+        class="cursor-pointer rounded-xl border border-[#39C5BB]/50 bg-[#39C5BB] px-4 py-2 text-xs font-semibold text-zinc-950 shadow-lg transition hover:bg-[#39C5BB]/80 disabled:opacity-50"
         disabled={isRecording}
         onclick={startRecording}
       >

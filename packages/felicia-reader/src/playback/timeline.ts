@@ -291,13 +291,13 @@ export interface DayStyle {
 }
 
 export const DAY_PALETTE: DayStyle[] = [
-  { day: 1, color: "#ff7e47", glowColor: "rgba(255, 126, 71, 0.4)", glow: "rgba(255, 126, 71, 0.8)", pulse: "#ff9b72", label: "Day 1" }, // Sunset Coral / Amber
-  { day: 2, color: "#06b6d4", glowColor: "rgba(6, 182, 212, 0.4)",  glow: "rgba(6, 182, 212, 0.8)", pulse: "#67e8f9", label: "Day 2" }, // Coastal Cyan / Turquoise
+  { day: 1, color: "#39C5BB", glowColor: "rgba(57, 197, 187, 0.4)", glow: "rgba(57, 197, 187, 0.8)", pulse: "#5fe0d7", label: "Day 1" }, // Hatsune Miku Signature Teal
+  { day: 2, color: "#FF5E98", glowColor: "rgba(255, 94, 152, 0.4)",  glow: "rgba(255, 94, 152, 0.8)", pulse: "#ff82b2", label: "Day 2" }, // Miku Magenta / Ribbon Pink
   { day: 3, color: "#a855f7", glowColor: "rgba(168, 85, 247, 0.4)", glow: "rgba(168, 85, 247, 0.8)", pulse: "#d8b4fe", label: "Day 3" }, // Lavender Purple
-  { day: 4, color: "#10b981", glowColor: "rgba(16, 185, 129, 0.4)", glow: "rgba(16, 185, 129, 0.8)", pulse: "#6ee7b7", label: "Day 4" }, // Emerald Green
-  { day: 5, color: "#f59e0b", glowColor: "rgba(245, 158, 11, 0.4)", glow: "rgba(245, 158, 11, 0.8)", pulse: "#fcd34d", label: "Day 5" }, // Warm Amber Gold
-  { day: 6, color: "#ec4899", glowColor: "rgba(236, 72, 153, 0.4)", glow: "rgba(236, 72, 153, 0.8)", pulse: "#f472b6", label: "Day 6" }, // Rose Pink
-  { day: 7, color: "#6366f1", glowColor: "rgba(99, 102, 241, 0.4)", glow: "rgba(99, 102, 241, 0.8)", pulse: "#a5b4fc", label: "Day 7" }, // Indigo
+  { day: 4, color: "#10b981", glowColor: "rgba(16, 185, 129, 0.4)", glow: "rgba(16, 185, 129, 0.8)", pulse: "#6ee7b7", label: "Day 4" }, // Mint Emerald
+  { day: 5, color: "#38bdf8", glowColor: "rgba(56, 189, 248, 0.4)", glow: "rgba(56, 189, 248, 0.8)", pulse: "#7dd3fc", label: "Day 5" }, // Electric Sky Cyan
+  { day: 6, color: "#f59e0b", glowColor: "rgba(245, 158, 11, 0.4)", glow: "rgba(245, 158, 11, 0.8)", pulse: "#fcd34d", label: "Day 6" }, // Warm Amber Gold
+  { day: 7, color: "#6366f1", glowColor: "rgba(99, 102, 241, 0.4)", glow: "rgba(99, 102, 241, 0.8)", pulse: "#a5b4fc", label: "Day 7" }, // Digital Indigo
 ]
 
 export function getDayColor(dayNumber: number): DayStyle {
