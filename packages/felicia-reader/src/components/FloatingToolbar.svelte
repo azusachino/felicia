@@ -35,7 +35,7 @@
   <div class="pointer-events-auto flex items-center">
     <a
       href="#top"
-      class="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/20 bg-black/60 px-3.5 py-1 text-xs font-medium text-white shadow-lg backdrop-blur-xl transition hover:bg-black/75"
+      class="inline-flex min-h-10 items-center gap-2 rounded-full border px-3.5 py-1 text-xs font-medium shadow-lg backdrop-blur-xl transition {theme === 'light' ? 'border-black/10 bg-white/80 text-stone-900 hover:bg-white/95' : 'border-white/20 bg-black/60 text-white hover:bg-black/75'}"
     >
       <span class="inline-block size-2 rounded-full bg-orange-400"></span>
       <span class="tracking-wide">Felicia</span>
@@ -43,39 +43,39 @@
   </div>
 
   <!-- Center: Journey Selector Pill -->
-  <div class="pointer-events-auto relative flex max-w-[16rem] items-center rounded-full border border-white/20 bg-black/60 text-xs text-white shadow-lg backdrop-blur-xl transition hover:bg-black/75">
+  <div class="pointer-events-auto relative flex max-w-[16rem] items-center rounded-full border text-xs shadow-lg backdrop-blur-xl transition {theme === 'light' ? 'border-black/10 bg-white/80 text-stone-900 hover:bg-white/95' : 'border-white/20 bg-black/60 text-white hover:bg-black/75'}">
     <select
-      class="min-h-10 w-full cursor-pointer appearance-none truncate rounded-full bg-transparent pr-8 pl-3.5 text-xs text-white outline-none"
+      class="min-h-10 w-full cursor-pointer appearance-none truncate rounded-full bg-transparent pr-8 pl-3.5 text-xs outline-none {theme === 'light' ? 'text-stone-900' : 'text-white'}"
       value={activeJourneyId ?? ""}
       onchange={(e) => {
         const val = (e.target as HTMLSelectElement).value
         onSelectJourney(val ? val : null)
       }}
     >
-      <option value="" class="bg-stone-900 text-white">{labels.allPlaces}</option>
+      <option value="" class={theme === 'light' ? 'bg-white text-stone-900' : 'bg-stone-900 text-white'}>{labels.allPlaces}</option>
       {#if journeys.length > 0}
-        <optgroup label={labels.trips} class="bg-stone-900 text-white">
+        <optgroup label={labels.trips} class={theme === 'light' ? 'bg-white text-stone-900' : 'bg-stone-900 text-white'}>
           {#each journeys as j}
-            <option value={j.id} class="bg-stone-900 text-white">
+            <option value={j.id} class={theme === 'light' ? 'bg-white text-stone-900' : 'bg-stone-900 text-white'}>
               {j.title[lang] || j.title.zh || j.title.ja}
             </option>
           {/each}
         </optgroup>
       {/if}
     </select>
-    <span class="pointer-events-none absolute right-3 text-xs text-stone-400">▼</span>
+    <span class="pointer-events-none absolute right-3 text-xs {theme === 'light' ? 'text-stone-500' : 'text-stone-400'}">▼</span>
   </div>
 
   <!-- Right: Dual-Mode Switch Pill & Theme Toggle -->
   <div class="pointer-events-auto flex items-center gap-2">
-    <nav class="relative isolate inline-grid grid-cols-2 items-center rounded-full border border-white/20 bg-black/60 p-1 text-xs text-stone-300 shadow-lg backdrop-blur-xl">
+    <nav class="relative isolate inline-grid grid-cols-2 items-center rounded-full border p-1 text-xs shadow-lg backdrop-blur-xl {theme === 'light' ? 'border-black/10 bg-white/80 text-stone-600' : 'border-white/20 bg-black/60 text-stone-300'}">
       <span
-        class="pointer-events-none absolute inset-y-1 left-1 z-0 w-[calc(50%-4px)] rounded-full bg-white/25 shadow-sm transition-transform duration-300 ease-out"
+        class="pointer-events-none absolute inset-y-1 left-1 z-0 w-[calc(50%-4px)] rounded-full shadow-sm transition-transform duration-300 ease-out {theme === 'light' ? 'bg-stone-900/10' : 'bg-white/25'}"
         style:transform={mode === "journal" ? "translateX(100%)" : "translateX(0%)"}
       ></span>
       <button
         type="button"
-        class="relative z-10 flex min-h-8 min-w-[4.2rem] cursor-pointer items-center justify-center rounded-full border-0 bg-transparent px-3 text-xs font-medium text-white transition hover:text-white"
+        class="relative z-10 flex min-h-8 min-w-[4.2rem] cursor-pointer items-center justify-center rounded-full border-0 bg-transparent px-3 text-xs font-medium transition {theme === 'light' ? 'text-stone-800 hover:text-black' : 'text-white hover:text-white'}"
         class:font-semibold={mode === "map"}
         onclick={() => onModeChange("map")}
       >
@@ -83,7 +83,7 @@
       </button>
       <button
         type="button"
-        class="relative z-10 flex min-h-8 min-w-[4.2rem] cursor-pointer items-center justify-center rounded-full border-0 bg-transparent px-3 text-xs font-medium text-white transition hover:text-white"
+        class="relative z-10 flex min-h-8 min-w-[4.2rem] cursor-pointer items-center justify-center rounded-full border-0 bg-transparent px-3 text-xs font-medium transition {theme === 'light' ? 'text-stone-800 hover:text-black' : 'text-white hover:text-white'}"
         class:font-semibold={mode === "journal"}
         onclick={() => onModeChange("journal")}
       >
@@ -94,14 +94,14 @@
     {#if onToggleTheme}
       <button
         type="button"
-        class="inline-flex size-10 items-center justify-center rounded-full border border-white/20 bg-black/60 text-stone-200 shadow-lg backdrop-blur-xl transition hover:bg-black/75 hover:text-white"
+        class="inline-flex size-10 items-center justify-center rounded-full border shadow-lg backdrop-blur-xl transition {theme === 'light' ? 'border-black/10 bg-white/80 text-stone-800 hover:bg-white hover:text-stone-900' : 'border-white/20 bg-black/60 text-stone-200 hover:bg-black/75 hover:text-white'}"
         title={theme === "light" ? labels.darkTheme : labels.lightTheme}
         aria-label={theme === "light" ? labels.darkTheme : labels.lightTheme}
         onclick={onToggleTheme}
       >
         {#if theme === "light"}
           <!-- Moon icon for switching to dark -->
-          <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg class="size-4 text-stone-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
           </svg>
         {:else}

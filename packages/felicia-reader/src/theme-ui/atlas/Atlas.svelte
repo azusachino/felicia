@@ -48,9 +48,11 @@
   let lastJourneyId = $state<string | null>(null)
   let legPhase = $state<"transit" | "arrived">("arrived")
   let legDistanceKm = $state<number>(0)
+  let isPlaybackDismissed = $state(false)
 
   function initPlayback(journey: Journey | null) {
     playbackController?.destroy()
+    isPlaybackDismissed = false
     if (!journey) {
       playbackController = null
       currentStep = null
@@ -182,20 +184,33 @@
       </div>
 
       <!-- Bottom-Left Playback HUD Card -->
-      {#if playbackController && currentStep}
+      {#if playbackController && currentStep && !isPlaybackDismissed}
         <TripPlaybackCard
           controller={playbackController}
           {currentStep}
           {lang}
+          {theme}
           {legPhase}
           {legDistanceKm}
           onOpenStage={() => (showStage = true)}
           onOpenDetail={(mementoId) => (selectedMementoId = mementoId)}
           onClose={() => {
             playbackController?.pause()
-            activeMementoId = null
+            isPlaybackDismissed = true
           }}
         />
+      {:else if playbackController && isPlaybackDismissed}
+        <!-- Re-open Playback Pill -->
+        <div class="pointer-events-auto absolute bottom-4 left-4 z-20">
+          <button
+            type="button"
+            class="flex items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-semibold shadow-xl backdrop-blur-xl transition {theme === 'light' ? 'border-black/10 bg-white/90 text-stone-800 hover:bg-white' : 'border-white/20 bg-black/75 text-white hover:bg-black/90'}"
+            onclick={() => (isPlaybackDismissed = false)}
+          >
+            <span class="text-orange-400">▶</span>
+            <span>{lang === 'ja' ? '旅の再生を開く' : lang === 'zh' ? '恢复行程回放' : 'Open Trip Playback'}</span>
+          </button>
+        </div>
       {/if}
 
       <!-- Stage Mode (Fullscreen Presenter View) -->

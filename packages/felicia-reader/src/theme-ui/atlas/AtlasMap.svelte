@@ -131,7 +131,7 @@
     map.fitBounds(bounds, {
       padding: { top: 60, bottom: 80, left: 340, right: 60 },
       maxZoom: 11,
-      duration: prefersReducedMotion ? 0 : Math.min(900, 360 + distance * 180),
+      duration: prefersReducedMotion ? 0 : Math.min(1800, 1000 + distance * 200),
     })
   }
 
@@ -563,16 +563,20 @@
 
       onLegStart?.(travelDist)
 
-      // Instantly position camera at start of leg so viewer sees the car ready to drive.
-      // For long highway legs (> 40km), start with broader framing (zoom 10.5) so whole region is visible.
+      // Smoothly ease camera to start of leg if not already there, avoiding sudden jarring jump
       const initialZoom = travelDist > 40 ? 10.5 : 11.5
-      map.jumpTo({
-        center: fromCoords,
-        zoom: initialZoom,
-        pitch: 0,
-        bearing: 0,
-        padding: { top: 60, bottom: 80, left: 340, right: 60 },
-      })
+      const currentCenter = map.getCenter()
+      const distFromCurrent = haversineDistance([currentCenter.lng, currentCenter.lat], fromCoords)
+      if (distFromCurrent > 5) {
+        map.easeTo({
+          center: fromCoords,
+          zoom: initialZoom,
+          pitch: 0,
+          bearing: 0,
+          padding: { top: 60, bottom: 80, left: 340, right: 60 },
+          duration: prefersReducedMotion ? 0 : 500,
+        })
+      }
 
       // Intuitive speed proportional to distance:
       // ~12 km/s simulated velocity (1 second per 12 km) + 1.2s start/stop cushion
@@ -950,7 +954,11 @@
   })
 </script>
 
-<div bind:this={container} style="position: absolute; inset: 0;"></div>
+<div
+  bind:this={container}
+  class:theme-light={theme === "light"}
+  style="position: absolute; inset: 0;"
+></div>
 
 <style>
   :global(.atlas-marker) {
@@ -970,7 +978,16 @@
       700 0.8rem/1 ui-sans-serif,
       system-ui,
       sans-serif;
-    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+  }
+
+  :global(.theme-light .atlas-marker) {
+    background: #ffffff;
+    border: 2px solid #cbd5e1;
+    color: #0f172a;
+    box-shadow:
+      0 0 0 2px rgba(255, 255, 255, 0.8),
+      0 3px 8px rgba(0, 0, 0, 0.22);
   }
 
   /* Keep visible marker at 2rem but grow hit area to touch-target minimum */
@@ -1145,6 +1162,17 @@
     border-width: 5px;
     border-style: solid;
     border-color: rgba(15, 23, 42, 0.92) transparent transparent transparent;
+  }
+
+  :global(.theme-light .atlas-arrival-callout) {
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    color: #0f172a;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  }
+
+  :global(.theme-light .atlas-arrival-callout)::after {
+    border-color: rgba(255, 255, 255, 0.96) transparent transparent transparent;
   }
 
   :global(.atlas-marker.is-arrived .atlas-arrival-callout),

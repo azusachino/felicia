@@ -344,6 +344,10 @@ export class PlaybackController {
 
   public play(): void {
     if (this.isPlaying) return
+    // If playback reached the final step, rewind to start to replay
+    if (this.currentIndex >= this.steps.length - 1) {
+      this.currentIndex = 0
+    }
     this.isPlaying = true
     if (this.chapters.length === 0) {
       this.startTime = performance.now()
