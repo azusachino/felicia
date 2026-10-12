@@ -138,11 +138,37 @@
     return button
   }
 
+  function waypointMarkerElement(journey: Journey, role: "start" | "end", coord: Coordinates) {
+    const button = document.createElement("button")
+    button.type = "button"
+    button.className = `atlas-marker-waypoint atlas-marker-${role}`
+    const startText = lang === "ja" ? "出発" : lang === "zh" ? "出发" : "START"
+    const endText = lang === "ja" ? "到着" : lang === "zh" ? "到达" : "GOAL"
+    const icon = role === "start" ? "🚗" : "🏁"
+    const label = role === "start" ? `${icon} ${startText}` : `${icon} ${endText}`
+    button.setAttribute("aria-label", label)
+    button.innerHTML = `<span>${icon}</span><span>${role === "start" ? startText : endText}</span>`
+    button.addEventListener("click", (event) => {
+      event.stopPropagation()
+      if (map?.isMoving()) map.stop()
+      map?.flyTo({
+        center: coord,
+        zoom: 13.8,
+        pitch: 38,
+        bearing: 0,
+        padding: { top: 60, bottom: 80, left: 340, right: 60 },
+        duration: prefersReducedMotion ? 0 : 1200,
+      })
+    })
+    return button
+  }
+
   function rebuildMarkers() {
     if (!map) return
     markers.forEach((marker) => marker.remove())
     markers.clear()
     journeys.forEach((journey) => {
+      // 1. Memento markers (1, 2, 3...)
       journey.mementos.forEach((memento, index) => {
         const marker = new maplibregl.Marker({
           element: markerElement(memento, index),
@@ -152,15 +178,52 @@
           .addTo(map!)
         markers.set(memento.id, marker)
       })
+
+      // 2. Journey Start & End waypoints
+      const segments = journey.routeSegments?.length ? journey.routeSegments : (journey.route?.length ? [journey.route] : [])
+      const validSegments = segments.filter((s) => s.length >= 2)
+      const originCoord = validSegments[0]?.[0]
+      const lastSeg = validSegments.at(-1)
+      const destCoord = lastSeg?.at(-1)
+
+      if (originCoord) {
+        const startMarker = new maplibregl.Marker({
+          element: waypointMarkerElement(journey, "start", originCoord),
+          offset: [-34, 0],
+        })
+          .setLngLat(originCoord)
+          .addTo(map!)
+        markers.set(`${journey.id}:start`, startMarker)
+      }
+
+      if (destCoord) {
+        const endMarker = new maplibregl.Marker({
+          element: waypointMarkerElement(journey, "end", destCoord),
+          offset: [34, 0],
+        })
+          .setLngLat(destCoord)
+          .addTo(map!)
+        markers.set(`${journey.id}:end`, endMarker)
+      }
     })
     syncMarkers()
   }
 
   function syncMarkers() {
     markers.forEach((marker, id) => {
-      const ownerJourney = journeys.find((journey) => journey.mementos.some((item) => item.id === id))
-      marker.getElement().classList.toggle("is-active", id === activeMementoId)
-      marker.getElement().classList.toggle("is-dimmed", ownerJourney?.id !== activeJourneyId)
+      if (id.endsWith(":start") || id.endsWith(":end")) {
+        const journeyId = id.split(":")[0]
+        const isCurrentStepWaypoint =
+          currentStep?.type === "waypoint" &&
+          ((currentStep.role === "start" && id.endsWith(":start")) ||
+           (currentStep.role === "end" && id.endsWith(":end")))
+        marker.getElement().classList.toggle("is-active", isCurrentStepWaypoint)
+        marker.getElement().classList.toggle("is-dimmed", journeyId !== activeJourneyId)
+      } else {
+        const ownerJourney = journeys.find((journey) => journey.mementos.some((item) => item.id === id))
+        marker.getElement().classList.toggle("is-active", id === activeMementoId)
+        marker.getElement().classList.toggle("is-dimmed", ownerJourney?.id !== activeJourneyId)
+      }
     })
   }
 
@@ -470,7 +533,9 @@
   })
 
   $effect(() => {
-    if (!loaded || !currentStep) return
+    if (!loaded) return
+    syncMarkers()
+    if (!currentStep) return
     const journey = activeJourney()
 
     if (currentStep.type === "intro") {
@@ -648,6 +713,53 @@
     color: #123344;
     font-size: 0.6rem;
     font-style: normal;
+  }
+
+  :global(.atlas-marker-waypoint) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    height: 1.85rem;
+    padding: 0 0.55rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    border: 2px solid #ffffff;
+    box-shadow:
+      0 0 0 2px #000000aa,
+      0 4px 12px #00000088;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;
+    user-select: none;
+    z-index: 1;
+  }
+
+  :global(.atlas-marker-waypoint:hover) {
+    transform: scale(1.1);
+  }
+
+  :global(.atlas-marker-start) {
+    background: #059669;
+    color: #ffffff;
+  }
+
+  :global(.atlas-marker-end) {
+    background: #d97706;
+    color: #ffffff;
+  }
+
+  :global(.atlas-marker-waypoint.is-dimmed) {
+    opacity: 0.28;
+  }
+
+  :global(.atlas-marker-waypoint.is-active) {
+    transform: scale(1.18);
+    box-shadow:
+      0 0 0 3px #ffffff,
+      0 0 16px #ff9b72;
+    z-index: 4;
   }
 
   :global(.atlas-traveling-dot) {
