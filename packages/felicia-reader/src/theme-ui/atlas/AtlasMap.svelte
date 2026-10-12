@@ -53,6 +53,7 @@
   const markers = new Map<string, maplibregl.Marker>()
   let vehicleMarker: maplibregl.Marker | undefined
   let activeAnimationTimer: Timer | null = null
+  let userCustomZoom: number | null = null
 
   const mapStyle: StyleSpecification = {
     version: 8,
@@ -611,11 +612,10 @@
         // 2. Traveled route polyline draws progressively behind the car
         updateTraveledRoute(slices, targetDay, false)
 
-        // 3. Dynamic Zoom based on leg distance:
-        // Long highway runs stay at zoom 10.0 to prevent tile thrashing and keep regional landscape in view.
-        // As car approaches within 10km of destination, camera smoothly eases from 10.0 to 11.8.
-        let dynamicZoom = 11.5
-        if (travelDist > 40) {
+        // 3. Dynamic Zoom based on leg distance (or visitor's manual zoom preference):
+        // If the visitor has manually zoomed in/out, respect their chosen zoom level!
+        let dynamicZoom = userCustomZoom ?? 11.5
+        if (userCustomZoom === null && travelDist > 40) {
           const remainingKm = Math.max(0, targetDist - currentTotalDist)
           if (remainingKm > 10) {
             dynamicZoom = 10.0
@@ -720,7 +720,19 @@
       zoom: 4.5,
       attributionControl: false,
     })
+    // 1. Zoom in/out +/- controls and compass navigation widget
+    map.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), "bottom-right")
+    // 2. Map attribution
     map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right")
+
+    // Track when visitor manually zooms (wheel, pinch, double-click, +/- buttons)
+    map.on("zoomend", (e) => {
+      // If event was triggered by user interaction (not programmatic jumpTo during transit)
+      if (e.originalEvent && map) {
+        userCustomZoom = map.getZoom()
+      }
+    })
+
     resizeObserver = new ResizeObserver(() => map?.resize())
     resizeObserver.observe(container)
 
@@ -1191,13 +1203,39 @@
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   }
 
-  :global(.theme-light .atlas-arrival-callout)::after {
-    border-color: rgba(255, 255, 255, 0.96) transparent transparent transparent;
-  }
-
   :global(.atlas-marker.is-arrived .atlas-arrival-callout),
   :global(.atlas-marker.is-active .atlas-arrival-callout) {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
+  }
+
+  /* MapLibre Navigation (+/- zoom & compass) Controls Styling */
+  :global(.maplibregl-ctrl-group) {
+    border-radius: 999px !important;
+    overflow: hidden;
+    background: rgba(15, 23, 42, 0.75) !important;
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+  }
+
+  :global(.maplibregl-ctrl-group button) {
+    width: 32px !important;
+    height: 32px !important;
+    border: none !important;
+  }
+
+  :global(.maplibregl-ctrl-group button .maplibregl-ctrl-icon) {
+    filter: invert(1);
+  }
+
+  :global(.theme-light .maplibregl-ctrl-group) {
+    background: rgba(255, 255, 255, 0.9) !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+  }
+
+  :global(.theme-light .maplibregl-ctrl-group button .maplibregl-ctrl-icon) {
+    filter: none;
   }
 </style>
