@@ -13,6 +13,10 @@
   },
   "dependencies": {
     "@felicia/model": "workspace:*",
+    "@turf/along": "7.4.0",
+    "@turf/helpers": "7.4.0",
+    "@turf/length": "7.4.0",
+    "@turf/line-slice": "7.4.0",
     "d3-ease": "^3.0.1",
     "d3-geo": "^3.1.1",
     "d3-interpolate": "^3.0.1",

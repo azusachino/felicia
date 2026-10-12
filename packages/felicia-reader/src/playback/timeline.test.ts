@@ -1,0 +1,164 @@
+import { describe, expect, test } from "vitest"
+import {
+  RouteTimeline,
+  calculateBearing,
+  haversineDistance,
+  smoothSegmentCoords,
+  projectPointToSegment,
+  snapCoordinateToRoute,
+  calculateDayCutoffs,
+} from "./timeline"
+
+describe("Route Timeline & GPS Smoothing", () => {
+  test("haversineDistance computes accurate geographic distance", () => {
+    // Tokyo Station to Shinagawa Station (~6.8 km)
+    const tokyo: [number, number] = [139.7671, 35.6812]
+    const shinagawa: [number, number] = [139.7387, 35.6284]
+    const dist = haversineDistance(tokyo, shinagawa)
+    expect(dist).toBeGreaterThan(6.0)
+    expect(dist).toBeLessThan(7.5)
+  })
+
+  test("calculateBearing returns heading in degrees [0, 360)", () => {
+    const p1: [number, number] = [139.0, 35.0]
+    const pNorth: [number, number] = [139.0, 36.0]
+    const pEast: [number, number] = [140.0, 35.0]
+    expect(Math.round(calculateBearing(p1, pNorth))).toBe(0)
+    expect(Math.round(calculateBearing(p1, pEast))).toBe(90)
+  })
+
+  test("smoothSegmentCoords smooths sharp polyline without drifting far from road", () => {
+    // Right angle corner (139.0, 35.0) -> (139.0, 35.01) -> (139.01, 35.01)
+    const raw: [number, number][] = [
+      [139.0, 35.0],
+      [139.0, 35.01],
+      [139.01, 35.01],
+    ]
+    const smoothed = smoothSegmentCoords(raw, 2, 30)
+    expect(smoothed.length).toBeGreaterThan(raw.length)
+    expect(smoothed[0]).toEqual(raw[0])
+    expect(smoothed.at(-1)).toEqual(raw.at(-1))
+  })
+
+  test("RouteTimeline handles distance-paced slicing and nearest coordinate lookup", () => {
+    const segment1: [number, number][] = [
+      [139.7043, 35.8159],
+      [139.7186, 35.7975],
+      [139.7274, 35.7637],
+    ]
+    const timeline = new RouteTimeline([segment1], false)
+    expect(timeline.totalDistance).toBeGreaterThan(0)
+    expect(timeline.entries.length).toBe(3)
+
+    // Slice at 0%
+    const start = timeline.sliceAtFraction(0)
+    expect(start.currentPos[0]).toBeCloseTo(139.7043, 3)
+    expect(start.currentPos[1]).toBeCloseTo(35.8159, 3)
+
+    // Slice at 50%
+    const mid = timeline.sliceAtFraction(0.5)
+    expect(mid.traveled.length).toBeGreaterThanOrEqual(2)
+    expect(mid.bearing).toBeGreaterThanOrEqual(0)
+    expect(mid.bearing).toBeLessThan(360)
+
+    // Slice at 100%
+    const end = timeline.sliceAtFraction(1.0)
+    expect(end.currentPos[0]).toBeCloseTo(139.7274, 3)
+    expect(end.currentPos[1]).toBeCloseTo(35.7637, 3)
+
+    // Coordinate lookup
+    const foundDist = timeline.distanceAtCoordinate([139.7186, 35.7975])
+    expect(foundDist).toBeCloseTo(timeline.entries[1].dist, 4)
+  })
+
+  test("projectPointToSegment orthogonally projects onto a segment", () => {
+    const a: [number, number] = [139.0, 35.0]
+    const b: [number, number] = [139.0, 35.02] // North along longitude 139.0
+    const p: [number, number] = [139.001, 35.01] // Slightly to the east at mid-latitude
+
+    const proj = projectPointToSegment(p, a, b)
+    expect(proj.t).toBeCloseTo(0.5, 2)
+    expect(proj.point[0]).toBeCloseTo(139.0, 5)
+    expect(proj.point[1]).toBeCloseTo(35.01, 5)
+
+    // Point before segment start clamps to A (t = 0)
+    const beforeA = projectPointToSegment([139.0, 34.99], a, b)
+    expect(beforeA.t).toBe(0)
+    expect(beforeA.point).toEqual(a)
+
+    // Point after segment end clamps to B (t = 1)
+    const afterB = projectPointToSegment([139.0, 35.03], a, b)
+    expect(afterB.t).toBe(1)
+    expect(afterB.point).toEqual(b)
+  })
+
+  test("snapCoordinateToRoute snaps nearby points to road and preserves distant points", () => {
+    const road: [number, number][] = [
+      [138.9805, 34.6642],
+      [138.9830, 34.6660],
+      [138.9850, 34.6680],
+    ]
+    const segments = [road]
+
+    // Point ~200m away from the road (e.g. photo on the beach)
+    const beachPhoto: [number, number] = [138.9807, 34.6667]
+    const snapped = snapCoordinateToRoute(beachPhoto, segments, 1.0)
+    expect(snapped.snapped).toBe(true)
+    expect(snapped.distanceKm).toBeLessThan(0.3)
+    expect(snapped.originalCoord).toEqual(beachPhoto)
+    expect(snapped.coord[0]).not.toBe(beachPhoto[0]) // Snapped onto the road line
+
+    // Point 10 km away from route exceeds maxDistanceKm (1.0 km) -> not snapped
+    const farPoint: [number, number] = [139.2, 35.0]
+    const notSnapped = snapCoordinateToRoute(farPoint, segments, 1.0)
+    expect(notSnapped.snapped).toBe(false)
+    expect(notSnapped.distanceKm).toBeGreaterThan(10)
+    expect(notSnapped.coord).toEqual(farPoint)
+    expect(notSnapped.originalCoord).toEqual(farPoint)
+
+    // Empty route segments returns original coord with snapped = false
+    const emptySnap = snapCoordinateToRoute(beachPhoto, [], 1.0)
+    expect(emptySnap.snapped).toBe(false)
+    expect(emptySnap.coord).toEqual(beachPhoto)
+  })
+
+  test("calculateDayCutoffs partitions route distances across distinct trip dates", () => {
+    // 2-day trip: Leg 1 Tokyo -> Shimoda, Leg 2 Shimoda -> Tokyo
+    const leg1: [number, number][] = [
+      [139.7, 35.6],
+      [139.3, 35.2],
+      [138.9, 34.6], // Day 1 stop
+    ]
+    const leg2: [number, number][] = [
+      [138.9, 34.6],
+      [139.1, 34.9], // Day 2 stop
+      [139.7, 35.6], // Day 2 return
+    ]
+    const timeline = new RouteTimeline([leg1, leg2], false)
+    const mementos = [
+      { coords: [138.9, 34.6] as [number, number], date: "2026-08-01T12:00:00Z" },
+      { coords: [139.1, 34.9] as [number, number], date: "2026-08-02T10:00:00Z" },
+    ]
+
+    const cutoffs = calculateDayCutoffs(mementos, timeline)
+    expect(cutoffs.length).toBe(2)
+    expect(cutoffs[0].day).toBe(1)
+    expect(cutoffs[0].startDist).toBe(0)
+    expect(cutoffs[0].endDist).toBeGreaterThan(0)
+    expect(cutoffs[1].day).toBe(2)
+    expect(cutoffs[1].startDist).toBe(cutoffs[0].endDist)
+    expect(cutoffs[1].endDist).toBe(timeline.totalDistance)
+
+    // Slice midway through Day 1 (25% progress)
+    const day1Slices = timeline.sliceByDays(0.25, cutoffs)
+    expect(day1Slices.length).toBe(1)
+    expect(day1Slices[0].day).toBe(1)
+
+    // Slice midway through Day 2 (75% progress)
+    const day2Slices = timeline.sliceByDays(0.75, cutoffs)
+    expect(day2Slices.length).toBe(2)
+    expect(day2Slices[0].day).toBe(1) // Completed Day 1
+    expect(day2Slices[1].day).toBe(2) // In-progress Day 2
+  })
+})
+

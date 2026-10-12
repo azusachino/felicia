@@ -235,9 +235,8 @@ func roundCoord(v float64) float64 {
 	return math.Round(v*scale) / scale
 }
 
-// trimRouteLine trims routeTrimMeters (200m) from each end of a passive GPS
-// trace based on cumulative ground distance.
-func trimRouteLine(line orb.LineString) orb.LineString {
+// trimLineStart trims routeTrimMeters (200m) from the beginning of a line.
+func trimLineStart(line orb.LineString) orb.LineString {
 	if len(line) < routeMinPoints {
 		return line
 	}
@@ -246,7 +245,7 @@ func trimRouteLine(line orb.LineString) orb.LineString {
 		cumulative[i] = cumulative[i-1] + geo.Distance(line[i-1], line[i])
 	}
 	total := cumulative[len(line)-1]
-	if total <= 2*routeTrimMeters {
+	if total <= routeTrimMeters {
 		return line
 	}
 
@@ -257,6 +256,22 @@ func trimRouteLine(line orb.LineString) orb.LineString {
 			break
 		}
 	}
+	return line[startIdx:]
+}
+
+// trimLineEnd trims routeTrimMeters (200m) from the end of a line.
+func trimLineEnd(line orb.LineString) orb.LineString {
+	if len(line) < routeMinPoints {
+		return line
+	}
+	cumulative := make([]float64, len(line))
+	for i := 1; i < len(line); i++ {
+		cumulative[i] = cumulative[i-1] + geo.Distance(line[i-1], line[i])
+	}
+	total := cumulative[len(line)-1]
+	if total <= routeTrimMeters {
+		return line
+	}
 
 	endIdx := len(line) - 1
 	for i := len(line) - 2; i >= 0; i-- {
@@ -265,12 +280,7 @@ func trimRouteLine(line orb.LineString) orb.LineString {
 			break
 		}
 	}
-
-	if startIdx >= endIdx {
-		return line
-	}
-
-	return line[startIdx : endIdx+1]
+	return line[:endIdx+1]
 }
 
 func publicRouteGeometry(value orb.MultiLineString) *GeoJSONGeometry {
@@ -278,8 +288,17 @@ func publicRouteGeometry(value orb.MultiLineString) *GeoJSONGeometry {
 		return nil
 	}
 	coordinates := make([][][]float64, 0, len(value))
-	for _, line := range value {
-		trimmed := trimRouteLine(line)
+	for i, line := range value {
+		trimmed := line
+		// US-06 (Issue #90): Only trim the very start of the journey (home departure)
+		// and the very end of the journey (home arrival). Intermediate segments (e.g. scenic
+		// stops, beaches, viewpoints) connect public destinations and MUST NOT be trimmed.
+		if i == 0 {
+			trimmed = trimLineStart(trimmed)
+		}
+		if i == len(value)-1 {
+			trimmed = trimLineEnd(trimmed)
+		}
 		if len(trimmed) == 0 {
 			continue
 		}

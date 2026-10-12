@@ -4,7 +4,6 @@
   import { loadJourneys, loadSiteSettings } from "./api/source"
 
   let settings = $state<ApiSiteSettings | null>(null)
-  const markUrl = `${import.meta.env.BASE_URL}felicia-mark.svg`
 
   $effect(() => {
     loadSiteSettings()
@@ -46,18 +45,13 @@
 />
 
 <div class="public-reader-shell" class:theme-light={theme === "light"}>
-  <a class="public-brand" href="/" aria-label="Felicia home">
-    <img src={markUrl} alt="" aria-hidden="true" />
-    <span>felicia</span>
-  </a>
-
   <div class="reader-appearance">
-    <button type="button" aria-label={message(lang, "theme.light")} title={message(lang, "theme.light")} aria-pressed={theme === "light"} onclick={() => chooseTheme("light")}
-      ><Sun size={18} aria-hidden="true" /></button
-    >
-    <button type="button" aria-label={message(lang, "theme.dark")} title={message(lang, "theme.dark")} aria-pressed={theme === "dark"} onclick={() => chooseTheme("dark")}
-      ><Moon size={18} aria-hidden="true" /></button
-    >
+    <button type="button" aria-label={message(lang, "theme.light")} title={message(lang, "theme.light")} aria-pressed={theme === "light"} onclick={() => chooseTheme("light")}>
+      <Sun size={18} aria-hidden="true" />
+    </button>
+    <button type="button" aria-label={message(lang, "theme.dark")} title={message(lang, "theme.dark")} aria-pressed={theme === "dark"} onclick={() => chooseTheme("dark")}>
+      <Moon size={18} aria-hidden="true" />
+    </button>
   </div>
   <Reader bind:lang bind:theme {loadJourneys} />
 </div>
@@ -78,7 +72,7 @@
     position: absolute;
     top: 1rem;
     right: 1rem;
-    z-index: 10;
+    z-index: 30;
     display: flex;
     padding: 3px;
     border: 1px solid rgba(184, 232, 221, 0.2);
@@ -86,6 +80,7 @@
     background: rgba(9, 25, 37, 0.9);
     color: #c8d9dc;
   }
+
   .reader-appearance button {
     display: grid;
     place-items: center;
@@ -97,60 +92,20 @@
     background: transparent;
     cursor: pointer;
   }
+
   .reader-appearance button[aria-pressed="true"] {
     color: #07131f;
     background: #ff9b72;
   }
+
   .reader-appearance button:focus-visible {
     outline: 2px solid currentColor;
     outline-offset: 2px;
   }
+
   .public-reader-shell.theme-light .reader-appearance {
     background: rgba(241, 248, 246, 0.95);
     border-color: rgba(13, 41, 55, 0.16);
     color: #23424b;
-  }
-  .public-brand {
-    position: absolute;
-    top: 1rem;
-    left: 1rem;
-    z-index: 10;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.375rem 0.75rem;
-    border-radius: 9999px;
-    background: rgba(9, 25, 37, 0.72);
-    border: 1px solid rgba(184, 232, 221, 0.2);
-    backdrop-filter: blur(8px);
-    color: #c8d9dc;
-    text-decoration: none;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    letter-spacing: 0.05em;
-    transition:
-      color 0.15s ease,
-      border-color 0.15s ease;
-  }
-
-  .public-brand:hover {
-    color: #fff;
-    border-color: rgba(184, 232, 221, 0.4);
-  }
-
-  .public-brand img {
-    width: 1rem;
-    height: 1rem;
-  }
-
-  .public-reader-shell.theme-light .public-brand {
-    background: rgba(241, 248, 246, 0.85);
-    border-color: rgba(13, 41, 55, 0.16);
-    color: #41606a;
-  }
-
-  .public-reader-shell.theme-light .public-brand:hover {
-    color: #17202a;
-    border-color: rgba(13, 41, 55, 0.32);
   }
 </style>

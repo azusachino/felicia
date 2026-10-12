@@ -8,6 +8,7 @@
     src,
     alt,
     caption = "",
+    video = "",
     openLabel = "Open photo",
     closeLabel = "Close",
     imageClass = "",
@@ -15,6 +16,7 @@
     src: string
     alt: string
     caption?: string
+    video?: string
     openLabel?: string
     closeLabel?: string
     imageClass?: string
@@ -22,12 +24,15 @@
 
   let triggerButton: HTMLButtonElement | undefined
   let dialogEl: HTMLDialogElement | undefined
+  let isPlayingLive = $state(false)
 
   function show() {
+    isPlayingLive = false
     dialogEl?.showModal()
   }
 
   function close() {
+    isPlayingLive = false
     dialogEl?.close()
   }
 
@@ -35,6 +40,7 @@
   // already supplies the focus trap and Escape handling; this only needs to
   // return focus to whatever opened it.
   function onDialogClose() {
+    isPlayingLive = false
     triggerButton?.focus()
   }
 </script>
@@ -46,7 +52,35 @@
 <dialog bind:this={dialogEl} class="photo-lightbox" aria-label={alt} onclose={onDialogClose}>
   <div class="lightbox-frame">
     <button type="button" class="lightbox-close" aria-label={closeLabel} onclick={close}>×</button>
-    <img class="lightbox-image" {src} {alt} />
+    
+    <div class="relative">
+      {#if isPlayingLive && video}
+        <video
+          src={video}
+          poster={src}
+          autoplay
+          loop
+          muted
+          playsinline
+          class="lightbox-image"
+        ></video>
+      {:else}
+        <img class="lightbox-image" {src} {alt} />
+      {/if}
+
+      {#if video}
+        <button
+          type="button"
+          class="lightbox-live-toggle"
+          class:active={isPlayingLive}
+          onclick={() => (isPlayingLive = !isPlayingLive)}
+        >
+          <span class="live-dot"></span>
+          {isPlayingLive ? "实况播放中" : "播放实况"}
+        </button>
+      {/if}
+    </div>
+
     {#if caption}
       <p>{caption}</p>
     {/if}
@@ -143,5 +177,41 @@
     margin: 0.55rem 0 0.1rem;
     color: #ddd;
     font-size: 0.78rem;
+  }
+
+  .lightbox-live-toggle {
+    position: absolute;
+    bottom: 0.75rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 9999px;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(8px);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .lightbox-live-toggle:hover {
+    background: rgba(0, 0, 0, 0.85);
+  }
+
+  .lightbox-live-toggle.active {
+    border-color: rgba(251, 146, 60, 0.6);
+    color: #fb923c;
+  }
+
+  .live-dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 9999px;
+    background: #fb923c;
   }
 </style>

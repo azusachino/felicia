@@ -15,3 +15,4 @@ Historical exploration records (the initial multi-theme, dual-database trail fro
 | [0005](0005-sqlite-storage-and-content-addressed-media.md) | SQLite Storage and Content-Addressed Media | 2026-10-01 | Accepted |
 | [0006](0006-system-locales-and-content-transparency.md) | System Locales and Content Transparency | 2026-10-01 | Accepted |
 | [0007](0007-application-and-package-layout.md) | Application and Package Layout | 2026-10-01 | Accepted |
+| [0008](0008-pivot-to-hyoban-spatial-journal.md) | Pivot to Hyoban Spatial Journal and Cinematic Playback | 2026-10-11 | Accepted |

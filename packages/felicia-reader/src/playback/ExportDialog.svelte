@@ -1,0 +1,155 @@
+<script lang="ts">
+  import { formatChapters, type PlaybackController } from "./engine"
+
+  let {
+    controller,
+    journeyTitle,
+    onClose,
+  }: {
+    controller: PlaybackController
+    journeyTitle: string
+    onClose: () => void
+  } = $props()
+
+  let ratio = $state<"landscape" | "portrait">("landscape")
+  let isRecording = $state(false)
+  let status = $state<string | null>(null)
+
+  function downloadText(content: string, filename: string) {
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = filename
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
+  function downloadChapters() {
+    const chapters = controller.getChapters()
+    const formatted = formatChapters(chapters.length ? chapters : [{ label: journeyTitle, timeSeconds: 0 }])
+    downloadText(formatted, `${journeyTitle}-章节.txt`)
+  }
+
+  async function startRecording() {
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+      status = "当前浏览器不支持屏幕/标签页录制 API，您可以下载章节文件。"
+      return
+    }
+
+    try {
+      isRecording = true
+      status = "正在准备屏幕录制，请在弹窗中选择当前标签页..."
+
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: "browser", frameRate: 30 },
+        audio: false,
+      })
+
+      const mimeType = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm"].find((m) =>
+        MediaRecorder.isTypeSupported(m)
+      )
+
+      const chunks: Blob[] = []
+      const recorder = new MediaRecorder(stream, {
+        ...(mimeType ? { mimeType } : {}),
+        videoBitsPerSecond: 10_000_000,
+      })
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data)
+      }
+
+      recorder.onstop = () => {
+        isRecording = false
+        const ext = recorder.mimeType.includes("mp4") ? "mp4" : "webm"
+        const finalBlob = new Blob(chunks, { type: recorder.mimeType || "video/webm" })
+        const url = URL.createObjectURL(finalBlob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = `${journeyTitle}-${ratio === "portrait" ? "竖屏" : "横屏"}.${ext}`
+        a.click()
+        setTimeout(() => URL.revokeObjectURL(url), 60000)
+        downloadChapters()
+        onClose()
+      }
+
+      // Reset playback to start and play
+      controller.seek(0)
+      controller.play()
+      recorder.start(1000)
+
+      // Listen for user stopping share
+      stream.getVideoTracks()[0].addEventListener("ended", () => {
+        if (recorder.state === "recording") recorder.stop()
+      })
+    } catch {
+      isRecording = false
+      status = "录制已取消或权限被拒绝。"
+    }
+  }
+</script>
+
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
+  <div class="w-full max-w-md rounded-2xl border border-white/20 bg-stone-950 p-6 text-white shadow-2xl">
+    <div class="flex items-center justify-between">
+      <h2 class="text-base font-bold">导出旅程视频</h2>
+      <button
+        type="button"
+        class="flex size-8 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent text-stone-400 hover:text-white"
+        onclick={onClose}
+      >
+        ✕
+      </button>
+    </div>
+
+    <p class="mt-2 text-xs leading-relaxed text-stone-400">
+      利用浏览器原生屏幕录制 API 将旅程回放录制为高清视频，并自动导出视频平台（B站 / YouTube）适用的分集章节时间戳。
+    </p>
+
+    <!-- Ratio Switcher -->
+    <div class="mt-4">
+      <span class="block text-xs font-medium text-stone-300">画面比例</span>
+      <div class="mt-2 grid grid-cols-2 gap-2 text-xs">
+        <button
+          type="button"
+          class="flex cursor-pointer items-center justify-center gap-2 rounded-xl border p-2.5 transition {ratio === 'landscape' ? 'border-orange-400 bg-orange-500/10 text-orange-300' : 'border-white/10 text-stone-300'}"
+          onclick={() => (ratio = "landscape")}
+        >
+          <span>🖥️ 横屏 16:9</span>
+        </button>
+        <button
+          type="button"
+          class="flex cursor-pointer items-center justify-center gap-2 rounded-xl border p-2.5 transition {ratio === 'portrait' ? 'border-orange-400 bg-orange-500/10 text-orange-300' : 'border-white/10 text-stone-300'}"
+          onclick={() => (ratio = "portrait")}
+        >
+          <span>📱 竖屏 9:16</span>
+        </button>
+      </div>
+    </div>
+
+    {#if status}
+      <p class="mt-3 text-xs text-orange-300">{status}</p>
+    {/if}
+
+    <!-- Buttons -->
+    <div class="mt-6 flex items-center justify-between gap-3">
+      <button
+        type="button"
+        class="cursor-pointer rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-stone-300 hover:bg-white/10 hover:text-white"
+        onclick={downloadChapters}
+      >
+        仅下载章节 (.txt)
+      </button>
+
+      <button
+        type="button"
+        class="cursor-pointer rounded-xl border border-orange-400/50 bg-orange-500 px-4 py-2 text-xs font-semibold text-white shadow-lg transition hover:bg-orange-400 disabled:opacity-50"
+        disabled={isRecording}
+        onclick={startRecording}
+      >
+        {isRecording ? "录制中..." : "开始录制视频"}
+      </button>
+    </div>
+  </div>
+</div>

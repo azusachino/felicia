@@ -1,4 +1,5 @@
 import type { ApiGeoJSONGeometry, ApiJourney, ApiMemento, Coordinates, Journey, L, Memento, MementoKind, Station, Visit } from "@felicia/model"
+import { snapCoordinateToRoute } from "../playback/timeline"
 
 function authored(canonical: string | undefined): L {
   const value = canonical ?? ""
@@ -112,39 +113,72 @@ function adaptMemento(apiMemento: ApiMemento, visitId: string, visitCoords: Coor
     kindData: apiMemento.kind_data,
     photos: (apiMemento.photos ?? []).map((photo) => ({
       src: mediaURL(photo.object_key),
+      video: photo.video_key ? mediaURL(photo.video_key) : undefined,
       caption: authored(photo.caption),
+      alt: photo.alt,
+      width: photo.width,
+      height: photo.height,
     })),
     transit: transitData(apiMemento, title, visitCoords),
   }
 }
 
 export function adaptJourney(apiJourney: ApiJourney, apiMementos: ApiMemento[], mediaURL: MediaURL = (value) => value): Journey {
+  const segments = routeSegments(apiJourney.gps_route)
   const visits: Visit[] = []
   const mementos: Memento[] = []
   const visitByKey = new Map<string, Visit>()
   for (const apiMemento of apiMementos) {
-    const coords = geometryPoint(apiMemento.geom)
-    const visitKey = `${apiMemento.place}:${coords[0]},${coords[1]}`
+    const rawCoords = geometryPoint(apiMemento.geom)
+    const isNonZero = rawCoords[0] !== 0 || rawCoords[1] !== 0
+    const snapResult = isNonZero && segments.length > 0 ? snapCoordinateToRoute(rawCoords, segments, 1.0) : null
+    // When the route already touches the visited stop (< 50m), retain the authoritative place coordinate directly
+    const finalCoords = snapResult?.snapped && snapResult.distanceKm >= 0.05 ? snapResult.coord : rawCoords
+    const originalCoords = snapResult?.snapped && snapResult.distanceKm >= 0.05 ? rawCoords : undefined
+
+    const visitKey = `${apiMemento.place}:${finalCoords[0].toFixed(5)},${finalCoords[1].toFixed(5)}`
     let visit = visitByKey.get(visitKey)
     if (!visit) {
       visit = {
         id: `visit:${apiJourney.slug}:${visitKey}`,
         label: authored(apiMemento.place),
-        coords,
+        coords: finalCoords,
       }
       visitByKey.set(visitKey, visit)
       visits.push(visit)
     }
-    mementos.push(adaptMemento(apiMemento, visit.id, visit.coords, mediaURL))
+    const adapted = adaptMemento(apiMemento, visit.id, finalCoords, mediaURL)
+    adapted.coords = finalCoords
+    if (originalCoords) {
+      adapted.originalCoords = originalCoords
+    }
+    mementos.push(adapted)
   }
+
+  const covers = (apiJourney.covers ?? []).map((photo) => ({
+    src: mediaURL(photo.object_key),
+    video: photo.video_key ? mediaURL(photo.video_key) : undefined,
+    caption: authored(photo.caption),
+    alt: photo.alt,
+    width: photo.width,
+    height: photo.height,
+  }))
 
   return {
     id: apiJourney.id,
+    slug: apiJourney.slug,
     title: authored(apiJourney.title),
     dates: authored(`${datePart(apiJourney.date_start)} — ${datePart(apiJourney.date_end)}`),
     place: authored(apiJourney.place),
     route: routeCoordinates(apiJourney.gps_route),
     routeSegments: routeSegments(apiJourney.gps_route),
+    legModes: (apiJourney.leg_modes as any) ?? undefined,
+    covers: covers.length > 0 ? covers : undefined,
+    weather: apiJourney.weather,
+    distanceKm: apiJourney.distance_km,
+    drivingHours: apiJourney.driving_hours,
+    departureTime: apiJourney.departure_time ?? apiJourney.timestamps?.start,
+    arrivalTime: apiJourney.arrival_time ?? apiJourney.timestamps?.end,
     visits,
     mementos,
   }

@@ -26,6 +26,14 @@ export interface ApiJourney {
   date_start: string
   date_end: string
   gps_route?: ApiGeoJSONGeometry
+  leg_modes?: string[]
+  covers?: ApiMementoPhoto[]
+  weather?: Record<string, { icon: string; label: string }>
+  distance_km?: number
+  driving_hours?: number
+  departure_time?: string
+  arrival_time?: string
+  timestamps?: { start?: string; end?: string }
   authored_fields: string[]
 }
 
@@ -37,6 +45,10 @@ export interface ApiMementoPhoto {
   caption?: string
   seq: number
   taken_at?: string
+  video_key?: string
+  width?: number
+  height?: number
+  alt?: string
 }
 
 export interface ApiMemento {

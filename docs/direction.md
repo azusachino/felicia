@@ -10,19 +10,9 @@
 
 ## The idea (one paragraph)
 
-A map-based travel journal, modeled on [liuaaron.com](https://liuaaron.com/) ("Aaron's
-Waypoints"). Each **journey** is an orange route line on a dark world map; along it sit a
-few **mementos** — the objects that anchor a memory: an admission ticket, but equally a
-souvenir, a goods (the fuwamiku you bought), a receipt, a stamp. Each renders as a
-collectible **stub**; click it and it animates open into a written **essay** and a photo
-gallery. The map is the index; the mementos are the stories.
+A map-based travel journal, centered on an interactive living journey playback canvas (modeled on [hyoban.cc](https://hyoban.cc/trip/2026-national-day-road-trip/), pivoting from the initial `liuaaron.com` ticket-stub baseline via [ADR 0008](adr/0008-pivot-to-hyoban-spatial-journal.md)). Each **journey** traces a multimodal route line on an edge-to-edge dark map; along it sit **mementos** — narrative essays, place chips, weather context, and tactile Live Photo Polaroid cards. An automated cinematic playback state machine guides viewers step-by-step through days, route legs, and dwell stops. The map is the index; the mementos are the stories.
 
-> **Memento, not ticket.** Physical tickets are dying and the anchor often isn't a ticket
-> anyway, so the click-target generalizes: `Ticket → Memento` with a `kind`
-> (goods · live · transit · stamp · receipt · souvenir · …), and the stub is _rendered from data_,
-> template-first, not scanned. Full reasoning:
-> [`research/mementos-not-tickets.md`](research/mementos-not-tickets.md)
-> (ADR `felicia:decision:memento-not-ticket`).
+> **Living playback and authentic moments over simulated ticket stubs.** Physical paper tickets are dying, and simulated perforation/barcode components introduced high layout complexity. Following ADR 0008, Felicia treats memory anchors as **Moments**: expressive typography, responsive Live Photos, and spatial journey playback. Full reasoning: [`docs/research/hyoban-trip-playback-teardown.md`](research/hyoban-trip-playback-teardown.md) and [ADR 0008](adr/0008-pivot-to-hyoban-spatial-journal.md).
 
 ## Direction: personal now, product-ready
 

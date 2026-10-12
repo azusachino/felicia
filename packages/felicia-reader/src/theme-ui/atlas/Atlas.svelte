@@ -1,104 +1,115 @@
 <script lang="ts">
   import AtlasDetail from "./AtlasDetail.svelte"
   import AtlasMap from "./AtlasMap.svelte"
-  import AtlasStub from "./AtlasStub.svelte"
+  import FloatingToolbar from "../../components/FloatingToolbar.svelte"
+  import JournalStream from "../../components/JournalStream.svelte"
+  import PhotoLightbox from "../../components/PhotoLightbox.svelte"
+  import TripPlaybackCard from "../../playback/TripPlaybackCard.svelte"
+  import TripStage from "../../playback/TripStage.svelte"
+  import {
+    generatePlaybackSteps,
+    PlaybackController,
+    type PlaybackControllerState,
+    type PlaybackStep,
+  } from "../../playback/engine"
   import type { Journey, Lang, Memento, Theme } from "@felicia/model"
 
-  let { lang = $bindable("ja"), theme = $bindable("dark"), loadJourneys }: { lang?: Lang; theme?: Theme; loadJourneys: () => Promise<Journey[]> } = $props()
+  let {
+    lang = $bindable("ja"),
+    theme = $bindable("dark"),
+    loadJourneys,
+  }: {
+    lang?: Lang
+    theme?: Theme
+    loadJourneys: () => Promise<Journey[]>
+  } = $props()
+
   let journeys = $state<Journey[]>([])
-  let newestFirst = $state(true)
   let isLoading = $state(true)
   let error = $state<string | null>(null)
+  let mode = $state<"map" | "journal">("map")
   let activeJourneyId = $state<string | null>(null)
   let activeMementoId = $state<string | null>(null)
   let selectedMementoId = $state<string | null>(null)
-  let indexOpen = $state(true)
+  let showStage = $state(false)
+  let lightboxPhoto = $state<{ src: string; video?: string; caption: string } | null>(null)
 
-  const orderedJourneys = $derived(
-    [...journeys]
-      .sort((left, right) => {
-        const comparison = journeyStart(left).localeCompare(journeyStart(right))
-        return newestFirst ? -comparison : comparison
-      })
-      .map((journey) => ({
-        journey,
-        mementos: [...journey.mementos].sort((left, right) => {
-          const comparison = left.date.en.localeCompare(right.date.en)
-          return newestFirst ? -comparison : comparison
-        }),
-      })),
+  const activeJourney = $derived(
+    activeJourneyId ? (journeys.find((journey) => journey.id === activeJourneyId) ?? null) : null
   )
-  const activeJourney = $derived(journeys.find((journey) => journey.id === activeJourneyId) ?? journeys[0] ?? null)
-  const selectedMemento = $derived(activeJourney?.mementos.find((memento) => memento.id === selectedMementoId) ?? null)
+  const selectedMemento = $derived(
+    activeJourney
+      ? (activeJourney.mementos.find((memento) => memento.id === selectedMementoId) ?? null)
+      : (journeys.flatMap((j) => j.mementos).find((m) => m.id === selectedMementoId) ?? null)
+  )
 
-  const ui = {
-    ja: {
-      title: "旅の地図帳",
-      subtitle: "旅の記憶を、チケットのかたちで",
-      newest: "新しい順",
-      oldest: "古い順",
-      journeys: "旅",
-      mementos: "件",
-      photos: "枚",
-      photosHeading: "写真",
-      indexOpen: "目録を開く",
-      indexClose: "目録を閉じる",
-      loading: "読み込み中…",
-      retry: "再試行",
-      close: "閉じる",
-      story: "物語",
-      journeyMap: "旅の地図",
-      links: "リンク",
-      sortJourneys: "旅の並べ替え",
-      more: (n: number) => `ほか${n}件`,
-    },
-    en: {
-      title: "Felicia's Waypoints",
-      subtitle: "A travel journal in memento stubs",
-      newest: "Newest",
-      oldest: "Oldest",
-      journeys: "journeys",
-      mementos: "mementos",
-      photos: "photos",
-      photosHeading: "Photos",
-      indexOpen: "Show index",
-      indexClose: "Hide index",
-      loading: "Loading…",
-      retry: "Retry",
-      close: "Close",
-      story: "Story",
-      journeyMap: "Journey map",
-      links: "Links",
-      sortJourneys: "Sort journeys",
-      more: (n: number) => `+${n} more`,
-    },
-    zh: {
-      title: "旅行图册",
-      subtitle: "以纪念物记录旅途",
-      newest: "最新",
-      oldest: "最早",
-      journeys: "次旅程",
-      mementos: "件纪念物",
-      photos: "张照片",
-      photosHeading: "照片",
-      indexOpen: "打开目录",
-      indexClose: "关闭目录",
-      loading: "加载中…",
-      retry: "重试",
-      close: "关闭",
-      story: "故事",
-      journeyMap: "旅程地图",
-      links: "链接",
-      sortJourneys: "旅程排序",
-      more: (n: number) => `还有${n}件`,
-    },
-  } as const
+  // Playback engine state
+  let playbackController = $state<PlaybackController | null>(null)
+  let currentStep = $state<PlaybackStep | null>(null)
+  let isPlaying = $state(false)
+  let lastJourneyId = $state<string | null>(null)
+  let legPhase = $state<"transit" | "arrived">("arrived")
+  let legDistanceKm = $state<number>(0)
+  let isPlaybackDismissed = $state(false)
 
-  const t = (value: { ja: string; en: string; zh: string }) => value[lang]
-  const label = $derived(ui[lang])
+  function initPlayback(journey: Journey | null) {
+    playbackController?.destroy()
+    isPlaybackDismissed = false
+    if (!journey) {
+      playbackController = null
+      currentStep = null
+      isPlaying = false
+      lastJourneyId = null
+      legPhase = "arrived"
+      legDistanceKm = 0
+      return
+    }
+    const steps = generatePlaybackSteps(journey, lang)
+    const ctrl = new PlaybackController(steps)
+    ctrl.subscribe((state: PlaybackControllerState, step: PlaybackStep) => {
+      currentStep = step
+      isPlaying = state.isPlaying
+      if (step.type === "stop") {
+        activeMementoId = step.memento.id
+        legDistanceKm = step.travelDistanceKm ?? 0
+        legPhase = state.isPlaying && (step.travelDistanceKm ?? 0) > 0.05 ? "transit" : "arrived"
+      } else {
+        activeMementoId = null
+        legPhase = "arrived"
+        legDistanceKm = 0
+      }
+    })
+    playbackController = ctrl
+    lastJourneyId = journey.id
+  }
 
-  function journeyStart(journey: Journey) {
-    return journey.dates.en.slice(0, 10)
+  $effect(() => {
+    if (activeJourney && activeJourney.id !== lastJourneyId) {
+      initPlayback(activeJourney)
+    } else if (!activeJourney && playbackController) {
+      initPlayback(null)
+    }
+  })
+
+  function handleSelectJourney(id: string | null) {
+    activeJourneyId = id
+    selectedMementoId = null
+    activeMementoId = null
+  }
+
+  function handleSelectPhoto(memento: Memento, photoIndex: number) {
+    const photo = memento.photos[photoIndex]
+    if (photo) {
+      lightboxPhoto = {
+        src: photo.src,
+        video: photo.video,
+        caption: photo.caption[lang] || photo.caption.zh || photo.caption.en || "",
+      }
+    }
+  }
+
+  function closeMemento() {
+    selectedMementoId = null
   }
 
   function loadData() {
@@ -108,7 +119,7 @@
       .then((data) => {
         journeys = data
         activeJourneyId = data[0]?.id ?? null
-        activeMementoId = data[0]?.mementos[0]?.id ?? null
+        activeMementoId = null
       })
       .catch((reason) => {
         error = reason instanceof Error ? reason.message : String(reason)
@@ -118,574 +129,159 @@
       })
   }
 
-  function observeJourney(node: HTMLElement, journey: Journey) {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) activeJourneyId = journey.id
-      },
-      { rootMargin: "-35% 0px -55% 0px", threshold: 0 },
-    )
-    observer.observe(node)
-    return { destroy: () => observer.disconnect() }
-  }
-
-  function observeMemento(node: HTMLElement, memento: Memento) {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          activeMementoId = memento.id
-          activeJourneyId = node.dataset.journeyId ?? activeJourneyId
-        }
-      },
-      { rootMargin: "-42% 0px -42% 0px", threshold: 0 },
-    )
-    observer.observe(node)
-    return { destroy: () => observer.disconnect() }
-  }
-
-  function selectMemento(memento: Memento, journeyId: string) {
-    activeJourneyId = journeyId
-    activeMementoId = memento.id
-    selectedMementoId = memento.id
-    // The index and detail panels overlap below 900px -- the detail panel
-    // takes over the role the index was playing, so close it rather than
-    // stack both fixed-position panels on a narrow viewport.
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 900px)").matches) {
-      indexOpen = false
-    }
-  }
-
-  function selectMementoById(mementoId: string) {
-    for (const journey of journeys) {
-      const memento = journey.mementos.find((item) => item.id === mementoId)
-      if (memento) {
-        selectMemento(memento, journey.id)
-        return
-      }
-    }
-  }
-
-  function jumpToJourney(journeyId: string) {
-    activeJourneyId = journeyId
-    const target = document.querySelector<HTMLElement>(`[data-journey-id="${journeyId}"]`)
-    target?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" })
-  }
-
-  function closeMemento() {
-    selectedMementoId = null
-  }
-
   $effect(() => loadData())
 </script>
 
-<svelte:window onkeydown={(event) => event.key === "Escape" && closeMemento()} />
+<svelte:window onkeydown={(event) => event.key === "Escape" && (closeMemento(), (showStage = false), (lightboxPhoto = null))} />
 
-<main class="waypoints" class:light={theme === "light"}>
+<main
+  class="felicia-canvas waypoints relative z-20 isolate h-screen w-full overflow-hidden transition-colors duration-300 {theme === 'light' ? 'bg-[#f8fafc] text-stone-900' : 'bg-[#07131f] text-stone-100'}"
+  class:light={theme === "light"}
+>
   {#if isLoading}
-    <div class="status" role="status">{label.loading}</div>
+    <div class="flex h-screen w-full items-center justify-center text-sm text-stone-400">
+      Loading journal...
+    </div>
   {:else if error}
-    <div class="status status-error" role="alert">
-      <p>{error}</p>
-      <button type="button" onclick={loadData}>{label.retry}</button>
+    <div class="flex h-screen w-full flex-col items-center justify-center gap-3 text-sm text-stone-400">
+      <p class="text-rose-400">{error}</p>
+      <button
+        type="button"
+        class="rounded-lg border border-white/20 px-3 py-1.5 text-xs text-white hover:bg-white/10"
+        onclick={loadData}
+      >
+        Retry
+      </button>
     </div>
-  {:else if orderedJourneys.length}
-    <div class="map-surface" aria-label={label.journeyMap}>
-      <AtlasMap {journeys} {activeJourneyId} {activeMementoId} {lang} {theme} onSelect={selectMementoById} />
-    </div>
+  {:else if journeys.length}
+    <!-- Shared Top Floating Toolbar HUD -->
+    <FloatingToolbar
+      {journeys}
+      {activeJourneyId}
+      {mode}
+      {lang}
+      {theme}
+      onSelectJourney={handleSelectJourney}
+      onModeChange={(newMode) => (mode = newMode)}
+      onToggleTheme={() => (theme = theme === "light" ? "dark" : "light")}
+    />
 
-    <button class="index-toggle" type="button" aria-expanded={indexOpen} onclick={() => (indexOpen = !indexOpen)}>
-      <span aria-hidden="true">{indexOpen ? "−" : "+"}</span>
-      {indexOpen ? label.indexClose : label.indexOpen}
-    </button>
-
-    {#if indexOpen}
-      <aside class="atlas-index" aria-label={label.journeys}>
-        <div class="atlas-index-head">
-          <div>
-            <p class="index-kicker">FELICIA / ATLAS</p>
-            <h2 {lang}>{label.journeys}</h2>
-          </div>
-          <span class="index-total">{orderedJourneys.length}</span>
-        </div>
-        <div class="atlas-index-list">
-          {#each orderedJourneys as entry (entry.journey.id)}
-            <button class:active={entry.journey.id === activeJourneyId} class="atlas-journey" type="button" onclick={() => jumpToJourney(entry.journey.id)}>
-              <span class="atlas-journey-title">{t(entry.journey.title)}</span>
-              <span class="atlas-journey-meta">{t(entry.journey.place)} · {t(entry.journey.dates)}</span>
-              <span class="atlas-journey-count">{entry.mementos.length} {label.mementos}</span>
-            </button>
-          {/each}
-        </div>
-        {#if activeJourney}
-          <div class="atlas-index-mementos">
-            <p class="index-kicker">{t(activeJourney.title)}</p>
-            {#each activeJourney.mementos.slice(0, 4) as memento, index (memento.id)}
-              <button class:active={memento.id === activeMementoId} type="button" onclick={() => selectMemento(memento, activeJourney.id)}>
-                <span>{String(index + 1).padStart(2, "0")}</span>
-                <strong>{t(memento.title)}</strong>
-              </button>
-            {/each}
-            {#if activeJourney.mementos.length > 4}
-              <p class="index-more">{label.more(activeJourney.mementos.length - 4)}</p>
-            {/if}
-          </div>
-        {/if}
-      </aside>
-    {/if}
-
-    <header class="hero">
-      <p class="brand">F E L I C I A / ATLAS</p>
-      <h1 {lang}>{label.title}</h1>
-      <p>{label.subtitle}</p>
-      <nav class="social" aria-label={label.links}>
-        <a href="https://github.com" aria-label="GitHub">◉</a>
-        <a href="https://x.com" aria-label="X">𝕏</a>
-        <a href="https://telegram.org" aria-label="Telegram">➤</a>
-        <a href="mailto:hello@example.com" aria-label="Email">✉</a>
-      </nav>
-      <div class="sort" role="group" aria-label={label.sortJourneys}>
-        <button type="button" class:active={newestFirst} aria-pressed={newestFirst} onclick={() => (newestFirst = true)}>{label.newest}</button>
-        <button type="button" class:active={!newestFirst} aria-pressed={!newestFirst} onclick={() => (newestFirst = false)}>{label.oldest}</button>
+    {#if mode === "map"}
+      <!-- Fullscreen Map Surface -->
+      <div class="absolute inset-0">
+        <AtlasMap
+          {journeys}
+          {activeJourneyId}
+          {activeMementoId}
+          {currentStep}
+          {isPlaying}
+          {lang}
+          {theme}
+          onSelect={(id) => {
+            activeMementoId = id
+            selectedMementoId = id
+          }}
+          onLegStart={() => {
+            if (isPlaying) legPhase = "transit"
+          }}
+          onLegArrive={() => {
+            legPhase = "arrived"
+          }}
+        />
       </div>
-    </header>
 
-    <div class="journey-stream">
-      {#each orderedJourneys as entry (entry.journey.id)}
-        <section class:active={entry.journey.id === activeJourneyId} class="journey-section" use:observeJourney={entry.journey} data-journey-id={entry.journey.id}>
-          <header class="journey-heading">
-            <p class="journey-number">
-              {String(orderedJourneys.indexOf(entry) + 1).padStart(2, "0")}
-            </p>
-            <h2>{t(entry.journey.title)}</h2>
-            <p>{t(entry.journey.place)} · {t(entry.journey.dates)}</p>
-          </header>
+      <!-- Bottom-Left Playback HUD Card -->
+      {#if playbackController && currentStep && !isPlaybackDismissed}
+        <TripPlaybackCard
+          controller={playbackController}
+          {currentStep}
+          {lang}
+          {theme}
+          {legPhase}
+          {legDistanceKm}
+          onOpenStage={() => (showStage = true)}
+          onOpenDetail={(mementoId) => (selectedMementoId = mementoId)}
+          onClose={() => {
+            playbackController?.pause()
+            isPlaybackDismissed = true
+          }}
+        />
+      {:else if playbackController && isPlaybackDismissed}
+        <!-- Re-open Playback Pill -->
+        <div class="pointer-events-auto absolute bottom-4 left-4 z-20">
+          <button
+            type="button"
+            class="flex items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-semibold shadow-xl backdrop-blur-xl transition {theme === 'light' ? 'border-black/10 bg-white/90 text-stone-800 hover:bg-white' : 'border-white/20 bg-black/75 text-white hover:bg-black/90'}"
+            onclick={() => (isPlaybackDismissed = false)}
+          >
+            <span class="text-orange-400">▶</span>
+            <span>{lang === 'ja' ? '旅の再生を開く' : lang === 'zh' ? '恢复行程回放' : 'Open Trip Playback'}</span>
+          </button>
+        </div>
+      {/if}
 
-          <div class="stub-field" aria-label={t(entry.journey.title)}>
-            {#each entry.mementos as memento (memento.id)}
-              <div class:active={memento.id === activeMementoId} class="memento-entry" data-journey-id={entry.journey.id} use:observeMemento={memento}>
-                <AtlasStub {memento} {lang} photoLabel={label.photos} selected={memento.id === selectedMementoId} onSelect={() => selectMemento(memento, entry.journey.id)} />
-              </div>
-            {/each}
-          </div>
-        </section>
-      {/each}
-    </div>
+      <!-- Stage Mode (Fullscreen Presenter View) -->
+      {#if showStage && playbackController && currentStep}
+        <TripStage
+          controller={playbackController}
+          {currentStep}
+          {lang}
+          onClose={() => (showStage = false)}
+        />
+      {/if}
 
-    {#if selectedMemento}
-      <AtlasDetail memento={selectedMemento} {lang} photoLabel={label.photos} photosHeading={label.photosHeading} closeLabel={label.close} storyLabel={label.story} onClose={closeMemento} />
+      <!-- Memento Detail Drawer -->
+      {#if selectedMemento}
+        <AtlasDetail
+          memento={selectedMemento}
+          {lang}
+          photoLabel="Photos"
+          photosHeading="Photos"
+          closeLabel="Close"
+          storyLabel="Story"
+          onClose={closeMemento}
+        />
+      {/if}
+
+    {:else if mode === "journal"}
+      <!-- Vertical Reading Stream (手记 / 日历) -->
+      <div class="relative z-10 h-screen w-full overflow-y-auto overscroll-contain">
+        {#if activeJourney}
+          <JournalStream
+            journey={activeJourney}
+            {lang}
+            {theme}
+            onSelectPhoto={handleSelectPhoto}
+          />
+        {:else}
+          {#each journeys as j}
+            <div class="border-b last:border-b-0 {theme === 'light' ? 'border-black/10' : 'border-white/10'}">
+              <JournalStream
+                journey={j}
+                {lang}
+                {theme}
+                onSelectPhoto={handleSelectPhoto}
+              />
+            </div>
+          {/each}
+        {/if}
+      </div>
+
+      <!-- Lightbox for Journal Stream Photos -->
+      {#if lightboxPhoto}
+        <PhotoLightbox
+          src={lightboxPhoto.src}
+          video={lightboxPhoto.video}
+          alt={lightboxPhoto.caption}
+          caption={lightboxPhoto.caption}
+          openLabel="Open"
+          closeLabel="Close"
+        />
+      {/if}
     {/if}
   {:else}
-    <div class="status">{label.journeys}: 0</div>
+    <div class="flex h-screen w-full items-center justify-center text-sm text-stone-400">
+      No journeys found
+    </div>
   {/if}
 </main>
-
-<style>
-  .waypoints {
-    --ink: #f1f7f5;
-    --muted: #a2b8bb;
-    --orange: var(--accent, #ff9b72);
-    --orange-ink: #ffad8b;
-    --route: #7fd8cb;
-    --waypoints-bg: #07131f;
-    min-height: 100%;
-    height: 100%;
-    overflow-y: auto;
-    overscroll-behavior-y: contain;
-    background: radial-gradient(circle at 72% 8%, rgba(127, 216, 203, 0.12), transparent 28%), #07131f;
-    color: var(--ink);
-    font-family: Outfit, ui-sans-serif, system-ui, sans-serif;
-  }
-
-  .waypoints.light {
-    --ink: #102832;
-    --muted: #405960;
-    --orange: var(--accent, #d9674c);
-    --orange-ink: #8e3d26;
-    --route: #2c9e9a;
-    --waypoints-bg: #eaf3f1;
-    background: radial-gradient(circle at 72% 8%, rgba(44, 158, 154, 0.14), transparent 28%), #eaf3f1;
-  }
-
-  .map-surface {
-    position: fixed;
-    z-index: 0;
-    inset: 0;
-    pointer-events: auto;
-  }
-
-  .map-surface :global(.maplibregl-map) {
-    position: absolute;
-    inset: 0;
-  }
-
-  .hero,
-  .journey-stream {
-    position: relative;
-    z-index: 1;
-  }
-
-  .index-toggle {
-    position: fixed;
-    z-index: 5;
-    bottom: 1.25rem;
-    left: 1.25rem;
-    display: flex;
-    min-height: 2.75rem;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.65rem 0.9rem;
-    border: 1px solid color-mix(in srgb, var(--route) 38%, transparent);
-    /* A labelled toggle, not a circular marker or icon control -- the shape
-       scale reserves full rounding for those (reader-ui-ux-contract.md). */
-    border-radius: 0.5rem;
-    color: var(--ink);
-    background: color-mix(in srgb, var(--waypoints-bg) 68%, transparent);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.18),
-      0 0.75rem 2rem rgba(0, 7, 14, 0.32);
-    backdrop-filter: blur(20px) saturate(140%);
-    -webkit-backdrop-filter: blur(20px) saturate(140%);
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .index-toggle span {
-    display: grid;
-    width: 1.25rem;
-    height: 1.25rem;
-    place-items: center;
-    border: 1px solid currentColor;
-    border-radius: 50%;
-    font-size: 1rem;
-    line-height: 1;
-  }
-
-  .atlas-index {
-    position: fixed;
-    z-index: 4;
-    top: 5.5rem;
-    left: 1.25rem;
-    display: flex;
-    width: min(21rem, calc(100vw - 2.5rem));
-    max-height: min(70vh, 36rem);
-    flex-direction: column;
-    gap: 1rem;
-    overflow-y: auto;
-    padding: 1.15rem;
-    border: 1px solid color-mix(in srgb, var(--route) 30%, transparent);
-    /* Quiet content surface, not the main detail surface -- the 16px tier is
-       reserved for that (AtlasDetail uses the 2px paper tier instead, per its
-       own material system). reader-ui-ux-contract.md shape scale. */
-    border-radius: 0.5rem;
-    color: var(--ink);
-    background: color-mix(in srgb, var(--waypoints-bg) 66%, transparent);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.18),
-      0 1.5rem 4rem rgba(0, 7, 14, 0.38);
-    backdrop-filter: blur(24px) saturate(145%);
-    -webkit-backdrop-filter: blur(24px) saturate(145%);
-  }
-
-  .atlas-index-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-
-  .atlas-index h2 {
-    margin: 0.15rem 0 0;
-    font-size: 1.4rem;
-    letter-spacing: -0.04em;
-  }
-
-  /* Negative tracking optically tightens Latin type; CJK glyphs already fill
-     a full-width em with no natural inter-character gap, so the same value
-     crowds them instead. */
-  .atlas-index h2:lang(ja),
-  .atlas-index h2:lang(zh) {
-    letter-spacing: normal;
-  }
-
-  .index-kicker {
-    margin: 0;
-    color: var(--orange-ink);
-    font-size: 0.62rem;
-    font-weight: 700;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-  }
-
-  .index-total {
-    display: grid;
-    min-width: 2rem;
-    height: 2rem;
-    place-items: center;
-    border: 1px solid color-mix(in srgb, var(--ink) 24%, transparent);
-    border-radius: 50%;
-    color: var(--orange-ink);
-    font:
-      700 0.75rem/1 ui-monospace,
-      monospace;
-  }
-
-  .atlas-index-list,
-  .atlas-index-mementos {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-  }
-
-  .atlas-journey,
-  .atlas-index-mementos button {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.2rem;
-    width: 100%;
-    padding: 0.7rem;
-    border: 1px solid transparent;
-    border-radius: 0.6rem;
-    color: var(--ink);
-    background: transparent;
-    text-align: left;
-  }
-
-  .atlas-journey:hover,
-  .atlas-journey.active,
-  .atlas-index-mementos button:hover,
-  .atlas-index-mementos button.active {
-    border-color: color-mix(in srgb, var(--orange) 65%, transparent);
-    background: color-mix(in srgb, var(--orange) 18%, transparent);
-  }
-
-  .atlas-journey-title,
-  .atlas-index-mementos strong {
-    font-size: 0.88rem;
-    font-weight: 700;
-  }
-
-  .atlas-journey-meta,
-  .atlas-journey-count {
-    color: var(--muted);
-    font-size: 0.7rem;
-  }
-
-  .atlas-index-mementos {
-    border-top: 1px solid color-mix(in srgb, var(--ink) 16%, transparent);
-    padding-top: 0.9rem;
-  }
-
-  .index-more {
-    margin: 0.2rem 0 0;
-    color: var(--muted);
-    font-size: 0.72rem;
-  }
-
-  .atlas-index-mementos button {
-    display: grid;
-    grid-template-columns: 2rem minmax(0, 1fr);
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .atlas-index-mementos button > span {
-    color: var(--orange-ink);
-    font:
-      700 0.68rem/1 ui-monospace,
-      monospace;
-  }
-
-  .hero {
-    display: flex;
-    align-items: center;
-    flex-direction: column;
-    min-height: 100vh;
-    padding: clamp(7rem, 18vh, 12rem) 1rem 5rem;
-    text-align: center;
-  }
-
-  .brand,
-  .journey-number {
-    margin: 0 0 0.8rem;
-    color: var(--orange-ink);
-    background: color-mix(in srgb, var(--waypoints-bg) 95%, transparent);
-    border-radius: 4px;
-    padding: 4px 8px;
-    font-size: 0.68rem;
-    letter-spacing: 0.18em;
-  }
-
-  .hero h1 {
-    margin: 0;
-    font-size: clamp(2.8rem, 5vw, 5rem);
-    font-weight: 800;
-    letter-spacing: -0.06em;
-    text-shadow: 0 5px 18px var(--waypoints-bg);
-  }
-
-  .hero h1:lang(ja),
-  .hero h1:lang(zh) {
-    letter-spacing: normal;
-  }
-
-  .hero > p:not(.brand),
-  .journey-heading > p:last-child {
-    margin: 1rem 0 0;
-    color: var(--ink);
-    background: color-mix(in srgb, var(--waypoints-bg) 95%, transparent);
-    border-radius: 4px;
-    padding: 4px 8px;
-    font-size: clamp(1rem, 1.7vw, 1.35rem);
-  }
-
-  .social {
-    display: flex;
-    gap: 1.35rem;
-    margin-top: 1.25rem;
-  }
-
-  .social a {
-    color: var(--muted);
-    font-size: 1.35rem;
-    text-decoration: none;
-  }
-
-  .sort {
-    display: flex;
-    margin-top: 1.5rem;
-    padding: 0.2rem;
-    border: 1px solid color-mix(in srgb, var(--route) 32%, transparent);
-    border-radius: 0.7rem;
-    background: color-mix(in srgb, var(--waypoints-bg) 64%, transparent);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.14),
-      0 0.75rem 2rem rgba(0, 7, 14, 0.22);
-    backdrop-filter: blur(16px) saturate(130%);
-    -webkit-backdrop-filter: blur(16px) saturate(130%);
-  }
-
-  .sort button {
-    padding: 0.55rem 1.15rem;
-    border: 0;
-    border-radius: 0.5rem;
-    color: var(--muted);
-    background: transparent;
-  }
-
-  .sort button.active {
-    color: #17202a;
-    background: var(--orange);
-  }
-
-  .journey-section {
-    max-width: 80rem;
-    min-height: 100vh;
-    margin: 0 auto;
-    padding: 7rem 1.25rem 9rem;
-    opacity: 0.62;
-    transition: opacity 240ms ease;
-  }
-
-  .journey-section.active {
-    opacity: 1;
-  }
-
-  .journey-heading {
-    margin: 0 auto 3rem;
-    text-align: center;
-  }
-
-  .journey-heading h2 {
-    margin: 0;
-    font-size: clamp(2.2rem, 4vw, 4rem);
-    text-shadow: 0 4px 15px var(--waypoints-bg);
-  }
-
-  .journey-heading p:last-child {
-    margin-bottom: 0;
-  }
-
-  .stub-field {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 2rem 1.5rem;
-  }
-
-  .memento-entry {
-    scroll-margin-top: 38vh;
-    opacity: 0.72;
-    transition:
-      opacity 180ms ease,
-      transform 180ms ease;
-  }
-
-  .memento-entry.active {
-    opacity: 1;
-    transform: translateY(-0.25rem);
-  }
-
-  .status {
-    display: grid;
-    min-height: 100vh;
-    place-items: center;
-    color: var(--muted);
-  }
-
-  .status-error {
-    gap: 1rem;
-    align-content: center;
-  }
-
-  .status button {
-    padding: 0.6rem 1rem;
-    border: 1px solid #555;
-    border-radius: 0.4rem;
-    color: var(--ink);
-    background: transparent;
-  }
-
-  @media (max-width: 900px) {
-    .atlas-index {
-      top: auto;
-      right: 0.75rem;
-      bottom: 4.75rem;
-      left: 0.75rem;
-      width: auto;
-      max-height: min(52vh, 27rem);
-    }
-
-    .index-toggle {
-      right: 1rem;
-      bottom: 1rem;
-      left: auto;
-    }
-
-    .hero {
-      min-height: 100svh;
-      padding-top: 8rem;
-    }
-
-    .hero h1 {
-      max-width: 18rem;
-      line-height: 1.05;
-    }
-
-    .journey-section {
-      padding-top: 5rem;
-    }
-
-    .stub-field {
-      display: grid;
-      grid-template-columns: 1fr;
-    }
-
-    .memento-entry :global(.stub) {
-      width: min(100%, 25rem);
-      margin-inline: auto;
-    }
-  }
-</style>

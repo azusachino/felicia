@@ -3,7 +3,8 @@
 Epics: [SQLite-backed GitHub Pages publication](roadmap/pages-v1-epic.md)
 (shipped, PR #55); [admin GUI MVP](roadmap/admin-gui-v1-epic.md) (M1–M4
 landed, in review); [GUI site configuration and deployment](roadmap/admin-gui-v2-epic.md)
-(M0–M2 landed, M3–M4 planned). Selected end-to-end journey and its
+(M0–M2 landed, M3–M4 planned); [hyoban-style cinematic playback](roadmap/hyoban-style-journey-playback-plan.md)
+(ADR 0008, issue #170). Selected end-to-end journey and its
 per-stage status: [User journey](roadmap/user-journey.md).
 
 > Drafted 2026-07-16 — a delivery roadmap, not a commitment to build every

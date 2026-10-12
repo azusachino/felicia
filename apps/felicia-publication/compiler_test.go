@@ -273,3 +273,49 @@ func TestPublicRoutePrivacyTrimming(t *testing.T) {
 		t.Errorf("end point only trimmed %fm, want >= 200m", distFromOriginalEnd)
 	}
 }
+
+func TestPublicRouteGeometryMultiSegmentIntermediatePreserved(t *testing.T) {
+	// Create two connected segments representing Leg 1 (home to beach) and Leg 2 (beach to mountain)
+	leg1 := make(orb.LineString, 0, 20)
+	for i := 0; i < 20; i++ {
+		leg1 = append(leg1, orb.Point{139.0 + float64(i)*0.01, 35.0 + float64(i)*0.01})
+	}
+	beachPoint := leg1[len(leg1)-1]
+
+	leg2 := make(orb.LineString, 0, 20)
+	leg2 = append(leg2, beachPoint)
+	for i := 1; i < 20; i++ {
+		leg2 = append(leg2, orb.Point{beachPoint.X() + float64(i)*0.01, beachPoint.Y() + float64(i)*0.01})
+	}
+
+	journey := &domain.Journey{
+		ID:        uuid.New(),
+		JournalID: uuid.New(),
+		Slug:      "multi-leg-trip",
+		Title:     "Multi Leg Trip",
+		Place:     "Izu",
+		DateStart: time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC),
+		DateEnd:   time.Date(2026, 8, 2, 0, 0, 0, 0, time.UTC),
+		GPSRoute:  orb.MultiLineString{leg1, leg2},
+	}
+
+	projected := NewStaticJourney(journey)
+	coords := projected.GPSRoute.Coordinates.([][][]float64)
+	if len(coords) != 2 {
+		t.Fatalf("expected 2 lines, got %d", len(coords))
+	}
+
+	// Leg 1 end must connect to the beach (must NOT be trimmed)
+	leg1End := coords[0][len(coords[0])-1]
+	distFromBeach1 := geo.Distance(beachPoint, orb.Point{leg1End[0], leg1End[1]})
+	if distFromBeach1 > 20.0 {
+		t.Errorf("leg 1 end trimmed away from beach destination: %fm", distFromBeach1)
+	}
+
+	// Leg 2 start must depart from the beach (must NOT be trimmed)
+	leg2Start := coords[1][0]
+	distFromBeach2 := geo.Distance(beachPoint, orb.Point{leg2Start[0], leg2Start[1]})
+	if distFromBeach2 > 20.0 {
+		t.Errorf("leg 2 start trimmed away from beach destination: %fm", distFromBeach2)
+	}
+}
