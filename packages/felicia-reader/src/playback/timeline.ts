@@ -123,6 +123,14 @@ export class RouteTimeline {
     this.totalDistance = cumulative
   }
 
+  public get startCoord(): Coordinates {
+    return this.entries[0]?.coord ?? [0, 0]
+  }
+
+  public get endCoord(): Coordinates {
+    return this.entries.at(-1)?.coord ?? [0, 0]
+  }
+
   /**
    * Slice route up to a fraction [0, 1] of total distance.
    * Returns traveled coordinates, current vehicle head position, and forward bearing.

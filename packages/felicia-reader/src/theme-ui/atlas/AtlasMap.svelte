@@ -119,7 +119,11 @@
     const bounds = boundsOf(coordinatesFor(journey))
     if (!bounds) return
     const distance = journeyDistance(journey)
-    map.fitBounds(bounds, { padding: 80, maxZoom: 11, duration: prefersReducedMotion ? 0 : Math.min(900, 360 + distance * 180) })
+    map.fitBounds(bounds, {
+      padding: { top: 60, bottom: 80, left: 340, right: 60 },
+      maxZoom: 11,
+      duration: prefersReducedMotion ? 0 : Math.min(900, 360 + distance * 180),
+    })
   }
 
   function journeyDistance(journey: Journey) {
@@ -491,8 +495,7 @@
 
     const info = getTimelineForJourney(journey)
     if (!info || info.timeline.totalDistance <= 0.05) {
-      if (destinationMementoId) flyToMemento(destinationMementoId)
-      else map.flyTo({ center: toCoords, zoom: 12.2, pitch: 0, bearing: 0, padding: { top: 60, bottom: 80, left: 340, right: 60 }, duration: 600 })
+      map.jumpTo({ center: toCoords, zoom: 12.0, pitch: 0, bearing: 0, padding: { top: 60, bottom: 80, left: 340, right: 60 } })
       return
     }
 
@@ -508,8 +511,7 @@
       const slices = timeline.sliceByDays(fraction, cutoffs)
       updateTraveledRoute(slices, targetDay, false)
       ensureVehicleMarker(toCoords, 0, targetDay)
-      if (destinationMementoId) flyToMemento(destinationMementoId)
-      else map.flyTo({ center: toCoords, zoom: 12.2, pitch: 0, bearing: 0, padding: { top: 60, bottom: 80, left: 340, right: 60 }, duration: 600 })
+      map.jumpTo({ center: toCoords, zoom: 12.0, pitch: 0, bearing: 0, padding: { top: 60, bottom: 80, left: 340, right: 60 } })
       return
     }
 
@@ -523,17 +525,13 @@
         const slices = timeline.sliceByDays(fraction, cutoffs)
         updateTraveledRoute(slices, targetDay, false)
         ensureVehicleMarker(toCoords, 0, targetDay)
-        if (destinationMementoId) flyToMemento(destinationMementoId)
-        else {
-          map.flyTo({
-            center: toCoords,
-            zoom: 12.2,
-            pitch: 0,
-            bearing: 0,
-            padding: { top: 60, bottom: 80, left: 340, right: 60 },
-            duration: 600,
-          })
-        }
+        map.jumpTo({
+          center: toCoords,
+          zoom: 12.0,
+          pitch: 0,
+          bearing: 0,
+          padding: { top: 60, bottom: 80, left: 340, right: 60 },
+        })
         return
       }
 
@@ -547,6 +545,15 @@
 
       ensureVehicleMarker(fromCoords, 0, targetDay)
 
+      // Instantly position camera at start of leg so viewer sees the car ready to drive
+      map.jumpTo({
+        center: fromCoords,
+        zoom: 11.5,
+        pitch: 0,
+        bearing: 0,
+        padding: { top: 60, bottom: 80, left: 340, right: 60 },
+      })
+
       // Dynamic duration based on travel distance:
       // When auto-playing: paced duration matching step dwell (3.2s - 8.5s).
       // When stepping manually: brisk, smooth driving animation (1.2s - 2.2s).
@@ -556,22 +563,6 @@
       const durationMs =
         customDurationMs ??
         (isPlaying ? calculatedDuration : Math.min(2200, Math.max(1200, Math.round(calculatedDuration * 0.35))))
-
-      // Synchronized cinematic transition:
-      // MapLibre's built-in geodesic flight curve (van Wijk & Nuij) smoothly adjusts
-      // altitude and pans across the landscape to arrive at toCoords in perfect unison with the car.
-      map.flyTo({
-        center: toCoords,
-        zoom: 12.2,
-        pitch: 0,
-        bearing: 0,
-        padding: { top: 60, bottom: 80, left: 340, right: 60 },
-        duration: durationMs,
-        curve: travelDist > 30 ? 1.25 : 0.8,
-        speed: 1.0,
-        easing: (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2),
-        essential: true,
-      })
 
       const startTime = performance.now()
 
@@ -586,9 +577,20 @@
         const { currentPos, bearing } = timeline.sliceAtFraction(fraction)
         const slices = timeline.sliceByDays(fraction, cutoffs)
 
-        // Location indicator smoothly tracks vehicle position along the route with forward heading & day tint
+        // 1. Location indicator smoothly tracks vehicle position along the route with forward heading & day tint
         ensureVehicleMarker(currentPos, bearing, targetDay)
+
+        // 2. Traveled route polyline draws progressively behind the car
         updateTraveledRoute(slices, targetDay, false)
+
+        // 3. Camera continuously follows the moving car at 60 FPS
+        map?.jumpTo({
+          center: currentPos,
+          zoom: 11.5,
+          pitch: 0,
+          bearing: 0,
+          padding: { top: 60, bottom: 80, left: 340, right: 60 },
+        })
 
         if (rawProgress >= 1) {
           activeAnimationTimer?.stop()
@@ -598,12 +600,18 @@
           const finalState = timeline.sliceAtFraction(finalFraction)
           updateTraveledRoute(finalSlices, targetDay, false)
           ensureVehicleMarker(toCoords, finalState.bearing, targetDay)
+          map?.jumpTo({
+            center: toCoords,
+            zoom: 12.0,
+            pitch: 0,
+            bearing: 0,
+            padding: { top: 60, bottom: 80, left: 340, right: 60 },
+          })
         }
       })
     } catch {
       // Graceful fallback if timeline fails
-      if (destinationMementoId) flyToMemento(destinationMementoId)
-      else map?.flyTo({ center: toCoords, zoom: 12.2, pitch: 0, bearing: 0 })
+      map?.jumpTo({ center: toCoords, zoom: 12.0, pitch: 0, bearing: 0 })
     }
   }
 
@@ -651,6 +659,7 @@
 
     map.on("load", () => {
       if (!map) return
+      ;(window as any).__felicia_map__ = map
       map.addSource("routes", { type: "geojson", data: routeGeoJson() })
       map.addSource("routes-traveled", { type: "geojson", data: emptyFeatureCollection() })
 
@@ -818,7 +827,10 @@
       }
       if (journey) {
         const info = getTimelineForJourney(journey)
-        const originCoord = info?.timeline.startCoord ?? journey.mementos[0]?.coords
+        const originCoord =
+          info?.timeline.startCoord && info.timeline.startCoord[0] !== 0
+            ? info.timeline.startCoord
+            : (journey.routeSegments?.[0]?.[0] || journey.route?.[0] || journey.mementos[0]?.coords)
 
         if (currentStep.day === 1 && originCoord) {
           // Day 1 starts at Tokyo departure origin, NOT at Kujuppama destination!
