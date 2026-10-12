@@ -12,6 +12,7 @@
     legPhase = "arrived",
     legDistanceKm = 0,
     onOpenStage,
+    onOpenExport,
     onOpenDetail,
     onClose,
   }: {
@@ -22,6 +23,7 @@
     legPhase?: "transit" | "arrived"
     legDistanceKm?: number
     onOpenStage?: () => void
+    onOpenExport?: () => void
     onOpenDetail?: (mementoId: string) => void
     onClose?: () => void
   } = $props()
@@ -70,6 +72,7 @@
         nextStop: "下一站目的地",
         arrived: "已到达",
         legDist: "区间距离",
+        export: "导出视频与章节",
       },
       ja: {
         intro: "旅の再生",
@@ -99,6 +102,7 @@
         nextStop: "次の目的地",
         arrived: "到着",
         legDist: "区間距離",
+        export: "動画・チャプター書き出し",
       },
       en: {
         intro: "Trip Playback",
@@ -128,6 +132,7 @@
         nextStop: "Next Destination",
         arrived: "Arrived",
         legDist: "Leg Distance",
+        export: "Export Video & Chapters",
       },
     }[lang]
   )
@@ -457,8 +462,21 @@
           class="flex size-8 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent {theme === 'light' ? 'text-stone-600 hover:bg-black/5 hover:text-black' : 'text-stone-300 hover:bg-white/15 hover:text-white'}"
           onclick={onOpenStage}
           title={i18n.present}
+          aria-label={i18n.present}
         >
           🎬
+        </button>
+      {/if}
+
+      {#if onOpenExport}
+        <button
+          type="button"
+          class="flex size-8 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent {theme === 'light' ? 'text-stone-600 hover:bg-black/5 hover:text-black' : 'text-stone-300 hover:bg-white/15 hover:text-white'}"
+          onclick={onOpenExport}
+          title={i18n.export}
+          aria-label={i18n.export}
+        >
+          📹
         </button>
       {/if}
 

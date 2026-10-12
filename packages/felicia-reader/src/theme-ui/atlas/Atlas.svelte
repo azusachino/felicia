@@ -4,6 +4,7 @@
   import FloatingToolbar from "../../components/FloatingToolbar.svelte"
   import JournalStream from "../../components/JournalStream.svelte"
   import PhotoLightbox from "../../components/PhotoLightbox.svelte"
+  import ExportDialog from "../../playback/ExportDialog.svelte"
   import TripPlaybackCard from "../../playback/TripPlaybackCard.svelte"
   import TripStage from "../../playback/TripStage.svelte"
   import {
@@ -32,6 +33,7 @@
   let activeMementoId = $state<string | null>(null)
   let selectedMementoId = $state<string | null>(null)
   let showStage = $state(false)
+  let showExport = $state(false)
   let lightboxPhoto = $state<{ src: string; video?: string; caption: string } | null>(null)
 
   const activeJourney = $derived(
@@ -204,6 +206,7 @@
           {legPhase}
           {legDistanceKm}
           onOpenStage={() => (showStage = true)}
+          onOpenExport={() => (showExport = true)}
           onOpenDetail={(mementoId) => (selectedMementoId = mementoId)}
           onClose={() => {
             playbackController?.pause()
@@ -231,6 +234,16 @@
           {currentStep}
           {lang}
           onClose={() => (showStage = false)}
+        />
+      {/if}
+
+      <!-- Video Export & Chapters Modal -->
+      {#if showExport && playbackController}
+        <ExportDialog
+          controller={playbackController}
+          journeyTitle={activeJourney?.title[lang] || activeJourney?.title.en || activeJourney?.title.ja || activeJourney?.title.zh || "Trip"}
+          {lang}
+          onClose={() => (showExport = false)}
         />
       {/if}
 
