@@ -319,6 +319,14 @@ export class PlaybackController {
     this.steps = steps
   }
 
+  public updateSteps(newSteps: PlaybackStep[]): void {
+    this.steps = newSteps
+    if (this.currentIndex >= this.steps.length) {
+      this.currentIndex = Math.max(0, this.steps.length - 1)
+    }
+    this.notify()
+  }
+
   public subscribe(listener: StateListener): () => void {
     this.listeners.add(listener)
     listener(this.getState(), this.currentStep)

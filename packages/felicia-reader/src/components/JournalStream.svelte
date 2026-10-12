@@ -54,7 +54,7 @@
         <!-- Day Header -->
         <header class="mb-6 flex flex-wrap items-center gap-3">
           <h2 class="text-lg font-bold {theme === 'light' ? 'text-stone-900' : 'text-white'}">
-            第 {group.dayIndex} 天 · {group.date}
+            {lang === 'ja' ? `第 ${group.dayIndex} 日 · ${group.date}` : lang === 'zh' ? `第 ${group.dayIndex} 天 · ${group.date}` : `Day ${group.dayIndex} · ${group.date}`}
           </h2>
           {#if weather}
             <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs {theme === 'light' ? 'bg-black/5 text-stone-700' : 'bg-white/10 text-stone-300'}">

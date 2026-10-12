@@ -12,7 +12,7 @@
     type PlaybackControllerState,
     type PlaybackStep,
   } from "../../playback/engine"
-  import type { Journey, Lang, Memento, Theme } from "@felicia/model"
+  import { type Journey, type Lang, type Memento, type Theme, message } from "@felicia/model"
 
   let {
     lang = $bindable("ja"),
@@ -86,6 +86,10 @@
   $effect(() => {
     if (activeJourney && activeJourney.id !== lastJourneyId) {
       initPlayback(activeJourney)
+    } else if (activeJourney && playbackController) {
+      // Refresh step copy when language changes
+      const updatedSteps = generatePlaybackSteps(activeJourney, lang)
+      playbackController.updateSteps(updatedSteps)
     } else if (!activeJourney && playbackController) {
       initPlayback(null)
     }
@@ -236,10 +240,10 @@
           memento={selectedMemento}
           {lang}
           {theme}
-          photoLabel="Photos"
-          photosHeading="Photos"
-          closeLabel="Close"
-          storyLabel="Story"
+          photoLabel={lang === 'ja' ? '枚の写真' : lang === 'zh' ? '张照片' : 'Photos'}
+          photosHeading={lang === 'ja' ? '写真' : lang === 'zh' ? '照片' : 'Photos'}
+          closeLabel={message(lang, "ui.close")}
+          storyLabel={message(lang, "ui.story")}
           onClose={closeMemento}
         />
       {/if}
