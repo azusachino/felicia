@@ -127,8 +127,8 @@
   function getCameraPadding() {
     const isMobile = typeof window !== "undefined" && window.innerWidth < 768
     if (isMobile) {
-      // On mobile: top toolbar is ~48px, bottom card is ~220px, left/right minimal 20px
-      return { top: 60, bottom: 240, left: 24, right: 24 }
+      // On mobile: top toolbar is ~50px (with brand & select), bottom card is ~250px, left/right minimal 24px
+      return { top: 85, bottom: 270, left: 24, right: 24 }
     }
     // Desktop: left HUD sidebar card width ~340px
     return { top: 60, bottom: 80, left: 340, right: 60 }

@@ -159,11 +159,11 @@
 
         <!-- 3 Tilted Polaroid Cover Fan (compact on mobile) -->
         {#if currentStep.covers.length > 0}
-          <div class="relative my-2.5 flex h-20 items-center justify-center sm:my-4 sm:h-28">
+          <div class="relative my-1.5 flex h-16 items-center justify-center sm:my-4 sm:h-28">
             {#each currentStep.covers.slice(0, 3) as cover, idx}
               <div
-                class="absolute size-16 overflow-hidden rounded-lg border-2 bg-stone-900 shadow-xl transition-transform duration-300 sm:size-24 {theme === 'light' ? 'border-white shadow-stone-400/40' : 'border-white/90'}"
-                style:transform={idx === 0 ? "translateX(-1.6rem) rotate(-7deg)" : idx === 2 ? "translateX(1.6rem) rotate(7deg)" : "rotate(0deg) scale(1.05)"}
+                class="absolute size-14 overflow-hidden rounded-lg border-2 bg-stone-900 shadow-xl transition-transform duration-300 sm:size-24 {theme === 'light' ? 'border-white shadow-stone-400/40' : 'border-white/90'}"
+                style:transform={idx === 0 ? "translateX(-1.3rem) rotate(-7deg)" : idx === 2 ? "translateX(1.3rem) rotate(7deg)" : "rotate(0deg) scale(1.05)"}
                 style:z-index={idx === 1 ? 3 : 1}
               >
                 <img src={cover.src} alt="" class="size-full object-cover" />
