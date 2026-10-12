@@ -53,15 +53,11 @@
       }}
     >
       <option value="" class={theme === 'light' ? 'bg-white text-stone-900' : 'bg-stone-900 text-white'}>{labels.allPlaces}</option>
-      {#if journeys.length > 0}
-        <optgroup label={labels.trips} class={theme === 'light' ? 'bg-white text-stone-900' : 'bg-stone-900 text-white'}>
-          {#each journeys as j}
-            <option value={j.id} class={theme === 'light' ? 'bg-white text-stone-900' : 'bg-stone-900 text-white'}>
-              {j.title[lang] || j.title.zh || j.title.ja}
-            </option>
-          {/each}
-        </optgroup>
-      {/if}
+      {#each journeys as j}
+        <option value={j.id} class={theme === 'light' ? 'bg-white text-stone-900' : 'bg-stone-900 text-white'}>
+          {j.title[lang] || j.title.zh || j.title.ja}
+        </option>
+      {/each}
     </select>
     <span class="pointer-events-none absolute right-2.5 text-[0.65rem] sm:right-3 sm:text-xs {theme === 'light' ? 'text-stone-500' : 'text-stone-400'}">▼</span>
   </div>
@@ -104,9 +100,8 @@
           <svg class="size-4 text-stone-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
           </svg>
-        {:else}
           <!-- Sun icon for switching to light -->
-          <svg class="size-4 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg class="size-4 text-[#39C5BB]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="5"></circle>
             <line x1="12" y1="1" x2="12" y2="3"></line>
             <line x1="12" y1="21" x2="12" y2="23"></line>

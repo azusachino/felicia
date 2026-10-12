@@ -235,6 +235,7 @@
         <AtlasDetail
           memento={selectedMemento}
           {lang}
+          {theme}
           photoLabel="Photos"
           photosHeading="Photos"
           closeLabel="Close"

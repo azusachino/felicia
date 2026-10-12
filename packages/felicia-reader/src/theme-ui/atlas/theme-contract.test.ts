@@ -34,4 +34,21 @@ describe("Atlas theme and container contract", () => {
     expect(content).toContain('#FF5E98')
     expect(content).not.toContain('#ff7e47')
   })
+
+  test("AtlasDetail supports light/dark theme and respects Miku teal accent", () => {
+    const file = fileURLToPath(new URL("./AtlasDetail.svelte", import.meta.url))
+    const content = readFileSync(file, "utf8")
+    expect(content).toContain('theme = "dark"')
+    expect(content).toContain('class:theme-light={theme === "light"}')
+    expect(content).toContain('#39C5BB')
+    expect(content).toContain('top: 4.5rem')
+  })
+
+  test("TripPlaybackCard stabilizes mobile height and contains scrolling inside card", () => {
+    const file = fileURLToPath(new URL("../../playback/TripPlaybackCard.svelte", import.meta.url))
+    const content = readFileSync(file, "utf8")
+    expect(content).toContain('overscroll-contain')
+    expect(content).toContain('touch-action:pan-y')
+    expect(content).toContain('h-[15.5rem]')
+  })
 })

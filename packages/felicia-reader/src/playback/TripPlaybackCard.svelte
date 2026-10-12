@@ -133,9 +133,9 @@
   )
 </script>
 
-<aside class="calendar-map-trip pointer-events-auto absolute bottom-3 left-3 z-20 flex max-h-[17rem] w-[min(23rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-2xl transition sm:bottom-4 sm:left-4 sm:max-h-[calc(100vh-6rem)] sm:w-[23rem] {theme === 'light' ? 'border-black/10 bg-white/92 text-stone-900 shadow-stone-400/30' : 'border-white/20 bg-black/80 text-white'}">
+<aside class="calendar-map-trip pointer-events-auto absolute bottom-3 left-3 z-20 flex h-[15.5rem] max-h-[15.5rem] w-[min(23rem,calc(100vw-1.5rem))] flex-col overflow-hidden overscroll-contain rounded-2xl border shadow-2xl backdrop-blur-2xl transition-colors duration-200 sm:bottom-4 sm:left-4 sm:h-auto sm:max-h-[calc(100vh-6rem)] sm:w-[23rem] {theme === 'light' ? 'border-black/10 bg-white/92 text-stone-900 shadow-stone-400/30' : 'border-white/20 bg-black/80 text-white'}">
   <!-- Top Segmented Progress Bar -->
-  <ol class="flex shrink-0 list-none gap-1 px-4 pt-3.5" aria-label="Trip Progress">
+  <ol class="flex shrink-0 list-none gap-1 px-4 pt-3" aria-label="Trip Progress">
     {#each Array(state.totalSteps) as _, i}
       <li class="flex-1">
         <button
@@ -149,7 +149,7 @@
   </ol>
 
   <!-- Step Content -->
-  <div class="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-2.5 pb-3">
+  <div class="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 pt-2 pb-2.5 [touch-action:pan-y]">
     {#if currentStep.type === "intro"}
       <!-- INTRO CARD -->
       <div class="py-1">

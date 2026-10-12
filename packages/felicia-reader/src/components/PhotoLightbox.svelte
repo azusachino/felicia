@@ -204,14 +204,14 @@
   }
 
   .lightbox-live-toggle.active {
-    border-color: rgba(251, 146, 60, 0.6);
-    color: #fb923c;
+    border-color: rgba(255, 94, 152, 0.6);
+    color: #FF5E98;
   }
 
   .live-dot {
     width: 0.45rem;
     height: 0.45rem;
     border-radius: 9999px;
-    background: #fb923c;
+    background: #FF5E98;
   }
 </style>
