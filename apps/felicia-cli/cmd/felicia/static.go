@@ -38,24 +38,17 @@ func newStaticCmd() *cobra.Command {
 				return err
 			}
 			defer func() { _ = repo.Close() }()
-			writer := &publication.FileArtifactWriter{Root: out}
-			report, err := (publication.StaticCompiler{}).Compile(
+			report, err := publication.Publish(
 				context.Background(),
+				publication.StaticCompiler{},
 				publication.Input{},
 				repo,
 				publication.FileMediaSource{Root: mediaRoot},
-				writer,
+				out,
 			)
 			if err != nil {
-				_ = writer.Abort()
 				return err
 			}
-			removed, err := writer.Finalize()
-			if err != nil {
-				_ = writer.Abort()
-				return err
-			}
-			report.Removed = len(removed)
 			return writeJSON(cmd.OutOrStdout(), report)
 		},
 	}

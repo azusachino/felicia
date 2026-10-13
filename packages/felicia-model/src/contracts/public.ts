@@ -1,4 +1,4 @@
-import type { Coordinates, MementoKind } from "../data"
+import type { Coordinates, LegMode, MementoKind } from "../data"
 import type { DesignId } from "../design"
 import type { ThemeMode } from "../themes"
 
@@ -26,7 +26,7 @@ export interface ApiJourney {
   date_start: string
   date_end: string
   gps_route?: ApiGeoJSONGeometry
-  leg_modes?: string[]
+  leg_modes?: LegMode[]
   covers?: ApiMementoPhoto[]
   weather?: Record<string, { icon: string; label: string }>
   distance_km?: number

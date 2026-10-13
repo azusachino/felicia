@@ -90,6 +90,10 @@ type MediaStore interface {
 	GetPhoto(ctx context.Context, id uuid.UUID) (*domain.MementoPhoto, error)
 	ListPhotosByMemento(ctx context.Context, mementoID uuid.UUID) ([]*domain.MementoPhoto, error)
 	UpsertPhoto(ctx context.Context, photo *domain.MementoPhoto) error
+	// UpsertIngestPhoto is the source write for package photos: insert seeds
+	// caption/seq from the import; conflict updates only source-owned columns
+	// and preserves the stored memento assignment, caption and seq.
+	UpsertIngestPhoto(ctx context.Context, photo *domain.MementoPhoto) error
 	// CreatePhotoWithNextSequence inserts a new photo row and assigns the
 	// next sequence position for its memento in one atomic persistence
 	// operation, returning the assigned position. The supplied Seq is

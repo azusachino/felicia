@@ -11,6 +11,7 @@ import (
 	"image/jpeg"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -36,19 +37,29 @@ func fixtureJPEG(t *testing.T) []byte {
 	return buf.Bytes()
 }
 
+func ptrInt(value int) *int { return &value }
+
+func ptrFloat(value float64) *float64 { return &value }
+
 func TestMapOpenMeteoWeatherOmitsIncompleteDaysAndUsesLocaleNeutralLabels(t *testing.T) {
 	weather := mapOpenMeteoWeather(openMeteoDailyWeather{
 		Time:             []string{"2026-04-01", "2026-04-02"},
-		WeatherCode:      []int{0},
-		Temperature2mMin: []float64{8},
-		Temperature2mMax: []float64{19},
+		WeatherCode:      []*int{ptrInt(0)},
+		Temperature2mMin: []*float64{ptrFloat(8)},
+		Temperature2mMax: []*float64{ptrFloat(19)},
 	})
 	if len(weather) != 1 {
 		t.Fatalf("expected only complete day, got %#v", weather)
 	}
-	day, ok := weather["2026-04-01"].(map[string]string)
-	if !ok || day["icon"] != "sun" || day["label"] != "8–19°C" {
+	day, ok := weather["2026-04-01"]
+	if !ok || day.Icon != "sun" || day.Label != "8–19°C" {
 		t.Fatalf("unexpected weather projection: %#v", weather["2026-04-01"])
+	}
+	if day.Min == nil || *day.Min != 8 || day.Max == nil || *day.Max != 19 {
+		t.Errorf("expected typed min/max 8/19, got %#v", day)
+	}
+	if day.Provider != "open-meteo" || day.Code == nil || *day.Code != 0 || day.Units != "celsius" {
+		t.Errorf("expected provider/code/units preserved, got %#v", day)
 	}
 	if _, exists := weather["2026-04-02"]; exists {
 		t.Fatal("incomplete weather day must be omitted")
@@ -322,10 +333,17 @@ func TestCLIJourneyIngestSyntheticTripFolder(t *testing.T) {
 	if err := os.WriteFile(photoFile, jpegBytes, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	movBytes := []byte("fake-live-photo-mov-stream")
 	movFile := filepath.Join(photosDir, "DSC_0001.MOV")
-	if err := os.WriteFile(movFile, movBytes, 0o644); err != nil {
-		t.Fatal(err)
+	ffmpeg, err := exec.LookPath("ffmpeg")
+	if err != nil {
+		t.Fatalf("ffmpeg is required to create the real synthetic MOV fixture: %v", err)
+	}
+	if output, err := exec.Command(ffmpeg, "-nostdin", "-v", "error", "-f", "lavfi", "-i", "color=c=red:s=16x16:d=0.2", "-metadata", "comment=private-fixture", "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-y", movFile).CombinedOutput(); err != nil {
+		t.Fatalf("create synthetic MOV fixture: %v: %s", err, output)
+	}
+	movBytes, err := os.ReadFile(movFile)
+	if err != nil {
+		t.Fatalf("read synthetic MOV fixture: %v", err)
 	}
 
 	// 3. Write photos.jsonl sidecar
@@ -429,8 +447,8 @@ func TestCLIJourneyIngestSyntheticTripFolder(t *testing.T) {
 	if len(journeys) != 1 {
 		t.Errorf("expected exactly 1 journey in DB, found %d", len(journeys))
 	}
-	if len(journeys[0].LegModes) != 1 || journeys[0].LegModes[0] != "car" {
-		t.Errorf("expected LegModes [car], got %v", journeys[0].LegModes)
+	if len(journeys[0].LegModes) != 0 {
+		t.Errorf("expected no invented leg modes, got %v", journeys[0].LegModes)
 	}
 	mementos, err := repo.ListMementosByJourney(context.Background(), journeys[0].ID)
 	if err != nil || len(mementos) == 0 {

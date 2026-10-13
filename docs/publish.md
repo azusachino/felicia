@@ -7,8 +7,9 @@
 ## What leaves your machine
 
 Only the compiled `dist/` — published mementos, EXIF-stripped public image
-derivatives, and rounded geometry. Your SQLite journal, drafts, and original
-photos stay local and are gitignored
+derivatives, metadata-stripped H.264/AAC MP4 derivatives for linked Live Photo
+companions, and rounded geometry. Your SQLite journal, drafts, and original
+photos and videos stay local and are gitignored
 ([ADR 0001](adr/0001-personal-now-product-ready.md),
 [ADR 0005](adr/0005-sqlite-storage-and-content-addressed-media.md)).
 
@@ -186,6 +187,16 @@ BASE_PATH=/my-travels/ make site-build
 The compiler only removes files its own previous manifest listed, so the
 co-located SPA build is left untouched.
 
+Each compile is generation-atomic: it builds into a fresh staging sibling of
+the output directory (a hardlink clone of the previous generation, so the
+co-located SPA build carries over), and the complete generation is promoted
+onto the output directory only after it validates. A compile that fails — even
+halfway through overwriting existing artifacts — leaves the previously
+published generation byte-for-byte intact; a failed first publish creates no
+output directory at all. Manifest-based stale-content removal runs inside
+staging against the previous generation's manifest and takes effect with the
+promotion.
+
 `site-build` reads three optional environment variables, matching the defaults
 above: `DATABASE_PATH`, `MEDIA_ROOT`, and `SITE_DIST`. Keeping the journal
 outside the checkout is a good idea — it survives re-cloning:
@@ -203,6 +214,13 @@ built with the correct `BASE_PATH`.
 
     `scripts/felicia.py publish` compiles the production journey catalog through the
     same SQLite import and static compiler used by the local authoring workflow.
+
+When a published photo has a linked MOV/MP4 companion, static compilation requires
+`ffmpeg` with `libx264` and AAC encoder support. It emits a metadata-stripped,
+H.264/yuv420p MP4 under the photo's public video key; linked source or conversion
+errors fail compilation rather than leaving a dangling key. Video inputs are
+limited to 256 MiB and derivatives to 64 MiB. Originals remain in the private
+media store.
 
 Check the result before deploying:
 

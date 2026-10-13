@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"math"
 
 	"github.com/google/uuid"
@@ -28,8 +27,8 @@ type StaticJourney struct {
 	DateStart      string           `json:"date_start"`
 	DateEnd        string           `json:"date_end"`
 	GPSRoute       *GeoJSONGeometry `json:"gps_route,omitempty"`
-	LegModes       []string         `json:"leg_modes,omitempty"`
-	Weather        any              `json:"weather,omitempty"`
+	LegModes       []domain.LegMode `json:"leg_modes,omitempty"`
+	Weather        domain.Weather   `json:"weather,omitempty"`
 	AuthoredFields []string         `json:"authored_fields"`
 }
 
@@ -201,15 +200,26 @@ func (StaticCompiler) Compile(ctx context.Context, input Input, read ReadModel, 
 
 				if photo.VideoKey != nil && *photo.VideoKey != "" {
 					videoReader, err := media.Open(ctx, *photo.VideoKey)
-					if err == nil {
-						videoBytes, readErr := io.ReadAll(videoReader)
-						_ = videoReader.Close()
-						if readErr == nil {
-							if err := output.WriteMedia(*photo.VideoKey, bytes.NewReader(videoBytes)); err == nil {
-								report.Media++
-							}
-						}
+					if err != nil {
+						return report, fmt.Errorf("open video %s: %w", *photo.VideoKey, err)
 					}
+					derivative, err := SanitizePublicVideo(*photo.VideoKey, videoReader)
+					closeErr := videoReader.Close()
+					if err != nil {
+						return report, fmt.Errorf("sanitize video %s: %w", *photo.VideoKey, err)
+					}
+					if closeErr != nil {
+						return report, fmt.Errorf("close video %s: %w", *photo.VideoKey, closeErr)
+					}
+					publicKey := PublicVideoKey(*photo.VideoKey)
+					if err := output.WriteMedia(publicKey, bytes.NewReader(derivative)); err != nil {
+						return report, fmt.Errorf("write video %s: %w", publicKey, err)
+					}
+					publicPhoto := *photo
+					publicPhoto.VideoKey = &publicKey
+					photoProjection = append(photoProjection, NewStaticPhoto(&publicPhoto))
+					report.Media++
+					continue
 				}
 
 				photoProjection = append(photoProjection, NewStaticPhoto(photo))

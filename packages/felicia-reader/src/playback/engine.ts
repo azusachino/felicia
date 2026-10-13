@@ -106,36 +106,31 @@ function parseDateKey(dateStr: string): string {
 }
 
 export function resolveWaypointPlace(
-  coords: Coordinates,
   role: "start" | "end",
   journeyPlace: string,
   lang: "ja" | "en" | "zh" = "en"
 ): string {
-  const [lon, lat] = coords
-  // Greater Tokyo / Saitama Border (Kawaguchi / Kita-ku area)
-  if (lat >= 35.78 && lat <= 35.85 && lon >= 139.68 && lon <= 139.75) {
-    return lang === "ja" ? "東京・川口" : lang === "zh" ? "东京・川口" : "Tokyo (Kawaguchi)"
-  }
-  // Greater Tokyo / Kanto Area
-  if (lat >= 35.3 && lat <= 36.2 && lon >= 139.2 && lon <= 140.2) {
-    return lang === "ja" ? "東京" : lang === "zh" ? "东京" : "Tokyo"
-  }
-  // Greater Osaka / Kansai Area
-  if (lat >= 34.4 && lat <= 35.0 && lon >= 135.2 && lon <= 135.8) {
-    return lang === "ja" ? "大阪" : lang === "zh" ? "大阪" : "Osaka"
-  }
-  // Kyoto Area
-  if (lat >= 34.9 && lat <= 35.2 && lon >= 135.6 && lon <= 135.9) {
-    return lang === "ja" ? "京都" : lang === "zh" ? "京都" : "Kyoto"
-  }
-  // Nagoya Area
-  if (lat >= 35.0 && lat <= 35.3 && lon >= 136.7 && lon <= 137.1) {
-    return lang === "ja" ? "名古屋" : lang === "zh" ? "名古屋" : "Nagoya"
+  // Places come from authored data only (the journey place). No coordinate
+  // heuristics: the playback engine must not invent journal facts. When no
+  // authored place exists, fall back to a neutral origin/destination label
+  // that names no city.
+  if (journeyPlace) {
+    return role === "start"
+      ? lang === "ja"
+        ? `${journeyPlace}（出発地）`
+        : lang === "zh"
+          ? `${journeyPlace}（出发地）`
+          : `${journeyPlace} (Origin)`
+      : lang === "ja"
+        ? `${journeyPlace}（到着地）`
+        : lang === "zh"
+          ? `${journeyPlace}（到达地）`
+          : `${journeyPlace} (Destination)`
   }
   if (role === "start") {
-    return lang === "ja" ? `${journeyPlace}（出発地）` : lang === "zh" ? `${journeyPlace}（出发地）` : `${journeyPlace} (Origin)`
+    return lang === "ja" ? "出発地" : lang === "zh" ? "出发地" : "Origin"
   }
-  return lang === "ja" ? `${journeyPlace}（到着地）` : lang === "zh" ? `${journeyPlace}（到达地）` : `${journeyPlace} (Destination)`
+  return lang === "ja" ? "到着地" : lang === "zh" ? "到达地" : "Destination"
 }
 
 export function resolveWaypointTitle(
@@ -213,10 +208,10 @@ export function generatePlaybackSteps(journey: Journey, lang: "ja" | "en" | "zh"
         type: "waypoint",
         role: "start",
         title: resolveWaypointTitle("start", lang),
-        place: resolveWaypointPlace(originCoord, "start", journeyPlaceName, lang),
+        place: resolveWaypointPlace("start", journeyPlaceName, lang),
         day: 1,
         date: group.date,
-        time: journey.departureTime || "08:30",
+        time: journey.departureTime,
         coords: originCoord,
         distanceKm: 0,
         travelDistanceKm: 0,
@@ -246,10 +241,10 @@ export function generatePlaybackSteps(journey: Journey, lang: "ja" | "en" | "zh"
         type: "waypoint",
         role: "end",
         title: resolveWaypointTitle("end", lang),
-        place: resolveWaypointPlace(destCoord, "end", journeyPlaceName, lang),
+        place: resolveWaypointPlace("end", journeyPlaceName, lang),
         day: dayNumber,
         date: group.date,
-        time: journey.arrivalTime || "18:30",
+        time: journey.arrivalTime,
         coords: destCoord,
         distanceKm: journey.distanceKm,
         travelDistanceKm: Math.round(distKm * 10) / 10,
@@ -263,9 +258,9 @@ export function generatePlaybackSteps(journey: Journey, lang: "ja" | "en" | "zh"
       type: "waypoint",
       role: "start",
       title: resolveWaypointTitle("start", lang),
-      place: resolveWaypointPlace(originCoord, "start", journeyPlaceName, lang),
+      place: resolveWaypointPlace("start", journeyPlaceName, lang),
       day: 1,
-      time: journey.departureTime || "08:30",
+      time: journey.departureTime,
       coords: originCoord,
       distanceKm: 0,
     })
@@ -273,9 +268,9 @@ export function generatePlaybackSteps(journey: Journey, lang: "ja" | "en" | "zh"
       type: "waypoint",
       role: "end",
       title: resolveWaypointTitle("end", lang),
-      place: resolveWaypointPlace(destCoord, "end", journeyPlaceName, lang),
+      place: resolveWaypointPlace("end", journeyPlaceName, lang),
       day: 1,
-      time: journey.arrivalTime || "18:30",
+      time: journey.arrivalTime,
       coords: destCoord,
       distanceKm: journey.distanceKm,
     })

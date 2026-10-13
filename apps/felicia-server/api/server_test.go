@@ -351,6 +351,10 @@ func (m *mockRepository) UpsertPhoto(_ context.Context, photo *domain.MementoPho
 	return nil
 }
 
+func (m *mockRepository) UpsertIngestPhoto(ctx context.Context, photo *domain.MementoPhoto) error {
+	return m.UpsertPhoto(ctx, photo)
+}
+
 // CreatePhotoWithNextSequence implements automatic allocation for the mock;
 // the server currently writes photos only through UpsertPhoto.
 func (m *mockRepository) CreatePhotoWithNextSequence(_ context.Context, photo *domain.MementoPhoto) (int, error) {

@@ -66,10 +66,25 @@ RETURNING seq`,
 	return assigned, nil
 }
 
-// UpsertPhoto inserts or updates a memento photo.
+// UpsertPhoto inserts or updates a memento photo. This is the authoring
+// write: it sets every column from the supplied photo. Source imports must
+// use UpsertIngestPhoto instead.
 func (r *Repository) UpsertPhoto(ctx context.Context, photo *domain.MementoPhoto) error {
 	_, err := r.db.ExecContext(ctx, `INSERT INTO tb_memento_photos(id, memento_id, object_key, content_hash, caption, seq, taken_at, video_key, source_ref, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET object_key=excluded.object_key, content_hash=excluded.content_hash, caption=excluded.caption, seq=excluded.seq, taken_at=excluded.taken_at, video_key=excluded.video_key, source_ref=excluded.source_ref`, idString(photo.ID), idString(photo.MementoID), photo.ObjectKey, photo.ContentHash, nullableString(photo.Caption), photo.Seq, nullableTimePtr(photo.TakenAt), nullableString(photo.VideoKey), nullableString(photo.SourceRef), timeOrNow(photo.CreatedAt))
 	return err
+}
+
+// UpsertIngestPhoto imports a package photo through the ingest boundary. The
+// first import seeds caption and seq from the package; a re-import keeps the
+// stored memento assignment, caption and seq (authored curation) and updates
+// only source-owned data: object_key, content_hash, taken_at, video_key and
+// source_ref.
+func (r *Repository) UpsertIngestPhoto(ctx context.Context, photo *domain.MementoPhoto) error {
+	_, err := r.db.ExecContext(ctx, `INSERT INTO tb_memento_photos(id, memento_id, object_key, content_hash, caption, seq, taken_at, video_key, source_ref, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET object_key=excluded.object_key, content_hash=excluded.content_hash, taken_at=excluded.taken_at, video_key=excluded.video_key, source_ref=excluded.source_ref`, idString(photo.ID), idString(photo.MementoID), photo.ObjectKey, photo.ContentHash, nullableString(photo.Caption), photo.Seq, nullableTimePtr(photo.TakenAt), nullableString(photo.VideoKey), nullableString(photo.SourceRef), timeOrNow(photo.CreatedAt))
+	if err != nil {
+		return fmt.Errorf("ingest photo %s: %w", photo.ID, err)
+	}
+	return nil
 }
 
 func scanPhoto(row scanner, id uuid.UUID) (*domain.MementoPhoto, error) {

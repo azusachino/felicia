@@ -165,7 +165,35 @@
         "routes": { "type": "array", "items": { "$ref": "#/$defs/route" } },
         "visits": { "type": "array", "items": { "$ref": "#/$defs/visit" } },
         "source_ref": { "type": "string" },
-        "authored_fields": { "type": "array", "uniqueItems": true, "items": { "type": "string" } }
+        "authored_fields": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+        "leg_modes": {
+          "type": "array",
+          "uniqueItems": true,
+          "description": "One transport mode per route segment, paired by index; when present with routes, the count must match the route count.",
+          "items": { "enum": ["car", "ferry", "train", "plane", "foot"] }
+        },
+        "weather": {
+          "type": "object",
+          "description": "ISO date keyed daily weather records.",
+          "patternProperties": {
+            "^[0-9]{4}-[0-9]{2}-[0-9]{2}$": { "$ref": "#/$defs/weather_day" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "weather_day": {
+      "type": "object",
+      "required": ["icon"],
+      "properties": {
+        "icon": { "type": "string", "minLength": 1 },
+        "label": { "type": "string" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "provider": { "type": "string" },
+        "code": { "type": "integer" },
+        "units": { "type": "string" }
       },
       "additionalProperties": false
     },

@@ -369,7 +369,7 @@ func TestCompileFailsOnUnsanitizableMedia(t *testing.T) {
 
 func TestNewStaticJourneyAndPhotoEnrichment(t *testing.T) {
 	journeyID := uuid.New()
-	weather := map[string]any{"2026-07-01": map[string]string{"icon": "sun", "label": "晴 · 12–22°C"}}
+	weather := domain.Weather{"2026-07-01": {Icon: "sun", Label: "晴 · 12–22°C"}}
 	journey := &domain.Journey{
 		ID:        journeyID,
 		JournalID: uuid.New(),
@@ -378,7 +378,7 @@ func TestNewStaticJourneyAndPhotoEnrichment(t *testing.T) {
 		Place:     "Hakone",
 		DateStart: time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC),
 		DateEnd:   time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC),
-		LegModes:  []string{"car", "ferry"},
+		LegModes:  []domain.LegMode{"car", "ferry"},
 		Weather:   weather,
 	}
 
@@ -402,5 +402,36 @@ func TestNewStaticJourneyAndPhotoEnrichment(t *testing.T) {
 	projectedPhoto := NewStaticPhoto(photo)
 	if projectedPhoto.VideoKey == nil || *projectedPhoto.VideoKey != videoKey {
 		t.Errorf("expected VideoKey %q, got %v", videoKey, projectedPhoto.VideoKey)
+	}
+}
+
+func TestMultiSegmentProjectionKeepsSegmentModePairing(t *testing.T) {
+	journey := &domain.Journey{
+		ID:        uuid.New(),
+		JournalID: uuid.New(),
+		Slug:      "pairing",
+		Title:     "Pairing",
+		Place:     "Somewhere",
+		DateStart: time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC),
+		DateEnd:   time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC),
+		GPSRoute: orb.MultiLineString{
+			orb.LineString{{1, 1}, {2, 2}},
+			orb.LineString{{3, 3}, {4, 4}},
+		},
+		LegModes: []domain.LegMode{domain.LegModeCar, domain.LegModeFerry},
+	}
+
+	projected := NewStaticJourney(journey)
+	coords, ok := projected.GPSRoute.Coordinates.([][][]float64)
+	if !ok || len(coords) != 2 {
+		t.Fatalf("expected two projected segments, got %#v", projected.GPSRoute)
+	}
+	if len(projected.LegModes) != len(coords) {
+		t.Fatalf("segment/mode pairing broken: %d segments, %d modes", len(coords), len(projected.LegModes))
+	}
+	for i, mode := range projected.LegModes {
+		if mode != journey.LegModes[i] {
+			t.Errorf("mode %d drifted: %q != %q", i, mode, journey.LegModes[i])
+		}
 	}
 }

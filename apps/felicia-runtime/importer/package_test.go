@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/azusachino/felicia/apps/felicia-core/domain"
+
 	journeypackage "github.com/azusachino/felicia/apps/felicia-core/journeypackage"
 )
 
@@ -114,4 +116,81 @@ func packageWithTicket(t *testing.T, id string, image []byte) *journeypackage.Pa
 			"media/ticket.jpg": image,
 		},
 	}
+}
+
+func TestDecodePackageCarriesTypedEnrichment(t *testing.T) {
+	journeyYAML := "id: 00000000-0000-0000-0000-000000000001\njournal_id: 00000000-0000-0000-0000-000000000002\nslug: kyoto\ntitle: Kyoto\nplace: Kyoto\ndate_start: 2026-04-01\ndate_end: 2026-04-01\nleg_modes: [car]\nweather:\n  \"2026-04-01\":\n    icon: sun\n    label: 8–19°C\n    min: 8\n    max: 19\n    provider: open-meteo\n    code: 0\n    units: celsius\n"
+	route := []byte(`<?xml version="1.0"?><gpx><trk><trkseg><trkpt lat="35.0116" lon="135.7681"/><trkpt lat="35.6812" lon="139.7671"/></trkseg></trk></gpx>`)
+
+	t.Run("valid enrichment round-trips through the package", func(t *testing.T) {
+		pkg := &journeypackage.Package{
+			Manifest: journeypackage.Manifest{PackageID: "enrich-1"},
+			Files: map[string][]byte{
+				"journey.yaml":  []byte(journeyYAML),
+				"mementos.yaml": []byte(""),
+				"route.gpx":     route,
+			},
+		}
+		got, err := DecodePackage(pkg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(got.Journey.LegModes) != 1 || got.Journey.LegModes[0] != domain.LegModeCar {
+			t.Errorf("unexpected leg modes: %v", got.Journey.LegModes)
+		}
+		day, ok := got.Journey.Weather["2026-04-01"]
+		if !ok || day.Icon != "sun" || day.Min == nil || *day.Min != 8 || day.Code == nil || *day.Code != 0 || day.Units != "celsius" {
+			t.Errorf("unexpected weather: %#v", got.Journey.Weather)
+		}
+	})
+
+	t.Run("unknown mode fails loudly", func(t *testing.T) {
+		pkg := &journeypackage.Package{
+			Manifest: journeypackage.Manifest{PackageID: "enrich-2"},
+			Files: map[string][]byte{
+				"journey.yaml": []byte(journeyYAML + "x: 1\n"),
+				"route.gpx":    route,
+			},
+		}
+		// Replace leg_modes with an unknown spelling.
+		pkg.Files["journey.yaml"] = []byte(replaceLegModes(journeyYAML, "[car, hovercraft]"))
+		if _, err := DecodePackage(pkg); err == nil {
+			t.Fatal("expected unknown leg mode to be rejected")
+		}
+	})
+
+	t.Run("mode count must match route segments", func(t *testing.T) {
+		pkg := &journeypackage.Package{
+			Manifest: journeypackage.Manifest{PackageID: "enrich-3"},
+			Files: map[string][]byte{
+				"journey.yaml": []byte(replaceLegModes(journeyYAML, "[car, ferry]")),
+				"route.gpx":    route,
+			},
+		}
+		_, err := DecodePackage(pkg)
+		if err == nil || !strings.Contains(err.Error(), "leg modes") {
+			t.Fatalf("expected leg mode/segment mismatch, got %v", err)
+		}
+	})
+
+	t.Run("missing enrichment stays absent", func(t *testing.T) {
+		pkg := &journeypackage.Package{
+			Manifest: journeypackage.Manifest{PackageID: "enrich-4"},
+			Files: map[string][]byte{
+				"journey.yaml":  []byte("id: 00000000-0000-0000-0000-000000000001\njournal_id: 00000000-0000-0000-0000-000000000002\nslug: kyoto\ntitle: Kyoto\nplace: Kyoto\ndate_start: 2026-04-01\ndate_end: 2026-04-01\n"),
+				"mementos.yaml": []byte(""),
+			},
+		}
+		got, err := DecodePackage(pkg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(got.Journey.LegModes) != 0 || got.Journey.Weather != nil {
+			t.Errorf("expected absent enrichment, got modes=%v weather=%#v", got.Journey.LegModes, got.Journey.Weather)
+		}
+	})
+}
+
+func replaceLegModes(yamlText, modes string) string {
+	return strings.Replace(yamlText, "leg_modes: [car]", "leg_modes: "+modes, 1)
 }

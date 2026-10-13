@@ -6,6 +6,7 @@ import {
   generatePlaybackSteps,
   getStepDuration,
   PlaybackController,
+  type PlaybackStep,
 } from "./engine"
 
 const sampleMemento: Memento = {
@@ -109,7 +110,7 @@ describe("Playback Engine", () => {
       expect(steps[2].coords).toEqual([121.37, 37.55])
       expect(steps[2].distanceKm).toBe(0)
       expect(steps[2].date).toBe("2026-10-01")
-      expect(steps[2].time).toBe("08:30")
+      expect(steps[2].time).toBeUndefined()
     }
 
     // Step 3: Stop 1
@@ -140,7 +141,7 @@ describe("Playback Engine", () => {
       expect(steps[6].coords).toEqual([121.65, 38.92])
       expect(steps[6].distanceKm).toBe(2890)
       expect(steps[6].date).toBe("2026-10-02")
-      expect(steps[6].time).toBe("18:30")
+      expect(steps[6].time).toBeUndefined()
     }
 
     // Step 7: Summary
@@ -170,6 +171,64 @@ describe("Playback Engine", () => {
 
     // At 2x speed, duration halves
     expect(getStepDuration(steps[0], 2)).toBe(1750)
+  })
+
+  it("never invents city names, even for coordinates inside the retired Japanese demo rectangles", () => {
+    const japanJourney: Journey = {
+      ...sampleJourney,
+      id: "journey-jp",
+      slug: "jp-trip",
+      title: { zh: "东日本", ja: "東日本", en: "East Japan" },
+      place: { zh: "关东 · 关西", ja: "関東・関西", en: "Kanto & Kansai" },
+      route: [
+        [139.7, 35.68],
+        [135.5, 34.69],
+      ],
+      mementos: [sampleMemento],
+    }
+    for (const lang of ["ja", "en", "zh"] as const) {
+      const steps = generatePlaybackSteps(japanJourney, lang)
+      const texts = steps.map((s) => (s.type === "stop" ? "" : s.type === "intro" || s.type === "summary" ? s.title : s.type === "waypoint" ? `${s.title} ${s.place}` : s.places.join(" ")))
+      const joined = texts.join("\n")
+      for (const city of ["東京", "东京", "Tokyo", "川口", "大阪", "Osaka", "京都", "Kyoto", "名古屋", "Nagoya"]) {
+        expect(joined).not.toContain(city)
+      }
+    }
+    // Authored journey place is used for waypoint places.
+    const steps = generatePlaybackSteps(japanJourney, "en")
+    const wp = steps.filter((s) => s.type === "waypoint") as Extract<PlaybackStep, { type: "waypoint" }>[]
+    expect(wp[0].place).toBe("Kanto & Kansai (Origin)")
+    expect(wp[1].place).toBe("Kanto & Kansai (Destination)")
+  })
+
+  it("falls back to neutral origin/destination labels when no authored place exists", () => {
+    const anonymousJourney: Journey = {
+      ...sampleJourney,
+      id: "journey-anon",
+      slug: "anon",
+      title: { zh: "旅程", ja: "旅", en: "Journey" },
+      place: { zh: "", ja: "", en: "" },
+      mementos: [sampleMemento],
+    }
+    expect(generatePlaybackSteps(anonymousJourney, "en").filter((s) => s.type === "waypoint").map((s) => (s as Extract<PlaybackStep, { type: "waypoint" }>).place)).toEqual(["Origin", "Destination"])
+    expect(generatePlaybackSteps(anonymousJourney, "ja").filter((s) => s.type === "waypoint").map((s) => (s as Extract<PlaybackStep, { type: "waypoint" }>).place)).toEqual(["出発地", "到着地"])
+    expect(generatePlaybackSteps(anonymousJourney, "zh").filter((s) => s.type === "waypoint").map((s) => (s as Extract<PlaybackStep, { type: "waypoint" }>).place)).toEqual(["出发地", "到达地"])
+  })
+
+  it("omits waypoint times unless authored, and keeps authored times", () => {
+    // sampleJourney has no departureTime/arrivalTime: no step carries a time.
+    for (const step of generatePlaybackSteps(sampleJourney, "en")) {
+      if (step.type === "waypoint") {
+        expect(step.time).toBeUndefined()
+      }
+    }
+    const timedJourney: Journey = {
+      ...sampleJourney,
+      departureTime: "06:15",
+      arrivalTime: "21:40",
+    }
+    const waypoints = generatePlaybackSteps(timedJourney, "en").filter((s) => s.type === "waypoint") as Extract<PlaybackStep, { type: "waypoint" }>[]
+    expect(waypoints.map((w) => w.time)).toEqual(["06:15", "21:40"])
   })
 
   it("manages playback state transitions via controller", () => {
