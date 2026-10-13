@@ -723,6 +723,13 @@ func titleFromSlug(slug string) string {
 	return res
 }
 
+type openMeteoDailyWeather struct {
+	Time             []string  `json:"time"`
+	WeatherCode      []int     `json:"weather_code"`
+	Temperature2mMax []float64 `json:"temperature_2m_max"`
+	Temperature2mMin []float64 `json:"temperature_2m_min"`
+}
+
 func fetchOpenMeteoWeather(lat, lon float64, start, end time.Time) any {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -745,62 +752,43 @@ func fetchOpenMeteoWeather(lat, lon float64, start, end time.Time) any {
 	defer func() { _ = resp.Body.Close() }()
 
 	var result struct {
-		Daily struct {
-			Time             []string  `json:"time"`
-			WeatherCode      []int     `json:"weather_code"`
-			Temperature2mMax []float64 `json:"temperature_2m_max"`
-			Temperature2mMin []float64 `json:"temperature_2m_min"`
-		} `json:"daily"`
+		Daily openMeteoDailyWeather `json:"daily"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil
 	}
-	if len(result.Daily.Time) == 0 {
+	weatherMap := mapOpenMeteoWeather(result.Daily)
+	if len(weatherMap) == 0 {
 		return nil
 	}
+	return weatherMap
+}
 
-	weatherMap := make(map[string]any, len(result.Daily.Time))
-	for i, date := range result.Daily.Time {
-		code := 0
-		if i < len(result.Daily.WeatherCode) {
-			code = result.Daily.WeatherCode[i]
+func mapOpenMeteoWeather(daily openMeteoDailyWeather) map[string]any {
+	weatherMap := make(map[string]any, len(daily.Time))
+	for i, date := range daily.Time {
+		if i >= len(daily.WeatherCode) || i >= len(daily.Temperature2mMin) || i >= len(daily.Temperature2mMax) {
+			continue
 		}
-		maxT := 20.0
-		if i < len(result.Daily.Temperature2mMax) {
-			maxT = result.Daily.Temperature2mMax[i]
-		}
-		minT := 10.0
-		if i < len(result.Daily.Temperature2mMin) {
-			minT = result.Daily.Temperature2mMin[i]
-		}
-
-		icon, label := mapWMOWeather(code, minT, maxT)
-		weatherMap[date] = map[string]string{
-			"icon":  icon,
-			"label": label,
-		}
+		icon, label := mapWMOWeather(daily.WeatherCode[i], daily.Temperature2mMin[i], daily.Temperature2mMax[i])
+		weatherMap[date] = map[string]string{"icon": icon, "label": label}
 	}
 	return weatherMap
 }
 
 func mapWMOWeather(code int, minT, maxT float64) (string, string) {
-	var desc, icon string
+	icon := "cloud"
 	switch code {
 	case 0:
-		desc, icon = "晴", "sun"
-	case 1, 2, 3:
-		desc, icon = "多云", "cloud"
+		icon = "sun"
 	case 45, 48:
-		desc, icon = "雾", "cloud-fog"
+		icon = "cloud-fog"
 	case 51, 53, 55, 61, 63, 65, 80, 81, 82:
-		desc, icon = "雨", "cloud-rain"
+		icon = "cloud-rain"
 	case 71, 73, 75, 77, 85, 86:
-		desc, icon = "雪", "snowflake"
+		icon = "snowflake"
 	case 95, 96, 99:
-		desc, icon = "雷阵雨", "cloud-lightning"
-	default:
-		desc, icon = "阴", "cloud"
+		icon = "cloud-lightning"
 	}
-	label := fmt.Sprintf("%s · %.0f–%.0f°C", desc, minT, maxT)
-	return icon, label
+	return icon, fmt.Sprintf("%.0f–%.0f°C", minT, maxT)
 }

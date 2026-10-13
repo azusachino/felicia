@@ -36,6 +36,25 @@ func fixtureJPEG(t *testing.T) []byte {
 	return buf.Bytes()
 }
 
+func TestMapOpenMeteoWeatherOmitsIncompleteDaysAndUsesLocaleNeutralLabels(t *testing.T) {
+	weather := mapOpenMeteoWeather(openMeteoDailyWeather{
+		Time:             []string{"2026-04-01", "2026-04-02"},
+		WeatherCode:      []int{0},
+		Temperature2mMin: []float64{8},
+		Temperature2mMax: []float64{19},
+	})
+	if len(weather) != 1 {
+		t.Fatalf("expected only complete day, got %#v", weather)
+	}
+	day, ok := weather["2026-04-01"].(map[string]string)
+	if !ok || day["icon"] != "sun" || day["label"] != "8–19°C" {
+		t.Fatalf("unexpected weather projection: %#v", weather["2026-04-01"])
+	}
+	if _, exists := weather["2026-04-02"]; exists {
+		t.Fatal("incomplete weather day must be omitted")
+	}
+}
+
 func TestCLIImportAndStaticCompileEndToEnd(t *testing.T) {
 	root := t.TempDir()
 	packageFile := writeFixturePackage(t, filepath.Join(root, "journey.zip"))
