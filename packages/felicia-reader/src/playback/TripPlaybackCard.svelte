@@ -341,22 +341,7 @@
           {#if currentStep.memento.photos.length > 0}
             {@const photo = currentStep.memento.photos[0]}
             <div class="relative my-2 overflow-hidden rounded-xl border bg-stone-900 shadow-md sm:my-3 {theme === 'light' ? 'border-black/10' : 'border-white/20'}">
-              {#if photo.video}
-                <video
-                  src={photo.video}
-                  poster={photo.src}
-                  autoplay
-                  loop
-                  muted
-                  playsinline
-                  class="max-h-32 w-full object-cover sm:max-h-none sm:aspect-[4/3]"
-                ></video>
-                <span class="absolute top-2 left-2 flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[0.625rem] font-medium text-white backdrop-blur">
-                  <span class="size-2 rounded-full bg-[#FF5E98]"></span> LIVE
-                </span>
-              {:else}
-                <img src={photo.src} alt="" class="max-h-32 w-full object-cover sm:max-h-none sm:aspect-[4/3]" />
-              {/if}
+              <img src={photo.src} alt="" class="max-h-32 w-full object-cover sm:max-h-none sm:aspect-[4/3]" />
             </div>
           {/if}
 

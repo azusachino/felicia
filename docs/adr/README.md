@@ -16,3 +16,4 @@ Historical exploration records (the initial multi-theme, dual-database trail fro
 | [0006](0006-system-locales-and-content-transparency.md) | System Locales and Content Transparency | 2026-10-01 | Accepted |
 | [0007](0007-application-and-package-layout.md) | Application and Package Layout | 2026-10-01 | Accepted |
 | [0008](0008-pivot-to-hyoban-spatial-journal.md) | Pivot to Hyoban Spatial Journal and Cinematic Playback | 2026-10-11 | Accepted |
+| [0009](0009-retire-live-photo-video-publishing.md) | Retire Live Photo Video Publishing (Stills Everywhere) | 2026-10-13 | Accepted |

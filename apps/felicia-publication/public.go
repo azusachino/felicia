@@ -101,7 +101,6 @@ func NewStaticPhoto(photo *domain.MementoPhoto) StaticPhoto {
 		Caption:     photo.Caption,
 		Seq:         photo.Seq,
 		TakenAt:     takenAt,
-		VideoKey:    photo.VideoKey,
 	}
 }
 

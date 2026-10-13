@@ -27,7 +27,6 @@ const sampleMemento: Memento = {
   photos: [
     {
       src: "https://example.com/photo1.webp",
-      video: "https://example.com/photo1.mp4",
       caption: { zh: "日落", ja: "夕日", en: "Sunset" },
     },
   ],

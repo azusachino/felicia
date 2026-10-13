@@ -34,7 +34,7 @@
   let selectedMementoId = $state<string | null>(null)
   let showStage = $state(false)
   let showExport = $state(false)
-  let lightboxPhoto = $state<{ src: string; video?: string; caption: string } | null>(null)
+  let lightboxPhoto = $state<{ src: string; caption: string } | null>(null)
 
   const activeJourney = $derived(
     activeJourneyId ? (journeys.find((journey) => journey.id === activeJourneyId) ?? null) : null
@@ -108,7 +108,6 @@
     if (photo) {
       lightboxPhoto = {
         src: photo.src,
-        video: photo.video,
         caption: photo.caption[lang] || photo.caption.zh || photo.caption.en || "",
       }
     }
@@ -289,7 +288,6 @@
       {#if lightboxPhoto}
         <PhotoLightbox
           src={lightboxPhoto.src}
-          video={lightboxPhoto.video}
           alt={lightboxPhoto.caption}
           caption={lightboxPhoto.caption}
           openLabel="Open"

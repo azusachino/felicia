@@ -9,8 +9,6 @@ import (
 	"image/png"
 	"io"
 	"math"
-	"os"
-	"os/exec"
 	"path"
 	"strings"
 
@@ -26,65 +24,6 @@ const maxPublicEdge = 2048
 // publicJPEGQuality trades a little fidelity for a much smaller artifact at a
 // size where the difference is not visible in the reader's gallery.
 const publicJPEGQuality = 85
-
-// Public video derivatives are bounded before and after transcoding.
-const (
-	maxPublicVideoInputBytes  = 256 << 20
-	maxPublicVideoOutputBytes = 64 << 20
-)
-
-// PublicVideoKey selects the browser-compatible MP4 artifact path for a source video.
-func PublicVideoKey(objectKey string) string {
-	return strings.TrimSuffix(objectKey, path.Ext(objectKey)) + ".mp4"
-}
-
-// SanitizePublicVideo transcodes a supported companion into a metadata-stripped,
-// H.264/AAC MP4. ffmpeg is the publication encoder; failures are fatal so no
-// successful publication can retain a dangling companion key.
-func SanitizePublicVideo(objectKey string, source io.Reader) ([]byte, error) {
-	switch strings.ToLower(path.Ext(objectKey)) {
-	case ".mov", ".mp4":
-	default:
-		return nil, fmt.Errorf("unsupported public video format %q: only MOV and MP4 are supported", path.Ext(objectKey))
-	}
-	raw, err := io.ReadAll(io.LimitReader(source, maxPublicVideoInputBytes+1))
-	if err != nil {
-		return nil, fmt.Errorf("read source: %w", err)
-	}
-	if len(raw) > maxPublicVideoInputBytes {
-		return nil, fmt.Errorf("video input exceeds %d bytes", maxPublicVideoInputBytes)
-	}
-	if len(raw) == 0 {
-		return nil, fmt.Errorf("video input is empty")
-	}
-
-	dir, err := os.MkdirTemp("", "felicia-video-*")
-	if err != nil {
-		return nil, fmt.Errorf("create video work directory: %w", err)
-	}
-	defer func() { _ = os.RemoveAll(dir) }()
-	input := path.Join(dir, "source"+strings.ToLower(path.Ext(objectKey)))
-	output := path.Join(dir, "derivative.mp4")
-	if err := os.WriteFile(input, raw, 0o600); err != nil {
-		return nil, fmt.Errorf("write video input: %w", err)
-	}
-	cmd := exec.Command("ffmpeg", "-nostdin", "-v", "error", "-i", input,
-		"-map", "0:v:0", "-map", "0:a?", "-map_metadata", "-1", "-map_metadata:s:v:0", "-1", "-map_metadata:s:a:0", "-1", "-map_chapters", "-1",
-		"-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
-		"-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", "-fs", fmt.Sprint(maxPublicVideoOutputBytes),
-		"-f", "mp4", output)
-	if result, err := cmd.CombinedOutput(); err != nil {
-		return nil, fmt.Errorf("transcode video with ffmpeg: %w: %s", err, strings.TrimSpace(string(result)))
-	}
-	derivative, err := os.ReadFile(output)
-	if err != nil {
-		return nil, fmt.Errorf("read video derivative: %w", err)
-	}
-	if len(derivative) == 0 || len(derivative) >= maxPublicVideoOutputBytes {
-		return nil, fmt.Errorf("video derivative size %d is outside 1..%d bytes", len(derivative), maxPublicVideoOutputBytes-1)
-	}
-	return derivative, nil
-}
 
 // SanitizePublicImage turns a source media object into the derivative that is
 // safe to publish, and is the *only* way media bytes reach an ArtifactWriter.

@@ -48,7 +48,7 @@
         <div class="gallery-grid">
           {#each memento.photos as photo, index (`${photo.src}:${index}`)}
             <figure class:tilt-left={index % 2 === 0}>
-              <PhotoLightbox src={photo.src} video={photo.video} alt={t(photo.caption)} caption={t(photo.caption)} openLabel={message(lang, "ui.zoom")} {closeLabel} imageClass="detail-photo" />
+              <PhotoLightbox src={photo.src} alt={t(photo.caption)} caption={t(photo.caption)} openLabel={message(lang, "ui.zoom")} {closeLabel} imageClass="detail-photo" />
               <figcaption>{t(photo.caption)}</figcaption>
             </figure>
           {/each}

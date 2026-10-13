@@ -98,11 +98,6 @@
                         loading="lazy"
                         class="size-full object-cover transition duration-300 group-hover:opacity-90"
                       />
-                      {#if photo.video}
-                        <span class="absolute top-2 left-2 flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[0.625rem] font-medium text-white backdrop-blur">
-                          <span class="size-1.5 rounded-full bg-[#FF5E98]"></span> LIVE
-                        </span>
-                      {/if}
                     </button>
                   {/each}
                 </div>

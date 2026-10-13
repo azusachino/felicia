@@ -126,22 +126,7 @@
       {#if currentStep.memento.photos.length > 0}
         {@const photo = currentStep.memento.photos[0]}
         <div class="relative flex max-h-[60vh] max-w-[85vw] items-center justify-center overflow-hidden rounded-2xl border border-white/20 bg-stone-900 shadow-2xl">
-          {#if photo.video}
-            <video
-              src={photo.video}
-              poster={photo.src}
-              autoplay
-              loop
-              muted
-              playsinline
-              class="max-h-[60vh] max-w-full object-contain"
-            ></video>
-            <span class="absolute top-3 left-3 flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
-              <span class="size-2 rounded-full bg-[#FF5E98]"></span> LIVE
-            </span>
-          {:else}
-            <img src={photo.src} alt="" class="max-h-[60vh] max-w-full object-contain" />
-          {/if}
+          <img src={photo.src} alt="" class="max-h-[60vh] max-w-full object-contain" />
         </div>
       {:else}
         <div class="max-w-lg text-center text-stone-400">
