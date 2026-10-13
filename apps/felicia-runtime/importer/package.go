@@ -178,7 +178,14 @@ func applyPackage(ctx context.Context, document *PackageDocument, store PackageS
 		}
 	}
 	for _, photo := range document.Photos {
-		if err := store.UpsertPhoto(ctx, photo); err != nil {
+		// Photos go through the ingest seam, not UpsertPhoto: the SQLite upsert
+		// behind UpsertPhoto rewrites caption and seq on conflict, so a
+		// re-import of a stable photo ID would replace curation authored after
+		// intake. UpsertIngestPhoto seeds caption/seq on first import and
+		// preserves them (with the memento assignment) on re-import, while
+		// source-owned metadata such as the video_key companion linkage and
+		// content hash still update.
+		if err := store.UpsertIngestPhoto(ctx, photo); err != nil {
 			return ImportReport{}, fmt.Errorf("import photo %s: %w", photo.ID, err)
 		}
 	}
@@ -205,16 +212,18 @@ func applyPackage(ctx context.Context, document *PackageDocument, store PackageS
 }
 
 type journeyFile struct {
-	ID        string `yaml:"id"`
-	JournalID string `yaml:"journal_id"`
-	Slug      string `yaml:"slug"`
-	SourceRef string `yaml:"source_ref"`
-	Title     string `yaml:"title"`
-	Place     string `yaml:"place"`
-	Country   string `yaml:"country"`
-	Region    string `yaml:"region"`
-	DateStart string `yaml:"date_start"`
-	DateEnd   string `yaml:"date_end"`
+	ID        string                       `yaml:"id"`
+	JournalID string                       `yaml:"journal_id"`
+	Slug      string                       `yaml:"slug"`
+	SourceRef string                       `yaml:"source_ref"`
+	Title     string                       `yaml:"title"`
+	Place     string                       `yaml:"place"`
+	Country   string                       `yaml:"country"`
+	Region    string                       `yaml:"region"`
+	DateStart string                       `yaml:"date_start"`
+	DateEnd   string                       `yaml:"date_end"`
+	LegModes  []string                     `yaml:"leg_modes"`
+	Weather   map[string]domain.WeatherDay `yaml:"weather"`
 }
 
 type stopFile struct {
@@ -287,6 +296,11 @@ func DecodePackage(pkg *journeypackage.Package) (*PackageDocument, error) {
 		}
 		ref := "route.gpx"
 		journey.SourceRef = &ref
+		// Keep segment/mode pairing explicit: enrichment shipped with a route
+		// must line up with its segments or the package fails loudly.
+		if len(journey.LegModes) > 0 && len(journey.GPSRoute) > 0 && len(journey.LegModes) != len(journey.GPSRoute) {
+			return nil, fmt.Errorf("journey: %d leg modes for %d route segments; counts must match", len(journey.LegModes), len(journey.GPSRoute))
+		}
 	}
 
 	var rawMementos []mementoFile
@@ -398,7 +412,21 @@ func normalizeJourney(raw journeyFile) (*domain.Journey, error) {
 	if raw.Slug == "" || raw.Title == "" {
 		return nil, fmt.Errorf("slug and title are required")
 	}
-	return &domain.Journey{ID: id, JournalID: journalID, Slug: raw.Slug, SourceRef: optional(raw.SourceRef), Title: raw.Title, Place: raw.Place, Country: optional(raw.Country), Region: optional(raw.Region), DateStart: start, DateEnd: end, GPSRoute: orb.MultiLineString{}}, nil
+	var legModes []domain.LegMode
+	for _, rawMode := range raw.LegModes {
+		mode, err := domain.ParseLegMode(rawMode)
+		if err != nil {
+			return nil, fmt.Errorf("leg_modes: %w", err)
+		}
+		legModes = append(legModes, mode)
+	}
+	weather := domain.Weather(raw.Weather)
+	if len(weather) > 0 {
+		if err := domain.ValidateWeather(weather); err != nil {
+			return nil, fmt.Errorf("weather: %w", err)
+		}
+	}
+	return &domain.Journey{ID: id, JournalID: journalID, Slug: raw.Slug, SourceRef: optional(raw.SourceRef), Title: raw.Title, Place: raw.Place, Country: optional(raw.Country), Region: optional(raw.Region), DateStart: start, DateEnd: end, GPSRoute: orb.MultiLineString{}, LegModes: legModes, Weather: weather}, nil
 }
 
 func normalizeMemento(pkg *journeypackage.Package, journeyID uuid.UUID, raw mementoFile, fallback string) (*domain.Memento, []*domain.MementoPhoto, error) {

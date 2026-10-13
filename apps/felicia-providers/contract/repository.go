@@ -149,6 +149,8 @@ func Run(t *testing.T, repo domain.Repository) {
 		t.Fatalf("unexpected photos: %#v", photos)
 	}
 
+	assertIngestPhotosPreserveAuthorship(t, repo, journey.ID)
+
 	assertSiteSettings(t, repo, journal.ID)
 	assertAuthoredMementoFieldsSurviveIngest(t, repo, journey.ID)
 	assertAuthoredJourneyFieldsSurviveIngest(t, repo, journal.ID)
@@ -436,6 +438,106 @@ func assertJourney(t *testing.T, repo domain.Repository, expected *domain.Journe
 	}
 }
 
+// assertIngestPhotosPreserveAuthorship pins the finding-2 guarantee (2026-10-13
+// architecture review): the ingest photo write seeds caption/seq on first
+// import, but a re-import preserves curation authored after intake while
+// source-owned metadata (content hash, taken_at, video companion, source ref)
+// still update, and genuinely new photos still arrive.
+func assertIngestPhotosPreserveAuthorship(t *testing.T, repo domain.Repository, journeyID uuid.UUID) {
+	t.Helper()
+	ctx := context.Background()
+
+	memento := &domain.Memento{ID: mustUUID(t), JourneyID: journeyID, Kind: "goods", Seq: 9, State: domain.MementoDraft}
+	if err := repo.UpsertMemento(ctx, memento); err != nil {
+		t.Fatalf("upsert photo memento: %v", err)
+	}
+
+	takenAt := time.Date(2026, 3, 21, 9, 0, 0, 0, time.UTC)
+	photo := &domain.MementoPhoto{
+		ID: mustUUID(t), MementoID: memento.ID,
+		ObjectKey: "photos/aa.jpg", ContentHash: "hash-1",
+		Caption: strPtr("package caption"), Seq: 4, TakenAt: &takenAt,
+	}
+	// First import seeds caption and order from the package.
+	if err := repo.UpsertIngestPhoto(ctx, photo); err != nil {
+		t.Fatalf("ingest photo: %v", err)
+	}
+	seeded, err := repo.GetPhoto(ctx, photo.ID)
+	if err != nil {
+		t.Fatalf("get seeded photo: %v", err)
+	}
+	if seeded.Caption == nil || *seeded.Caption != "package caption" || seeded.Seq != 4 {
+		t.Fatalf("first import did not seed caption/seq: %#v", seeded)
+	}
+
+	// The author then rewrites caption and order through the authoring path.
+	curated := &domain.MementoPhoto{
+		ID: photo.ID, MementoID: memento.ID,
+		ObjectKey: "photos/aa.jpg", ContentHash: "hash-1",
+		Caption: strPtr("Authored caption"), Seq: 1,
+	}
+	if err := repo.UpsertPhoto(ctx, curated); err != nil {
+		t.Fatalf("author photo: %v", err)
+	}
+
+	// Re-import: caption and seq survive; source-owned metadata updates,
+	// including the video_key companion linkage and the content hash.
+	newTakenAt := time.Date(2026, 3, 21, 9, 5, 0, 0, time.UTC)
+	reimport := &domain.MementoPhoto{
+		ID: photo.ID, MementoID: memento.ID,
+		ObjectKey: "photos/aa.jpg", ContentHash: "hash-2",
+		Caption: strPtr("package caption"), Seq: 4, TakenAt: &newTakenAt,
+		VideoKey: strPtr("videos/aa.mov.mp4"), SourceRef: strPtr("immich/photo-1"),
+	}
+	if err := repo.UpsertIngestPhoto(ctx, reimport); err != nil {
+		t.Fatalf("re-ingest photo: %v", err)
+	}
+	stored, err := repo.GetPhoto(ctx, photo.ID)
+	if err != nil {
+		t.Fatalf("get re-ingested photo: %v", err)
+	}
+	if stored.Caption == nil || *stored.Caption != "Authored caption" || stored.Seq != 1 {
+		t.Fatalf("re-import clobbered authored curation: %#v", stored)
+	}
+	if stored.ContentHash != "hash-2" || stored.VideoKey == nil || *stored.VideoKey != "videos/aa.mov.mp4" || stored.SourceRef == nil || *stored.SourceRef != "immich/photo-1" {
+		t.Fatalf("re-import failed to update source-owned metadata: %#v", stored)
+	}
+	if stored.TakenAt == nil || !stored.TakenAt.Equal(newTakenAt) {
+		t.Fatalf("re-import failed to update taken_at: %#v", stored)
+	}
+
+	// A genuinely new photo arrives with its package caption and order.
+	arriving := &domain.MementoPhoto{
+		ID: mustUUID(t), MementoID: memento.ID,
+		ObjectKey: "photos/bb.jpg", ContentHash: "hash-3",
+		Caption: strPtr("new photo caption"), Seq: 5,
+	}
+	if err := repo.UpsertIngestPhoto(ctx, arriving); err != nil {
+		t.Fatalf("ingest new photo: %v", err)
+	}
+	photos, err := repo.ListPhotosByMemento(ctx, memento.ID)
+	if err != nil {
+		t.Fatalf("list photos: %v", err)
+	}
+	if len(photos) != 2 {
+		t.Fatalf("new photo did not arrive: %#v", photos)
+	}
+	for _, got := range photos {
+		switch got.ID {
+		case photo.ID:
+			if got.Caption == nil || *got.Caption != "Authored caption" || got.Seq != 1 {
+				t.Fatalf("curation lost after new-photo ingest: %#v", got)
+			}
+		case arriving.ID:
+			if got.Caption == nil || *got.Caption != "new photo caption" || got.Seq != 5 {
+				t.Fatalf("new photo caption/seq not seeded: %#v", got)
+			}
+		default:
+			t.Fatalf("unexpected photo: %#v", got)
+		}
+	}
+}
+
 func mustUUID(t *testing.T) uuid.UUID {
 	t.Helper()
 	id, err := uuid.NewV7()
@@ -446,6 +548,8 @@ func mustUUID(t *testing.T) uuid.UUID {
 }
 
 func int64Ptr(value int64) *int64 { return &value }
+
+func strPtr(value string) *string { return &value }
 
 // kindDataOperator decodes the "operator" key the authored-field assertions use
 // as a kind_data marker, so providers may re-serialize the JSON freely.

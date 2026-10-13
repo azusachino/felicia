@@ -294,24 +294,34 @@ func installMediaFiles(ctx context.Context, photosDir, mediaRoot string, assets 
 		var videoKey string
 		for _, movExt := range []string{".mov", ".MOV", ".mp4", ".MP4"} {
 			movPath := stem + movExt
-			if fileExists(movPath) {
-				movData, err := os.ReadFile(movPath)
-				if err == nil {
-					movDigest := importer.MediaDigest(movData)
-					movRel, err := filepath.Rel(photosDir, movPath)
-					if err != nil {
-						movRel = filepath.Base(movPath)
-					}
-					movKey := importer.MediaObjectKey(filepath.ToSlash(movRel), movDigest)
-					movTarget := filepath.Join(mediaRoot, filepath.FromSlash(movKey))
-					if !fileExists(movTarget) {
-						_ = os.MkdirAll(filepath.Dir(movTarget), 0o700)
-						_ = writeAtomic(movTarget, movData)
-					}
-					videoKey = movKey
-				}
-				break
+			_, err := os.Lstat(movPath)
+			if errors.Is(err, os.ErrNotExist) {
+				continue
 			}
+			if err != nil {
+				return nil, fmt.Errorf("stat video companion %s: %w", movPath, err)
+			}
+			movData, err := os.ReadFile(movPath)
+			if err != nil {
+				return nil, fmt.Errorf("read video companion %s: %w", movPath, err)
+			}
+			movDigest := importer.MediaDigest(movData)
+			movRel, err := filepath.Rel(photosDir, movPath)
+			if err != nil {
+				return nil, fmt.Errorf("resolve video companion path %s: %w", movPath, err)
+			}
+			movKey := importer.MediaObjectKey(filepath.ToSlash(movRel), movDigest)
+			movTarget := filepath.Join(mediaRoot, filepath.FromSlash(movKey))
+			if !fileExists(movTarget) {
+				if err := os.MkdirAll(filepath.Dir(movTarget), 0o700); err != nil {
+					return nil, fmt.Errorf("create video media directory %s: %w", filepath.Dir(movTarget), err)
+				}
+				if err := writeAtomic(movTarget, movData); err != nil {
+					return nil, fmt.Errorf("install video companion %s: %w", movPath, err)
+				}
+			}
+			videoKey = movKey
+			break
 		}
 
 		asset, ok := assetByRel[filepath.ToSlash(rel)]
@@ -375,25 +385,42 @@ func buildPackageDocument(
 		}
 	}
 
-	var legModes []string
-	var weather any
+	var legModes []domain.LegMode
+	var weather domain.Weather
 
 	for _, metaFile := range []string{"trip.json", "metadata.json"} {
 		metaPath := filepath.Join(cfg.Dir, metaFile)
 		if fileExists(metaPath) {
-			if data, err := os.ReadFile(metaPath); err == nil {
-				var meta struct {
-					LegModes []string       `json:"leg_modes"`
-					Weather  map[string]any `json:"weather"`
+			data, err := os.ReadFile(metaPath)
+			if err != nil {
+				return nil, fmt.Errorf("read %s: %w", metaFile, err)
+			}
+			var meta struct {
+				LegModes []string        `json:"leg_modes"`
+				Weather  json.RawMessage `json:"weather"`
+			}
+			if err := json.Unmarshal(data, &meta); err != nil {
+				return nil, fmt.Errorf("decode %s: %w", metaFile, err)
+			}
+			for _, raw := range meta.LegModes {
+				mode, err := domain.ParseLegMode(raw)
+				if err != nil {
+					return nil, fmt.Errorf("%s leg_modes: %w", metaFile, err)
 				}
-				if json.Unmarshal(data, &meta) == nil {
-					if len(meta.LegModes) > 0 {
-						legModes = meta.LegModes
-					}
-					if len(meta.Weather) > 0 {
-						weather = meta.Weather
-					}
+				legModes = append(legModes, mode)
+			}
+			if len(meta.Weather) > 0 && string(meta.Weather) != "null" {
+				if err := json.Unmarshal(meta.Weather, &weather); err != nil {
+					return nil, fmt.Errorf("decode %s weather: %w", metaFile, err)
 				}
+				if err := domain.ValidateWeather(weather); err != nil {
+					return nil, fmt.Errorf("%s weather: %w", metaFile, err)
+				}
+			}
+			// Enrichment pairs leg modes with route segments by index; a
+			// mismatch would silently shift every mode onto the wrong leg.
+			if len(legModes) > 0 && len(gpsRoute) > 0 && len(legModes) != len(gpsRoute) {
+				return nil, fmt.Errorf("%s: %d leg modes for %d route segments; counts must match", metaFile, len(legModes), len(gpsRoute))
 			}
 			break
 		}
@@ -401,24 +428,24 @@ func buildPackageDocument(
 
 	weatherPath := filepath.Join(cfg.Dir, "weather.json")
 	if weather == nil && fileExists(weatherPath) {
-		if data, err := os.ReadFile(weatherPath); err == nil {
-			var w map[string]any
-			if json.Unmarshal(data, &w) == nil {
-				weather = w
-			}
+		data, err := os.ReadFile(weatherPath)
+		if err != nil {
+			return nil, fmt.Errorf("read weather.json: %w", err)
+		}
+		if err := json.Unmarshal(data, &weather); err != nil {
+			return nil, fmt.Errorf("decode weather.json: %w", err)
+		}
+		if err := domain.ValidateWeather(weather); err != nil {
+			return nil, fmt.Errorf("weather.json: %w", err)
 		}
 	}
 
-	if len(legModes) == 0 && len(gpsRoute) > 0 {
-		legModes = make([]string, len(gpsRoute))
-		for i := range legModes {
-			legModes[i] = "car"
-		}
-	}
+	// No silent all-car default: absent metadata stays absent (finding 4;
+	// "unknown transport need not silently mean car").
 
 	if weather == nil && len(gpsRoute) > 0 && len(gpsRoute[0]) > 0 {
 		firstPoint := gpsRoute[0][0]
-		weather = fetchOpenMeteoWeather(firstPoint[1], firstPoint[0], dateStart, dateEnd)
+		weather = fetchWeather(firstPoint[1], firstPoint[0], dateStart, dateEnd)
 	}
 
 	sourceRef := "trip-folder"
@@ -723,19 +750,33 @@ func titleFromSlug(slug string) string {
 	return res
 }
 
+// openMeteoDailyWeather uses pointer scalars so a JSON null stays
+// distinguishable from a genuine numeric zero after decoding (audit finding 6:
+// non-pointer slices collapse both into zero and could render "sunny 0°C").
 type openMeteoDailyWeather struct {
-	Time             []string  `json:"time"`
-	WeatherCode      []int     `json:"weather_code"`
-	Temperature2mMax []float64 `json:"temperature_2m_max"`
-	Temperature2mMin []float64 `json:"temperature_2m_min"`
+	Time             []string   `json:"time"`
+	WeatherCode      []*int     `json:"weather_code"`
+	Temperature2mMax []*float64 `json:"temperature_2m_max"`
+	Temperature2mMin []*float64 `json:"temperature_2m_min"`
 }
 
-func fetchOpenMeteoWeather(lat, lon float64, start, end time.Time) any {
+// fetchWeather is the automatic lookup seam; tests swap it out to stay
+// offline-deterministic. The owner-approved automatic lookup remains the
+// production default.
+var fetchWeather = fetchOpenMeteoWeather
+
+// openMeteoArchiveURL is the Open-Meteo archive endpoint. It is a variable so
+// tests can point it at an httptest server and exercise the real HTTP+JSON
+// decoding path without external network.
+var openMeteoArchiveURL = "https://archive-api.open-meteo.com/v1/archive"
+
+func fetchOpenMeteoWeather(lat, lon float64, start, end time.Time) domain.Weather {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
 	url := fmt.Sprintf(
-		"https://archive-api.open-meteo.com/v1/archive?latitude=%.4f&longitude=%.4f&start_date=%s&end_date=%s&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto",
+		"%s?latitude=%.4f&longitude=%.4f&start_date=%s&end_date=%s&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto",
+		openMeteoArchiveURL,
 		lat, lon, start.Format("2006-01-02"), end.Format("2006-01-02"),
 	)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -764,14 +805,29 @@ func fetchOpenMeteoWeather(lat, lon float64, start, end time.Time) any {
 	return weatherMap
 }
 
-func mapOpenMeteoWeather(daily openMeteoDailyWeather) map[string]any {
-	weatherMap := make(map[string]any, len(daily.Time))
+// mapOpenMeteoWeather keeps only complete days: an entry is omitted when its
+// code or temperatures are null or missing (short/truncated arrays). Genuine
+// numeric zeros are preserved because decoding used pointer scalars.
+func mapOpenMeteoWeather(daily openMeteoDailyWeather) domain.Weather {
+	weatherMap := make(domain.Weather, len(daily.Time))
 	for i, date := range daily.Time {
 		if i >= len(daily.WeatherCode) || i >= len(daily.Temperature2mMin) || i >= len(daily.Temperature2mMax) {
 			continue
 		}
-		icon, label := mapWMOWeather(daily.WeatherCode[i], daily.Temperature2mMin[i], daily.Temperature2mMax[i])
-		weatherMap[date] = map[string]string{"icon": icon, "label": label}
+		code, minT, maxT := daily.WeatherCode[i], daily.Temperature2mMin[i], daily.Temperature2mMax[i]
+		if code == nil || minT == nil || maxT == nil {
+			continue
+		}
+		icon, label := mapWMOWeather(*code, *minT, *maxT)
+		weatherMap[date] = domain.WeatherDay{
+			Icon:     icon,
+			Label:    label,
+			Min:      minT,
+			Max:      maxT,
+			Provider: "open-meteo",
+			Code:     code,
+			Units:    "celsius",
+		}
 	}
 	return weatherMap
 }

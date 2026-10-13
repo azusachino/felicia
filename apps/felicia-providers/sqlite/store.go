@@ -76,10 +76,90 @@ func Open(path string) (*Repository, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("apply sqlite schema: %w", err)
 	}
-	_, _ = db.ExecContext(context.Background(), "ALTER TABLE tb_journeys ADD COLUMN leg_modes TEXT NOT NULL DEFAULT '[]'")
-	_, _ = db.ExecContext(context.Background(), "ALTER TABLE tb_journeys ADD COLUMN weather TEXT NOT NULL DEFAULT '{}'")
-	_, _ = db.ExecContext(context.Background(), "ALTER TABLE tb_memento_photos ADD COLUMN video_key TEXT")
+	if err := upgradeSchema(context.Background(), db); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
 	return r, nil
+}
+
+// schemaColumn describes one column that a previous schema version may lack.
+type schemaColumn struct {
+	table      string
+	name       string
+	definition string
+}
+
+// schemaColumns lists the columns added after the initial v1 schema.sql.
+// Fresh databases already carry them in schema.sql; upgrading inspects the
+// actual table via PRAGMA table_info and applies only what is missing, in one
+// controlled transaction, so a failure surfaces as a startup error instead of
+// being silently discarded.
+var schemaColumns = []schemaColumn{
+	{table: "tb_journeys", name: "leg_modes", definition: "TEXT NOT NULL DEFAULT '[]'"},
+	{table: "tb_journeys", name: "weather", definition: "TEXT NOT NULL DEFAULT '{}'"},
+	{table: "tb_memento_photos", name: "video_key", definition: "TEXT"},
+}
+
+// upgradeSchema adds any missing enrichment columns. Columns already present
+// are success, not errors.
+func upgradeSchema(ctx context.Context, db queryer) error {
+	var missing []schemaColumn
+	for _, col := range schemaColumns {
+		present, err := tableHasColumn(ctx, db, col.table, col.name)
+		if err != nil {
+			return fmt.Errorf("inspect sqlite schema for %s.%s: %w", col.table, col.name, err)
+		}
+		if !present {
+			missing = append(missing, col)
+		}
+	}
+	if len(missing) == 0 {
+		return nil
+	}
+	tx, ok := db.(interface {
+		BeginTx(context.Context, *sql.TxOptions) (*sql.Tx, error)
+	})
+	if !ok {
+		return errors.New("sqlite schema upgrade requires a transactional handle")
+	}
+	upgrade, err := tx.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin sqlite schema upgrade: %w", err)
+	}
+	for _, col := range missing {
+		stmt := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", col.table, col.name, col.definition)
+		if _, err := upgrade.ExecContext(ctx, stmt); err != nil {
+			_ = upgrade.Rollback()
+			return fmt.Errorf("upgrade sqlite schema (%s): %w", stmt, err)
+		}
+	}
+	if err := upgrade.Commit(); err != nil {
+		return fmt.Errorf("commit sqlite schema upgrade: %w", err)
+	}
+	return nil
+}
+
+func tableHasColumn(ctx context.Context, db queryer, table, name string) (bool, error) {
+	rows, err := db.QueryContext(ctx, fmt.Sprintf("PRAGMA table_info(%s)", table))
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var cid int
+		var colName, colType string
+		var notNull int
+		var dfltValue any
+		var pk int
+		if err := rows.Scan(&cid, &colName, &colType, &notNull, &dfltValue, &pk); err != nil {
+			return false, err
+		}
+		if colName == name {
+			return true, nil
+		}
+	}
+	return false, rows.Err()
 }
 
 // Close releases the database handle.
@@ -459,15 +539,15 @@ func (r *Repository) UpsertJourney(ctx context.Context, journey *domain.Journey)
 	}
 	route, err := marshalJSON(journey.GPSRoute)
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal journey %s gps_route: %w", idString(journey.ID), err)
 	}
 	legModes, err := marshalJSON(journey.LegModes)
 	if err != nil {
-		legModes = "[]"
+		return fmt.Errorf("marshal journey %s leg_modes: %w", idString(journey.ID), err)
 	}
 	weather, err := marshalJSON(journey.Weather)
 	if err != nil {
-		weather = "{}"
+		return fmt.Errorf("marshal journey %s weather: %w", idString(journey.ID), err)
 	}
 	fields, err := stringsJSON(journey.AuthoredFields)
 	if err != nil {
@@ -506,13 +586,17 @@ func makeJourney(id, journalID uuid.UUID, slug string, sourceRef sql.NullString,
 	if err := unmarshalJSON(route, &gps); err != nil {
 		return nil, err
 	}
-	var legModes []string
+	var legModes []domain.LegMode
 	if legModesStr != "" && legModesStr != "[]" {
-		_ = unmarshalJSON(legModesStr, &legModes)
+		if err := unmarshalJSON(legModesStr, &legModes); err != nil {
+			return nil, fmt.Errorf("decode journey %s leg_modes: %w", idString(id), err)
+		}
 	}
-	var weather any
+	var weather domain.Weather
 	if weatherStr != "" && weatherStr != "{}" {
-		_ = unmarshalJSON(weatherStr, &weather)
+		if err := unmarshalJSON(weatherStr, &weather); err != nil {
+			return nil, fmt.Errorf("decode journey %s weather: %w", idString(id), err)
+		}
 	}
 	authored, err := parseStrings(fields)
 	if err != nil {

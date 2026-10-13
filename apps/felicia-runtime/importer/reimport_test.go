@@ -41,8 +41,8 @@ func (s *lifecycleStore) GetMemento(_ context.Context, id uuid.UUID) (*domain.Me
 	return &domain.Memento{ID: id, State: state}, nil
 }
 
-func (s *lifecycleStore) EnsureJournal(context.Context, *domain.Journal) error    { return nil }
-func (s *lifecycleStore) UpsertPhoto(context.Context, *domain.MementoPhoto) error { return nil }
+func (s *lifecycleStore) EnsureJournal(context.Context, *domain.Journal) error          { return nil }
+func (s *lifecycleStore) UpsertIngestPhoto(context.Context, *domain.MementoPhoto) error { return nil }
 func (s *lifecycleStore) WithTransaction(_ context.Context, fn func(domain.Repository) error) error {
 	return fn(s)
 }
@@ -129,14 +129,30 @@ type authorshipStore struct {
 	mementos map[uuid.UUID]*domain.Memento
 	// journeyUpserts counts authoring writes, which an import must never make.
 	journeyUpserts int
+	// photoIngests records photos routed through the ingest seam;
+	// photoUpserts counts authoring photo writes, which an import must never
+	// make.
+	photoIngests []uuid.UUID
+	photoUpserts int
 }
 
 func newAuthorshipStore(journey *domain.Journey) *authorshipStore {
 	return &authorshipStore{journey: journey, mementos: map[uuid.UUID]*domain.Memento{}}
 }
 
-func (s *authorshipStore) EnsureJournal(context.Context, *domain.Journal) error    { return nil }
-func (s *authorshipStore) UpsertPhoto(context.Context, *domain.MementoPhoto) error { return nil }
+func (s *authorshipStore) EnsureJournal(context.Context, *domain.Journal) error { return nil }
+
+// photo calls are recorded so the test can prove ApplyPackage routes package
+// photos through the ingest seam and never through the authoring UpsertPhoto.
+func (s *authorshipStore) UpsertIngestPhoto(_ context.Context, photo *domain.MementoPhoto) error {
+	s.photoIngests = append(s.photoIngests, photo.ID)
+	return nil
+}
+
+func (s *authorshipStore) UpsertPhoto(context.Context, *domain.MementoPhoto) error {
+	s.photoUpserts++
+	return nil
+}
 func (s *authorshipStore) WithTransaction(_ context.Context, fn func(domain.Repository) error) error {
 	return fn(s)
 }
@@ -274,5 +290,38 @@ func TestApplyPackageDoesNotClobberAuthoredJourneyFields(t *testing.T) {
 	}
 	if got := store.mementos[mementoID].Place; got != "Package place" {
 		t.Fatalf("re-import failed to update the unauthored memento place: %q", got)
+	}
+}
+
+// Package photos must take the ingest seam, not the authoring UpsertPhoto:
+// the SQLite write behind UpsertPhoto rewrites caption and seq on conflict, so
+// routing a re-import through it would clobber authored curation (architecture
+// review 2026-10-13, finding 2).
+func TestApplyPackageImportsPhotosThroughIngestSeam(t *testing.T) {
+	ctx := context.Background()
+	store := newAuthorshipStore(nil)
+
+	photoA := uuid.Must(uuid.NewV7())
+	photoB := uuid.Must(uuid.NewV7())
+	journeyID := uuid.Must(uuid.NewV7())
+	mementoID := uuid.Must(uuid.NewV7())
+	doc := &PackageDocument{
+		Journey: &domain.Journey{ID: journeyID, JournalID: uuid.Must(uuid.NewV7()), Slug: "photo-seam", Title: "Photo seam",
+			DateStart: time.Date(2026, 3, 20, 0, 0, 0, 0, time.UTC), DateEnd: time.Date(2026, 3, 21, 0, 0, 0, 0, time.UTC)},
+		Mementos: []*domain.Memento{{ID: mementoID, JourneyID: journeyID, Kind: "goods", Seq: 1, KindData: []byte(`{"name":"thing"}`)}},
+		Photos: []*domain.MementoPhoto{
+			{ID: photoA, MementoID: mementoID, ObjectKey: "a.jpg", ContentHash: "ha", Seq: 1},
+			{ID: photoB, MementoID: mementoID, ObjectKey: "b.jpg", ContentHash: "hb", Seq: 2},
+		},
+	}
+	if _, err := ApplyPackage(ctx, doc, store); err != nil {
+		t.Fatalf("import: %v", err)
+	}
+
+	if len(store.photoIngests) != 2 || store.photoIngests[0] != photoA || store.photoIngests[1] != photoB {
+		t.Fatalf("photos did not route through the ingest seam: %#v", store.photoIngests)
+	}
+	if store.photoUpserts != 0 {
+		t.Fatalf("import took the authoring photo write path %d time(s)", store.photoUpserts)
 	}
 }

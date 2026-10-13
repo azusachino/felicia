@@ -23,6 +23,7 @@ Early importer implementations risked clobbering manual edits whenever a trip wa
 1. **Auto-Ingest Seeds; It Never Clobbers:**
    - The initial import creates records and populates automated fields (timestamps, raw route, photo dimensions).
    - Re-import updates only unauthored fields and never overwrites fields claimed by the author.
+   - Package photos take the same boundary: the ingest photo write seeds caption and order on first import, but a re-import preserves the stored caption, order and memento assignment, updating only source-owned metadata such as the content hash and video companion linkage (`UpsertIngestPhoto`, never the authoring `UpsertPhoto`).
 2. **Server Owns the Authored Mask:**
    - The server maintains `authored_fields` masks on journeys, mementos, and stop candidates.
    - When an author edits a field in the Admin GUI, the server automatically adds that field to the authored mask; clients cannot blank or clear the mask.

@@ -58,8 +58,8 @@ type Journey struct {
 	DateStart        time.Time           `json:"date_start"`
 	DateEnd          time.Time           `json:"date_end"`
 	GPSRoute         orb.MultiLineString `json:"gps_route,omitempty"`
-	LegModes         []string            `json:"leg_modes,omitempty"`
-	Weather          any                 `json:"weather,omitempty"`
+	LegModes         []LegMode           `json:"leg_modes,omitempty"`
+	Weather          Weather             `json:"weather,omitempty"`
 	AuthoredFields   []string            `json:"authored_fields"`
 	Revision         int64               `json:"revision"`
 	ExpectedRevision *int64              `json:"expected_revision,omitempty"`
@@ -233,7 +233,12 @@ type Repository interface {
 	GetPhoto(ctx context.Context, id uuid.UUID) (*MementoPhoto, error)
 	ListPhotosByMemento(ctx context.Context, mementoID uuid.UUID) ([]*MementoPhoto, error)
 	UpsertPhoto(ctx context.Context, photo *MementoPhoto) error
-	// CreatePhotoWithNextSequence inserts a new photo row and assigns the
+	// UpsertIngestPhoto is the source write for package photos. On insert it
+	// seeds caption and seq from the import; on conflict it updates only
+	// source-owned columns (object_key, content_hash, taken_at, video_key,
+	// source_ref) and preserves the stored memento assignment, caption and
+	// seq, so re-import cannot clobber authored curation.
+	UpsertIngestPhoto(ctx context.Context, photo *MementoPhoto) error
 	// next sequence position for its memento in one atomic persistence
 	// operation, returning the assigned position. The supplied Seq is
 	// ignored. Creation never updates an existing row and must not skip:

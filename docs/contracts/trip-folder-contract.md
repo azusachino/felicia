@@ -24,7 +24,9 @@ A staged trip directory contains raw evidence for a single journey:
 │   ├── DSC04921.JPG
 │   ├── DSC04922.JPG
 │   └── PXL_20261001_143012.webp
-└── photos.jsonl              # Optional metadata overrides (JSON Lines)
+├── photos.jsonl              # Optional metadata overrides (JSON Lines)
+├── trip.json | metadata.json # Optional journey enrichment metadata
+└── weather.json              # Optional typed daily weather sidecar
 ```
 
 ### File specifications
@@ -36,6 +38,25 @@ A staged trip directory contains raw evidence for a single journey:
 | `timeline.json` / `Timeline.json` | Conditional | Google Timeline JSON visit export. Accepted as an alternative or complement to GPX route tracks. Required if no GPX file is present. At least one of GPX or Timeline is required. |
 | `photos/` | Optional | Subdirectory containing unedited trip images. Supported formats: `.jpg`, `.jpeg`, `.png`, `.webp` (case-insensitive). Maximum size per image: **20 MiB**. Top-level images in `<trip-folder>` are discovered automatically if the `photos/` subdirectory is absent. |
 | `photos.jsonl` | Optional | JSON Lines sidecar supplying metadata overrides for photos. |
+| `trip.json` / `metadata.json` | Optional | Journey enrichment metadata. Supported fields: `leg_modes` (array of `car`, `ferry`, `train`, `plane`, `foot`; the legacy spelling `walk` is accepted and normalized to `foot`) and `weather` (object keyed by ISO date, each day requiring `icon`, with optional `label`, `min`, `max`, `provider`, `code`, `units`). Unknown modes or malformed weather fail intake loudly. When both `leg_modes` and a multi-segment route are present, the mode count must equal the route segment count — modes pair with segments by index. Absent enrichment stays absent; nothing is invented. |
+
+### Automatic weather lookup and the day-location policy
+
+When no weather is authored in `trip.json`/`metadata.json` or `weather.json`, intake performs one
+automatic Open-Meteo archive lookup (owner-approved; a network failure yields no weather rather than
+invented data). Decoding uses pointer scalars, so a day whose `weather_code` or temperatures are
+`null` (or missing from a truncated array) is **omitted entirely** — null never collapses into
+"sunny 0 °C", and genuine numeric zeros are preserved. If no day survives, no weather is stored.
+
+**Day-location policy (recorded decision): single-point departure-area approximation.** The lookup
+uses the first route point (the journey's departure location) for **all** trip days. This is a deliberate approximation, not stop-level precision: a multi-city journey records departure-area
+weather for every day, and consumers must not present it as location-specific. We chose this over a
+per-day representative location because (a) daily tracks contain thousands of points with no
+stop/dwell segmentation at intake time, so any "representative point per day" would itself be an
+invented heuristic; and (b) a conservative, explicitly documented approximation is preferable to a
+plausible-looking fabrication — consistent with the intake rule that nothing is invented. If
+stop-level weather is wanted later, it belongs to a dwell/stop-segmentation pass that emits
+`weather.json` explicitly, not to the automatic lookup.
 
 ### Sidecar format (`photos.jsonl`)
 

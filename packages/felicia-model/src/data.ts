@@ -57,7 +57,10 @@ export interface Visit {
   coords: Coordinates
 }
 
-export type LegMode = "car" | "ferry" | "train" | "plane" | "walk"
+// Enforced transport-mode vocabulary shared with the Go domain contract
+// (apps/felicia-core/domain/enrichment.go). "walk" is the pre-contract
+// spelling of "foot" kept for journeys ingested before the typed contract.
+export type LegMode = "car" | "ferry" | "train" | "plane" | "foot" | "walk"
 
 export interface WeatherInfo {
   icon: string

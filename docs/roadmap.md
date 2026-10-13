@@ -23,14 +23,13 @@ deployed safely with configurable ingress.
 
 - Public reader for journeys, routes, visits, mementos, essays, and galleries.
 - One canonical API/data contract used by the public frontend and admin surface.
-- SQLite-first local storage; PostgreSQL/PostGIS is deferred to v1.1/v1.2,
-  not a v1 compatibility promise.
+- SQLite is the only v1 persistence contract ([ADR 0005](adr/0005-sqlite-storage-and-content-addressed-media.md)); the earlier "SQLite-first, PostgreSQL deferred" plan is superseded and the PostgreSQL/PostGIS provider is retired.
 - Authored content that is never overwritten by ingestion.
 - A declarative memento template registry (`apps/felicia-core/kinds/*.yaml`): `goods`, `live`, `transit`, `stamp`, `receipt`, and `souvenir`; admin MVP hand-builds forms for `transit`/`goods` first.
 - Japanese-first system UI with English and Chinese catalogs; authored content is shown exactly as entered.
 - One authoring flow: create or import a journey, curate mementos/photos, preview, and publish.
 - One real journey as the acceptance fixture and one complete end-to-end publish flow.
-- EXIF-stripped, resized public media stored behind an S3-compatible interface.
+- EXIF-stripped, resized public media behind the provider-neutral `BlobStore` port (local content-addressed originals; the earlier S3-compatible interface target is deferred per [ADR 0005](adr/0005-sqlite-storage-and-content-addressed-media.md)).
 - Containerized single-owner deployment on a supported host, with private
   admin access, public-reader ingress, and object storage selected by config.
 - Two intake modes through one draft pipeline: connected Dawarich/Immich sources and versioned user-provided journey packages.
@@ -72,10 +71,10 @@ Exit check: a reviewer can describe the complete author and reader journey witho
 
 Deliverables:
 
-- Complete the goose schema/migration path for the stable memento-era model.
+- ~~Complete the goose schema/migration path for the stable memento-era model.~~ Superseded by [ADR 0005](adr/0005-sqlite-storage-and-content-addressed-media.md): a single `schema.sql`, no migration framework.
 - Implement the package adapter and canonical intake boundary alongside connected source adapters; both must land as draft import runs.
-- Keep the four Go module boundaries: core, runtime, providers, and API server.
-- Prove SQLite contract tests and keep PostgreSQL contract tests passing.
+- ~~Keep the four Go module boundaries.~~ Superseded by [ADR 0007](adr/0007-application-and-package-layout.md): core, runtime, providers, and publication, composed by server/CLI adapters.
+- Prove SQLite contract tests. ~~Keep PostgreSQL contract tests passing.~~ Superseded with the retired PostgreSQL provider.
 - Implement the public journey index, journey detail, memento, route, visit, and media projections under `/api/v1`.
 - Add the flat memento read projection only if the chosen v1 landing needs it.
 - Keep geometry, ordering, provenance, and locale behavior presentation-agnostic.
@@ -90,7 +89,7 @@ Deliverables:
 - Keep a dark MapLibre route map, journey index, visit/memento markers, and responsive mobile layout.
 - Render the first memento templates from structured data rather than per-item markup.
 - Implement the signature open interaction into an essay and photo gallery.
-- Align Atlas, Cabinet, Techo, and Cartography behind the shared reader UI/UX contract: map/index access, paper memento semantics, accessible controls, and reduced-motion behavior.
+- ~~Align Atlas, Cabinet, Techo, and Cartography behind the shared reader UI/UX contract.~~ Superseded by [ADR 0003](adr/0003-single-flagship-reader-atlas.md): one flagship reader, Atlas; keep its shared UI/UX contract (map/index access, paper memento semantics, accessible controls, and reduced-motion behavior).
 - Remove prototype/scaffolding chrome from the public reader.
 - Verify Japanese, English, Chinese system UI, keyboard navigation, reduced motion, and readable essay typography.
 

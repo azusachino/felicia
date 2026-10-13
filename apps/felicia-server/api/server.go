@@ -1480,24 +1480,15 @@ func (s *Server) handleCompile(w http.ResponseWriter, r *http.Request) {
 		// output is what the built-in preview server serves.
 		req.OutDir = s.SiteOutDir()
 	}
-	writer := &publication.FileArtifactWriter{Root: req.OutDir}
 	media := publication.FileMediaSource{Root: s.mediaRoot}
-	report, err := (publication.StaticCompiler{}).Compile(r.Context(), publication.Input{}, s.repo, media, writer)
+	// Generation-atomic publish: compile into a staging sibling and promote
+	// only on success, so a failed rebuild cannot damage the previous
+	// generation (architecture review finding 3).
+	report, err := publication.Publish(r.Context(), publication.StaticCompiler{}, publication.Input{}, s.repo, media, req.OutDir)
 	if err != nil {
-		_ = writer.Abort()
 		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	// Reconcile a reused output directory: content unpublished since the
-	// previous compile must not stay publicly reachable (same manifest
-	// cleanup the CLI's `static compile` performs).
-	removed, err := writer.Finalize()
-	if err != nil {
-		_ = writer.Abort()
-		respondError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	report.Removed = len(removed)
 	respondJSON(w, http.StatusOK, report)
 }
 
