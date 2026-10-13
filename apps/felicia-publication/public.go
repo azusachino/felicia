@@ -57,6 +57,8 @@ func NewStaticJourney(journey *domain.Journey) StaticJourney {
 		DateStart:      journey.DateStart.Format("2006-01-02"),
 		DateEnd:        journey.DateEnd.Format("2006-01-02"),
 		GPSRoute:       publicRouteGeometry(journey.GPSRoute),
+		LegModes:       journey.LegModes,
+		Weather:        journey.Weather,
 		AuthoredFields: journey.AuthoredFields,
 	}
 }
@@ -99,6 +101,7 @@ func NewStaticPhoto(photo *domain.MementoPhoto) StaticPhoto {
 		Caption:     photo.Caption,
 		Seq:         photo.Seq,
 		TakenAt:     takenAt,
+		VideoKey:    photo.VideoKey,
 	}
 }
 

@@ -366,3 +366,41 @@ func TestCompileFailsOnUnsanitizableMedia(t *testing.T) {
 		t.Errorf("compile wrote media %v, want none", writer.media)
 	}
 }
+
+func TestNewStaticJourneyAndPhotoEnrichment(t *testing.T) {
+	journeyID := uuid.New()
+	weather := map[string]any{"2026-07-01": map[string]string{"icon": "sun", "label": "晴 · 12–22°C"}}
+	journey := &domain.Journey{
+		ID:        journeyID,
+		JournalID: uuid.New(),
+		Slug:      "hakone-trip",
+		Title:     "箱根の旅",
+		Place:     "Hakone",
+		DateStart: time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC),
+		DateEnd:   time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC),
+		LegModes:  []string{"car", "ferry"},
+		Weather:   weather,
+	}
+
+	projected := NewStaticJourney(journey)
+	if len(projected.LegModes) != 2 || projected.LegModes[0] != "car" || projected.LegModes[1] != "ferry" {
+		t.Errorf("unexpected LegModes: %v", projected.LegModes)
+	}
+	if projected.Weather == nil {
+		t.Errorf("expected Weather to be preserved on projected journey")
+	}
+
+	videoKey := "media/live-photo.mp4"
+	photo := &domain.MementoPhoto{
+		ID:          uuid.New(),
+		MementoID:   uuid.New(),
+		ObjectKey:   "media/live-photo.jpg",
+		VideoKey:    &videoKey,
+		ContentHash: "sha256:hash",
+		Seq:         1,
+	}
+	projectedPhoto := NewStaticPhoto(photo)
+	if projectedPhoto.VideoKey == nil || *projectedPhoto.VideoKey != videoKey {
+		t.Errorf("expected VideoKey %q, got %v", videoKey, projectedPhoto.VideoKey)
+	}
+}

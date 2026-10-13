@@ -117,6 +117,12 @@ func applyPackage(ctx context.Context, document *PackageDocument, store PackageS
 	if len(document.Journey.GPSRoute) > 0 {
 		journeyFields = append(journeyFields, "gps_route")
 	}
+	if len(document.Journey.LegModes) > 0 {
+		journeyFields = append(journeyFields, "leg_modes")
+	}
+	if document.Journey.Weather != nil {
+		journeyFields = append(journeyFields, "weather")
+	}
 	if err := store.ApplyIngestJourneyPatch(ctx, &domain.IngestJourneyPatch{Journey: document.Journey, Fields: journeyFields}); err != nil {
 		return ImportReport{}, fmt.Errorf("upsert journey: %w", err)
 	}

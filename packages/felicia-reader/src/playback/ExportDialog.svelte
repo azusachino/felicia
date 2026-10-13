@@ -1,15 +1,68 @@
 <script lang="ts">
+  import type { Lang } from "@felicia/model"
   import { formatChapters, type PlaybackController } from "./engine"
 
   let {
     controller,
     journeyTitle,
+    lang = "en",
     onClose,
   }: {
     controller: PlaybackController
     journeyTitle: string
+    lang?: Lang
     onClose: () => void
   } = $props()
+
+  const i18n = $derived(
+    {
+      zh: {
+        title: "导出旅程视频",
+        desc: "利用浏览器原生屏幕录制 API 将旅程回放录制为高清视频，并自动导出视频平台（B站 / YouTube）适用的分集章节时间戳。",
+        aspectRatio: "画面比例",
+        landscape: "🖥️ 横屏 16:9",
+        portrait: "📱 竖屏 9:16",
+        chaptersOnly: "仅下载章节 (.txt)",
+        startRecord: "开始录制视频",
+        recording: "录制中...",
+        notSupported: "当前浏览器不支持屏幕/标签页录制 API，您可以下载章节文件。",
+        prepare: "正在准备屏幕录制，请在弹窗中选择当前标签页...",
+        cancelled: "录制已取消或权限被拒绝。",
+        portraitSuffix: "竖屏",
+        landscapeSuffix: "横屏",
+      },
+      ja: {
+        title: "旅の動画を書き出し",
+        desc: "ブラウザの録画機能を使って旅の再生を高画質動画として記録し、チャプター区切り（.txt）を自動生成します。",
+        aspectRatio: "アスペクト比",
+        landscape: "🖥️ 横画面 16:9",
+        portrait: "📱 縦画面 9:16",
+        chaptersOnly: "チャプターのみ保存 (.txt)",
+        startRecord: "録画を開始",
+        recording: "録画中...",
+        notSupported: "このブラウザは画面録画に対応していません。チャプターファイルのみ保存できます。",
+        prepare: "画面録画の準備中…共有するタブを選択してください。",
+        cancelled: "録画がキャンセルされたか、権限が拒否されました。",
+        portraitSuffix: "縦画面",
+        landscapeSuffix: "横画面",
+      },
+      en: {
+        title: "Export Trip Video",
+        desc: "Record the cinematic journey playback directly in your browser and automatically generate video chapters (.txt) for YouTube / video platforms.",
+        aspectRatio: "Aspect Ratio",
+        landscape: "🖥️ Landscape 16:9",
+        portrait: "📱 Portrait 9:16",
+        chaptersOnly: "Download Chapters (.txt)",
+        startRecord: "Start Recording",
+        recording: "Recording...",
+        notSupported: "Screen recording is not supported in this browser. You can still download chapter timestamps.",
+        prepare: "Preparing screen recording. Please select this browser tab...",
+        cancelled: "Recording was cancelled or permission denied.",
+        portraitSuffix: "portrait",
+        landscapeSuffix: "landscape",
+      },
+    }[lang]
+  )
 
   let ratio = $state<"landscape" | "portrait">("landscape")
   let isRecording = $state(false)
@@ -28,18 +81,18 @@
   function downloadChapters() {
     const chapters = controller.getChapters()
     const formatted = formatChapters(chapters.length ? chapters : [{ label: journeyTitle, timeSeconds: 0 }])
-    downloadText(formatted, `${journeyTitle}-章节.txt`)
+    downloadText(formatted, `${journeyTitle}-chapters.txt`)
   }
 
   async function startRecording() {
     if (!navigator.mediaDevices?.getDisplayMedia) {
-      status = "当前浏览器不支持屏幕/标签页录制 API，您可以下载章节文件。"
+      status = i18n.notSupported
       return
     }
 
     try {
       isRecording = true
-      status = "正在准备屏幕录制，请在弹窗中选择当前标签页..."
+      status = i18n.prepare
 
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: { displaySurface: "browser", frameRate: 30 },
@@ -67,7 +120,7 @@
         const url = URL.createObjectURL(finalBlob)
         const a = document.createElement("a")
         a.href = url
-        a.download = `${journeyTitle}-${ratio === "portrait" ? "竖屏" : "横屏"}.${ext}`
+        a.download = `${journeyTitle}-${ratio === "portrait" ? i18n.portraitSuffix : i18n.landscapeSuffix}.${ext}`
         a.click()
         setTimeout(() => URL.revokeObjectURL(url), 60000)
         downloadChapters()
@@ -85,7 +138,7 @@
       })
     } catch {
       isRecording = false
-      status = "录制已取消或权限被拒绝。"
+      status = i18n.cancelled
     }
   }
 </script>
@@ -93,7 +146,7 @@
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
   <div class="w-full max-w-md rounded-2xl border border-white/20 bg-stone-950 p-6 text-white shadow-2xl">
     <div class="flex items-center justify-between">
-      <h2 class="text-base font-bold">导出旅程视频</h2>
+      <h2 class="text-base font-bold">{i18n.title}</h2>
       <button
         type="button"
         class="flex size-8 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent text-stone-400 hover:text-white"
@@ -104,26 +157,26 @@
     </div>
 
     <p class="mt-2 text-xs leading-relaxed text-stone-400">
-      利用浏览器原生屏幕录制 API 将旅程回放录制为高清视频，并自动导出视频平台（B站 / YouTube）适用的分集章节时间戳。
+      {i18n.desc}
     </p>
 
     <!-- Ratio Switcher -->
     <div class="mt-4">
-      <span class="block text-xs font-medium text-stone-300">画面比例</span>
+      <span class="block text-xs font-medium text-stone-300">{i18n.aspectRatio}</span>
       <div class="mt-2 grid grid-cols-2 gap-2 text-xs">
         <button
           type="button"
           class="flex cursor-pointer items-center justify-center gap-2 rounded-xl border p-2.5 transition {ratio === 'landscape' ? 'border-[#39C5BB] bg-[#39C5BB]/10 text-[#39C5BB]' : 'border-white/10 text-stone-300'}"
           onclick={() => (ratio = "landscape")}
         >
-          <span>🖥️ 横屏 16:9</span>
+          <span>{i18n.landscape}</span>
         </button>
         <button
           type="button"
           class="flex cursor-pointer items-center justify-center gap-2 rounded-xl border p-2.5 transition {ratio === 'portrait' ? 'border-[#39C5BB] bg-[#39C5BB]/10 text-[#39C5BB]' : 'border-white/10 text-stone-300'}"
           onclick={() => (ratio = "portrait")}
         >
-          <span>📱 竖屏 9:16</span>
+          <span>{i18n.portrait}</span>
         </button>
       </div>
     </div>
@@ -139,7 +192,7 @@
         class="cursor-pointer rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-stone-300 hover:bg-white/10 hover:text-white"
         onclick={downloadChapters}
       >
-        仅下载章节 (.txt)
+        {i18n.chaptersOnly}
       </button>
 
       <button
@@ -148,7 +201,7 @@
         disabled={isRecording}
         onclick={startRecording}
       >
-        {isRecording ? "录制中..." : "开始录制视频"}
+        {isRecording ? i18n.recording : i18n.startRecord}
       </button>
     </div>
   </div>

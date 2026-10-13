@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS tb_journeys (
   date_start TEXT NOT NULL,
   date_end TEXT NOT NULL,
   gps_route TEXT NOT NULL DEFAULT '[]',
+  leg_modes TEXT NOT NULL DEFAULT '[]',
+  weather TEXT NOT NULL DEFAULT '{}',
   authored_fields TEXT NOT NULL DEFAULT '[]',
   revision INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL,
@@ -59,6 +61,7 @@ CREATE TABLE IF NOT EXISTS tb_memento_photos (
   caption TEXT,
   seq INTEGER NOT NULL DEFAULT 0,
   taken_at TEXT,
+  video_key TEXT,
   source_ref TEXT,
   created_at TEXT NOT NULL,
   UNIQUE (memento_id, content_hash)
