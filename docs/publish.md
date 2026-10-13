@@ -7,8 +7,8 @@
 ## What leaves your machine
 
 Only the compiled `dist/` — published mementos, EXIF-stripped public image
-derivatives, metadata-stripped H.264/AAC MP4 derivatives for linked Live Photo
-companions, and rounded geometry. Your SQLite journal, drafts, and original
+derivatives, and rounded geometry. Live Photo companion videos are linked and
+stored privately at intake but are never published ([ADR 0009](adr/0009-retire-live-photo-video-publishing.md)). Your SQLite journal, drafts, and original
 photos and videos stay local and are gitignored
 ([ADR 0001](adr/0001-personal-now-product-ready.md),
 [ADR 0005](adr/0005-sqlite-storage-and-content-addressed-media.md)).
@@ -214,13 +214,6 @@ built with the correct `BASE_PATH`.
 
     `scripts/felicia.py publish` compiles the production journey catalog through the
     same SQLite import and static compiler used by the local authoring workflow.
-
-When a published photo has a linked MOV/MP4 companion, static compilation requires
-`ffmpeg` with `libx264` and AAC encoder support. It emits a metadata-stripped,
-H.264/yuv420p MP4 under the photo's public video key; linked source or conversion
-errors fail compilation rather than leaving a dangling key. Video inputs are
-limited to 256 MiB and derivatives to 64 MiB. Originals remain in the private
-media store.
 
 Check the result before deploying:
 

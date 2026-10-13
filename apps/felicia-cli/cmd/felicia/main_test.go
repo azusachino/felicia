@@ -11,7 +11,6 @@ import (
 	"image/jpeg"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -334,16 +333,11 @@ func TestCLIJourneyIngestSyntheticTripFolder(t *testing.T) {
 		t.Fatal(err)
 	}
 	movFile := filepath.Join(photosDir, "DSC_0001.MOV")
-	ffmpeg, err := exec.LookPath("ffmpeg")
-	if err != nil {
-		t.Fatalf("ffmpeg is required to create the real synthetic MOV fixture: %v", err)
-	}
-	if output, err := exec.Command(ffmpeg, "-nostdin", "-v", "error", "-f", "lavfi", "-i", "color=c=red:s=16x16:d=0.2", "-metadata", "comment=private-fixture", "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-y", movFile).CombinedOutput(); err != nil {
-		t.Fatalf("create synthetic MOV fixture: %v: %s", err, output)
-	}
-	movBytes, err := os.ReadFile(movFile)
-	if err != nil {
-		t.Fatalf("read synthetic MOV fixture: %v", err)
+	// Publication no longer transcodes companions (ADR 0009), so a plain
+	// byte fixture is enough to prove linkage and installation.
+	movBytes := []byte("synthetic live photo companion bytes")
+	if err := os.WriteFile(movFile, movBytes, 0o644); err != nil {
+		t.Fatalf("write MOV fixture: %v", err)
 	}
 
 	// 3. Write photos.jsonl sidecar

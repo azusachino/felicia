@@ -390,19 +390,15 @@ func TestNewStaticJourneyAndPhotoEnrichment(t *testing.T) {
 		t.Errorf("expected Weather to be preserved on projected journey")
 	}
 
-	videoKey := "media/live-photo.mp4"
 	photo := &domain.MementoPhoto{
 		ID:          uuid.New(),
 		MementoID:   uuid.New(),
 		ObjectKey:   "media/live-photo.jpg",
-		VideoKey:    &videoKey,
 		ContentHash: "sha256:hash",
 		Seq:         1,
 	}
 	projectedPhoto := NewStaticPhoto(photo)
-	if projectedPhoto.VideoKey == nil || *projectedPhoto.VideoKey != videoKey {
-		t.Errorf("expected VideoKey %q, got %v", videoKey, projectedPhoto.VideoKey)
-	}
+	_ = projectedPhoto // Companion videos are not projected (ADR 0009); publication is stills-only.
 }
 
 func TestMultiSegmentProjectionKeepsSegmentModePairing(t *testing.T) {

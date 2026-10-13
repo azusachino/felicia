@@ -113,7 +113,6 @@ function adaptMemento(apiMemento: ApiMemento, visitId: string, visitCoords: Coor
     kindData: apiMemento.kind_data,
     photos: (apiMemento.photos ?? []).map((photo) => ({
       src: mediaURL(photo.object_key),
-      video: photo.video_key ? mediaURL(photo.video_key) : undefined,
       caption: authored(photo.caption),
       alt: photo.alt,
       width: photo.width,
@@ -157,7 +156,6 @@ export function adaptJourney(apiJourney: ApiJourney, apiMementos: ApiMemento[], 
 
   const covers = (apiJourney.covers ?? []).map((photo) => ({
     src: mediaURL(photo.object_key),
-    video: photo.video_key ? mediaURL(photo.video_key) : undefined,
     caption: authored(photo.caption),
     alt: photo.alt,
     width: photo.width,

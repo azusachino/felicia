@@ -60,7 +60,6 @@ type StaticPhoto struct {
 	Caption     *string `json:"caption,omitempty"`
 	Seq         int     `json:"seq"`
 	TakenAt     *string `json:"taken_at,omitempty"`
-	VideoKey    *string `json:"video_key,omitempty"`
 }
 
 // GeoJSONGeometry is the stable geometry shape used by the public API.
@@ -197,30 +196,6 @@ func (StaticCompiler) Compile(ctx context.Context, input Input, read ReadModel, 
 					return report, fmt.Errorf("write media %s: %w", photo.ObjectKey, err)
 				}
 				report.Media++
-
-				if photo.VideoKey != nil && *photo.VideoKey != "" {
-					videoReader, err := media.Open(ctx, *photo.VideoKey)
-					if err != nil {
-						return report, fmt.Errorf("open video %s: %w", *photo.VideoKey, err)
-					}
-					derivative, err := SanitizePublicVideo(*photo.VideoKey, videoReader)
-					closeErr := videoReader.Close()
-					if err != nil {
-						return report, fmt.Errorf("sanitize video %s: %w", *photo.VideoKey, err)
-					}
-					if closeErr != nil {
-						return report, fmt.Errorf("close video %s: %w", *photo.VideoKey, closeErr)
-					}
-					publicKey := PublicVideoKey(*photo.VideoKey)
-					if err := output.WriteMedia(publicKey, bytes.NewReader(derivative)); err != nil {
-						return report, fmt.Errorf("write video %s: %w", publicKey, err)
-					}
-					publicPhoto := *photo
-					publicPhoto.VideoKey = &publicKey
-					photoProjection = append(photoProjection, NewStaticPhoto(&publicPhoto))
-					report.Media++
-					continue
-				}
 
 				photoProjection = append(photoProjection, NewStaticPhoto(photo))
 			}

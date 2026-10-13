@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Live Photo companion linking at intake** ([#173](https://github.com/azusachino/felicia/pull/173)):
+  - `journey ingest` pairs image + `.MOV`/`.MP4` companions by file stem, installs them into the content-addressed blob store, and links them on the photo record. Companions are stored, not published (see Removed).
+- **Journey enrichment: transport leg modes and day weather** ([#173](https://github.com/azusachino/felicia/pull/173), [#174](https://github.com/azusachino/felicia/pull/174)):
+  - Typed leg-mode enum (`car`, `ferry`, `train`, `plane`, `foot`) and weather records flow from trip-folder metadata and portable packages through SQLite to the public contract; unknown modes, malformed weather, and mode/segment count mismatches fail intake loudly.
+  - Canonical v1 schema extended with optional `leg_modes`/`weather`.
+  - Optional automatic Open-Meteo archive weather lookup at ingest, using the departure-area point for all days and omitting null/incomplete entries ([#174](https://github.com/azusachino/felicia/pull/174)).
+- **Photo re-import protection** ([#174](https://github.com/azusachino/felicia/pull/174)):
+  - Package re-imports preserve authored photo captions, ordering, and memento assignment; only source-owned metadata (hash, companion link, timestamps) updates.
 - **Single-step trip folder intake** (`felicia-cli journey ingest --dir <path>`):
   - Ingests self-contained trip directories containing `route.gpx`, Google Timeline exports (`timeline.json`), photos (`photos/` or top-level), and `photos.jsonl` sidecars ([#166](https://github.com/azusachino/felicia/issues/166)).
   - Provisions sole journals, dedupes journey slugs, resolves GPS/timestamp metadata, content-addresses media into blob storage, and transactions draft records into SQLite.
@@ -23,6 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Generation-atomic publication** ([#174](https://github.com/azusachino/felicia/pull/174)):
+  - `felicia-cli static compile` and the server compile endpoint build into a staging clone and swap atomically; a failed rebuild leaves the previously published generation byte-for-byte intact.
+- **Explicit SQLite schema upgrades** ([#174](https://github.com/azusachino/felicia/pull/174)):
+  - Missing enrichment columns are added in one controlled transaction at startup; upgrade and serialization failures surface as errors instead of silently empty data.
+- **Honest playback** ([#174](https://github.com/azusachino/felicia/pull/174)):
+  - The reader no longer invents city names from coordinates or placeholder departure/arrival times; absent facts stay absent.
 - **CLI Modularization**:
   - Split `apps/felicia-cli/cmd/felicia/main.go` into dedicated single-responsibility command modules (`journey.go`, `package.go`, `import.go`, `static.go`, `helpers.go`, and minimal `main.go`).
 - **CLI Framework Migration to `spf13/cobra`**:
@@ -41,6 +55,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- **Live Photo video publishing** ([#175](https://github.com/azusachino/felicia/pull/175)):
+  - Stills only: companion videos stay stored at intake but are never published; the ffmpeg transcode path and its CI dependency are gone ([ADR 0009](docs/adr/0009-retire-live-photo-video-publishing.md)). Already-published JSON containing `video_key` is ignored by the reader.
 - **Dead Provider Spike**:
   - Removed unused `apps/felicia-providers/manualyaml` package.
 - **Zombie PostgreSQL Scaffolding**:

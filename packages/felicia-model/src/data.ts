@@ -21,7 +21,6 @@ export interface PhotoAsset {
   src: string
   srcset?: string
   thumbnail?: string
-  video?: string // Live Photo MP4 companion
   caption: L
   alt?: string
   width?: number

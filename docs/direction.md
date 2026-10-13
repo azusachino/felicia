@@ -10,9 +10,9 @@
 
 ## The idea (one paragraph)
 
-A map-based travel journal, centered on an interactive living journey playback canvas (modeled on [hyoban.cc](https://hyoban.cc/trip/2026-national-day-road-trip/), pivoting from the initial `liuaaron.com` ticket-stub baseline via [ADR 0008](adr/0008-pivot-to-hyoban-spatial-journal.md)). Each **journey** traces a multimodal route line on an edge-to-edge dark map; along it sit **mementos** — narrative essays, place chips, weather context, and tactile Live Photo Polaroid cards. An automated cinematic playback state machine guides viewers step-by-step through days, route legs, and dwell stops. The map is the index; the mementos are the stories.
+A map-based travel journal, centered on an interactive living journey playback canvas (modeled on [hyoban.cc](https://hyoban.cc/trip/2026-national-day-road-trip/), pivoting from the initial `liuaaron.com` ticket-stub baseline via [ADR 0008](adr/0008-pivot-to-hyoban-spatial-journal.md)). Each **journey** traces a multimodal route line on an edge-to-edge dark map; along it sit **mementos** — narrative essays, place chips, weather context, and tactile Live Photo Polaroid cards (still frames; motion publishing is retired — [ADR 0009](adr/0009-retire-live-photo-video-publishing.md)). An automated cinematic playback state machine guides viewers step-by-step through days, route legs, and dwell stops. The map is the index; the mementos are the stories.
 
-> **Living playback and authentic moments over simulated ticket stubs.** Physical paper tickets are dying, and simulated perforation/barcode components introduced high layout complexity. Following ADR 0008, Felicia treats memory anchors as **Moments**: expressive typography, responsive Live Photos, and spatial journey playback. Full reasoning: [`docs/research/hyoban-trip-playback-teardown.md`](research/hyoban-trip-playback-teardown.md) and [ADR 0008](adr/0008-pivot-to-hyoban-spatial-journal.md).
+> **Living playback and authentic moments over simulated ticket stubs.** Physical paper tickets are dying, and simulated perforation/barcode components introduced high layout complexity. Following ADR 0008, Felicia treats memory anchors as **Moments**: expressive typography, Live Photo still cards, and spatial journey playback. Full reasoning: [`docs/research/hyoban-trip-playback-teardown.md`](research/hyoban-trip-playback-teardown.md) and [ADR 0008](adr/0008-pivot-to-hyoban-spatial-journal.md).
 
 ## Direction: personal now, product-ready
 
@@ -50,7 +50,9 @@ importer, intake planner, and the published-only static compiler. Original sketc
 ### Explicitly deferred (decided non-goals, not oversights)
 
 Companion mobile app · OAuth photo providers (Google/Apple Photos) · background sync ·
-`owner_id` columns / real multi-tenancy · app-level user auth · billing · GDPR tooling.
+`owner_id` columns / real multi-tenancy · app-level user auth · billing · GDPR tooling ·
+Live Photo video motion publishing (companions stay linked and stored at intake but are
+never published; stills only — [ADR 0009](adr/0009-retire-live-photo-video-publishing.md)).
 
 ## The shape we keep believing in
 

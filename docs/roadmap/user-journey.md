@@ -28,9 +28,9 @@ Invariants that must hold at every step:
 - **Re-import never overwrites authored fields** (field-scoped importer,
   [ADR 0004](../adr/0004-authorship-protection-and-intake-seam.md)).
 - **Only the public media boundary ships**: supported images are re-encoded and
-  stripped; linked MOV/MP4 Live Photo companions become metadata-stripped,
-  browser-compatible MP4 derivatives during publication. Unsupported or unreadable
-  linked media fails compilation instead of leaking or leaving a dangling key.
+  stripped. Live Photo companions are linked and stored at intake but are never
+  published — publication is stills-only
+  ([ADR 0009](../adr/0009-retire-live-photo-video-publishing.md)).
 - **Contract-first**: fields come from
   [canonical contract v1](../contracts/canonical-v1.md) and its projections,
   never invented per surface.
@@ -42,7 +42,7 @@ Invariants that must hold at every step:
 | 1   | **Data collection** | ✅ Done                 | Dawarich (`apps/felicia-providers/dawarich/`), Immich (`apps/felicia-providers/immich/`), local GPX/photo sidecar and Google Timeline visit adapters (`apps/felicia-providers/local/`); Timeline contributes named visits, not route geometry                                                                                                                         |
 | 2   | **Import / intake** | ✅ Done (deterministic) | Field-scoped importer (`apps/felicia-runtime/importer/`), intake planner (`apps/felicia-runtime/intake/planner.go`) accepts route and/or semantic visit input, SQLite provider; PostgreSQL is retired                                                                                                                                                               |
 | 3   | **Authoring**       | ✅ Done (GUI MVP)       | Schema v1 + CLI path complete; `apps/felicia-admin` closes the authoring loop — journey shell with import/preview triggers, intake inbox, memento editor with revision-conflict handling, and photo upload/caption/order/preview — proven end to end in a real browser (`make test-admin-e2e`, epic [FELICIA-ADMIN-01](admin-gui-v1-epic.md)); the registry-driven dynamic form engine stays deferred |
-| 4   | **Publication**     | ✅ Done                 | Published-only static compiler (`apps/felicia-publication/compiler.go`); images are sanitized and linked MOV/MP4 companions are transcoded to metadata-stripped H.264/yuv420p MP4. Live/static content parity is enforced by a shared projection layer (`apps/felicia-publication/public.go`) and a workflow parity check |
+| 4   | **Publication**     | ✅ Done                 | Published-only static compiler (`apps/felicia-publication/compiler.go`); images are sanitized; publication is stills-only — linked Live Photo companions stay private ([ADR 0009](../adr/0009-retire-live-photo-video-publishing.md)) Live/static content parity is enforced by a shared projection layer (`apps/felicia-publication/public.go`) and a workflow parity check |
 | 5   | **Deployment**      | ✅ Done                 | Pages workflow builds and deploys the real compiled artifact (artifact-based `upload-pages-artifact` → `deploy-pages`, nothing committed); first remote run succeeded on `main` after PR #55 merged — epic [FELICIA-PAGES-01](pages-v1-epic.md)                                                                                                               |
 
 Deliberately deferred (not gaps): AI enrichment
@@ -166,7 +166,7 @@ projection:
 
 - **2026-10-13 (architecture remediation delivery status)** — Media/playback remediation is implemented in source with automated tests: linked Live Photo companions are installed through the ingest boundary and transcoded to sanitized MP4 derivatives (verified, not merely linked — see the entry above), static publication is generation-atomic (a failed rebuild leaves the previous generation byte-for-byte intact), and photo re-import preserves authored caption/order via the dedicated ingest write. What remains pending is native/desktop acceptance of the playback and media work: browser and composition checks do not accept the native Wails window, which stays with the open issues ([#165](https://github.com/azusachino/felicia/issues/165), [#161](https://github.com/azusachino/felicia/issues/161), umbrella [#158](https://github.com/azusachino/felicia/issues/158)). Stage status unchanged.
 
-- **2026-10-13 (Live Photo publication derivatives)** — Companion ingestion now propagates linked-file read and installation errors. Static publication transcodes linked MOV/MP4 companions to bounded metadata-stripped H.264/yuv420p MP4 derivatives and projects a key only after the derivative is written. The required `ffmpeg` encoder and limits are documented in [`publish.md`](../publish.md); automated synthetic-media checks cover playability, metadata stripping, absent/corrupt inputs, and I/O failures.
+- **2026-10-13 (Live Photo publication derivatives, retired same day)** — Companion ingestion still installs linked MOV/MP4 companions into the private media store, but publication no longer transcodes or emits them ([ADR 0009](../adr/0009-retire-live-photo-video-publishing.md)); the `video_key` field left the public contract and the reader renders stills everywhere. Old published JSON containing `video_key` is ignored (breaking change while unreleased). `ffmpeg` is no longer required by publication or CI.
 
 - **2026-10-02 (HEIC conversion guidance)** — HEIC/HEIF input now fails early
   with a format-specific message and a macOS `sips` conversion command in the

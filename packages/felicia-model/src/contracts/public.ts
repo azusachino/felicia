@@ -45,7 +45,6 @@ export interface ApiMementoPhoto {
   caption?: string
   seq: number
   taken_at?: string
-  video_key?: string
   width?: number
   height?: number
   alt?: string
