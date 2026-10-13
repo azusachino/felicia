@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 
 	"github.com/google/uuid"
@@ -27,6 +28,8 @@ type StaticJourney struct {
 	DateStart      string           `json:"date_start"`
 	DateEnd        string           `json:"date_end"`
 	GPSRoute       *GeoJSONGeometry `json:"gps_route,omitempty"`
+	LegModes       []string         `json:"leg_modes,omitempty"`
+	Weather        any              `json:"weather,omitempty"`
 	AuthoredFields []string         `json:"authored_fields"`
 }
 
@@ -58,6 +61,7 @@ type StaticPhoto struct {
 	Caption     *string `json:"caption,omitempty"`
 	Seq         int     `json:"seq"`
 	TakenAt     *string `json:"taken_at,omitempty"`
+	VideoKey    *string `json:"video_key,omitempty"`
 }
 
 // GeoJSONGeometry is the stable geometry shape used by the public API.
@@ -194,6 +198,20 @@ func (StaticCompiler) Compile(ctx context.Context, input Input, read ReadModel, 
 					return report, fmt.Errorf("write media %s: %w", photo.ObjectKey, err)
 				}
 				report.Media++
+
+				if photo.VideoKey != nil && *photo.VideoKey != "" {
+					videoReader, err := media.Open(ctx, *photo.VideoKey)
+					if err == nil {
+						videoBytes, readErr := io.ReadAll(videoReader)
+						_ = videoReader.Close()
+						if readErr == nil {
+							if err := output.WriteMedia(*photo.VideoKey, bytes.NewReader(videoBytes)); err == nil {
+								report.Media++
+							}
+						}
+					}
+				}
+
 				photoProjection = append(photoProjection, NewStaticPhoto(photo))
 			}
 			mementoProjection = append(mementoProjection, NewStaticMemento(memento, photoProjection))

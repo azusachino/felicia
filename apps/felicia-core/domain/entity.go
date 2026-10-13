@@ -58,6 +58,8 @@ type Journey struct {
 	DateStart        time.Time           `json:"date_start"`
 	DateEnd          time.Time           `json:"date_end"`
 	GPSRoute         orb.MultiLineString `json:"gps_route,omitempty"`
+	LegModes         []string            `json:"leg_modes,omitempty"`
+	Weather          any                 `json:"weather,omitempty"`
 	AuthoredFields   []string            `json:"authored_fields"`
 	Revision         int64               `json:"revision"`
 	ExpectedRevision *int64              `json:"expected_revision,omitempty"`
@@ -171,6 +173,7 @@ type MementoPhoto struct {
 	Caption     *string    `json:"caption,omitempty"` // Canonical Japanese (ja)
 	Seq         int        `json:"seq"`
 	TakenAt     *time.Time `json:"taken_at,omitempty"`
+	VideoKey    *string    `json:"video_key,omitempty"`
 	SourceRef   *string    `json:"source_ref,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
 }

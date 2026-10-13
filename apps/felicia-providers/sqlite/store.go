@@ -76,6 +76,9 @@ func Open(path string) (*Repository, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("apply sqlite schema: %w", err)
 	}
+	_, _ = db.ExecContext(context.Background(), "ALTER TABLE tb_journeys ADD COLUMN leg_modes TEXT NOT NULL DEFAULT '[]'")
+	_, _ = db.ExecContext(context.Background(), "ALTER TABLE tb_journeys ADD COLUMN weather TEXT NOT NULL DEFAULT '{}'")
+	_, _ = db.ExecContext(context.Background(), "ALTER TABLE tb_memento_photos ADD COLUMN video_key TEXT")
 	return r, nil
 }
 
@@ -317,11 +320,11 @@ func (r *Repository) GetSoleJournal(ctx context.Context) (*domain.Journal, error
 
 // GetJourney retrieves a journey by ID.
 func (r *Repository) GetJourney(ctx context.Context, id uuid.UUID) (*domain.Journey, error) {
-	row := r.db.QueryRowContext(ctx, `SELECT journal_id, slug, source_ref, title, place, country, region, date_start, date_end, gps_route, authored_fields, revision, created_at, updated_at FROM tb_journeys WHERE id = ?`, idString(id))
-	var rawJournalID, slug, title, place, start, end, route, fields, created, updated string
+	row := r.db.QueryRowContext(ctx, `SELECT journal_id, slug, source_ref, title, place, country, region, date_start, date_end, gps_route, leg_modes, weather, authored_fields, revision, created_at, updated_at FROM tb_journeys WHERE id = ?`, idString(id))
+	var rawJournalID, slug, title, place, start, end, route, legModes, weather, fields, created, updated string
 	var sourceRef, country, region sql.NullString
 	var revision int64
-	if err := row.Scan(&rawJournalID, &slug, &sourceRef, &title, &place, &country, &region, &start, &end, &route, &fields, &revision, &created, &updated); err != nil {
+	if err := row.Scan(&rawJournalID, &slug, &sourceRef, &title, &place, &country, &region, &start, &end, &route, &legModes, &weather, &fields, &revision, &created, &updated); err != nil {
 		// Normalised like every other getter here (GetSoleJournal,
 		// GetStopCandidate): callers above the provider match on
 		// domain.ErrNotFound, and leaking sql.ErrNoRows would put
@@ -335,20 +338,20 @@ func (r *Repository) GetJourney(ctx context.Context, id uuid.UUID) (*domain.Jour
 	if err != nil {
 		return nil, err
 	}
-	return makeJourney(id, journalID, slug, sourceRef, title, place, country, region, start, end, route, fields, revision, created, updated)
+	return makeJourney(id, journalID, slug, sourceRef, title, place, country, region, start, end, route, legModes, weather, fields, revision, created, updated)
 }
 
 // GetJourneyBySlug retrieves a journey by its public slug.
 func (r *Repository) GetJourneyBySlug(ctx context.Context, slug string) (*domain.Journey, error) {
-	row := r.db.QueryRowContext(ctx, `SELECT id, journal_id, slug, source_ref, title, place, country, region, date_start, date_end, gps_route, authored_fields, revision, created_at, updated_at FROM tb_journeys WHERE slug = ?`, slug)
+	row := r.db.QueryRowContext(ctx, `SELECT id, journal_id, slug, source_ref, title, place, country, region, date_start, date_end, gps_route, leg_modes, weather, authored_fields, revision, created_at, updated_at FROM tb_journeys WHERE slug = ?`, slug)
 	var rawID string
 	var rawJourneyID string
 	var sourceRef, country, region sql.NullString
 	var start, end, created, updated string
-	var route, fields string
+	var route, legModes, weather, fields string
 	var title, place string
 	var revision int64
-	if err := row.Scan(&rawID, &rawJourneyID, &slug, &sourceRef, &title, &place, &country, &region, &start, &end, &route, &fields, &revision, &created, &updated); err != nil {
+	if err := row.Scan(&rawID, &rawJourneyID, &slug, &sourceRef, &title, &place, &country, &region, &start, &end, &route, &legModes, &weather, &fields, &revision, &created, &updated); err != nil {
 		return nil, err
 	}
 	id, err := parseID(rawID)
@@ -359,12 +362,12 @@ func (r *Repository) GetJourneyBySlug(ctx context.Context, slug string) (*domain
 	if err != nil {
 		return nil, err
 	}
-	return makeJourney(id, journeyID, slug, sourceRef, title, place, country, region, start, end, route, fields, revision, created, updated)
+	return makeJourney(id, journeyID, slug, sourceRef, title, place, country, region, start, end, route, legModes, weather, fields, revision, created, updated)
 }
 
 // ListJourneys retrieves journeys ordered by start date.
 func (r *Repository) ListJourneys(ctx context.Context) ([]*domain.Journey, error) {
-	rows, err := r.db.QueryContext(ctx, `SELECT id, journal_id, slug, source_ref, title, place, country, region, date_start, date_end, gps_route, authored_fields, revision, created_at, updated_at FROM tb_journeys ORDER BY date_start DESC`)
+	rows, err := r.db.QueryContext(ctx, `SELECT id, journal_id, slug, source_ref, title, place, country, region, date_start, date_end, gps_route, leg_modes, weather, authored_fields, revision, created_at, updated_at FROM tb_journeys ORDER BY date_start DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -373,10 +376,10 @@ func (r *Repository) ListJourneys(ctx context.Context) ([]*domain.Journey, error
 	for rows.Next() {
 		var rawID string
 		var rawJournalID string
-		var slug, title, place, start, end, route, fields, created, updated string
+		var slug, title, place, start, end, route, legModes, weather, fields, created, updated string
 		var sourceRef, country, region sql.NullString
 		var revision int64
-		if err := rows.Scan(&rawID, &rawJournalID, &slug, &sourceRef, &title, &place, &country, &region, &start, &end, &route, &fields, &revision, &created, &updated); err != nil {
+		if err := rows.Scan(&rawID, &rawJournalID, &slug, &sourceRef, &title, &place, &country, &region, &start, &end, &route, &legModes, &weather, &fields, &revision, &created, &updated); err != nil {
 			return nil, err
 		}
 		parsed, err := parseID(rawID)
@@ -387,7 +390,7 @@ func (r *Repository) ListJourneys(ctx context.Context) ([]*domain.Journey, error
 		if err != nil {
 			return nil, err
 		}
-		journey, err := makeJourney(parsed, journalID, slug, sourceRef, title, place, country, region, start, end, route, fields, revision, created, updated)
+		journey, err := makeJourney(parsed, journalID, slug, sourceRef, title, place, country, region, start, end, route, legModes, weather, fields, revision, created, updated)
 		if err != nil {
 			return nil, err
 		}
@@ -458,6 +461,14 @@ func (r *Repository) UpsertJourney(ctx context.Context, journey *domain.Journey)
 	if err != nil {
 		return err
 	}
+	legModes, err := marshalJSON(journey.LegModes)
+	if err != nil {
+		legModes = "[]"
+	}
+	weather, err := marshalJSON(journey.Weather)
+	if err != nil {
+		weather = "{}"
+	}
 	fields, err := stringsJSON(journey.AuthoredFields)
 	if err != nil {
 		return err
@@ -472,7 +483,7 @@ func (r *Repository) UpsertJourney(ctx context.Context, journey *domain.Journey)
 	if revision == 0 {
 		revision = 1
 	}
-	_, err = r.db.ExecContext(ctx, `INSERT INTO tb_journeys(id, journal_id, slug, source_ref, title, place, country, region, date_start, date_end, gps_route, authored_fields, revision, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET slug=excluded.slug, source_ref=excluded.source_ref, title=excluded.title, place=excluded.place, country=excluded.country, region=excluded.region, date_start=excluded.date_start, date_end=excluded.date_end, gps_route=excluded.gps_route, authored_fields=excluded.authored_fields, revision=tb_journeys.revision+1, updated_at=excluded.updated_at`, idString(journey.ID), idString(journey.JournalID), journey.Slug, nullableString(journey.SourceRef), journey.Title, journey.Place, nullableString(journey.Country), nullableString(journey.Region), journey.DateStart.Format("2006-01-02"), journey.DateEnd.Format("2006-01-02"), route, fields, revision, journey.CreatedAt.Format(time.RFC3339Nano), journey.UpdatedAt.Format(time.RFC3339Nano))
+	_, err = r.db.ExecContext(ctx, `INSERT INTO tb_journeys(id, journal_id, slug, source_ref, title, place, country, region, date_start, date_end, gps_route, leg_modes, weather, authored_fields, revision, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET slug=excluded.slug, source_ref=excluded.source_ref, title=excluded.title, place=excluded.place, country=excluded.country, region=excluded.region, date_start=excluded.date_start, date_end=excluded.date_end, gps_route=excluded.gps_route, leg_modes=excluded.leg_modes, weather=excluded.weather, authored_fields=excluded.authored_fields, revision=tb_journeys.revision+1, updated_at=excluded.updated_at`, idString(journey.ID), idString(journey.JournalID), journey.Slug, nullableString(journey.SourceRef), journey.Title, journey.Place, nullableString(journey.Country), nullableString(journey.Region), journey.DateStart.Format("2006-01-02"), journey.DateEnd.Format("2006-01-02"), route, legModes, weather, fields, revision, journey.CreatedAt.Format(time.RFC3339Nano), journey.UpdatedAt.Format(time.RFC3339Nano))
 	return err
 }
 
@@ -490,10 +501,18 @@ func (r *Repository) DeleteJourney(ctx context.Context, id uuid.UUID) error {
 
 type scanner interface{ Scan(...any) error }
 
-func makeJourney(id, journalID uuid.UUID, slug string, sourceRef sql.NullString, title, place string, country, region sql.NullString, start, end, route, fields string, revision int64, created, updated string) (*domain.Journey, error) {
+func makeJourney(id, journalID uuid.UUID, slug string, sourceRef sql.NullString, title, place string, country, region sql.NullString, start, end, route, legModesStr, weatherStr, fields string, revision int64, created, updated string) (*domain.Journey, error) {
 	var gps orb.MultiLineString
 	if err := unmarshalJSON(route, &gps); err != nil {
 		return nil, err
+	}
+	var legModes []string
+	if legModesStr != "" && legModesStr != "[]" {
+		_ = unmarshalJSON(legModesStr, &legModes)
+	}
+	var weather any
+	if weatherStr != "" && weatherStr != "{}" {
+		_ = unmarshalJSON(weatherStr, &weather)
 	}
 	authored, err := parseStrings(fields)
 	if err != nil {
@@ -503,5 +522,5 @@ func makeJourney(id, journalID uuid.UUID, slug string, sourceRef sql.NullString,
 	dateEnd, _ := time.Parse("2006-01-02", end)
 	createdAt, _ := time.Parse(time.RFC3339Nano, created)
 	updatedAt, _ := time.Parse(time.RFC3339Nano, updated)
-	return &domain.Journey{ID: id, JournalID: journalID, Slug: slug, SourceRef: readString(sourceRef), Title: title, Place: place, Country: readString(country), Region: readString(region), DateStart: dateStart, DateEnd: dateEnd, GPSRoute: gps, AuthoredFields: authored, Revision: revision, CreatedAt: createdAt, UpdatedAt: updatedAt}, nil
+	return &domain.Journey{ID: id, JournalID: journalID, Slug: slug, SourceRef: readString(sourceRef), Title: title, Place: place, Country: readString(country), Region: readString(region), DateStart: dateStart, DateEnd: dateEnd, GPSRoute: gps, LegModes: legModes, Weather: weather, AuthoredFields: authored, Revision: revision, CreatedAt: createdAt, UpdatedAt: updatedAt}, nil
 }

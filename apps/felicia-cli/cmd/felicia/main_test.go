@@ -297,10 +297,15 @@ func TestCLIJourneyIngestSyntheticTripFolder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// 2. Write fixture photo
+	// 2. Write fixture photo with Live Photo companion .MOV
 	jpegBytes := fixtureJPEG(t)
 	photoFile := filepath.Join(photosDir, "DSC_0001.JPG")
 	if err := os.WriteFile(photoFile, jpegBytes, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	movBytes := []byte("fake-live-photo-mov-stream")
+	movFile := filepath.Join(photosDir, "DSC_0001.MOV")
+	if err := os.WriteFile(movFile, movBytes, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -353,6 +358,17 @@ func TestCLIJourneyIngestSyntheticTripFolder(t *testing.T) {
 		t.Fatalf("installed photo bytes do not match fixture")
 	}
 
+	// Verify companion Live Photo .MOV is installed in workspace media root
+	movDigest := importer.MediaDigest(movBytes)
+	installedMov := filepath.Join(wsDir, "media", "media", movDigest, "DSC_0001.MOV")
+	movData, err := os.ReadFile(installedMov)
+	if err != nil {
+		t.Fatalf("expected installed live photo companion at %s: %v", installedMov, err)
+	}
+	if !bytes.Equal(movData, movBytes) {
+		t.Fatalf("installed mov bytes do not match fixture")
+	}
+
 	// 5. Test idempotency (re-ingest same folder)
 	var out2 strings.Builder
 	if err := execute([]string{"journey", "ingest", "--dir", tripDir, "--workspace", wsDir}, &out2); err != nil {
@@ -393,6 +409,20 @@ func TestCLIJourneyIngestSyntheticTripFolder(t *testing.T) {
 	}
 	if len(journeys) != 1 {
 		t.Errorf("expected exactly 1 journey in DB, found %d", len(journeys))
+	}
+	if len(journeys[0].LegModes) != 1 || journeys[0].LegModes[0] != "car" {
+		t.Errorf("expected LegModes [car], got %v", journeys[0].LegModes)
+	}
+	mementos, err := repo.ListMementosByJourney(context.Background(), journeys[0].ID)
+	if err != nil || len(mementos) == 0 {
+		t.Fatalf("expected mementos for journey, got err: %v, count: %d", err, len(mementos))
+	}
+	photos, err := repo.ListPhotosByMemento(context.Background(), mementos[0].ID)
+	if err != nil || len(photos) == 0 {
+		t.Fatalf("expected photos for memento, got err: %v, count: %d", err, len(photos))
+	}
+	if photos[0].VideoKey == nil || !strings.Contains(*photos[0].VideoKey, movDigest) {
+		t.Errorf("expected photo VideoKey containing movDigest %s, got %v", movDigest, photos[0].VideoKey)
 	}
 
 	// 6. Test with positional dir argument and flag overrides

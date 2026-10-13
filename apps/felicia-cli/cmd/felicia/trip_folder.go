@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -222,6 +223,7 @@ type installedPhoto struct {
 	Path      string
 	Digest    string
 	ObjectKey string
+	VideoKey  string
 	Asset     domain.MediaAsset
 }
 
@@ -289,6 +291,7 @@ func installMediaFiles(ctx context.Context, photosDir, mediaRoot string, assets 
 		// Apple Live Photo companion check (.mov with identical base stem)
 		ext := filepath.Ext(fp)
 		stem := strings.TrimSuffix(fp, ext)
+		var videoKey string
 		for _, movExt := range []string{".mov", ".MOV", ".mp4", ".MP4"} {
 			movPath := stem + movExt
 			if fileExists(movPath) {
@@ -305,6 +308,7 @@ func installMediaFiles(ctx context.Context, photosDir, mediaRoot string, assets 
 						_ = os.MkdirAll(filepath.Dir(movTarget), 0o700)
 						_ = writeAtomic(movTarget, movData)
 					}
+					videoKey = movKey
 				}
 				break
 			}
@@ -328,6 +332,7 @@ func installMediaFiles(ctx context.Context, photosDir, mediaRoot string, assets 
 			Path:      fp,
 			Digest:    digest,
 			ObjectKey: objectKey,
+			VideoKey:  videoKey,
 			Asset:     asset,
 		})
 	}
@@ -370,6 +375,52 @@ func buildPackageDocument(
 		}
 	}
 
+	var legModes []string
+	var weather any
+
+	for _, metaFile := range []string{"trip.json", "metadata.json"} {
+		metaPath := filepath.Join(cfg.Dir, metaFile)
+		if fileExists(metaPath) {
+			if data, err := os.ReadFile(metaPath); err == nil {
+				var meta struct {
+					LegModes []string       `json:"leg_modes"`
+					Weather  map[string]any `json:"weather"`
+				}
+				if json.Unmarshal(data, &meta) == nil {
+					if len(meta.LegModes) > 0 {
+						legModes = meta.LegModes
+					}
+					if len(meta.Weather) > 0 {
+						weather = meta.Weather
+					}
+				}
+			}
+			break
+		}
+	}
+
+	weatherPath := filepath.Join(cfg.Dir, "weather.json")
+	if weather == nil && fileExists(weatherPath) {
+		if data, err := os.ReadFile(weatherPath); err == nil {
+			var w map[string]any
+			if json.Unmarshal(data, &w) == nil {
+				weather = w
+			}
+		}
+	}
+
+	if len(legModes) == 0 && len(gpsRoute) > 0 {
+		legModes = make([]string, len(gpsRoute))
+		for i := range legModes {
+			legModes[i] = "car"
+		}
+	}
+
+	if weather == nil && len(gpsRoute) > 0 && len(gpsRoute[0]) > 0 {
+		firstPoint := gpsRoute[0][0]
+		weather = fetchOpenMeteoWeather(firstPoint[1], firstPoint[0], dateStart, dateEnd)
+	}
+
 	sourceRef := "trip-folder"
 	journey := &domain.Journey{
 		ID:        journeyID,
@@ -381,6 +432,8 @@ func buildPackageDocument(
 		DateStart: dateStart,
 		DateEnd:   dateEnd,
 		GPSRoute:  gpsRoute,
+		LegModes:  legModes,
+		Weather:   weather,
 	}
 
 	doc := &importer.PackageDocument{
@@ -487,10 +540,16 @@ func buildPackageDocument(
 			if srcRef != "" {
 				srcRefPtr = &srcRef
 			}
+			var videoKeyPtr *string
+			if photoFile.VideoKey != "" {
+				vk := photoFile.VideoKey
+				videoKeyPtr = &vk
+			}
 			doc.Photos = append(doc.Photos, &domain.MementoPhoto{
 				ID:          photoID,
 				MementoID:   mementoID,
 				ObjectKey:   photoFile.ObjectKey,
+				VideoKey:    videoKeyPtr,
 				ContentHash: "sha256:" + digest,
 				Caption:     captionPtr,
 				Seq:         photoSeq,
@@ -563,10 +622,16 @@ func buildPackageDocument(
 				s := pf.Asset.SourceRef
 				srcRefPtr = &s
 			}
+			var videoKeyPtr *string
+			if pf.VideoKey != "" {
+				vk := pf.VideoKey
+				videoKeyPtr = &vk
+			}
 			doc.Photos = append(doc.Photos, &domain.MementoPhoto{
 				ID:          photoID,
 				MementoID:   targetMemento.ID,
 				ObjectKey:   pf.ObjectKey,
+				VideoKey:    videoKeyPtr,
 				ContentHash: "sha256:" + pf.Digest,
 				Caption:     captionPtr,
 				Seq:         currentSeq,
@@ -656,4 +721,86 @@ func titleFromSlug(slug string) string {
 		return "Journey"
 	}
 	return res
+}
+
+func fetchOpenMeteoWeather(lat, lon float64, start, end time.Time) any {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	url := fmt.Sprintf(
+		"https://archive-api.open-meteo.com/v1/archive?latitude=%.4f&longitude=%.4f&start_date=%s&end_date=%s&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto",
+		lat, lon, start.Format("2006-01-02"), end.Format("2006-01-02"),
+	)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		if resp != nil {
+			_ = resp.Body.Close()
+		}
+		return nil
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	var result struct {
+		Daily struct {
+			Time             []string  `json:"time"`
+			WeatherCode      []int     `json:"weather_code"`
+			Temperature2mMax []float64 `json:"temperature_2m_max"`
+			Temperature2mMin []float64 `json:"temperature_2m_min"`
+		} `json:"daily"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil
+	}
+	if len(result.Daily.Time) == 0 {
+		return nil
+	}
+
+	weatherMap := make(map[string]any, len(result.Daily.Time))
+	for i, date := range result.Daily.Time {
+		code := 0
+		if i < len(result.Daily.WeatherCode) {
+			code = result.Daily.WeatherCode[i]
+		}
+		maxT := 20.0
+		if i < len(result.Daily.Temperature2mMax) {
+			maxT = result.Daily.Temperature2mMax[i]
+		}
+		minT := 10.0
+		if i < len(result.Daily.Temperature2mMin) {
+			minT = result.Daily.Temperature2mMin[i]
+		}
+
+		icon, label := mapWMOWeather(code, minT, maxT)
+		weatherMap[date] = map[string]string{
+			"icon":  icon,
+			"label": label,
+		}
+	}
+	return weatherMap
+}
+
+func mapWMOWeather(code int, minT, maxT float64) (string, string) {
+	var desc, icon string
+	switch code {
+	case 0:
+		desc, icon = "晴", "sun"
+	case 1, 2, 3:
+		desc, icon = "多云", "cloud"
+	case 45, 48:
+		desc, icon = "雾", "cloud-fog"
+	case 51, 53, 55, 61, 63, 65, 80, 81, 82:
+		desc, icon = "雨", "cloud-rain"
+	case 71, 73, 75, 77, 85, 86:
+		desc, icon = "雪", "snowflake"
+	case 95, 96, 99:
+		desc, icon = "雷阵雨", "cloud-lightning"
+	default:
+		desc, icon = "阴", "cloud"
+	}
+	label := fmt.Sprintf("%s · %.0f–%.0f°C", desc, minT, maxT)
+	return icon, label
 }

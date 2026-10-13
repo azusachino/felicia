@@ -97,6 +97,10 @@ func MergeIngestJourney(dst *Journey, patch *IngestJourneyPatch) {
 			dst.DateEnd = src.DateEnd
 		case "gps_route":
 			dst.GPSRoute = src.GPSRoute
+		case "leg_modes":
+			dst.LegModes = src.LegModes
+		case "weather":
+			dst.Weather = src.Weather
 		}
 	}
 }
