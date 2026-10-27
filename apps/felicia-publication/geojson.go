@@ -471,7 +471,10 @@ func ExportJourneyFolderGeoJSON(dir string, opts ExportOptions) (*GeoJSONFeature
 
 	days := opts.Days
 	if len(days) == 0 {
-		days = jData.Days
+		daysPath := filepath.Join(dir, "days.json")
+		if daysBytes, err := os.ReadFile(daysPath); err == nil {
+			_ = json.Unmarshal(daysBytes, &days)
+		}
 	}
 
 	gen := opts.Generator
