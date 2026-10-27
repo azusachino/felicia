@@ -30,7 +30,7 @@ func newRootCmd(output io.Writer) *cobra.Command {
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			return errors.New("usage: felicia-cli package|import|journey|static")
+			return errors.New("usage: felicia-cli package|import|journey|static|export")
 		},
 	}
 	rootCmd.SetOut(output)
@@ -40,6 +40,7 @@ func newRootCmd(output io.Writer) *cobra.Command {
 	rootCmd.AddCommand(newImportCmd())
 	rootCmd.AddCommand(newJourneyCmd())
 	rootCmd.AddCommand(newStaticCmd())
+	rootCmd.AddCommand(newExportCmd())
 
 	return rootCmd
 }

@@ -120,11 +120,12 @@ func TestNewStaticMementoCarriesAuthoredFields(t *testing.T) {
 }
 
 type fakeReadModel struct {
-	journeys     []*domain.Journey
-	mementos     map[uuid.UUID][]*domain.Memento
-	photos       map[uuid.UUID][]*domain.MementoPhoto
-	journal      *domain.Journal
-	siteSettings map[uuid.UUID]*domain.SiteSettings
+	journeys       []*domain.Journey
+	mementos       map[uuid.UUID][]*domain.Memento
+	photos         map[uuid.UUID][]*domain.MementoPhoto
+	journal        *domain.Journal
+	siteSettings   map[uuid.UUID]*domain.SiteSettings
+	stopCandidates map[uuid.UUID][]*domain.StopCandidate
 }
 
 func (f *fakeReadModel) ListJourneys(context.Context) ([]*domain.Journey, error) {
@@ -137,6 +138,13 @@ func (f *fakeReadModel) ListMementosByJourney(_ context.Context, id uuid.UUID) (
 
 func (f *fakeReadModel) ListPhotosByMemento(_ context.Context, id uuid.UUID) ([]*domain.MementoPhoto, error) {
 	return f.photos[id], nil
+}
+
+func (f *fakeReadModel) ListStopCandidatesByJourney(_ context.Context, id uuid.UUID) ([]*domain.StopCandidate, error) {
+	if f.stopCandidates == nil {
+		return nil, nil
+	}
+	return f.stopCandidates[id], nil
 }
 
 func (f *fakeReadModel) GetSoleJournal(context.Context) (*domain.Journal, error) {
