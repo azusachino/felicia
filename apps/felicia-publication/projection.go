@@ -88,6 +88,12 @@ type ReadModel interface {
 	GetSiteSettings(context.Context, uuid.UUID) (*domain.SiteSettings, error)
 }
 
+// StopCandidateReader is an optional capability a ReadModel may implement
+// to supply stop candidates for GeoJSON exports.
+type StopCandidateReader interface {
+	ListStopCandidatesByJourney(context.Context, uuid.UUID) ([]*domain.StopCandidate, error)
+}
+
 // MediaSource opens a source object by its canonical object key.
 type MediaSource interface {
 	Open(context.Context, string) (io.ReadCloser, error)
