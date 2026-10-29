@@ -11,7 +11,7 @@ apps/
   felicia-publication/   # public projections and static compiler
   felicia-server/        # HTTP composition and admin API
   felicia-cli/           # CLI and compiler composition
-  felicia-desktop/       # native desktop studio composition (Wails v3)
+  felicia-desktop/       # native desktop studio composition (MyGo)
   felicia-admin/         # private authoring/admin studio
   felicia-public-site/   # public reader host
 packages/

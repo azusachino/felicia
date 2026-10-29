@@ -95,7 +95,7 @@ SQLite uses a single `apps/felicia-providers/sqlite/schema.sql`, without a migra
 | `make e2e`      | integrated Bun/Playwright desktop-composition tests on isolated synthetic state |
 
 `make e2e` builds a test-only headless transport (`production,e2e`) using the real
-embedded admin and desktop handler. It does not drive the Wails window or native
+embedded admin and desktop handler. It does not drive the MyGo window or native
 dialogs. Normal desktop builds have no test flags or authoring TCP listener. Evidence
 lives under workstation `.tmp/felicia-desktop-redesign/`; native visual acceptance
 remains a separate gate. `make test-admin-e2e` retains the existing web-host authoring

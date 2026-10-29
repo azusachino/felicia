@@ -51,7 +51,7 @@ uncached and unchanged. Browser checks still use `make e2e` and
 `make test-reader-fonts-e2e` (isolated production public-site build under
 `.tmp/felicia-desktop-polish/reader-fonts/`, loopback-only Vite preview,
 Chromium + WebKit; proves the pinned reader typefaces download and load under a
-non-root base path — not native Wails visual acceptance and no publication
+non-root base path — not native MyGo visual acceptance and no publication
 content coverage). No per-package Go cache, dependency-integrity cache or
 browser-result cache is added; the native Go build/test cache remains in use.
 
