@@ -42,9 +42,8 @@ test("scan uses a library dialog, focuses its field and preserves the pending im
 })
 
 test.describe("preview", () => {
-  test.use({ sampleMode: true, userAgent: "Mozilla/5.0 wails.io" })
+  test.use({ sampleMode: true, desktop: true })
   test("library preview closes with Escape from its reader and returns focus without losing the draft", async ({ page }) => {
-    await page.route("**/wails/runtime.js", (route) => route.fulfill({ contentType: "application/javascript", body: "" }))
     await page.goto("/#/site")
     const title = page.getByRole("textbox", { name: "Title", exact: true })
     await title.fill("Unsaved synthetic identity")

@@ -1,12 +1,8 @@
 import { test, expect } from "./fixtures"
 
-test.use({ sampleMode: true, userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X) wails.io" })
+test.use({ sampleMode: true, desktop: true, userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X)" })
 
 const journey = "0190cbde-f300-7000-8000-000000000002"
-
-test.beforeEach(async ({ page }) => {
-  await page.route("**/wails/runtime.js", (route) => route.fulfill({ contentType: "application/javascript", body: "" }))
-})
 
 test("dirty Add memento Return uses a visible library confirmation without native confirm", async ({ page }) => {
   await page.addInitScript(() => {

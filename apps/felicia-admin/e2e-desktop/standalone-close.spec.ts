@@ -2,11 +2,10 @@ import { test, expect } from "./fixtures"
 import { decideDiscard } from "./discard-dialog"
 import { message, type Locale } from "../src/i18n"
 
-test.use({ sampleMode: true, userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X) wails.io" })
+test.use({ sampleMode: true, desktop: true, userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X)" })
 
 for (const locale of ["en", "ja", "zh"] as Locale[]) {
   test(`standalone Close stays in an empty isolated studio and sample reopens fresh in ${locale}`, async ({ page }) => {
-    await page.route("**/wails/runtime.js", (route) => route.fulfill({ contentType: "application/javascript", body: "" }))
     await page.addInitScript((locale) => localStorage.setItem("felicia.admin.locale", locale), locale)
     await page.goto("/#/")
     const originalURL = page.url()

@@ -1,11 +1,10 @@
 import { test, expect } from "./fixtures"
 
-test.use({ userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/605.1.15 wails.io" })
+test.use({ desktop: true, userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/605.1.15" })
 
 for (const locale of ["en", "ja", "zh"]) {
   for (const width of [1100, 720]) {
     test(`native preview and sample return fit at ${width}px in ${locale}`, async ({ page }, info) => {
-      await page.route("**/wails/runtime.js", (route) => route.fulfill({ contentType: "application/javascript", body: "" }))
       await page.addInitScript((locale) => localStorage.setItem("felicia.admin.locale", locale), locale)
       await page.setViewportSize({ width, height: 760 })
       await page.goto("/")

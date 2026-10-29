@@ -10,8 +10,16 @@ const scratch = fileURLToPath(new URL("../../../../../.tmp/felicia-desktop-redes
 
 type Studio = { url: string; root: string; token: string }
 
-export const test = base.extend<{ studio: Studio; sampleMode: boolean }>({
+export const test = base.extend<{ studio: Studio; sampleMode: boolean; desktop: boolean }>({
   sampleMode: [false, { option: true }],
+  desktop: [false, { option: true }],
+  context: async ({ context, desktop }, use) => {
+    if (desktop)
+      await context.addInitScript(() => {
+        ;(window as unknown as Record<string, unknown>).mygo = {}
+      })
+    await use(context)
+  },
   studio: async ({ browserName, sampleMode }, use) => {
     mkdirSync(scratch, { recursive: true })
     const root = mkdtempSync(join(scratch, `studio-${browserName}-`))

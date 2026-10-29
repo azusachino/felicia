@@ -8,7 +8,7 @@
 
 [![status](https://img.shields.io/badge/status-implementation%20stage-e8a33d)](docs/roadmap.md)
 [![backend](https://img.shields.io/badge/backend-Go%20%C2%B7%20SQLite-00add8)](docs/development/layout.md)
-[![desktop](https://img.shields.io/badge/desktop-Wails%20v3%20%C2%B7%20macOS-333333)](apps/felicia-desktop/)
+[![desktop](https://img.shields.io/badge/desktop-MyGo%20%C2%B7%20macOS-333333)](apps/felicia-desktop/)
 [![web](https://img.shields.io/badge/web-Svelte%205%20%C2%B7%20Vite-ff3e00)](packages/felicia-reader/)
 [![license](https://img.shields.io/badge/license-AGPL--3.0-3da639)](LICENSE)
 
@@ -45,7 +45,7 @@ Photos / sidecar (photos.jsonl) ┴─> felicia-cli journey ingest
                                Static Reader Site
 ```
 
-- **`apps/felicia-desktop`**: Native desktop visual authoring studio (Wails v3 + SvelteKit) with interactive MapLibre map track inspection, stop candidate curation, rich memento essay writing, and in-app publication preview.
+- **`apps/felicia-desktop`**: Native desktop visual authoring studio (MyGo + SvelteKit) with interactive MapLibre map track inspection, stop candidate curation, rich memento essay writing, and in-app publication preview.
 - **`apps/felicia-cli`**: Standalone Go CLI (`spf13/cobra`) providing single-step trip folder ingestion (`journey ingest`), draft planning, review patching, and static compilation.
 - **`apps/felicia-admin`**: Headless web authoring studio alternative sharing components with Desktop Studio.
 - **`apps/felicia-runtime` & `apps/felicia-core`**: Core domain logic, unified workspace resolver (`~/.felicia`), spatial visit clustering, content-addressed media blob store, and SQLite persistence.

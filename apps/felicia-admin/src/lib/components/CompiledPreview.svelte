@@ -82,7 +82,7 @@
     background: rgb(0 0 0 / 24%);
   }
   header {
-    --wails-draggable: drag;
+    --app-region: drag;
     display: flex;
     align-items: center;
     justify-content: space-between;

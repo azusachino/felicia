@@ -4,7 +4,6 @@
   import { Button } from "$lib/components/ui/button"
   import { Input } from "$lib/components/ui/input"
   import IconButton from "$lib/components/IconButton.svelte"
-  import SampleButton from "$lib/components/SampleButton.svelte"
   import { getStudio } from "$lib/studio"
   const studio = getStudio()
   import { FolderOpen, FolderSearch, Plus, Hammer, Download, X } from "@lucide/svelte"
@@ -181,7 +180,6 @@
   <header class="journeys-header">
     <h1>{message(locale, "admin.journeys.title")}</h1>
     <div class="header-actions">
-      <SampleButton />
       {#if !desktop || (studio.workspaceReady && !studio.isolated)}
         <Button variant="outline" size="sm" type="button" onclick={openCreation} aria-label={message(locale, "admin.connectors.scan_trip_folder")}
           ><FolderSearch size={16} aria-hidden="true" />{message(locale, "admin.connectors.scan_trip_folder")}</Button
@@ -370,13 +368,13 @@
     padding: 6px 24px;
     border-bottom: 1px solid var(--line);
     background: var(--surface);
-    --wails-draggable: drag;
+    --app-region: drag;
   }
   .journeys-header h1 {
     font-size: 16px;
   }
   .header-actions {
-    --wails-draggable: no-drag;
+    --app-region: no-drag;
     display: flex;
     flex-wrap: wrap;
     gap: 8px;

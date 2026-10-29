@@ -101,7 +101,7 @@ summary:focus-visible {
   background: transparent;
 }
 .window-toolbar {
-  --wails-draggable: drag;
+  --app-region: drag;
   grid-column: 1;
   display: flex;
   align-items: center;
@@ -127,7 +127,7 @@ textarea,
 summary,
 label,
 [role="button"] {
-  --wails-draggable: no-drag;
+  --app-region: no-drag;
 }
 .brand {
   display: flex;
@@ -212,40 +212,6 @@ nav a.active {
   line-height: 1.4;
   box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
 }
-.settings-trigger {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: 0;
-  border-radius: 8px;
-  padding: 0;
-  color: var(--muted);
-  background: transparent;
-  font-size: 13px;
-}
-.settings-trigger:hover {
-  color: var(--text);
-  background: var(--surface-muted);
-}
-.settings-popover {
-  position: absolute;
-  z-index: 10;
-  inset-inline-start: 0;
-  bottom: calc(100% + 8px);
-  display: grid;
-  width: min(272px, calc(100vw - 24px));
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  color: var(--text);
-  background: var(--surface-raised);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 14%);
-}
-.settings-popover[hidden] {
-  display: none;
-}
 .content {
   grid-column: 2;
   grid-row: 1 / -1;
@@ -279,18 +245,6 @@ h2 {
   color: var(--muted);
   font-size: 11px;
   letter-spacing: 0.04em;
-}
-.locale-control {
-  display: grid;
-  gap: 8px;
-  color: var(--muted);
-}
-.locale-control select {
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  color: var(--text);
-  background: var(--surface-raised);
 }
 .sr-only {
   position: absolute;
@@ -409,18 +363,6 @@ h2 {
   background: var(--success-soft);
 }
 @media (prefers-reduced-motion: no-preference) {
-  .settings-popover {
-    opacity: 0;
-    transform: translateY(4px);
-    transition:
-      opacity 140ms ease,
-      transform 140ms ease,
-      display 140ms allow-discrete;
-  }
-  .settings-popover:not([hidden]) {
-    opacity: 1;
-    transform: translateY(0);
-  }
   .studio-dialog {
     opacity: 0;
     transform: translateY(4px) scale(0.99);
@@ -440,12 +382,6 @@ h2 {
   }
   .studio-dialog-overlay[data-state="open"] {
     opacity: 1;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .settings-panel {
-    animation: none !important;
-    transition: none !important;
   }
 }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
@@ -481,11 +417,6 @@ h2 {
   }
   .sidebar-footer {
     margin-top: 0;
-  }
-  .settings-popover {
-    inset-inline-start: auto;
-    top: calc(100% + 8px);
-    bottom: auto;
   }
   .content {
     grid-column: 1;

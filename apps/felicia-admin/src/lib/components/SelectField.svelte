@@ -57,7 +57,7 @@
     font-size: 14px;
     text-transform: none;
     letter-spacing: normal;
-    --wails-draggable: no-drag;
+    --app-region: no-drag;
   }
   :global(.select-trigger:focus-visible) {
     outline: 2px solid var(--accent);
@@ -74,7 +74,7 @@
     background: var(--surface);
     color: var(--text);
     box-shadow: 0 8px 24px #0003;
-    --wails-draggable: no-drag;
+    --app-region: no-drag;
   }
   :global(.select-item) {
     display: flex;

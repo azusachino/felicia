@@ -1,12 +1,11 @@
 import { test, expect } from "./fixtures"
 import { setDate } from "./date-field"
 
-test.use({ userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/605.1.15 wails.io" })
+test.use({ desktop: true, userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/605.1.15" })
 
 test.describe("isolated sample creation", () => {
   test.use({ sampleMode: true })
   test("New journey opens a clickable validated creation page, not folder import", async ({ page }) => {
-    await page.route("**/wails/runtime.js", (route) => route.fulfill({ contentType: "application/javascript", body: "" }))
     await page.goto("/")
     await expect(page.getByRole("region", { name: "Sample workspace", exact: true })).toBeVisible()
     await expect(page.getByRole("button", { name: "Scan trip folder", exact: true })).toHaveCount(0)
@@ -32,7 +31,6 @@ test.describe("isolated sample creation", () => {
 })
 
 test("folder import explains an empty path instead of leaving Scan silently disabled", async ({ page }) => {
-  await page.route("**/wails/runtime.js", (route) => route.fulfill({ contentType: "application/javascript", body: "" }))
   await page.goto("/")
   await page.getByRole("button", { name: "Scan trip folder", exact: true }).click()
   const dialog = page.getByRole("dialog", { name: "Scan a trip folder", exact: true })

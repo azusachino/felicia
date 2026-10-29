@@ -36,7 +36,6 @@ export const MESSAGE_KEYS = [
   "admin.common.build",
   "admin.common.import",
   "admin.shell.local_workspace",
-  "admin.shell.settings",
   "admin.journeys.more_options",
   "admin.journeys.title",
   "admin.journeys.breadcrumb",
