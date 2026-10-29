@@ -14,7 +14,10 @@ export const test = base.extend<{ studio: Studio; sampleMode: boolean; desktop: 
   sampleMode: [false, { option: true }],
   desktop: [false, { option: true }],
   context: async ({ context, desktop }, use) => {
-    if (desktop) await context.addInitScript(() => { (window as unknown as Record<string, unknown>).mygo = {} })
+    if (desktop)
+      await context.addInitScript(() => {
+        ;(window as unknown as Record<string, unknown>).mygo = {}
+      })
     await use(context)
   },
   studio: async ({ browserName, sampleMode }, use) => {

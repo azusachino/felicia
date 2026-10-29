@@ -11,17 +11,12 @@
   import { getDesktopWorkspace, closeDesktopSample } from "../api"
   import { prepareWorkspaceSwitch } from "$lib/workspace"
   import { loadLocale, message, saveLocale, type Locale } from "../i18n"
-  import * as Popover from "$lib/components/ui/popover"
   import { setMode, userPrefersMode } from "mode-watcher"
-  import { Tooltip } from "bits-ui"
-  import { Settings2, Languages, Monitor, Sun, Moon } from "@lucide/svelte"
+  import { Monitor, Sun, Moon } from "@lucide/svelte"
 
   let { children }: { children: Snippet } = $props()
 
   let locale = $state(loadLocale())
-  let settingsTrigger = $state<HTMLButtonElement | null>(null)
-  let settingsOpen = $state(false)
-  let settingsHintOpen = $state(false)
   const themeOptions = [
     { value: "system", Icon: Monitor, key: "admin.common.theme_system" },
     { value: "light", Icon: Sun, key: "admin.common.theme_light" },
@@ -143,74 +138,34 @@
       </a>
     </nav>
     <div class="sidebar-footer">
-      <Popover.Root
-        bind:open={settingsOpen}
-        onOpenChange={(open) => {
-          if (open) settingsHintOpen = false
-        }}
-      >
-        <Tooltip.Root bind:open={settingsHintOpen} disabled={settingsOpen}>
-          <Tooltip.Trigger>
-            {#snippet child({ props })}
-              <Popover.Trigger {...props} bind:ref={settingsTrigger} class="settings-trigger" aria-label={message(locale, "admin.shell.settings")}>
-                <Settings2 size={18} aria-hidden="true" />
-              </Popover.Trigger>
-            {/snippet}
-          </Tooltip.Trigger>
-          {#if settingsHintOpen && !settingsOpen}
-            <Tooltip.Portal>
-              <Tooltip.Content role="tooltip" side="top" sideOffset={6} class="studio-tooltip">{message(locale, "admin.shell.settings")}</Tooltip.Content>
-            </Tooltip.Portal>
-          {/if}
-        </Tooltip.Root>
-        <Popover.Content
-          side="top"
-          align="start"
-          role="dialog"
-          class="settings-panel w-72"
-          aria-label={message(locale, "admin.shell.settings")}
-          onCloseAutoFocus={(event) => {
-            event.preventDefault()
-            settingsTrigger?.focus()
-          }}
-        >
-          <header class="preferences-heading">
-            <Settings2 size={18} aria-hidden="true" />
-            <h2>{message(locale, "admin.shell.settings")}</h2>
-          </header>
-          <label class="locale-control">
-            <span class="preference-label"><Languages size={16} aria-hidden="true" />{message(locale, "admin.shell.language_label")}</span>
-            <SelectField
-              label={message(locale, "admin.shell.language_label")}
-              value={locale}
-              onValueChange={changeLocale}
-              items={[
-                { value: "ja", label: "日本語" },
-                { value: "en", label: "English" },
-                { value: "zh", label: "中文" },
-              ]}
-            />
-          </label>
-          <fieldset class="appearance-control">
-            <legend>{message(locale, "admin.shell.appearance")}</legend>
-            <div class="theme-options">
-              {#each themeOptions as { value, Icon, key } (value)}
-                <Button
-                  type="button"
-                  variant="outline"
-                  class={`theme-choice h-auto ${userPrefersMode.current === value ? "chosen" : ""}`}
-                  aria-pressed={userPrefersMode.current === value}
-                  onclick={() => setMode(value)}
-                >
-                  <Icon size={18} aria-hidden="true" />
-                  <span>{message(locale, key)}</span>
-                </Button>
-              {/each}
-            </div>
-          </fieldset>
-          {#if desktop && !sample}<div class="sample-setting"><SampleButton /></div>{/if}
-        </Popover.Content>
-      </Popover.Root>
+      <div class="quick-preferences">
+        <SelectField
+          label={message(locale, "admin.shell.language_label")}
+          value={locale}
+          onValueChange={changeLocale}
+          items={[
+            { value: "ja", label: "日本語" },
+            { value: "en", label: "English" },
+            { value: "zh", label: "中文" },
+          ]}
+        />
+        <div class="theme-options" role="group" aria-label={message(locale, "admin.shell.appearance")}>
+          {#each themeOptions as { value, Icon, key } (value)}
+            <Button
+              type="button"
+              variant="outline"
+              class={`theme-choice ${userPrefersMode.current === value ? "chosen" : ""}`}
+              aria-pressed={userPrefersMode.current === value}
+              aria-label={message(locale, key)}
+              title={message(locale, key)}
+              onclick={() => setMode(value)}
+            >
+              <Icon size={16} aria-hidden="true" />
+            </Button>
+          {/each}
+        </div>
+        {#if desktop && !sample}<SampleButton />{/if}
+      </div>
     </div>
   </aside>
   <main class="content" class:library>
@@ -257,35 +212,9 @@
       display: none;
     }
   }
-  .sample-setting {
-    margin-top: 16px;
-    padding-top: 12px;
-    border-top: 1px solid var(--line);
-  }
-  .preferences-heading,
-  .preference-label {
-    display: flex;
-    align-items: center;
+  .quick-preferences {
+    display: grid;
     gap: 8px;
-  }
-  .preferences-heading {
-    padding-bottom: 12px;
-    margin-bottom: 12px;
-    border-bottom: 1px solid var(--line);
-  }
-  .preferences-heading h2 {
-    font-size: 14px;
-  }
-  .appearance-control {
-    min-width: 0;
-    margin: 16px 0 0;
-    padding: 0;
-    border: 0;
-  }
-  .appearance-control legend {
-    margin-bottom: 8px;
-    font-size: 13px;
-    color: var(--muted);
   }
   .theme-options {
     display: grid;
@@ -295,13 +224,11 @@
   :global(.theme-choice) {
     display: grid;
     justify-items: center;
-    gap: 6px;
-    padding: 10px 4px;
+    padding: 6px 4px;
     border: 1px solid var(--line);
     border-radius: 8px;
     color: var(--muted);
     background: var(--surface);
-    font-size: 12px;
   }
   :global(.theme-choice:hover) {
     background: var(--surface-muted);
@@ -310,5 +237,8 @@
     border-color: var(--accent);
     color: var(--accent);
     background: var(--accent-soft);
+  }
+  :global(.quick-preferences .sample-action) {
+    margin: 0;
   }
 </style>

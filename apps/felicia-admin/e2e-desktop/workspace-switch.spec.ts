@@ -32,7 +32,6 @@ test("sample opens and returns in the same page without changing the original wo
 test("cancelled dirty-page navigation never switches the backend workspace", async ({ page }) => {
   await page.goto("/#/journey/new")
   await page.getByLabel("Title", { exact: true }).fill("Keep this unsaved title")
-  await page.getByRole("button", { name: "Settings", exact: true }).click()
   await page.getByRole("button", { name: "Open sample trip", exact: true }).click()
   await decideDiscard(page, false)
   await expect(page.getByLabel("Title", { exact: true })).toHaveValue("Keep this unsaved title")

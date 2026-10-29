@@ -10,7 +10,6 @@ for (const locale of ["en", "ja", "zh"] as Locale[]) {
       await page.goto("/")
       await expect(page.getByRole("heading", { name: "Journeys", exact: true })).toBeVisible()
       if (locale !== "en") {
-        await page.getByRole("button", { name: "Settings", exact: true }).click()
         await chooseSelect(page, page.getByRole("button", { name: "Language", exact: true }), locale)
         await page.keyboard.press("Escape")
       }

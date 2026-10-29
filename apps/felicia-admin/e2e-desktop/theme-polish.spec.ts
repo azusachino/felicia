@@ -7,9 +7,7 @@ for (const appearance of ["Light", "Dark"] as const) {
     test(`${appearance} editor uses coherent surfaces and keeps Save visible at ${width}px`, async ({ page }, info) => {
       await page.setViewportSize({ width, height: 760 })
       await page.goto("/")
-      await page.getByRole("button", { name: "Settings", exact: true }).click()
       await page.getByRole("button", { name: appearance, exact: true }).click()
-      await page.keyboard.press("Escape")
       await page.getByRole("link", { name: /A Kyoto afternoon/ }).click()
       await page.getByRole("link", { name: /A little paper keepsake/ }).click()
       const save = page.getByRole("button", { name: "Save", exact: true })

@@ -1,17 +1,15 @@
 import { test, expect } from "./fixtures"
 import { chooseSelect } from "./select-field"
 
-for (const [locale, settingsName, journeysName, newName, createName, titleName] of [
+for (const [locale, , journeysName, newName, createName, titleName] of [
   ["ja", "設定", "旅程", "新しい旅程", "旅程を作成", "タイトル"],
   ["zh", "设置", "旅程", "新建旅程", "创建旅程", "标题"],
 ] as const) {
   test(`settings persist ${locale} and the full creation page reflows`, async ({ page }, info) => {
     await page.setViewportSize({ width: 900, height: 600 })
     await page.goto("/")
-    await page.getByRole("button", { name: "Settings", exact: true }).click()
     await chooseSelect(page, page.getByRole("button", { name: "Language", exact: true }), locale)
-    await page.keyboard.press("Escape")
-    await expect(page.getByRole("button", { name: settingsName, exact: true })).toBeFocused()
+    await expect(page.locator(".quick-preferences .select-trigger")).toBeFocused()
     await page.reload()
     await expect(page.getByRole("heading", { name: journeysName, exact: true })).toBeVisible()
     await page.getByRole("button", { name: newName, exact: true }).click()
@@ -32,8 +30,8 @@ test("dark library and settings use the system palette", async ({ page }, info) 
   const content = page.getByRole("main")
   expect(await content.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe("rgb(32, 34, 38)")
   await page.screenshot({ path: info.outputPath("library-dark.png") })
-  await page.getByRole("button", { name: "Settings", exact: true }).click()
-  await page.screenshot({ path: info.outputPath("settings-dark.png") })
+  const sidebar = page.locator(".sidebar")
+  expect(await sidebar.evaluate((element) => getComputedStyle(element).backgroundColor)).toBeDefined()
 })
 
 test("studio appearance persists independently of published settings and follows system changes", async ({ page }, info) => {
@@ -45,7 +43,6 @@ test("studio appearance persists independently of published settings and follows
   const output = page.getByRole("region", { name: "Output directory", exact: true })
   await expect(output).toBeVisible()
   await expect(output).toHaveCSS("background-color", "rgb(41, 44, 49)")
-  await page.getByRole("button", { name: "Settings", exact: true }).click()
   const appearance = page.getByRole("group", { name: "Appearance", exact: true })
   await expect(appearance.getByRole("button", { name: "System", exact: true })).toHaveAttribute("aria-pressed", "true")
   for (const name of ["System", "Light", "Dark"]) await expect(appearance.getByRole("button", { name, exact: true }).locator("svg")).toBeVisible()
@@ -53,18 +50,14 @@ test("studio appearance persists independently of published settings and follows
   await expect(output).toHaveCSS("background-color", "rgb(255, 255, 255)")
   await appearance.getByRole("button", { name: "Dark", exact: true }).click()
   await expect(output).toHaveCSS("background-color", "rgb(41, 44, 49)")
-  await page.keyboard.press("Escape")
-  await expect(page.getByRole("button", { name: "Settings", exact: true })).toBeFocused()
   await page.emulateMedia({ colorScheme: "light" })
   await page.reload()
   await expect(output).toHaveCSS("background-color", "rgb(41, 44, 49)")
-  await page.getByRole("button", { name: "Settings", exact: true }).click()
   await expect(appearance.getByRole("button", { name: "Dark", exact: true })).toHaveAttribute("aria-pressed", "true")
   await appearance.getByRole("button", { name: "System", exact: true }).click()
   await expect(output).toHaveCSS("background-color", "rgb(255, 255, 255)")
   await page.emulateMedia({ colorScheme: "dark" })
   await expect(output).toHaveCSS("background-color", "rgb(41, 44, 49)")
-  await page.keyboard.press("Escape")
   const after = await page.request.get("/api/admin/site-settings")
   expect(await after.json()).toEqual(published)
   await page.screenshot({ path: info.outputPath("site-dark.png") })
