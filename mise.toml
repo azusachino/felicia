@@ -1,6 +1,6 @@
 [tools]
 go = "latest"
-node = "lts"
+node = "24.21.0"
 bun = "latest"
 python = "latest"
 uv = "latest"
