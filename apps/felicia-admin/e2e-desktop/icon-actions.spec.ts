@@ -9,7 +9,7 @@ for (const width of [1100, 720]) {
     await expect(language).toBeVisible()
     const themeGroup = page.getByRole("group", { name: "Appearance", exact: true })
     const system = themeGroup.getByRole("button", { name: "System", exact: true })
-    await expect(system).toHaveAttribute("aria-pressed", /true|false/)
+    await expect(system).toHaveAttribute("aria-pressed", "true")
     await expect(system.locator('svg[aria-hidden="true"]')).toHaveCount(1)
 
     // Exercise actual keyboard focus, not a programmatic focus assertion.

@@ -185,7 +185,6 @@ func run() error {
 		return fmt.Errorf("register desktop protocol: %w", err)
 	}
 
-
 	title := "Felicia Studio"
 	if *sample {
 		title = "Felicia Studio — Sample trip"

@@ -22,7 +22,7 @@ for (const [locale, , journeysName, newName, createName, titleName] of [
   })
 }
 
-test("dark library and settings use the system palette", async ({ page }, info) => {
+test("dark library uses the system palette", async ({ page }, info) => {
   await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" })
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto("/")
@@ -30,8 +30,6 @@ test("dark library and settings use the system palette", async ({ page }, info) 
   const content = page.getByRole("main")
   expect(await content.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe("rgb(32, 34, 38)")
   await page.screenshot({ path: info.outputPath("library-dark.png") })
-  const sidebar = page.locator(".sidebar")
-  expect(await sidebar.evaluate((element) => getComputedStyle(element).backgroundColor)).toBeDefined()
 })
 
 test("studio appearance persists independently of published settings and follows system changes", async ({ page }, info) => {

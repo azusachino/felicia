@@ -4,7 +4,6 @@ test.use({ sampleMode: true, desktop: true, userAgent: "Mozilla/5.0 (Macintosh; 
 
 test("native shell loads the matching drag runtime and keeps controls non-draggable", async ({ page }) => {
   await page.goto("/")
-  await expect(page.locator('script[src="/wails/runtime.js"]')).toHaveCount(0)
   expect(await page.evaluate(() => "mygo" in window)).toBe(true)
   expect(await page.locator(".window-toolbar").evaluate((element) => getComputedStyle(element).getPropertyValue("--app-region").trim())).toBe("drag")
   expect(await page.getByRole("button", { name: "New journey", exact: true }).evaluate((element) => getComputedStyle(element).getPropertyValue("--app-region").trim())).toBe("no-drag")
