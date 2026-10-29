@@ -1,9 +1,8 @@
 import { test, expect } from "./fixtures"
 
-test.use({ sampleMode: true, timezoneId: "America/Los_Angeles", userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/605.1.15 wails.io" })
+test.use({ sampleMode: true, timezoneId: "America/Los_Angeles", desktop: true, userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/605.1.15" })
 
 test("Create succeeds without touching the actual local-date defaults", async ({ page }) => {
-  await page.route("**/wails/runtime.js", (route) => route.fulfill({ contentType: "application/javascript", body: "" }))
   await page.clock.setFixedTime(new Date("2026-01-02T00:30:00Z"))
   await page.goto("/#/journey/new")
   await expect(page.locator('[name="date_start"]')).toHaveValue("2026-01-01")
@@ -21,7 +20,6 @@ test("Create succeeds without touching the actual local-date defaults", async ({
 })
 
 test("untouched default dates do not make a new journey dirty", async ({ page }) => {
-  await page.route("**/wails/runtime.js", (route) => route.fulfill({ contentType: "application/javascript", body: "" }))
   let dialogs = 0
   page.on("dialog", async (dialog) => {
     dialogs++

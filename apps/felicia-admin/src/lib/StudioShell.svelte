@@ -29,8 +29,8 @@
   ] as const
   const library = $derived(page.route.id === "/" || page.route.id === "/[...missing]")
   const site = $derived(page.route.id === "/site")
-  // Wails beta.24 identifies its macOS webview with this user-agent suffix.
-  const desktop = navigator.userAgent.includes("wails.io")
+  // MyGo injects its runtime into every page as window.mygo.
+  const desktop = "mygo" in window
   const nativeMac = desktop && navigator.userAgent.includes("Macintosh")
   let sample = $state(false)
   let isolated = $state(false)
@@ -112,7 +112,6 @@
 
 <svelte:head>
   <title>{message(locale, "admin.shell.page_title")}</title>
-  {#if desktop}<script type="module" src="/wails/runtime.js"></script>{/if}
 </svelte:head>
 
 <DiscardChangesDialog prompt={discardPrompt} {locale} decide={decideDiscard} />

@@ -1,16 +1,12 @@
 import { test, expect } from "./fixtures"
 
-test.use({ sampleMode: true, userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/605.1.15 wails.io" })
+test.use({ sampleMode: true, desktop: true, userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/605.1.15" })
 
 test("last-built sample reader loads its original Latin and Japanese typefaces without external font requests", async ({ page, context }) => {
   const external: string[] = []
   const localFonts: string[] = []
   await context.route("**/*", async (route) => {
     const url = new URL(route.request().url())
-    if (url.pathname === "/wails/runtime.js") {
-      await route.fulfill({ contentType: "application/javascript", body: "" })
-      return
-    }
     if (url.protocol === "http:" || url.protocol === "https:") {
       if (url.hostname !== "127.0.0.1" && url.hostname !== "localhost") {
         external.push(url.toString())

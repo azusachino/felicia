@@ -15,8 +15,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/egoist/mygo"
 	"github.com/google/uuid"
-	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"github.com/azusachino/felicia/apps/felicia-core/domain"
 	"github.com/azusachino/felicia/apps/felicia-providers/sqlite"
@@ -113,23 +113,19 @@ func run() error {
 		}
 	}
 
-	var app *application.App
-	var window *application.WebviewWindow
-
-	onPick := func(directories, files bool, title string) (string, error) {
-		if app == nil || window == nil {
+	var window *mygo.Window
+	onPick := func(directories bool, title string) (string, error) {
+		if window == nil {
 			return "", fmt.Errorf("desktop window is not initialized")
 		}
-		return app.Dialog.OpenFile().
-			CanChooseDirectories(directories).
-			CanChooseFiles(files).
-			CanCreateDirectories(directories).
-			SetTitle(title).
-			AttachToWindow(window).
-			PromptForSingleSelection()
+		paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: window, Title: title, Directory: directories, CreateDirectories: directories})
+		if err != nil || len(paths) == 0 {
+			return "", err
+		}
+		return paths[0], nil
 	}
-	onPickFolder := func(title string) (string, error) { return onPick(true, false, title) }
-	onPickFile := func(title string) (string, error) { return onPick(false, true, title) }
+	onPickFolder := func(title string) (string, error) { return onPick(true, title) }
+	onPickFile := func(title string) (string, error) { return onPick(false, title) }
 
 	var previewServer *PreviewServer
 	if *mode == "admin" {
@@ -180,17 +176,15 @@ func run() error {
 		return err
 	}
 
-	app = application.New(application.Options{
-		Name:        "Felicia Studio",
-		Icon:        defaultAppIcon,
-		Description: "Map-based travel journal studio",
-		Assets: application.AssetOptions{
-			Handler: workspaces,
-		},
-		Mac: application.MacOptions{
-			ActivationPolicy: application.ActivationPolicyRegular,
-		},
-	})
+	// Felicia never serves its privileged UI from a development web server.
+	// MyGo's dev mode trusts localhost origins, so disable it even for go build.
+	if err := os.Setenv("MYGO_ENV", "production"); err != nil {
+		return fmt.Errorf("set desktop production mode: %w", err)
+	}
+	if err := mygo.Protocol.Handle("mygo", desktopProtocol(workspaces)); err != nil {
+		return fmt.Errorf("register desktop protocol: %w", err)
+	}
+
 
 	title := "Felicia Studio"
 	if *sample {
@@ -200,16 +194,12 @@ func run() error {
 		title = "Felicia — Public Reader"
 	}
 
-	windowOptions := application.WebviewWindowOptions{
-		Title:  title,
-		Width:  1100,
-		Height: 760,
-		URL:    "/",
-	}
-	applyPlatformWindowChrome(&windowOptions)
-	window = app.Window.NewWithOptions(windowOptions)
-
-	return app.Run()
+	mygo.App.WhenReady(func() {
+		windowOptions := mygo.WindowOptions{Title: title, Width: 1100, Height: 760, URL: "/"}
+		applyPlatformWindowChrome(&windowOptions)
+		window = mygo.NewWindow(windowOptions)
+	})
+	return mygo.App.Run()
 }
 
 func resolveDefaultWorkspace() (string, error) {

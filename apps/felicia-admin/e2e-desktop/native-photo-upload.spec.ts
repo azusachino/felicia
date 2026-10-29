@@ -1,11 +1,10 @@
 import { randomUUID } from "node:crypto"
 import { test, expect } from "./fixtures"
 
-test.use({ sampleMode: false, userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X) wails.io" })
+test.use({ sampleMode: false, desktop: true, userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X)" })
 const picture = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP43+DwHwAHAAK/K9fH4gAAAABJRU5ErkJggg==", "base64")
 
 test("ordinary desktop uploads images, blocks pending navigation and preserves photo curation", async ({ page }) => {
-  await page.route("**/wails/runtime.js", (route) => route.fulfill({ contentType: "application/javascript", body: "" }))
   await page.goto("/#/")
   const journeyResponse = await page.request.post("/api/admin/journeys", {
     data: { slug: "synthetic-photo-upload", title: "Synthetic photo journey", place: "Kyoto", date_start: "2026-05-03", date_end: "2026-05-03" },

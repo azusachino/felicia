@@ -2,7 +2,6 @@
 
 package main
 
-import "github.com/wailsapp/wails/v3/pkg/application"
+import "github.com/egoist/mygo"
 
-// applyPlatformWindowChrome leaves non-macOS windows on Wails' native defaults.
-func applyPlatformWindowChrome(_ *application.WebviewWindowOptions) {}
+func applyPlatformWindowChrome(_ *mygo.WindowOptions) {}

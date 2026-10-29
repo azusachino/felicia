@@ -1,20 +1,18 @@
 import { test, expect } from "./fixtures"
 
-test.use({ sampleMode: true, userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/605.1.15 wails.io" })
+test.use({ sampleMode: true, desktop: true, userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/605.1.15" })
 
 test("native shell loads the matching drag runtime and keeps controls non-draggable", async ({ page }) => {
-  await page.route("**/wails/runtime.js", (route) => route.fulfill({ contentType: "application/javascript", body: "" }))
   await page.goto("/")
-  await expect(page.locator('script[src="/wails/runtime.js"]')).toHaveCount(1)
-  expect(await page.locator(".window-toolbar").evaluate((element) => getComputedStyle(element).getPropertyValue("--wails-draggable").trim())).toBe("drag")
-  expect(await page.getByRole("button", { name: "New journey", exact: true }).evaluate((element) => getComputedStyle(element).getPropertyValue("--wails-draggable").trim())).toBe("no-drag")
+  await expect(page.locator('script[src="/wails/runtime.js"]')).toHaveCount(0)
+  expect(await page.evaluate(() => "mygo" in window)).toBe(true)
+  expect(await page.locator(".window-toolbar").evaluate((element) => getComputedStyle(element).getPropertyValue("--app-region").trim())).toBe("drag")
+  expect(await page.getByRole("button", { name: "New journey", exact: true }).evaluate((element) => getComputedStyle(element).getPropertyValue("--app-region").trim())).toBe("no-drag")
   await page.getByRole("button", { name: "New journey", exact: true }).click()
-  await expect(page.locator('script[src="/wails/runtime.js"]')).toHaveCount(1)
   await expect(page.getByLabel("Title", { exact: true })).toBeFocused()
 })
 
 test("sample trip opens a real editor with generated photos and persists curation", async ({ page }, info) => {
-  await page.route("**/wails/runtime.js", (route) => route.fulfill({ contentType: "application/javascript", body: "" }))
   const errors: string[] = []
   page.on("pageerror", (error) => errors.push(error.message))
   await page.goto("/")
@@ -40,7 +38,6 @@ test("sample trip opens a real editor with generated photos and persists curatio
 })
 
 test("journey detail opens the built preview in-app with comfortable header controls", async ({ page }) => {
-  await page.route("**/wails/runtime.js", (route) => route.fulfill({ contentType: "application/javascript", body: "" }))
   await page.goto("/")
   const newJourney = (await page.getByRole("button", { name: "New journey", exact: true }).boundingBox())!
   expect(newJourney.height).toBeGreaterThanOrEqual(36)
@@ -62,7 +59,6 @@ test("journey detail opens the built preview in-app with comfortable header cont
 })
 
 test("reader exposes theme toggle control without changing saved appearance", async ({ page }) => {
-  await page.route("**/wails/runtime.js", (route) => route.fulfill({ contentType: "application/javascript", body: "" }))
   await page.goto("/#/site")
   const before = await (await page.request.get("/api/admin/site-settings")).json()
   await page.getByRole("button", { name: "Preview last built site", exact: true }).click()
@@ -79,7 +75,6 @@ test("reader exposes theme toggle control without changing saved appearance", as
 })
 
 test("last-built preview stays inside the studio and preserves unsaved site inputs", async ({ page }, contextInfo) => {
-  await page.route("**/wails/runtime.js", (route) => route.fulfill({ contentType: "application/javascript", body: "" }))
   let popups = 0
   page.on("popup", () => popups++)
   await page.goto("/#/site")

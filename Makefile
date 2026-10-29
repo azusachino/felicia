@@ -66,7 +66,7 @@ desktop-e2e-build: desktop-assets ## Build test-only headless desktop compositio
 	@mkdir -p bin
 	$(UV_RUN) run python scripts/go_tasks.py desktop-e2e-build
 
-# Browser verification of desktop composition; does not drive the Wails window.
+# Browser verification of desktop composition; does not drive the MyGo window.
 e2e: desktop-e2e-build ## Run integrated desktop Chromium/WebKit specs on synthetic state
 	$(UV_RUN) run python scripts/go_tasks.py desktop-e2e-test
 	$(BUN) --bun run --filter @felicia/admin e2e $(ARGS)

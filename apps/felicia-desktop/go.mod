@@ -1,6 +1,6 @@
 module github.com/azusachino/felicia/apps/felicia-desktop
 
-go 1.27
+go 1.27.3
 
 require (
 	github.com/azusachino/felicia/apps/felicia-core v0.1.0
@@ -9,7 +9,7 @@ require (
 	github.com/azusachino/felicia/apps/felicia-runtime v0.1.0
 	github.com/google/uuid v1.6.0
 	github.com/paulmach/orb v0.13.0
-	github.com/wailsapp/wails/v3 v3.0.0-beta.24
+	github.com/egoist/mygo v0.7.2
 )
 
 replace (

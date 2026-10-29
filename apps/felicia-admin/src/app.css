@@ -101,7 +101,7 @@ summary:focus-visible {
   background: transparent;
 }
 .window-toolbar {
-  --wails-draggable: drag;
+  --app-region: drag;
   grid-column: 1;
   display: flex;
   align-items: center;
@@ -127,7 +127,7 @@ textarea,
 summary,
 label,
 [role="button"] {
-  --wails-draggable: no-drag;
+  --app-region: no-drag;
 }
 .brand {
   display: flex;

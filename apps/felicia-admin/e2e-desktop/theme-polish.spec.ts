@@ -1,11 +1,10 @@
 import { test, expect } from "./fixtures"
 
-test.use({ sampleMode: true, userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/605.1.15 wails.io" })
+test.use({ sampleMode: true, desktop: true, userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/605.1.15" })
 
 for (const appearance of ["Light", "Dark"] as const) {
   for (const width of [1100, 720]) {
     test(`${appearance} editor uses coherent surfaces and keeps Save visible at ${width}px`, async ({ page }, info) => {
-      await page.route("**/wails/runtime.js", (route) => route.fulfill({ contentType: "application/javascript", body: "" }))
       await page.setViewportSize({ width, height: 760 })
       await page.goto("/")
       await page.getByRole("button", { name: "Settings", exact: true }).click()

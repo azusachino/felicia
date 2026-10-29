@@ -370,13 +370,13 @@
     padding: 6px 24px;
     border-bottom: 1px solid var(--line);
     background: var(--surface);
-    --wails-draggable: drag;
+    --app-region: drag;
   }
   .journeys-header h1 {
     font-size: 16px;
   }
   .header-actions {
-    --wails-draggable: no-drag;
+    --app-region: no-drag;
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
