@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Compass } from "@lucide/svelte"
-  import { Button } from "$lib/components/ui/button"
+  import IconButton from "$lib/components/IconButton.svelte"
   import { getStudio } from "$lib/studio"
   import { openDesktopSample } from "../../api"
   import { prepareWorkspaceSwitch } from "$lib/workspace"
@@ -25,7 +25,9 @@
 
 {#if studio.desktop && studio.workspaceReady && !studio.sample}
   <div class="sample-action">
-    <Button size="sm" variant="outline" onclick={open} disabled={pending}><Compass size={16} aria-hidden="true" />{message(studio.locale, "admin.sample.open")}</Button>
+    <IconButton label={message(studio.locale, "admin.sample.open")} onclick={open} disabled={pending}>
+      <Compass size={16} aria-hidden="true" />
+    </IconButton>
     {#if error}<p class="api-error" role="alert">{error}</p>{/if}
   </div>
 {/if}

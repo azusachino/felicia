@@ -125,7 +125,7 @@
         >
       </section>
     {/if}
-    {#if isolated && !sample}<p class="hint" role="status">{message(locale, "admin.sample.empty_studio")}</p>{/if}
+    {#if isolated && !sample}<aside class="hint" role="status">{message(locale, "admin.sample.empty_studio")}</aside>{/if}
     {#if workspaceError}<p class="api-error" role="alert">{workspaceError}</p>{/if}
     <nav aria-label={message(locale, "admin.shell.navigation_label")}>
       <a class:active={!site} aria-current={!site ? "page" : undefined} href={resolve("/")}>
@@ -139,21 +139,24 @@
     </nav>
     <div class="sidebar-footer">
       <div class="quick-preferences">
-        <SelectField
-          label={message(locale, "admin.shell.language_label")}
-          value={locale}
-          onValueChange={changeLocale}
-          items={[
-            { value: "ja", label: "日本語" },
-            { value: "en", label: "English" },
-            { value: "zh", label: "中文" },
-          ]}
-        />
+        <div class="pref-row">
+          <SelectField
+            label={message(locale, "admin.shell.language_label")}
+            value={locale}
+            onValueChange={changeLocale}
+            items={[
+              { value: "ja", label: "日本語" },
+              { value: "en", label: "English" },
+              { value: "zh", label: "中文" },
+            ]}
+          />
+          {#if desktop && !sample}<SampleButton />{/if}
+        </div>
         <div class="theme-options" role="group" aria-label={message(locale, "admin.shell.appearance")}>
           {#each themeOptions as { value, Icon, key } (value)}
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               class={`theme-choice ${userPrefersMode.current === value ? "chosen" : ""}`}
               aria-pressed={userPrefersMode.current === value}
               aria-label={message(locale, key)}
@@ -164,7 +167,6 @@
             </Button>
           {/each}
         </div>
-        {#if desktop && !sample}<SampleButton />{/if}
       </div>
     </div>
   </aside>
@@ -212,33 +214,73 @@
       display: none;
     }
   }
+  .hint {
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface-raised);
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.55;
+  }
   .quick-preferences {
     display: grid;
-    gap: 8px;
-  }
-  .theme-options {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
   }
-  :global(.theme-choice) {
-    display: grid;
-    justify-items: center;
-    padding: 6px 4px;
+  .pref-row {
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .pref-row :global(.select-trigger) {
+    flex: 1;
+    min-width: 0;
+    min-height: 32px;
+    height: 32px;
+    padding: 4px 10px;
+    font-size: 13px;
+    gap: 6px;
+  }
+  .pref-row :global(.sample-action) {
+    display: flex;
+    margin: 0;
+  }
+  .pref-row :global(.sample-action button) {
+    width: 32px;
+    height: 32px;
+    min-height: 0;
+    border-radius: 8px;
+  }
+  .pref-row :global(.sample-action .api-error) {
+    display: none;
+  }
+  .theme-options {
+    display: flex;
     border: 1px solid var(--line);
     border-radius: 8px;
-    color: var(--muted);
     background: var(--surface);
+  }
+  :global(.theme-choice) {
+    flex: 1;
+    display: grid;
+    place-items: center;
+    height: 30px;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    color: var(--muted);
+    background: transparent;
+  }
+  :global(.theme-choice + .theme-choice) {
+    border-inline-start: 1px solid var(--line);
   }
   :global(.theme-choice:hover) {
     background: var(--surface-muted);
   }
   :global(.theme-choice.chosen) {
-    border-color: var(--accent);
     color: var(--accent);
     background: var(--accent-soft);
-  }
-  :global(.quick-preferences .sample-action) {
-    margin: 0;
   }
 </style>
