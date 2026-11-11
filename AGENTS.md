@@ -71,8 +71,8 @@ The root Go module has been retired; all Go code is built through `go.work`.
 ## Build, Run & Test
 
 All daily operations go through `make <target>`; use `make help` for the current target list.
-`mise.toml` pins the runtimes (Go, Bun, Node, Python, uv) and golangci-lint at the
-workstation's shared minor versions; `mise.lock` records the resolved versions. Use
+`mise.toml` pins the runtimes (Go, Bun, Node, uv) and golangci-lint at the
+workstation's shared minor versions, and Python at 3.14 (psycopg-binary has no cp315 wheels); `mise.lock` records the resolved versions. Use
 `mise install` after checkout. Node LTS is no longer the policy: Node follows the shared
 minor pin.
 Bun installs the frozen frontend workspace lockfile and executes compatible
