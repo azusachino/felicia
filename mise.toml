@@ -8,6 +8,7 @@ node = "26.13"
 python = "3.14"
 uv = "0.13"
 golangci-lint = "2.15"
+rumdl = "0.3"
 
 [env]
 _.file = ".env"
