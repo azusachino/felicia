@@ -1,10 +1,5 @@
 [tools]
-go = "latest"
-node = "24.21.0"
-bun = "latest"
-python = "latest"
-uv = "latest"
-golangci-lint = "latest"
+golangci-lint = "2.15"
 
 [env]
 _.file = ".env"
