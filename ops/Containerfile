@@ -11,6 +11,9 @@ COPY apps/felicia-providers/go.mod apps/felicia-providers/go.sum apps/felicia-pr
 COPY apps/felicia-server/go.mod apps/felicia-server/go.sum apps/felicia-server/
 COPY apps/felicia-publication/go.mod apps/felicia-publication/go.sum apps/felicia-publication/
 COPY apps/felicia-cli/go.mod apps/felicia-cli/go.sum apps/felicia-cli/
+# go.work also lists the desktop module; its manifest must be present for the
+# workspace to load (the API binary itself does not link it).
+COPY apps/felicia-desktop/go.mod apps/felicia-desktop/
 RUN for module in $(go work edit -json | sed -n 's/.*"DiskPath": "\(.*\)".*/\1/p'); do cd "$module" && go mod download && cd /app; done
 
 # Copy source code

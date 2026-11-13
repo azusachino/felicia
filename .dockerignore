@@ -11,8 +11,8 @@ site/
 bin/
 .venv/
 **/__pycache__/
-apps/
-web/
+**/.svelte-kit/
+**/.playwright/
 docs/
 experiments/
 examples/
