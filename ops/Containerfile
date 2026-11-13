@@ -20,10 +20,9 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /app/felicia-api ./apps/felicia-server/cmd/api
 
 # Stage 2: Runtime container
-FROM alpine:latest
-
-# Install CA certificates for HTTPS requests to Immich/Dawarich APIs
-RUN apk --no-cache add ca-certificates tzdata
+# Shared workstation base (Debian trixie): provides ca-certificates, tzdata,
+# tini, curl, ffmpeg, python and deno for every runtime image.
+FROM azusachino.com/media-base:py3.14-trixie-r2
 
 WORKDIR /app
 
