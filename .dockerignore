@@ -13,6 +13,13 @@ bin/
 **/__pycache__/
 **/.svelte-kit/
 **/.playwright/
+# Local secrets never enter the build context. Keep .env.example tracked.
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
 docs/
 experiments/
 examples/

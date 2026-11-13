@@ -113,6 +113,8 @@ make validate    # pre-PR gate (full verification across Go, TypeScript, and Pyt
 
 The native desktop build targets macOS 26.0 or newer. See [the local-check workflow](docs/development/local-checks.md) for incremental validation.
 
+Container images build on the workstation's shared runtime base `azusachino.com/media-base:py3.14-trixie-r2`, a **local-only** tag — on a clean machine or CI runner, build or import that base first (see [docs/setup.md](docs/setup.md#container-images)); never pull it.
+
 ## Status and documentation
 
 Felicia is in active implementation. Detailed documentation:
