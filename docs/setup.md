@@ -81,6 +81,20 @@ for configuration precedence and the PostgreSQL test-database safety rules.
 - **Migrations:**
   `make migrate` applies `apps/felicia-server/migrations/` with goose (needs `DATABASE_DSN`).
 
+## Container images
+
+`ops/Containerfile` builds the API image on the workstation's shared runtime base
+`azusachino.com/media-base:py3.14-trixie-r2` (Debian trixie).
+
+That tag is **local-only**: it is not published to any registry, it exists only in the
+workstation's local podman store. On a clean machine or a CI runner, build or import the
+base first (recipe: `containers/media-base` in harus-workstation; floating, refreshed with
+`REFRESH=1`), otherwise `podman build` fails with *image not known*. Never pull the tag.
+
+```bash
+podman build -f ops/Containerfile -t azusachino.com/felicia:local .
+```
+
 ## Configuration
 
 - Copy `.env.example` → `.env` (gitignored). **Secrets via env only**: `DATABASE_DSN`,
