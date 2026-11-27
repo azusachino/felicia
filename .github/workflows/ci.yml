@@ -3,11 +3,9 @@ name: CI
 # Pull requests and manual runs only: a merge re-ran the check its pull request
 # had just passed.
 on:
+  # No paths-ignore: the docs job (make fmt-docs-check) is the only CI gate that
+  # reads README.md and docs/, and a docs-only pull request must reach it.
   pull_request:
-    # No required status checks are configured; revisit this filter if that changes.
-    paths-ignore:
-      - README.md
-      - 'docs/**'
   workflow_dispatch:
 
 env:
