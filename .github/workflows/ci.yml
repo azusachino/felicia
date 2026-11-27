@@ -1,13 +1,14 @@
 name: CI
 
+# Pull requests and manual runs only: a merge re-ran the check its pull request
+# had just passed.
 on:
-  push:
-    branches: [main]
   pull_request:
     # No required status checks are configured; revisit this filter if that changes.
     paths-ignore:
       - README.md
       - 'docs/**'
+  workflow_dispatch:
 
 env:
   MISE_LOCKED: "1"
@@ -34,7 +35,9 @@ jobs:
       code: ${{ steps.filter.outputs.code }}
     steps:
       - uses: actions/checkout@v7
+      # A manual run has no base to compare, so it runs every gate.
       - uses: dorny/paths-filter@v4
+        if: github.event_name == 'pull_request'
         id: filter
         with:
           filters: |
